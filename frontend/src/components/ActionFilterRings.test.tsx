@@ -78,7 +78,7 @@ describe('ActionFilterRings', () => {
         }
     });
 
-    it('single-click toggles a severity category off (after the double-click window)', () => {
+    it('single-click solos a severity category — enables only that outcome (after the double-click window)', () => {
         const onFiltersChange = vi.fn();
         render(<ActionFilterRings filters={baseFilters} onFiltersChange={onFiltersChange} />);
         fireEvent.click(screen.getByTestId('sidebar-filter-category-red'));
@@ -87,11 +87,42 @@ describe('ActionFilterRings', () => {
         flushClickDelay();
         expect(onFiltersChange).toHaveBeenCalledWith({
             ...baseFilters,
-            categories: { ...baseFilters.categories, red: false },
+            categories: { green: false, orange: false, red: true, grey: false },
         });
     });
 
-    it('single-click toggles a disabled severity category back on', () => {
+    it('single-click on an already-soloed severity category restores all outcomes', () => {
+        const onFiltersChange = vi.fn();
+        const filters: ActionOverviewFilters = {
+            ...baseFilters,
+            categories: { green: false, orange: false, red: true, grey: false },
+        };
+        render(<ActionFilterRings filters={filters} onFiltersChange={onFiltersChange} />);
+        fireEvent.click(screen.getByTestId('sidebar-filter-category-red'));
+        flushClickDelay();
+        expect(onFiltersChange).toHaveBeenCalledWith({
+            ...filters,
+            categories: { green: true, orange: true, red: true, grey: true },
+        });
+    });
+
+    it('double-click toggles a severity category off', () => {
+        const onFiltersChange = vi.fn();
+        render(<ActionFilterRings filters={baseFilters} onFiltersChange={onFiltersChange} />);
+        const red = screen.getByTestId('sidebar-filter-category-red');
+        fireEvent.click(red);
+        fireEvent.click(red);
+        expect(onFiltersChange).toHaveBeenCalledTimes(1);
+        expect(onFiltersChange).toHaveBeenCalledWith({
+            ...baseFilters,
+            categories: { ...baseFilters.categories, red: false },
+        });
+        // The deferred single-click must NOT also fire after the toggle.
+        flushClickDelay();
+        expect(onFiltersChange).toHaveBeenCalledTimes(1);
+    });
+
+    it('double-click toggles a disabled severity category back on', () => {
         const onFiltersChange = vi.fn();
         const filters: ActionOverviewFilters = {
             ...baseFilters,
@@ -101,42 +132,10 @@ describe('ActionFilterRings', () => {
         const greyToggle = screen.getByTestId('sidebar-filter-category-grey');
         expect(greyToggle).toHaveAttribute('aria-pressed', 'false');
         fireEvent.click(greyToggle);
-        flushClickDelay();
+        fireEvent.click(greyToggle);
         expect(onFiltersChange).toHaveBeenCalledWith({
             ...filters,
             categories: { ...filters.categories, grey: true },
-        });
-    });
-
-    it('double-click solos a severity category — enables only that outcome', () => {
-        const onFiltersChange = vi.fn();
-        render(<ActionFilterRings filters={baseFilters} onFiltersChange={onFiltersChange} />);
-        const red = screen.getByTestId('sidebar-filter-category-red');
-        fireEvent.click(red);
-        fireEvent.click(red);
-        expect(onFiltersChange).toHaveBeenCalledTimes(1);
-        expect(onFiltersChange).toHaveBeenCalledWith({
-            ...baseFilters,
-            categories: { green: false, orange: false, red: true, grey: false },
-        });
-        // The deferred single-click must NOT also fire after the solo.
-        flushClickDelay();
-        expect(onFiltersChange).toHaveBeenCalledTimes(1);
-    });
-
-    it('double-click on an already-soloed severity category restores all outcomes', () => {
-        const onFiltersChange = vi.fn();
-        const filters: ActionOverviewFilters = {
-            ...baseFilters,
-            categories: { green: false, orange: false, red: true, grey: false },
-        };
-        render(<ActionFilterRings filters={filters} onFiltersChange={onFiltersChange} />);
-        const red = screen.getByTestId('sidebar-filter-category-red');
-        fireEvent.click(red);
-        fireEvent.click(red);
-        expect(onFiltersChange).toHaveBeenCalledWith({
-            ...filters,
-            categories: { green: true, orange: true, red: true, grey: true },
         });
     });
 
