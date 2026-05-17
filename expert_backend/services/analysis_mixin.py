@@ -629,47 +629,26 @@ class AnalysisMixin:
                 yield {"type": "pdf", "pdf_path": produced_pdf,
                        "overflow_graph_time": overflow_graph_time}
 
-            # Part 2: action discovery — drive the upstream sub-steps
-            # directly so we can time prediction vs. assessment.
-            from expert_op4grid_recommender.utils.reassessment import (
-                build_recommender_inputs,
-                compute_combined_pairs,
-                propagate_non_convergence_to_scores,
-                reassess_prioritized_actions,
-            )
-            from expert_op4grid_recommender.models.expert import ExpertRecommender
-            from expert_op4grid_recommender import main as _upstream_main
+            # Part 2: action discovery. Goes through the upstream
+            # ``run_analysis_step2_discovery`` wrapper so the test seam
+            # at ``@patch('expert_backend.services.analysis_mixin.run_analysis_step2_discovery')``
+            # keeps working. ``expert_op4grid_recommender >= 0.2.2.post1``
+            # surfaces per-stage timings in the returned dict;
+            # older releases get a fallback that surfaces the total as
+            # ``action_prediction_time``.
+            _t_disc = time.time()
+            results = run_analysis_step2_discovery(context)
+            total_disc_time = time.time() - _t_disc
 
-            _run_expert_action_filter = getattr(
-                _upstream_main, "_run_expert_action_filter", None,
-            )
-            if _run_expert_action_filter is not None and context.get("g_distribution_graph") is not None:
-                _run_expert_action_filter(context)
+            prediction_t = results.pop("prediction_time", None)
+            assessment_t = results.pop("assessment_time", None)
+            if prediction_t is not None and assessment_t is not None:
+                action_prediction_time = float(prediction_t)
+                assessment_time = float(assessment_t)
+            else:
+                action_prediction_time = total_disc_time
+                assessment_time = 0.0
 
-            inputs = build_recommender_inputs(context)
-            params = {"n_prioritized_actions": config.N_PRIORITIZED_ACTIONS}
-            _legacy_recommender = ExpertRecommender()
-            _t_predict = time.time()
-            output = _legacy_recommender.recommend(inputs, params)
-            action_prediction_time = time.time() - _t_predict
-
-            _t_assess = time.time()
-            detailed_actions, pre_existing_info = reassess_prioritized_actions(
-                output.prioritized_actions, context,
-            )
-            scores = propagate_non_convergence_to_scores(
-                detailed_actions, output.action_scores,
-            )
-            combined_actions = compute_combined_pairs(detailed_actions, context)
-            assessment_time = time.time() - _t_assess
-
-            results = {
-                "lines_overloaded_names": context["lines_overloaded_names"],
-                "prioritized_actions": detailed_actions,
-                "action_scores": scores,
-                "pre_existing_overloads": pre_existing_info,
-                "combined_actions": combined_actions,
-            }
             self._last_result = results
 
             _t_enrich = time.time()

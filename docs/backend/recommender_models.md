@@ -611,6 +611,25 @@ kwarg when the parameter exists. On older libraries the wrapper logs
 a one-line notice and falls back to the slow path — no crash, no
 synced-pull requirement for operators.
 
+### Action-discovery seam (`run_analysis_step2_discovery`)
+
+The model-aware step-2 generator (`_run_analysis_step2_with_model` in
+`expert_backend/recommenders/_service_integration.py`) drives action
+discovery **through** the upstream `run_analysis_step2_discovery`
+wrapper rather than calling its sub-primitives
+(`build_recommender_inputs`, `reassess_prioritized_actions`,
+`compute_combined_pairs`) directly. This keeps the long-standing test
+seam at
+`@patch('expert_backend.services.analysis_mixin.run_analysis_step2_discovery')`
+intact — `test_overload_filtering.py`, `test_superposition_service.py`
+and friends short-circuit the discovery step at that boundary.
+
+Per-stage timings (`prediction_time`, `assessment_time`) are read out
+of the upstream return dict when present (≥ `0.2.2.post1`). Against
+older releases the wrapper falls back to a single total surfaced as
+`action_prediction_time` (and `assessment_time = 0.0`) so the React UI
+shows something useful instead of a misleading split.
+
 ### `get_maintenance_timestep_pypowsybl` fast-exit
 
 The upstream `expert_op4grid_recommender.utils.helpers_pypowsybl.get_maintenance_timestep_pypowsybl`
@@ -636,6 +655,7 @@ large grids with many pre-disconnected lines.
 | File | What it asserts |
 |---|---|
 | `expert_backend/tests/test_obs_prewarm_for_step1.py` | `_cache_obs_for_variant` uses the right env; reset clears the cache; cache hit forwards the obs; variant mismatch / maintenance-flag-on disables reuse; signature-introspection fallback. |
+| `expert_backend/tests/test_action_patch_module.py` | Covers the action-patch extraction (`services/diagram/action_patch.py`): public-import surface, `_extract_convergence_status` shapes, `_capture_action_snapshots` isolation + copy discipline, `_unpatchable_response` payload, `extract_vl_subtrees_with_edges` with the injected `generate_diagram` callable, `build_action_patch_payload` early-return contract. |
 | `Expert_op4grid_recommender/tests/test_helpers_pypowsybl_maintenance.py` | Fast-exit returns an empty action without scanning when `do_reco_maintenance=False`; the print is suppressed; the full path runs unchanged when the flag is on. |
 | `Expert_op4grid_recommender/tests/test_run_analysis_step1_prebuilt_obs.py` | `run_analysis_step1` accepts the `prebuilt_obs_simu_defaut` kwarg with `default=None` (signature contract for Co-Study4Grid's introspection). |
 | `frontend/src/utils/sessionUtils.test.ts` | All six timing fields are persisted; missing fields written as `null` (stable JSON shape); `null` overflow_graph_time round-trips. |

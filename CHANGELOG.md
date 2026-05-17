@@ -55,6 +55,31 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   breakdown](docs/backend/recommender_models.md#execution-time-breakdown)
   and [docs/features/save-results.md § analysis](docs/features/save-results.md#analysis).
 
+### Internal refactor — diagram-mixin decomposition
+
+- **`services/diagram/action_patch.py`** (new): extracted the entire
+  `/api/action-variant-diagram-patch` pipeline (~510 LoC) from
+  `diagram_mixin.py` — the 280-line `get_action_variant_diagram_patch`
+  orchestrator, the three patch helpers (`compute_vl_topology_diff`,
+  `extract_vl_subtrees_with_edges`,
+  `get_disconnected_branches_from_snapshot`), plus three private
+  helpers (`_extract_convergence_status`, `_capture_action_snapshots`,
+  `_unpatchable_response`) that keep the orchestrator under the
+  function-LoC ceiling.
+- **`services/diagram/obs_prewarm.py`** (new): extracted the
+  post-contingency observation pre-warm helper
+  (`build_prewarmed_obs`) — the seam that drives `_cached_obs_n1`
+  so `run_analysis_step1` can skip the redundant LF.
+- `diagram_mixin.py`: **1220 → 769 lines** (-451, 37% reduction).
+  431-line buffer below the 1200 ceiling guarded by the code-quality
+  gate. Test backwards-compat preserved: `_compute_vl_topology_diff`
+  and `_get_disconnected_branches_from_snapshot` remain re-exported
+  as static methods on `DiagramMixin` so the existing
+  `test_diagram_patch_helpers.py` suite passes unchanged.
+- New test files: `test_obs_prewarm_for_step1.py` (9 tests),
+  `test_action_patch_module.py` (16 tests) cover the extracted
+  surfaces.
+
 ### UI consolidation — sidebar Action Filter rings
 
 - **Severity + action-type filters → shared `<ActionFilterRings>`

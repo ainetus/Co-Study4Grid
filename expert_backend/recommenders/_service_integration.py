@@ -224,60 +224,38 @@ def _run_analysis_step2_with_model(
                 self._last_step2_signature = None
                 yield {"type": "pdf", "pdf_path": None}
 
-        # Drive action discovery here (instead of through the
-        # ``run_analysis_step2_discovery`` wrapper) so we can time the
-        # two distinct sub-steps separately and surface them to the
-        # operator. The discovery wrapper itself just chains:
-        #   recommend()                  → action_prediction
-        #   reassess_prioritized_actions
-        #   propagate_non_convergence_to_scores
-        #   compute_combined_pairs       → action_assessment
-        # The split here matches what an operator means by
-        # "prediction" (the model selects actions) vs. "assessment"
-        # (each picked action is re-simulated to compute its actual
-        # rho_before / rho_after).
-        from expert_op4grid_recommender.utils.reassessment import (
-            build_recommender_inputs,
-            compute_combined_pairs,
-            propagate_non_convergence_to_scores,
-            reassess_prioritized_actions,
-        )
-
+        # Action discovery goes through ``run_analysis_step2_discovery``
+        # so the long-standing
+        # ``@patch('expert_backend.services.analysis_mixin.run_analysis_step2_discovery')``
+        # seam used by ``test_overload_filtering.py`` and
+        # ``test_superposition_service.py`` keeps working.
+        #
+        # The upstream library (``expert_op4grid_recommender >=
+        # 0.2.2.post1``) returns per-stage timings (``prediction_time``
+        # = ``recommender.recommend()``, ``assessment_time`` =
+        # re-simulation of the prioritized actions) alongside the
+        # result payload. Older releases don't, in which case we fall
+        # back to a single "total discovery" figure surfaced as
+        # ``action_prediction_time`` (and ``assessment_time = 0``) so
+        # the React UI still shows a non-zero number.
         params = {"n_prioritized_actions": config.N_PRIORITIZED_ACTIONS}
-        # Run the expert action filter when the overflow graph is
-        # available (same behaviour as ``run_analysis_step2_discovery``).
-        # The function lives in upstream ``main`` as a private helper —
-        # accessed via getattr so an older library without it is silently
-        # skipped (no behavioural regression on the random path).
-        from expert_op4grid_recommender import main as _upstream_main
-        _run_expert_action_filter = getattr(
-            _upstream_main, "_run_expert_action_filter", None,
+        _t_disc = time.time()
+        results = analysis_mixin.run_analysis_step2_discovery(
+            context, recommender=recommender, params=params,
         )
-        if _run_expert_action_filter is not None and context.get("g_distribution_graph") is not None:
-            _run_expert_action_filter(context)
+        total_disc_time = time.time() - _t_disc
 
-        inputs = build_recommender_inputs(context)
-        _t_predict = time.time()
-        output = recommender.recommend(inputs, params)
-        action_prediction_time = time.time() - _t_predict
+        prediction_t = results.pop("prediction_time", None)
+        assessment_t = results.pop("assessment_time", None)
+        if prediction_t is not None and assessment_t is not None:
+            action_prediction_time = float(prediction_t)
+            assessment_time = float(assessment_t)
+        else:
+            # Older upstream — surface the total as "prediction" and
+            # leave "assessment" at 0 rather than fabricating a split.
+            action_prediction_time = total_disc_time
+            assessment_time = 0.0
 
-        _t_assess = time.time()
-        detailed_actions, pre_existing_info = reassess_prioritized_actions(
-            output.prioritized_actions, context,
-        )
-        scores = propagate_non_convergence_to_scores(
-            detailed_actions, output.action_scores,
-        )
-        combined_actions = compute_combined_pairs(detailed_actions, context)
-        assessment_time = time.time() - _t_assess
-
-        results = {
-            "lines_overloaded_names": context["lines_overloaded_names"],
-            "prioritized_actions": detailed_actions,
-            "action_scores": scores,
-            "pre_existing_overloads": pre_existing_info,
-            "combined_actions": combined_actions,
-        }
         self._last_result = results
 
         # Co-Study4Grid post-processing (enrichment + target_max_rho
