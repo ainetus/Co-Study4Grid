@@ -70,6 +70,21 @@ from expert_backend.services.simulation_helpers import (
 logger = logging.getLogger(__name__)
 
 
+def _upstream_step1_supports_prebuilt_obs() -> bool:
+    """True when the installed ``expert_op4grid_recommender`` accepts the
+    ``prebuilt_obs_simu_defaut`` kwarg on ``run_analysis_step1``.
+
+    Older releases do not, so we keep working against them by skipping
+    the kwarg when missing. Resolved lazily (and not cached) so a hot
+    reload picks up an upgraded library without a restart.
+    """
+    try:
+        import inspect
+        return "prebuilt_obs_simu_defaut" in inspect.signature(run_analysis_step1).parameters
+    except (TypeError, ValueError):
+        return False
+
+
 class AnalysisMixin:
     """Mixin providing contingency analysis and action enrichment methods."""
 
@@ -402,16 +417,28 @@ class AnalysisMixin:
                 "(skips contingency load-flow)", list(norm),
             )
         try:
-            res_step1, context = run_analysis_step1(
-                analysis_date=config.DATE,
-                current_timestep=config.TIMESTEP,
-                current_lines_defaut=list(norm),
-                backend=Backend.PYPOWSYBL,
-                fast_mode=getattr(config, "PYPOWSYBL_FAST_MODE", True),
-                dict_action=self._dict_action,
-                prebuilt_env_context=self._cached_env_context,
-                prebuilt_obs_simu_defaut=prebuilt_obs,
-            )
+            step1_kwargs = {
+                "analysis_date": config.DATE,
+                "current_timestep": config.TIMESTEP,
+                "current_lines_defaut": list(norm),
+                "backend": Backend.PYPOWSYBL,
+                "fast_mode": getattr(config, "PYPOWSYBL_FAST_MODE", True),
+                "dict_action": self._dict_action,
+                "prebuilt_env_context": self._cached_env_context,
+            }
+            # ``prebuilt_obs_simu_defaut`` is only on recent upstream
+            # releases; gracefully fall back to the full path when the
+            # installed library does not accept the kwarg. Saves the
+            # operator from a synced-pull requirement.
+            if prebuilt_obs is not None and _upstream_step1_supports_prebuilt_obs():
+                step1_kwargs["prebuilt_obs_simu_defaut"] = prebuilt_obs
+            elif prebuilt_obs is not None:
+                logger.info(
+                    "[Step 1] Cached obs available but the installed "
+                    "expert_op4grid_recommender lacks ``prebuilt_obs_simu_defaut`` "
+                    "support — falling back to the full contingency simulation."
+                )
+            res_step1, context = run_analysis_step1(**step1_kwargs)
             self._last_disconnected_elements = list(norm)
             # Stash the wall-clock so step 2 can forward it to the result
             # event — the React UI shows the full breakdown including
