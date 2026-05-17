@@ -136,11 +136,11 @@ Across every study, the same panels are at work:
 
 ### Pyrenean border (France / Spain) — `LANNEL61PRAGN`
 
-![France / Spain border study](docs/images/readme/study-pyrenees-france-spain.png)
+![France / Spain border study](docs/images/readme/study-pyrenees-france-spain.jpg)
 
-A 63 kV interconnect on the French side trips and re-routes flow
-toward the Spanish side, triggering a single overload on
-`MARSIL61PRAGN` at 106.1 %. The recommender returns four
+A 225 kV interconnect on the French side trips and re-routes flow
+toward the Spanish side, triggering contingency LANNEL61PRAGN leads to an overload on
+`MARSIL61PRAGN` at 106.1 % (over a 95% monitoring factor). The recommender returns four
 disconnection candidates centred on the Spanish substations
 (Sabiñánigo, Hernani, Itxaso) — every card carries the green *Solves
 overload* badge. The right pane illustrates the **interactive
@@ -156,8 +156,9 @@ side opens the same `ActionCardPopover`.
 
 ![Spain N-K 400 kV study near Hinojosa](docs/images/readme/study-spain-hinojosa.png)
 
-This is an **N-K** (multi-element) study: two parallel 400 kV
-branches are disconnected simultaneously around *Subestación de
+This is an double line study: from the two parallel 400 kV
+branches, one is triggered as a contingency virtual_way_170479579_0-400 — virtual_way_170479590_0-400
+and the other virtual_way_170479579_0-400 — virtual_way_170479590_0-400 gets overloaded around *Subestación de
 Hinojosa*. The contingency strip shows both disconnections as
 chips; the single remaining N-1 overload reaches 102.2 % on the same
 corridor. Eighteen disconnection / coupler-opening candidates come
@@ -165,7 +166,7 @@ back from the Expert model — all green — illustrating how dense the
 remediation space gets when the operator hunts for relief paths on a
 400 kV backbone. The auto-zoom places the highlighted contingency
 (orange dashed line) and the impacted assets at the centre of the
-NAD, and the sticky N-1 overload chip lets the operator jump back to
+network diagram, and the sticky N-1 overload chip lets the operator jump back to
 the offending corridor with one click.
 
 ### Italy (220 kV Campania) — `Santa Sofia — Montecorvino`
@@ -173,7 +174,7 @@ the offending corridor with one click.
 ![Italian Campania study around Brusciano-Nola](docs/images/readme/study-italy-brusciano-nola.png)
 
 A single 220 kV line trips between *Santa Sofia* and *Montecorvino*,
-overloading the Brusciano-Nola corridor at 106.1 %. The 18 suggested
+overloading the Brusciano-Nola corridor at 100.1 % (over a 95% monitoring factor). The 18 suggested
 actions span every action class the platform handles — *Load
 shedding* on Frattamaggiore and Acerra-Maddaloni loads, *Coupler
 opening* on Avezza 220 kV (note the French description rendered
