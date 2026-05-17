@@ -1,0 +1,409 @@
+{
+  "_meta": {
+    "description": "Golden interaction trace for the Co-Study4Grid demo scenario, captured on config_small_grid (bare_env_small_grid_test). Source: docs/Fiche_demo_CoStudy4Grid (manually played). The reload/load-session steps (étape 14) are intentionally absent; the captured run stops at session_saved (étape 13).",
+    "captured_at": "2026-05-17T07:39:40Z",
+    "duration_s": 474,
+    "config": "bare_env_small_grid_test",
+    "n_overloads_detected": 1,
+    "n_prioritized_actions": 10,
+    "normalizations": [
+      "Absolute paths replaced with ${DATA_ROOT} / ${OUTPUT_ROOT} placeholders.",
+      "Raw seq 0-2 (pre-session noise: combine_modal_closed + overview_shown {has_pins:false} from a previous in-tab session) dropped.",
+      "UI cascade events dropped (auto-emitted derivatives, will fire again on replay): action_selected after manual_action_simulated / combine_pair_simulated / overview_unsimulated_pin_simulated; overview_hidden after action_selected.",
+      "Exploratory filter cycling (raw seq 50-64, 15 successive overview_filter_changed events) dropped — incidental gesture, not part of the demo storyline. Re-add a single sample if filter coverage is needed.",
+      "Two duplicate dotted-layer flips (raw seq 30-31) collapsed to the final visible:true state.",
+      "Cleanup gestures at the end of the session (overview_unsimulated_toggled OFF, combined_only on/off) dropped as post-storyline tidying.",
+      "Raw count: 79 → curated: 48. Seq renumbered 0..47.",
+      "correlation_id and timestamp are preserved verbatim for traceability; the spec ignores them when diffing."
+    ]
+  },
+  "events": [
+    {
+      "seq": 0,
+      "timestamp": "2026-05-17T07:39:41.528Z",
+      "type": "config_loaded",
+      "details": {
+        "network_path": "${DATA_ROOT}/bare_env_small_grid_test/grid.xiidm",
+        "action_file_path": "${DATA_ROOT}/action_space/reduced_model_actions_test.json",
+        "layout_path": "${DATA_ROOT}/bare_env_small_grid_test/grid_layout.json",
+        "output_folder_path": "${OUTPUT_ROOT}",
+        "min_line_reconnections": 2,
+        "min_close_coupling": 3,
+        "min_open_coupling": 2,
+        "min_line_disconnections": 3,
+        "min_pst": 1,
+        "min_load_shedding": 2,
+        "min_renewable_curtailment_actions": 0,
+        "n_prioritized_actions": 10,
+        "lines_monitoring_path": "",
+        "monitoring_factor": 0.95,
+        "pre_existing_overload_threshold": 0.02,
+        "ignore_reconnections": false,
+        "pypowsybl_fast_mode": true
+      },
+      "correlation_id": "5975ae93-17eb-420d-a824-308c4fba7621"
+    },
+    {
+      "seq": 1,
+      "timestamp": "2026-05-17T07:40:46.465Z",
+      "type": "contingency_element_added",
+      "details": { "element": "P.SAOL31RONCI" },
+      "correlation_id": "426fc11d-2988-4aa7-84e6-af4f40b711c4"
+    },
+    {
+      "seq": 2,
+      "timestamp": "2026-05-17T07:40:47.571Z",
+      "type": "contingency_applied",
+      "details": { "elements": ["P.SAOL31RONCI"] },
+      "correlation_id": "1006fcbd-785f-42ac-9de9-834050701e1f"
+    },
+    {
+      "seq": 3,
+      "timestamp": "2026-05-17T07:41:04.930Z",
+      "type": "view_mode_changed",
+      "details": { "mode": "delta", "tab": "contingency", "scope": "main" },
+      "correlation_id": "c6b61ec5-ab48-4025-a1b0-307d8dafa860"
+    },
+    {
+      "seq": 4,
+      "timestamp": "2026-05-17T07:41:16.864Z",
+      "type": "view_mode_changed",
+      "details": { "mode": "network", "tab": "contingency", "scope": "main" },
+      "correlation_id": "922aaf92-192a-47ab-9a1e-a7c3a11bb1d3"
+    },
+    {
+      "seq": 5,
+      "timestamp": "2026-05-17T07:41:39.173Z",
+      "type": "manual_action_simulated",
+      "details": { "action_id": "f344b395-9908-43c2-bca0-75c5f298465e_COUCHP6" },
+      "correlation_id": "bf27d1fa-8318-4a18-b686-d51a95af2267"
+    },
+    {
+      "seq": 6,
+      "timestamp": "2026-05-17T07:41:39.174Z",
+      "type": "action_selected",
+      "details": { "action_id": "f344b395-9908-43c2-bca0-75c5f298465e_COUCHP6" },
+      "correlation_id": "9214b148-d8df-4c98-a9b2-c2b656ea4ce8"
+    },
+    {
+      "seq": 7,
+      "timestamp": "2026-05-17T07:41:39.212Z",
+      "type": "overview_hidden",
+      "details": {},
+      "correlation_id": "28d302d0-e770-4c95-bbae-2d25f10bb640"
+    },
+    {
+      "seq": 8,
+      "timestamp": "2026-05-17T07:42:00.567Z",
+      "type": "asset_clicked",
+      "details": {
+        "action_id": "f344b395-9908-43c2-bca0-75c5f298465e_COUCHP6",
+        "asset_name": "COUCHP6",
+        "tab": "action"
+      },
+      "correlation_id": "642913d3-ce6e-4fd4-a409-329a51594bf9"
+    },
+    {
+      "seq": 9,
+      "timestamp": "2026-05-17T07:42:08.086Z",
+      "type": "asset_clicked",
+      "details": {
+        "action_id": "f344b395-9908-43c2-bca0-75c5f298465e_COUCHP6",
+        "asset_name": "COUCHP6",
+        "tab": "action"
+      },
+      "correlation_id": "94b345c1-62d6-4998-9dca-4475abbfd154"
+    },
+    {
+      "seq": 10,
+      "timestamp": "2026-05-17T07:42:08.282Z",
+      "type": "asset_clicked",
+      "details": {
+        "action_id": "f344b395-9908-43c2-bca0-75c5f298465e_COUCHP6",
+        "asset_name": "COUCHP6",
+        "tab": "action"
+      },
+      "correlation_id": "6e341550-c9b5-4861-9cc3-d65c2975196d"
+    },
+    {
+      "seq": 11,
+      "timestamp": "2026-05-17T07:42:08.282Z",
+      "type": "sld_overlay_opened",
+      "details": {
+        "vl_name": "COUCHP6",
+        "action_id": "f344b395-9908-43c2-bca0-75c5f298465e_COUCHP6"
+      },
+      "correlation_id": "28fa196d-2ab9-44b9-80e5-826b620f7147"
+    },
+    {
+      "seq": 12,
+      "timestamp": "2026-05-17T07:42:14.924Z",
+      "type": "view_mode_changed",
+      "details": { "mode": "delta", "tab": "action", "scope": "main" },
+      "correlation_id": "0ad80fa9-d452-4b18-8418-3f074e5bb54a"
+    },
+    {
+      "seq": 13,
+      "timestamp": "2026-05-17T07:42:27.634Z",
+      "type": "sld_overlay_closed",
+      "details": {},
+      "correlation_id": "f4b16b70-b4fc-4d2b-a9ef-56556347dcdb"
+    },
+    {
+      "seq": 14,
+      "timestamp": "2026-05-17T07:42:40.258Z",
+      "type": "tab_detached",
+      "details": { "tab": "action" },
+      "correlation_id": "bdb6d74d-7e77-4fd6-8d4d-315bd61ccffa"
+    },
+    {
+      "seq": 15,
+      "timestamp": "2026-05-17T07:42:45.319Z",
+      "type": "view_mode_changed",
+      "details": { "mode": "delta", "tab": "action", "scope": "detached" },
+      "correlation_id": "6c17eef3-6eed-4d43-8c19-6a518eb28d41"
+    },
+    {
+      "seq": 16,
+      "timestamp": "2026-05-17T07:42:48.567Z",
+      "type": "diagram_tab_changed",
+      "details": { "tab": "contingency" },
+      "correlation_id": "976686a5-950e-4363-b2b2-4d7bc75a9d99"
+    },
+    {
+      "seq": 17,
+      "timestamp": "2026-05-17T07:43:21.386Z",
+      "type": "analysis_step1_started",
+      "details": { "element": "P.SAOL31RONCI" },
+      "correlation_id": "de21de88-3b5c-4e19-85cf-f6d43a008d87"
+    },
+    {
+      "seq": 18,
+      "timestamp": "2026-05-17T07:43:21.494Z",
+      "type": "analysis_step1_completed",
+      "details": { "can_proceed": true, "overloads_detected": 1 },
+      "correlation_id": "de21de88-3b5c-4e19-85cf-f6d43a008d87",
+      "duration_ms": 108
+    },
+    {
+      "seq": 19,
+      "timestamp": "2026-05-17T07:43:21.494Z",
+      "type": "analysis_step2_started",
+      "details": {
+        "element": "P.SAOL31RONCI",
+        "selected_overloads": ["BEON L31CPVAN"],
+        "all_overloads": ["BEON L31CPVAN"],
+        "monitor_deselected": false,
+        "additional_lines_to_cut": []
+      },
+      "correlation_id": "506ecb3c-9850-4435-bb3b-b52410e6913b"
+    },
+    {
+      "seq": 20,
+      "timestamp": "2026-05-17T07:43:21.971Z",
+      "type": "analysis_step2_completed",
+      "details": { "n_actions": 10 },
+      "correlation_id": "506ecb3c-9850-4435-bb3b-b52410e6913b",
+      "duration_ms": 477
+    },
+    {
+      "seq": 21,
+      "timestamp": "2026-05-17T07:43:37.996Z",
+      "type": "overflow_select_all_layers",
+      "details": { "visible": false },
+      "correlation_id": "db598230-9ebf-471b-9b83-94f35f8f207a"
+    },
+    {
+      "seq": 22,
+      "timestamp": "2026-05-17T07:43:40.145Z",
+      "type": "overflow_layer_toggled",
+      "details": { "key": "semantic:is_overload", "label": "Overloads", "visible": true },
+      "correlation_id": "285514fd-a0a1-49ae-8e5b-cfc331367e89"
+    },
+    {
+      "seq": 23,
+      "timestamp": "2026-05-17T07:43:47.356Z",
+      "type": "overflow_layer_toggled",
+      "details": { "key": "semantic:on_constrained_path", "label": "Constrained path", "visible": true },
+      "correlation_id": "b27a8f26-dbde-4006-8239-caec9a196757"
+    },
+    {
+      "seq": 24,
+      "timestamp": "2026-05-17T07:43:48.931Z",
+      "type": "overflow_layer_toggled",
+      "details": { "key": "semantic:in_red_loop", "label": "Red-loop paths", "visible": true },
+      "correlation_id": "23749a10-a083-40d1-a47a-cc4c52c5857b"
+    },
+    {
+      "seq": 25,
+      "timestamp": "2026-05-17T07:43:54.133Z",
+      "type": "overflow_layer_toggled",
+      "details": { "key": "style:dashed", "label": "Reconnectable", "visible": true },
+      "correlation_id": "13981b95-a095-4386-9cd6-04447945a325"
+    },
+    {
+      "seq": 26,
+      "timestamp": "2026-05-17T07:43:55.831Z",
+      "type": "overflow_layer_toggled",
+      "details": { "key": "style:dotted", "label": "Non-reconnectable", "visible": true },
+      "correlation_id": "a0a57912-66c2-4a67-bca5-2df356ed2b89"
+    },
+    {
+      "seq": 27,
+      "timestamp": "2026-05-17T07:44:18.395Z",
+      "type": "prioritized_actions_displayed",
+      "details": { "n_actions": 10 },
+      "correlation_id": "abc75149-8c5d-4cb2-b927-2972bc5b0bea"
+    },
+    {
+      "seq": 28,
+      "timestamp": "2026-05-17T07:44:28.143Z",
+      "type": "action_selected",
+      "details": { "action_id": "disco_BEON L31CPVAN" },
+      "correlation_id": "225f6853-6c00-435d-93fb-e4ab163a9f35"
+    },
+    {
+      "seq": 29,
+      "timestamp": "2026-05-17T07:44:35.089Z",
+      "type": "asset_clicked",
+      "details": { "action_id": "disco_BEON L31CPVAN", "asset_name": "BEON L31CPVAN", "tab": "action" },
+      "correlation_id": "5bf0ce63-6a1c-463d-9baf-faff28f55110"
+    },
+    {
+      "seq": 30,
+      "timestamp": "2026-05-17T07:44:43.631Z",
+      "type": "action_selected",
+      "details": { "action_id": "node_merging_PYMONP3" },
+      "correlation_id": "f6852529-fda1-4f5c-9477-18293b4e6c6a"
+    },
+    {
+      "seq": 31,
+      "timestamp": "2026-05-17T07:44:47.060Z",
+      "type": "asset_clicked",
+      "details": { "action_id": "node_merging_PYMONP3", "asset_name": "PYMONP3", "tab": "action" },
+      "correlation_id": "fb0e0ff8-70c6-4035-ba7f-3682f525a925"
+    },
+    {
+      "seq": 32,
+      "timestamp": "2026-05-17T07:44:48.542Z",
+      "type": "view_mode_changed",
+      "details": { "mode": "network", "tab": "action", "scope": "main" },
+      "correlation_id": "fc17fc62-d105-4372-9bc9-5cb118ed4626"
+    },
+    {
+      "seq": 33,
+      "timestamp": "2026-05-17T07:44:58.572Z",
+      "type": "overview_shown",
+      "details": { "has_pins": true, "pin_count": 10 },
+      "correlation_id": "1d6b991f-5c87-481e-b638-93cbb2ce6661"
+    },
+    {
+      "seq": 34,
+      "timestamp": "2026-05-17T07:45:10.990Z",
+      "type": "overview_pin_clicked",
+      "details": { "action_id": "load_shedding_BEON3 TR311" },
+      "correlation_id": "066fe178-e3aa-4f76-bd3b-678b33988dfd"
+    },
+    {
+      "seq": 35,
+      "timestamp": "2026-05-17T07:45:14.082Z",
+      "type": "overview_popover_closed",
+      "details": { "reason": "outside_click" },
+      "correlation_id": "881a0494-014b-45e1-9d17-8055267c502d"
+    },
+    {
+      "seq": 36,
+      "timestamp": "2026-05-17T07:45:14.186Z",
+      "type": "overview_unsimulated_toggled",
+      "details": { "enabled": true },
+      "correlation_id": "3d4b32d3-cf63-4ee5-9f48-00b5505113d6"
+    },
+    {
+      "seq": 37,
+      "timestamp": "2026-05-17T07:45:31.902Z",
+      "type": "overview_unsimulated_pin_simulated",
+      "details": { "action_id": "3617076a-a7f5-4f8a-9009-127ac9b85cff_VIELMP6" },
+      "correlation_id": "5786fe64-32e9-4164-971e-b42958350ecd"
+    },
+    {
+      "seq": 38,
+      "timestamp": "2026-05-17T07:45:50.391Z",
+      "type": "manual_action_simulated",
+      "details": { "action_id": "reco_BOISSL61GEN.P" },
+      "correlation_id": "db3b4313-83c1-4a0d-925c-3694388a7f1f"
+    },
+    {
+      "seq": 39,
+      "timestamp": "2026-05-17T07:45:57.950Z",
+      "type": "action_mw_resimulated",
+      "details": { "action_id": "load_shedding_BEON3 TR311", "target_mw": 3.4 },
+      "correlation_id": "670b995f-de87-42ad-b0b6-72d4c6aa5082"
+    },
+    {
+      "seq": 40,
+      "timestamp": "2026-05-17T07:46:38.675Z",
+      "type": "combine_modal_opened",
+      "details": {},
+      "correlation_id": "3c6e780f-d5fd-4d76-9b8d-d428c44c7daf"
+    },
+    {
+      "seq": 41,
+      "timestamp": "2026-05-17T07:46:40.432Z",
+      "type": "combine_pair_simulated",
+      "details": {
+        "combined_id": "disco_BEON L31P.SAO+reco_GEN.PY762",
+        "action1_id": "disco_BEON L31P.SAO",
+        "action2_id": "reco_GEN.PY762",
+        "simulated_max_rho": 0.6559643699431756
+      },
+      "correlation_id": "b8f859e7-bd03-4db5-aa7b-682df2f7abbb"
+    },
+    {
+      "seq": 42,
+      "timestamp": "2026-05-17T07:46:45.291Z",
+      "type": "combine_pair_simulated",
+      "details": {
+        "combined_id": "disco_BEON L31P.SAO+node_merging_PYMONP3",
+        "action1_id": "disco_BEON L31P.SAO",
+        "action2_id": "node_merging_PYMONP3",
+        "simulated_max_rho": 0.700430620596515
+      },
+      "correlation_id": "63bec10e-a389-4b29-a1db-e08908befe6a"
+    },
+    {
+      "seq": 43,
+      "timestamp": "2026-05-17T07:46:58.188Z",
+      "type": "combine_modal_closed",
+      "details": {},
+      "correlation_id": "efbb19d1-7581-42ed-97a6-f1b90b32767d"
+    },
+    {
+      "seq": 44,
+      "timestamp": "2026-05-17T07:47:00.512Z",
+      "type": "overview_shown",
+      "details": { "has_pins": true, "pin_count": 12 },
+      "correlation_id": "b1d088af-e3b0-4e02-b72c-b3f4a241e4a6"
+    },
+    {
+      "seq": 45,
+      "timestamp": "2026-05-17T07:47:27.026Z",
+      "type": "action_favorited",
+      "details": { "action_id": "node_merging_PYMONP3" },
+      "correlation_id": "1e481e78-69f9-4a86-8daa-d3167787cd24"
+    },
+    {
+      "seq": 46,
+      "timestamp": "2026-05-17T07:47:30.993Z",
+      "type": "action_favorited",
+      "details": { "action_id": "load_shedding_BEON3 TR311" },
+      "correlation_id": "623e7db5-851e-4683-b5d7-903d0cc8ff0b"
+    },
+    {
+      "seq": 47,
+      "timestamp": "2026-05-17T07:47:34.722Z",
+      "type": "session_saved",
+      "details": { "output_folder": "${OUTPUT_ROOT}" },
+      "correlation_id": "d6307975-d4d3-4bc7-a1a7-5bf48662e891"
+    }
+  ]
+}

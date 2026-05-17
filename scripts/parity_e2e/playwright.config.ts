@@ -10,7 +10,7 @@ import * as path from 'node:path';
  */
 export default defineConfig({
   testDir: __dirname,
-  testMatch: '*parity.spec.ts',
+  testMatch: ['*parity.spec.ts', 'demo_replay.spec.ts'],
   timeout: 90_000,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
