@@ -34,7 +34,11 @@ expert_backend/
 │   │   ├── sld_render.py          # - SLD SVG + metadata with fallbacks
 │   │   ├── overloads.py           # - overload filtering, element-currents
 │   │   ├── flows.py               # - branch + asset flow extractors (vectorised)
-│   │   └── deltas.py              # - terminal-aware flow-delta math (pure)
+│   │   ├── deltas.py              # - terminal-aware flow-delta math (pure)
+│   │   └── obs_prewarm.py         # - post-contingency obs prewarm helper
+│   │                              #   (build_prewarmed_obs) — drives the
+│   │                              #   _cached_obs_n1 cache that lets
+│   │                              #   run_analysis_step1 skip the LF
 │   ├── analysis_mixin.py          # Two-step orchestrator — delegates pure
 │   │                              # numerics to services/analysis/ helpers
 │   ├── analysis/                  # PR #104 decomposition (ex-analysis_mixin):

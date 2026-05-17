@@ -584,9 +584,12 @@ AC load flow, and returns the diagram. Before this optimisation,
 operator clicked "Analyze & Suggest" — the LF on the French grid is
 ~1-3 s.
 
-`DiagramMixin._cache_obs_for_variant` now builds a
+`DiagramMixin._cache_obs_for_variant` (a thin wrapper around
+`services/diagram/obs_prewarm.py:build_prewarmed_obs`) now builds a
 `PypowsyblObservation` off the already-converged variant and stores it
 on `_cached_obs_n1` / `_cached_obs_n1_id` / `_cached_obs_n1_elements`.
+The stateless helper lives in `services/diagram/` so the mixin stays
+under the function-LoC ceiling guarded by the code-quality gate.
 `AnalysisMixin.run_analysis_step1` validates the cache against the
 contingency variant ID + element list and, on a hit, forwards the
 observation to the upstream library through the new
