@@ -208,18 +208,60 @@ def _run_analysis_step2_with_model(
                 self._last_step2_signature = None
                 yield {"type": "pdf", "pdf_path": None}
 
-        params = {"n_prioritized_actions": config.N_PRIORITIZED_ACTIONS}
-        results = analysis_mixin.run_analysis_step2_discovery(
-            context, recommender=recommender, params=params,
+        # Drive action discovery here (instead of through the
+        # ``run_analysis_step2_discovery`` wrapper) so we can time the
+        # two distinct sub-steps separately and surface them to the
+        # operator. The discovery wrapper itself just chains:
+        #   recommend()                  → action_prediction
+        #   reassess_prioritized_actions
+        #   propagate_non_convergence_to_scores
+        #   compute_combined_pairs       → action_assessment
+        # The split here matches what an operator means by
+        # "prediction" (the model selects actions) vs. "assessment"
+        # (each picked action is re-simulated to compute its actual
+        # rho_before / rho_after).
+        from expert_op4grid_recommender.utils.reassessment import (
+            build_recommender_inputs,
+            compute_combined_pairs,
+            propagate_non_convergence_to_scores,
+            reassess_prioritized_actions,
         )
-        # The upstream library returns the model's intrinsic
-        # ``recommend()`` time as ``prediction_time`` and the
-        # re-simulation of the prioritized actions (which scales linearly
-        # with the action count) as ``assessment_time``. Pull them out
-        # of the result dict so the React UI can show the same
-        # breakdown the upstream developer is looking at.
-        action_prediction_time = float(results.pop("prediction_time", 0.0) or 0.0)
-        assessment_time = float(results.pop("assessment_time", 0.0) or 0.0)
+
+        params = {"n_prioritized_actions": config.N_PRIORITIZED_ACTIONS}
+        # Run the expert action filter when the overflow graph is
+        # available (same behaviour as ``run_analysis_step2_discovery``).
+        # The function lives in upstream ``main`` as a private helper —
+        # accessed via getattr so an older library without it is silently
+        # skipped (no behavioural regression on the random path).
+        from expert_op4grid_recommender import main as _upstream_main
+        _run_expert_action_filter = getattr(
+            _upstream_main, "_run_expert_action_filter", None,
+        )
+        if _run_expert_action_filter is not None and context.get("g_distribution_graph") is not None:
+            _run_expert_action_filter(context)
+
+        inputs = build_recommender_inputs(context)
+        _t_predict = time.time()
+        output = recommender.recommend(inputs, params)
+        action_prediction_time = time.time() - _t_predict
+
+        _t_assess = time.time()
+        detailed_actions, pre_existing_info = reassess_prioritized_actions(
+            output.prioritized_actions, context,
+        )
+        scores = propagate_non_convergence_to_scores(
+            detailed_actions, output.action_scores,
+        )
+        combined_actions = compute_combined_pairs(detailed_actions, context)
+        assessment_time = time.time() - _t_assess
+
+        results = {
+            "lines_overloaded_names": context["lines_overloaded_names"],
+            "prioritized_actions": detailed_actions,
+            "action_scores": scores,
+            "pre_existing_overloads": pre_existing_info,
+            "combined_actions": combined_actions,
+        }
         self._last_result = results
 
         enriched_actions = self._enrich_actions(
