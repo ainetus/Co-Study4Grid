@@ -282,6 +282,66 @@ describe('buildSessionResult — structure', () => {
         expect(out.analysis!.message).toBe('DC fallback used');
         expect(out.analysis!.dc_fallback).toBe(true);
     });
+
+    it('persists every per-stage execution-time value in the analysis block', () => {
+        // The ActionFeed reminder shows a "Suggestions produced by <model>
+        // in <X>s ⓘ" headline with a per-stage breakdown tooltip. Reloading
+        // a session must restore the SAME numbers (no fresh analysis run
+        // required) — all six fields end up under ``analysis.*``.
+        const out = buildSessionResult({
+            ...baseInput,
+            result: makeResult({
+                step1_time: 0.57,
+                overflow_graph_time: 7.36,
+                action_prediction_time: 0.82,
+                assessment_time: 13.2,
+                enrichment_time: 0.79,
+                wall_clock_time: 24.3,
+            }),
+        });
+        expect(out.analysis).not.toBeNull();
+        expect(out.analysis!.step1_time).toBe(0.57);
+        expect(out.analysis!.overflow_graph_time).toBe(7.36);
+        expect(out.analysis!.action_prediction_time).toBe(0.82);
+        expect(out.analysis!.assessment_time).toBe(13.2);
+        expect(out.analysis!.enrichment_time).toBe(0.79);
+        expect(out.analysis!.wall_clock_time).toBe(24.3);
+    });
+
+    it('writes nulls for missing timing fields so the JSON contract stays stable', () => {
+        // A result that came in over an older backend has only some of
+        // the timing fields populated. We still emit the keys (as null)
+        // so the saved-session schema doesn't change shape between
+        // runs — easier diffing and stricter reload validation.
+        const out = buildSessionResult({
+            ...baseInput,
+            result: makeResult({ overflow_graph_time: 4.2 }),
+        });
+        expect(out.analysis!.overflow_graph_time).toBe(4.2);
+        expect(out.analysis!.action_prediction_time).toBeNull();
+        expect(out.analysis!.assessment_time).toBeNull();
+        expect(out.analysis!.step1_time).toBeNull();
+        expect(out.analysis!.enrichment_time).toBeNull();
+        expect(out.analysis!.wall_clock_time).toBeNull();
+    });
+
+    it('serializes a null overflow_graph_time (model that did not compute the graph)', () => {
+        // ``overflow_graph_time`` is the only timing field allowed to
+        // be ``null`` on a real run: the active model doesn't consume
+        // the overflow graph (no time was spent there) — distinct from
+        // ``0.0`` which means "cached re-run".
+        const out = buildSessionResult({
+            ...baseInput,
+            result: makeResult({
+                overflow_graph_time: null,
+                action_prediction_time: 1.1,
+                assessment_time: 3.0,
+            }),
+        });
+        expect(out.analysis!.overflow_graph_time).toBeNull();
+        expect(out.analysis!.action_prediction_time).toBe(1.1);
+        expect(out.analysis!.assessment_time).toBe(3.0);
+    });
 });
 
 describe('buildSessionResult — action origin', () => {

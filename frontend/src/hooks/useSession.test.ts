@@ -908,6 +908,111 @@ describe('useSession — handleRestoreSession', () => {
         expect(restored!.compute_overflow_graph).toBe(true);
     });
 
+    it('restores all per-stage execution-time fields onto the live result', async () => {
+        // The ActionFeed reminder shows a "Suggestions produced by
+        // <model> in <X>s ⓘ" headline driven by ``result.*_time`` and
+        // ``result.wall_clock_time``. Reload must re-attach all six
+        // fields onto the live result so the operator sees the same
+        // numbers without re-running the analysis.
+        mockLoadSession.mockResolvedValue(makeSession({
+            analysis: {
+                message: 'ok',
+                dc_fallback: false,
+                action_scores: {},
+                combined_actions: {},
+                active_model: 'expert',
+                actions: {},
+                step1_time: 2.16,
+                overflow_graph_time: 7.84,
+                action_prediction_time: 0.94,
+                assessment_time: 15.5,
+                enrichment_time: 0.76,
+                wall_clock_time: 27.8,
+            },
+        }));
+        const ctx = makeCtx();
+
+        const { result } = renderHook(() => useSession());
+        await act(async () => {
+            await result.current.handleRestoreSession('timing_session', ctx);
+        });
+
+        const restored = captureRestoredResult(ctx.setResult as ReturnType<typeof vi.fn>);
+        expect(restored).not.toBeNull();
+        expect(restored!.step1_time).toBe(2.16);
+        expect(restored!.overflow_graph_time).toBe(7.84);
+        expect(restored!.action_prediction_time).toBe(0.94);
+        expect(restored!.assessment_time).toBe(15.5);
+        expect(restored!.enrichment_time).toBe(0.76);
+        expect(restored!.wall_clock_time).toBe(27.8);
+    });
+
+    it('restores timing fields as undefined when the saved session predates them', async () => {
+        // Legacy session dumps (before the execution-time breakdown
+        // landed) have no timing fields. The restore must NOT crash
+        // and must leave the live result without those fields — the
+        // ActionFeed reminder's ``showBreakdown`` falsey-check then
+        // hides the headline entirely.
+        mockLoadSession.mockResolvedValue(makeSession({
+            analysis: {
+                message: 'ok',
+                dc_fallback: false,
+                action_scores: {},
+                combined_actions: {},
+                active_model: 'expert',
+                actions: {},
+                // No timing fields whatsoever — old format.
+            },
+        }));
+        const ctx = makeCtx();
+
+        const { result } = renderHook(() => useSession());
+        await act(async () => {
+            await result.current.handleRestoreSession('legacy_no_timings', ctx);
+        });
+
+        const restored = captureRestoredResult(ctx.setResult as ReturnType<typeof vi.fn>);
+        expect(restored).not.toBeNull();
+        expect(restored!.step1_time).toBeUndefined();
+        expect(restored!.overflow_graph_time).toBeUndefined();
+        expect(restored!.action_prediction_time).toBeUndefined();
+        expect(restored!.assessment_time).toBeUndefined();
+        expect(restored!.enrichment_time).toBeUndefined();
+        expect(restored!.wall_clock_time).toBeUndefined();
+    });
+
+    it('treats a null overflow_graph_time as "model did not compute it" rather than missing', async () => {
+        // Distinct from undefined: ``null`` means a graph-free model
+        // (e.g. ``random``) ran. The restore should preserve that
+        // semantic by leaving ``overflow_graph_time`` undefined — the
+        // ActionFeed reminder's tooltip then omits the Overflow line.
+        mockLoadSession.mockResolvedValue(makeSession({
+            analysis: {
+                message: 'ok',
+                dc_fallback: false,
+                action_scores: {},
+                combined_actions: {},
+                active_model: 'random',
+                actions: {},
+                overflow_graph_time: null,
+                action_prediction_time: 0.5,
+                assessment_time: 1.2,
+            },
+        }));
+        const ctx = makeCtx();
+
+        const { result } = renderHook(() => useSession());
+        await act(async () => {
+            await result.current.handleRestoreSession('graphless_session', ctx);
+        });
+
+        const restored = captureRestoredResult(ctx.setResult as ReturnType<typeof vi.fn>);
+        expect(restored).not.toBeNull();
+        expect(restored!.overflow_graph_time).toBeUndefined();
+        expect(restored!.action_prediction_time).toBe(0.5);
+        expect(restored!.assessment_time).toBe(1.2);
+    });
+
     it('restores a saved action origin verbatim', async () => {
         mockLoadSession.mockResolvedValue(makeSession({
             analysis: {

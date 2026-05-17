@@ -11,6 +11,7 @@ drills into specific subsystems.
 docs/
 ├── features/        Active feature / behavior reference docs
 ├── performance/     Current perf reference + history/ of shipped & rejected PR writeups
+├── backend/         Backend-scoped reference (recommender models, etc.)
 ├── architecture/    Refactoring plans, code-quality audits
 ├── proposals/       Not-yet-implemented ideas, brainstorm decks, rejected designs
 └── data/            External data pipelines (OSM → XIIDM conversion, etc.)
@@ -56,6 +57,13 @@ current behavior, not historical retrospectives):
 Historical PR writeups — one file per shipped / rejected change —
 live under [`performance/history/`](performance/history/). See that
 folder's index for the full list.
+
+## Backend reference (`backend/`)
+
+| File | Topic |
+|------|-------|
+| [`README.md`](backend/README.md) | Backend overview — singletons, mixin composition, NDJSON streaming. |
+| [`recommender_models.md`](backend/recommender_models.md) | Pluggable recommendation models: registry, built-in random examples, three-layer filter chain, **execution-time breakdown** (step 1 / overflow / prediction / assessment / enrichment + wall-clock), post-contingency obs pre-warm + `prebuilt_obs_simu_defaut` fast path. |
 
 ## Architecture (`architecture/`)
 
