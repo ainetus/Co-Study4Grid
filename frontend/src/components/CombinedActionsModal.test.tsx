@@ -154,17 +154,19 @@ describe('CombinedActionsModal', () => {
         expect(discoToggle.getAttribute('aria-pressed')).toBe('true');
     });
 
-    it('the severity ring in the modal header filters Explore-Pairs rows by outcome', () => {
+    it('the severity ring in the modal header filters Explore-Pairs rows by outcome', async () => {
         // act1 / act2 / act3 all simulate to max_rho < 0.95 → green
-        // severity. Double-clicking the red toggle "solos" it, leaving
-        // only red-severity rows — so all three green rows drop out.
+        // severity. A single click on the red toggle "solos" it
+        // (deferred by one double-click window), leaving only
+        // red-severity rows — so all three green rows drop out.
         render(<CombinedActionsModal {...defaultProps} />);
         fireEvent.click(getExploreTab());
         expect(screen.getByText('act1')).toBeInTheDocument();
         const redToggle = screen.getByTestId('sidebar-filter-category-red');
         fireEvent.click(redToggle);
-        fireEvent.click(redToggle);
-        expect(screen.queryByText('act1')).not.toBeInTheDocument();
+        await waitFor(() => {
+            expect(screen.queryByText('act1')).not.toBeInTheDocument();
+        });
         expect(screen.queryByText('act2')).not.toBeInTheDocument();
         expect(screen.getByText(/No scored actions available/)).toBeInTheDocument();
     });

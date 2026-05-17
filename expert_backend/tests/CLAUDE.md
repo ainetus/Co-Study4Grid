@@ -101,7 +101,9 @@ Configuration in `frontend/vite.config.ts` (Vitest plugin).
 | `test_analysis_helpers.py` | 68 tests for `services/analysis/` (MW-start, action enrichment, PDF watcher, analysis runner) |
 | `test_diagram_helpers.py` | 39 tests for `services/diagram/` (layout cache, NAD params, NAD render, SLD render, overloads, flows, deltas) |
 | `test_diagram_mixin.py` | Orchestrator-level coverage for `DiagramMixin` after the decomposition |
-| `test_diagram_patch_helpers.py` | Patch-endpoint delta math (`/api/contingency-diagram-patch`, `/api/action-variant-diagram-patch`) — PR #108 |
+| `test_diagram_patch_helpers.py` | Patch-endpoint delta math (`/api/n1-diagram-patch`, `/api/action-variant-diagram-patch`) — PR #108. Drives the static-method wrappers on `DiagramMixin` (`_compute_vl_topology_diff`, `_get_disconnected_branches_from_snapshot`) that delegate to `services/diagram/action_patch.py`. |
+| `test_action_patch_module.py` | New helpers introduced by the action-patch extraction: `_extract_convergence_status`, `_capture_action_snapshots`, `_unpatchable_response`, `extract_vl_subtrees_with_edges` (with the injected `generate_diagram` callable), plus `build_action_patch_payload` early-return contract (soft-fail when there's no analysis result or the action id is unknown). |
+| `test_obs_prewarm_for_step1.py` | Post-contingency obs prewarm + reuse pipeline: `_cache_obs_for_variant` env-resolution + fallback, `RecommenderService.reset()` clears `_cached_obs_n1_elements`, `run_analysis_step1` forwards `prebuilt_obs_simu_defaut` on cache hit, omits it on miss / when `DO_RECO_MAINTENANCE=True`, falls back to slow path when the upstream library doesn't accept the kwarg. |
 | `test_n1_diagram_fast_path.py` | Fast-path guards for the N-1 diagram pipeline |
 
 #### Performance & Regression

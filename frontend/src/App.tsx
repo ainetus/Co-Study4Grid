@@ -1530,6 +1530,12 @@ function App() {
                 ? (availableModels?.find(m => m.name === result.active_model)?.label || result.active_model)
                 : null
             }
+            overflowGraphTime={result?.overflow_graph_time ?? null}
+            actionPredictionTime={result?.action_prediction_time ?? null}
+            assessmentTime={result?.assessment_time ?? null}
+            step1Time={result?.step1_time ?? null}
+            enrichmentTime={result?.enrichment_time ?? null}
+            wallClockTime={result?.wall_clock_time ?? null}
             onClearSuggested={requestClearSuggested}
           />
         </AppSidebar>

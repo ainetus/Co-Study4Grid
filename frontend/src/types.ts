@@ -156,6 +156,28 @@ export interface AnalysisResult {
     // `requires_overflow_graph=true` OR the operator opted in via
     // the Compute Overflow Graph toggle.
     compute_overflow_graph?: boolean;
+    // Per-stage execution times (seconds), reported by the backend.
+    // `overflow_graph_time` is null when the active model does not
+    // consume the overflow graph (no time was spent building it); it is
+    // 0.0 on a cached re-run, so a model swap can be distinguished from
+    // a fresh run. Used by the ActionFeed reminder and the iframe's
+    // header to show the operator how long each stage took.
+    overflow_graph_time?: number | null;
+    action_prediction_time?: number;
+    assessment_time?: number;
+    // Step 1 (contingency simulation + overload detection) ran in a
+    // separate HTTP call before step 2. The backend echoes its
+    // wall-clock here so the breakdown can show the full pipeline.
+    step1_time?: number | null;
+    // Co-Study4Grid post-processing after assessment (action enrichment
+    // + combined-pair target_max_rho augmentation + MW-start scoring).
+    enrichment_time?: number;
+    // Frontend wall-clock from the "Analyze & Suggest" click until the
+    // result event arrives ("Display N prioritized actions" appears).
+    // Captures backend stages + network round-trip + NDJSON streaming
+    // overhead. Difference vs. the sum of the per-stage timings above
+    // is the "transit" overhead.
+    wall_clock_time?: number;
 }
 
 export interface BranchResponse {
@@ -455,6 +477,15 @@ export interface SessionResult {
         // this run. Useful when reloading a session to know whether
         // the Overflow Analysis tab will have content.
         compute_overflow_graph?: boolean | null;
+        // Per-stage execution times (seconds), captured at run time.
+        // Optional for backward compatibility with sessions saved before
+        // the breakdown was added.
+        overflow_graph_time?: number | null;
+        action_prediction_time?: number | null;
+        assessment_time?: number | null;
+        step1_time?: number | null;
+        enrichment_time?: number | null;
+        wall_clock_time?: number | null;
     } | null;
     interaction_log?: InteractionLogEntry[];
 }
@@ -634,4 +665,13 @@ export type ParentToIframeMessage =
     | {
         type: 'cs4g:filters';
         filters: ActionOverviewFilters;
+    }
+    | {
+        // Total execution time (seconds) for creating + generating the
+        // overflow analysis graph. Posted by the React parent once the
+        // step-2 ``result`` event arrives — the overlay JS renders it
+        // as a subtitle just below the sidebar ``<h1>`` so the operator
+        // can see how long the graph took to produce.
+        type: 'cs4g:overflow-meta';
+        overflowGraphTime: number | null;
     };

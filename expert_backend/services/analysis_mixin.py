@@ -70,6 +70,21 @@ from expert_backend.services.simulation_helpers import (
 logger = logging.getLogger(__name__)
 
 
+def _upstream_step1_supports_prebuilt_obs() -> bool:
+    """True when the installed ``expert_op4grid_recommender`` accepts the
+    ``prebuilt_obs_simu_defaut`` kwarg on ``run_analysis_step1``.
+
+    Older releases do not, so we keep working against them by skipping
+    the kwarg when missing. Resolved lazily (and not cached) so a hot
+    reload picks up an upgraded library without a restart.
+    """
+    try:
+        import inspect
+        return "prebuilt_obs_simu_defaut" in inspect.signature(run_analysis_step1).parameters
+    except (TypeError, ValueError):
+        return False
+
+
 class AnalysisMixin:
     """Mixin providing contingency analysis and action enrichment methods."""
 
@@ -373,17 +388,78 @@ class AnalysisMixin:
         # starts switching variants on the shared Network.
         # See docs/performance/history/grid2op-shared-network.md.
         self._ensure_n_state_ready()
-        try:
-            res_step1, context = run_analysis_step1(
-                analysis_date=config.DATE,
-                current_timestep=config.TIMESTEP,
-                current_lines_defaut=list(norm),
-                backend=Backend.PYPOWSYBL,
-                fast_mode=getattr(config, "PYPOWSYBL_FAST_MODE", True),
-                dict_action=self._dict_action,
-                prebuilt_env_context=self._cached_env_context,
+        _t0 = time.time()
+        # Re-use the post-contingency observation pre-warmed by
+        # ``get_contingency_diagram`` if the cache key still matches the
+        # contingency we are about to analyse. Saves a redundant AC load
+        # flow (the heaviest step in the pipeline) on every analysis run.
+        # Cache miss / mismatch falls back to the upstream
+        # ``simulate_contingency_pypowsybl`` path inside ``run_analysis_step1``.
+        # SAFETY GATE: the diagram path applies the contingency only —
+        # NOT any maintenance reconnections. With the default
+        # ``DO_RECO_MAINTENANCE=False`` the analysis path also skips
+        # those reconnections (empty action), so the two states are
+        # equivalent and the cache is safe to reuse. When the operator
+        # opts into maintenance reconnections, fall back to the full
+        # path so the analysis state matches the upstream contract.
+        prebuilt_obs = None
+        cont_variant = self._contingency_variant_id(list(norm))
+        cache_safe = not getattr(config, "DO_RECO_MAINTENANCE", False)
+        if (
+            cache_safe
+            and getattr(self, "_cached_obs_n1", None) is not None
+            and getattr(self, "_cached_obs_n1_id", None) == cont_variant
+            and getattr(self, "_cached_obs_n1_elements", None) == tuple(norm)
+        ):
+            prebuilt_obs = self._cached_obs_n1
+            logger.info(
+                "[Step 1] Re-using cached post-contingency obs for %s "
+                "(skips contingency load-flow)", list(norm),
             )
+        else:
+            # One-line diagnostic so the operator can tell why the cache
+            # wasn't reused. ``cache_safe`` is the maintenance-reconnect
+            # gate; the rest report whether the prewarm key matches the
+            # current contingency.
+            cached_id = getattr(self, "_cached_obs_n1_id", None)
+            cached_elements = getattr(self, "_cached_obs_n1_elements", None)
+            logger.info(
+                "[Step 1] post-contingency obs cache miss for %s "
+                "(cache_safe=%s, have_obs=%s, expected_variant=%r, cached_variant=%r, "
+                "cached_elements=%r)",
+                list(norm), cache_safe,
+                getattr(self, "_cached_obs_n1", None) is not None,
+                cont_variant, cached_id, cached_elements,
+            )
+        try:
+            step1_kwargs = {
+                "analysis_date": config.DATE,
+                "current_timestep": config.TIMESTEP,
+                "current_lines_defaut": list(norm),
+                "backend": Backend.PYPOWSYBL,
+                "fast_mode": getattr(config, "PYPOWSYBL_FAST_MODE", True),
+                "dict_action": self._dict_action,
+                "prebuilt_env_context": self._cached_env_context,
+            }
+            # ``prebuilt_obs_simu_defaut`` is only on recent upstream
+            # releases; gracefully fall back to the full path when the
+            # installed library does not accept the kwarg. Saves the
+            # operator from a synced-pull requirement.
+            if prebuilt_obs is not None and _upstream_step1_supports_prebuilt_obs():
+                step1_kwargs["prebuilt_obs_simu_defaut"] = prebuilt_obs
+            elif prebuilt_obs is not None:
+                logger.info(
+                    "[Step 1] Cached obs available but the installed "
+                    "expert_op4grid_recommender lacks ``prebuilt_obs_simu_defaut`` "
+                    "support — falling back to the full contingency simulation."
+                )
+            res_step1, context = run_analysis_step1(**step1_kwargs)
             self._last_disconnected_elements = list(norm)
+            # Stash the wall-clock so step 2 can forward it to the result
+            # event — the React UI shows the full breakdown including
+            # this contingency-simulation slice.
+            step1_time = time.time() - _t0
+            self._last_step1_time = step1_time
 
             if res_step1 is not None:
                 self._analysis_context = None
@@ -391,6 +467,7 @@ class AnalysisMixin:
                     "lines_overloaded": res_step1.get("lines_overloaded_names", []),
                     "message": "No overloads detected or grid broken apart.",
                     "can_proceed": False,
+                    "step1_time": step1_time,
                 }
 
             self._analysis_context = context
@@ -398,6 +475,7 @@ class AnalysisMixin:
                 "lines_overloaded": context["lines_overloaded_names"],
                 "message": f"Detected {len(context['lines_overloaded_names'])} overloads.",
                 "can_proceed": True,
+                "step1_time": step1_time,
             }
         except Exception:
             self._analysis_context = None
@@ -490,6 +568,19 @@ class AnalysisMixin:
         )
         reuse_graph = self._can_reuse_step2_graph(step2_signature)
 
+        # Per-stage timings (seconds), forwarded to the result event so
+        # the frontend can display a per-stage breakdown next to
+        # "Suggestions produced by …". ``overflow_graph_time`` covers
+        # the full graph-building phase (narrow + library call + PDF
+        # poll); ``enrichment_time`` is the Co-Study4Grid post-process
+        # that decorates the recommender output; ``step1_time`` is
+        # carried from the previous step1 call via service state.
+        overflow_graph_time: float | None = None
+        action_prediction_time: float = 0.0
+        assessment_time: float = 0.0
+        enrichment_time: float = 0.0
+        step1_time: float | None = getattr(self, "_last_step1_time", None)
+
         try:
             if reuse_graph:
                 logger.info(
@@ -497,11 +588,14 @@ class AnalysisMixin:
                 )
                 context = self._last_step2_context
                 produced_pdf = self._overflow_layout_cache.get("hierarchical")
+                overflow_graph_time = 0.0
                 # Geo cache is keyed off the same hierarchical source; keep
                 # whatever the previous run produced so the toggle stays
                 # instant. `_overflow_layout_mode` is left untouched.
-                yield {"type": "pdf", "pdf_path": produced_pdf, "cached": True}
+                yield {"type": "pdf", "pdf_path": produced_pdf, "cached": True,
+                       "overflow_graph_time": overflow_graph_time}
             else:
+                _graph_phase_t0 = time.time()
                 context = self._narrow_context_to_selected_overloads(
                     self._analysis_context,
                     selected_overloads,
@@ -521,6 +615,7 @@ class AnalysisMixin:
                 # Part 1: graph generation + HTML
                 context = run_analysis_step2_graph(context)
                 produced_pdf = self._get_latest_pdf_path(analysis_start_time)
+                overflow_graph_time = time.time() - _graph_phase_t0
                 if produced_pdf:
                     # Step-2 always produces the hierarchical layout — the
                     # regen endpoint transforms it into the geo layout on
@@ -531,12 +626,32 @@ class AnalysisMixin:
                 # toggle itself no longer uses this.
                 self._last_step2_context = context
                 self._last_step2_signature = step2_signature
-                yield {"type": "pdf", "pdf_path": produced_pdf}
+                yield {"type": "pdf", "pdf_path": produced_pdf,
+                       "overflow_graph_time": overflow_graph_time}
 
-            # Part 2: action discovery
+            # Part 2: action discovery. Goes through the upstream
+            # ``run_analysis_step2_discovery`` wrapper so the test seam
+            # at ``@patch('expert_backend.services.analysis_mixin.run_analysis_step2_discovery')``
+            # keeps working. ``expert_op4grid_recommender >= 0.2.2.post1``
+            # surfaces per-stage timings in the returned dict;
+            # older releases get a fallback that surfaces the total as
+            # ``action_prediction_time``.
+            _t_disc = time.time()
             results = run_analysis_step2_discovery(context)
+            total_disc_time = time.time() - _t_disc
+
+            prediction_t = results.pop("prediction_time", None)
+            assessment_t = results.pop("assessment_time", None)
+            if prediction_t is not None and assessment_t is not None:
+                action_prediction_time = float(prediction_t)
+                assessment_time = float(assessment_t)
+            else:
+                action_prediction_time = total_disc_time
+                assessment_time = 0.0
+
             self._last_result = results
 
+            _t_enrich = time.time()
             enriched_actions = self._enrich_actions(
                 results["prioritized_actions"],
                 lines_overloaded_names=results.get("lines_overloaded_names"),
@@ -554,10 +669,16 @@ class AnalysisMixin:
             self._augment_combined_actions_with_target_max_rho(results, context)
 
             action_scores = self._compute_mw_start_for_scores(results.get("action_scores", {}))
+            enrichment_time = time.time() - _t_enrich
 
             logger.info(
-                "[Step 2] Yielding final result event with %d enriched actions",
+                "[Step 2] Yielding final result event with %d enriched actions "
+                "(step1=%.2fs, overflow_graph=%.2fs, prediction=%.2fs, "
+                "assessment=%.2fs, enrichment=%.2fs)",
                 len(enriched_actions),
+                step1_time if step1_time is not None else -1.0,
+                overflow_graph_time if overflow_graph_time is not None else -1.0,
+                action_prediction_time, assessment_time, enrichment_time,
             )
             lines_we_care_about = context.get("lines_we_care_about")
             yield sanitize_for_json({
@@ -575,6 +696,11 @@ class AnalysisMixin:
                 ),
                 "message": "Analysis completed",
                 "dc_fallback": False,
+                "step1_time": step1_time,
+                "overflow_graph_time": overflow_graph_time,
+                "action_prediction_time": action_prediction_time,
+                "assessment_time": assessment_time,
+                "enrichment_time": enrichment_time,
             })
         except Exception as e:
             logger.exception("Backend Error in Analysis Resolution")

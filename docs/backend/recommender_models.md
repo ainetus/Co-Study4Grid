@@ -525,6 +525,147 @@ so direct API calls cannot bypass it.
 
 ---
 
+## Execution-time breakdown
+
+Every two-step analysis run now reports a per-stage execution-time
+breakdown. The values travel on the streaming NDJSON events from
+`POST /api/run-analysis-step2` and are persisted in `analysis.*` on
+session save (see [Save Results § analysis](../features/save-results.md#analysis)).
+
+### What each stage measures
+
+| Stage | Where it's measured | Covers |
+|---|---|---|
+| `step1_time` | `expert_backend/services/analysis_mixin.py` (wrapper) | Contingency simulation + overload detection (`run_analysis_step1`). Near-zero when the obs is pre-warmed (see below). |
+| `overflow_graph_time` | `expert_backend/recommenders/_service_integration.py` | `_narrow_context_to_selected_overloads` + `run_analysis_step2_graph` + the PDF mtime poll. **`null`** when the active model doesn't consume the overflow graph; **`0.0`** on a cached re-run. |
+| `action_prediction_time` | `_service_integration.py` (direct call into upstream primitives) | `recommender.recommend(inputs, params)` — the model's intrinsic selection step. For Expert-style models, includes the internal candidate simulation used to score topology actions. |
+| `assessment_time` | `_service_integration.py` | `reassess_prioritized_actions` + `propagate_non_convergence_to_scores` + `compute_combined_pairs`. Each prioritized action is re-simulated to compute its final `rho_before` / `rho_after`. **Scales linearly with the number of prioritized actions.** |
+| `enrichment_time` | `_service_integration.py` | Co-Study4Grid post-processing: `_enrich_actions` + `_augment_combined_actions_with_target_max_rho` + `_compute_mw_start_for_scores`. UI-facing decoration only. |
+| `wall_clock_time` | `frontend/src/hooks/useAnalysis.ts` | `performance.now()` from the "Analyze & Suggest" click until the `result` NDJSON event arrives. Includes every backend stage + network round-trip + NDJSON streaming overhead. |
+
+The headline number in the ActionFeed reminder (`Suggestions produced
+by <model> in <X>s ⓘ`) is `wall_clock_time`. The native `<title>`
+tooltip lists each stage plus the residual `Other (network /
+streaming) = wall_clock_time − Σ(stage_times)`. See
+[`frontend/src/components/ActionFeed.tsx`](../../frontend/src/components/ActionFeed.tsx)
+for the rendering and
+[`docs/features/save-results.md`](../features/save-results.md#analysis)
+for the saved-JSON schema.
+
+### How the breakdown is wired
+
+Backend NDJSON events:
+
+* The `pdf` event (sent before the `result` event so the iframe can
+  render the overflow graph early) carries `overflow_graph_time` so the
+  iframe's `<h1>` subtitle (`Total execution time: <X>s`) can appear
+  as soon as the file is ready.
+* The `result` event carries all six fields. The Co-Study4Grid
+  frontend stamps `wall_clock_time` itself; the other five come from
+  the backend.
+
+Frontend persistence:
+
+* `frontend/src/utils/sessionUtils.ts` (`buildSessionResult`) writes
+  each field into `analysis.*`, defaulting to `null` when the live
+  `result` doesn't have it. The JSON shape stays stable across runs.
+* `frontend/src/hooks/useSession.ts` (`handleRestoreSession`)
+  re-attaches each field onto the restored `AnalysisResult`. Saved
+  sessions from before the breakdown landed simply restore with these
+  fields `undefined`, and the ActionFeed reminder's `showBreakdown`
+  short-circuit hides the headline entirely.
+
+### Pre-warming the post-contingency observation
+
+Selecting a contingency triggers `/api/n1-diagram` (or
+`/api/n1-diagram-patch`), which creates a pypowsybl variant, runs the
+AC load flow, and returns the diagram. Before this optimisation,
+`run_analysis_step1` blindly re-ran the same load flow when the
+operator clicked "Analyze & Suggest" — the LF on the French grid is
+~1-3 s.
+
+`DiagramMixin._cache_obs_for_variant` (a thin wrapper around
+`services/diagram/obs_prewarm.py:build_prewarmed_obs`) now builds a
+`PypowsyblObservation` off the already-converged variant and stores it
+on `_cached_obs_n1` / `_cached_obs_n1_id` / `_cached_obs_n1_elements`.
+The stateless helper lives in `services/diagram/` so the mixin stays
+under the function-LoC ceiling guarded by the code-quality gate.
+`AnalysisMixin.run_analysis_step1` validates the cache against the
+contingency variant ID + element list and, on a hit, forwards the
+observation to the upstream library through the new
+`prebuilt_obs_simu_defaut` kwarg. The upstream then skips
+`simulate_contingency_pypowsybl` entirely.
+
+**Safety gate.** The diagram path applies the contingency only — *not*
+any maintenance reconnections. When the operator opts into them via
+`DO_RECO_MAINTENANCE=True`, the cached obs would be physically wrong,
+so `run_analysis_step1` disables the reuse path regardless of variant
+match. The default config (`DO_RECO_MAINTENANCE=False`) keeps the
+fast path enabled.
+
+**Backward compatibility.** Older `expert_op4grid_recommender`
+releases don't accept the `prebuilt_obs_simu_defaut` kwarg.
+`AnalysisMixin._upstream_step1_supports_prebuilt_obs()` introspects
+the upstream signature with `inspect.signature` and only forwards the
+kwarg when the parameter exists. On older libraries the wrapper logs
+a one-line notice and falls back to the slow path — no crash, no
+synced-pull requirement for operators.
+
+### Action-discovery seam (`run_analysis_step2_discovery`)
+
+The model-aware step-2 generator (`_run_analysis_step2_with_model` in
+`expert_backend/recommenders/_service_integration.py`) drives action
+discovery **through** the upstream `run_analysis_step2_discovery`
+wrapper rather than calling its sub-primitives
+(`build_recommender_inputs`, `reassess_prioritized_actions`,
+`compute_combined_pairs`) directly. This keeps the long-standing test
+seam at
+`@patch('expert_backend.services.analysis_mixin.run_analysis_step2_discovery')`
+intact — `test_overload_filtering.py`, `test_superposition_service.py`
+and friends short-circuit the discovery step at that boundary.
+
+Per-stage timings (`prediction_time`, `assessment_time`) are read out
+of the upstream return dict when present (≥ `0.2.2.post1`). Against
+older releases the wrapper falls back to a single total surfaced as
+`action_prediction_time` (and `assessment_time = 0.0`) so the React UI
+shows something useful instead of a misleading split.
+
+### `get_maintenance_timestep_pypowsybl` fast-exit
+
+The upstream `expert_op4grid_recommender.utils.helpers_pypowsybl.get_maintenance_timestep_pypowsybl`
+function fast-exits when `do_reco_maintenance=False`. Previously, it
+unconditionally scanned every disconnected line in the network and
+formatted a multi-line `print` listing them — informational only, since
+the returned `lines_in_maintenance` is never consumed downstream when
+the flag is off. The scan + print add ~150-300 ms per analysis run on
+large grids with many pre-disconnected lines.
+
+### Cache lifecycle
+
+| Event | Effect on `_cached_obs_n1*` |
+|---|---|
+| `/api/n1-diagram` or `/api/n1-diagram-patch` for a converged contingency | Cache (re)populated for the new contingency. |
+| Operator picks a different contingency | The diagram refetch overwrites the cache with the new contingency's observation. |
+| `RecommenderService.reset()` (Apply Settings / Load Study) | All three fields cleared to `None`. |
+| `simulate_manual_action` / `compute_superposition` | The action variants clone from the contingency variant; the cache is not modified. |
+| LF did not converge | Prewarm is skipped; analysis falls back to the full path. |
+
+### Test coverage
+
+| File | What it asserts |
+|---|---|
+| `expert_backend/tests/test_obs_prewarm_for_step1.py` | `_cache_obs_for_variant` uses the right env; reset clears the cache; cache hit forwards the obs; variant mismatch / maintenance-flag-on disables reuse; signature-introspection fallback. |
+| `expert_backend/tests/test_action_patch_module.py` | Covers the action-patch extraction (`services/diagram/action_patch.py`): public-import surface, `_extract_convergence_status` shapes, `_capture_action_snapshots` isolation + copy discipline, `_unpatchable_response` payload, `extract_vl_subtrees_with_edges` with the injected `generate_diagram` callable, `build_action_patch_payload` early-return contract. |
+| `Expert_op4grid_recommender/tests/test_helpers_pypowsybl_maintenance.py` | Fast-exit returns an empty action without scanning when `do_reco_maintenance=False`; the print is suppressed; the full path runs unchanged when the flag is on. |
+| `Expert_op4grid_recommender/tests/test_run_analysis_step1_prebuilt_obs.py` | `run_analysis_step1` accepts the `prebuilt_obs_simu_defaut` kwarg with `default=None` (signature contract for Co-Study4Grid's introspection). |
+| `frontend/src/utils/sessionUtils.test.ts` | All six timing fields are persisted; missing fields written as `null` (stable JSON shape); `null` overflow_graph_time round-trips. |
+| `frontend/src/hooks/useSession.test.ts` | All six fields are restored onto the live `AnalysisResult`; legacy sessions without timings restore as `undefined`; `null` overflow_graph_time round-trips. |
+| `frontend/src/components/ActionFeed.test.tsx` | The "in `<X>s` ⓘ" line shows the wall-clock total; tooltip lists every reported stage; hides when no timings; the overflow line is omitted when `overflowGraphTime` is `null`. |
+| `frontend/src/hooks/useOverflowIframe.test.tsx` | `cs4g:overflow-meta` is broadcast to the iframe whenever `overflowGraphTime` changes (after the handshake). |
+| `expert_backend/tests/test_overflow_overlay.py` | The injected iframe overlay exposes `renderOverflowMeta` + the `cs4g:overflow-meta` listener and the `#cs4g-overflow-meta` DOM hook with its "Total execution time:" label. |
+
+---
+
 ## Related docs
 
 - [Backend overview](README.md) (this folder).
