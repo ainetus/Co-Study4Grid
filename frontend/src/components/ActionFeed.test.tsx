@@ -3137,6 +3137,54 @@ describe('ActionFeed', () => {
             expect(screen.queryByTestId('active-model-reminder')).not.toBeInTheDocument();
         });
 
+        it('shows an execution-time breakdown next to the active-model label', () => {
+            render(
+                <ActionFeed
+                    {...defaultProps}
+                    actions={{ rec_1: recAction }}
+                    activeModelLabel="Expert system"
+                    overflowGraphTime={2.5}
+                    actionPredictionTime={1.25}
+                    assessmentTime={0.4}
+                />,
+            );
+            const breakdown = screen.getByTestId('execution-time-breakdown');
+            // Total = overflow + prediction + assessment = 4.15s
+            expect(breakdown).toHaveTextContent(/Total:\s*4\.15s/);
+            expect(breakdown).toHaveTextContent(/overflow analysis\s*2\.50s/);
+            expect(breakdown).toHaveTextContent(/action prediction\s*1\.25s/);
+            expect(breakdown).toHaveTextContent(/assessment\s*0\.40s/);
+        });
+
+        it('omits the overflow-analysis column when the model does not consume the graph', () => {
+            render(
+                <ActionFeed
+                    {...defaultProps}
+                    actions={{ rec_1: recAction }}
+                    activeModelLabel="Random"
+                    overflowGraphTime={null}
+                    actionPredictionTime={0.8}
+                    assessmentTime={0.2}
+                />,
+            );
+            const breakdown = screen.getByTestId('execution-time-breakdown');
+            expect(breakdown).toHaveTextContent(/Total:\s*1\.00s/);
+            expect(breakdown).toHaveTextContent(/action prediction/);
+            expect(breakdown).toHaveTextContent(/assessment/);
+            expect(breakdown).not.toHaveTextContent(/overflow analysis/);
+        });
+
+        it('hides the execution-time breakdown when no timings are reported', () => {
+            render(
+                <ActionFeed
+                    {...defaultProps}
+                    actions={{ rec_1: recAction }}
+                    activeModelLabel="Expert system"
+                />,
+            );
+            expect(screen.queryByTestId('execution-time-breakdown')).not.toBeInTheDocument();
+        });
+
         it('Clear button calls onClearSuggested', () => {
             const onClearSuggested = vi.fn();
             render(

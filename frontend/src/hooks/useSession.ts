@@ -428,6 +428,13 @@ export function useSession(): SessionState {
           // re-attached to the live `result`, so the reminder vanished.
           active_model: a.active_model ?? undefined,
           compute_overflow_graph: a.compute_overflow_graph ?? undefined,
+          // Per-stage timings (seconds). Optional for backward
+          // compatibility — saved sessions from before the breakdown
+          // was added simply restore with these fields undefined and
+          // the ActionFeed reminder hides the breakdown row.
+          overflow_graph_time: a.overflow_graph_time ?? undefined,
+          action_prediction_time: a.action_prediction_time ?? undefined,
+          assessment_time: a.assessment_time ?? undefined,
         };
 
         ctx.setResult(restoredResult);

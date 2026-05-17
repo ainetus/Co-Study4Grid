@@ -48,6 +48,12 @@ interface UseOverflowIframeArgs {
     overflowPinsEnabled: boolean;
     overflowPins: ReadonlyArray<OverflowPin> | undefined;
     overviewFilters: ActionOverviewFilters | undefined;
+    /** Total execution time (seconds) for creating + generating the
+     *  overflow analysis graph. Forwarded to the iframe via the
+     *  ``cs4g:overflow-meta`` envelope so the overlay can render it
+     *  as a subtitle below its ``<h1>`` filename header. ``null`` /
+     *  ``undefined`` hides the subtitle. */
+    overflowGraphTime?: number | null;
     onOverflowPinPreview?: (actionId: string) => void;
     onOverflowPinDoubleClick?: (actionId: string, substation: string) => void;
     onSimulateUnsimulatedAction?: (actionId: string) => void;
@@ -91,6 +97,7 @@ export function useOverflowIframe(args: UseOverflowIframeArgs): OverflowIframeSt
         overflowPinsEnabled,
         overflowPins,
         overviewFilters,
+        overflowGraphTime,
         onOverflowPinPreview,
         onOverflowPinDoubleClick,
         onSimulateUnsimulatedAction,
@@ -320,6 +327,21 @@ export function useOverflowIframe(args: UseOverflowIframeArgs): OverflowIframeSt
         };
         iframe.contentWindow.postMessage(msg, '*');
     }, [overlayReady, overviewFilters]);
+
+    // Broadcast the overflow-graph build time so the iframe overlay
+    // renders it as a subtitle right below the sidebar ``<h1>``. The
+    // overlay JS owns the DOM mutation — the React side only forwards
+    // the value, mirroring the pattern used for pins / filters above.
+    React.useEffect(() => {
+        const iframe = overflowIframeRef.current;
+        if (!iframe || !iframe.contentWindow) return;
+        if (!overlayReady) return;
+        const msg: ParentToIframeMessage = {
+            type: 'cs4g:overflow-meta',
+            overflowGraphTime: typeof overflowGraphTime === 'number' ? overflowGraphTime : null,
+        };
+        iframe.contentWindow.postMessage(msg, '*');
+    }, [overlayReady, overflowGraphTime]);
 
     return {
         overflowIframeRef,

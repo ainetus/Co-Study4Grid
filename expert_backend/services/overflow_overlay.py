@@ -138,6 +138,21 @@ def _build_overlay_block() -> str:
     display: inline-flex; align-items: center; gap: 4px;
     cursor: pointer; user-select: none;
   }}
+
+  /* Subtitle injected right after the sidebar ``<h1>`` to advertise the
+     overflow-graph execution time. The React parent pushes the value via
+     ``cs4g:overflow-meta``; the overlay JS creates / updates the node so
+     the upstream HTML template stays untouched. */
+  #cs4g-overflow-meta {{
+    margin: 0 0 8px; padding: 0;
+    color: var(--muted, #6b7280);
+    font-size: 11px; font-style: italic;
+    font-variant-numeric: tabular-nums;
+  }}
+  #cs4g-overflow-meta strong {{
+    font-style: normal; font-weight: 600;
+    color: #111;
+  }}
 </style>
 <script id="cs4g-overlay-script">
 (function() {{
@@ -796,6 +811,37 @@ def _build_overlay_block() -> str:
   // single buildFiltersPanel() call that guarantees the section is
   // mounted before any state-sync runs.
 
+  // Render / update the subtitle line that lives just below the
+  // sidebar's ``<h1>`` filename. ``seconds`` may be a number (rendered
+  // verbatim) or null / undefined (subtitle removed). The DOM mutation
+  // is idempotent so re-broadcasting the same value is a no-op.
+  function renderOverflowMeta(seconds) {{
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    const heading = sidebar.querySelector('h1');
+    if (!heading) return;
+    let meta = document.getElementById('cs4g-overflow-meta');
+    if (typeof seconds !== 'number' || !isFinite(seconds)) {{
+      if (meta && meta.parentNode) meta.parentNode.removeChild(meta);
+      return;
+    }}
+    if (!meta) {{
+      meta = document.createElement('div');
+      meta.id = 'cs4g-overflow-meta';
+      // Place it as the immediate sibling after the <h1>.
+      heading.parentNode.insertBefore(meta, heading.nextSibling);
+    }}
+    const formatted = seconds >= 10
+      ? seconds.toFixed(1) + 's'
+      : seconds.toFixed(2) + 's';
+    meta.textContent = '';
+    const label = document.createTextNode('Total execution time: ');
+    const value = document.createElement('strong');
+    value.textContent = formatted;
+    meta.appendChild(label);
+    meta.appendChild(value);
+  }}
+
   window.addEventListener('message', function(ev) {{
     const msg = ev && ev.data;
     if (!msg || typeof msg !== 'object') return;
@@ -819,6 +865,10 @@ def _build_overlay_block() -> str:
       }};
       buildFiltersPanel();
       renderFilterState();
+      return;
+    }}
+    if (msg.type === 'cs4g:overflow-meta') {{
+      renderOverflowMeta(msg.overflowGraphTime);
       return;
     }}
     if (msg.type !== 'cs4g:pins') return;

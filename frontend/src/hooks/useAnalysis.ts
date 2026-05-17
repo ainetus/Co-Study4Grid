@@ -187,7 +187,16 @@ export function useAnalysis(): AnalysisState {
               setResult((p: AnalysisResult | null) => ({
                 ...(p || {}),
                 pdf_url: event.pdf_url,
-                pdf_path: event.pdf_path
+                pdf_path: event.pdf_path,
+                // The overflow-graph build time is emitted on the
+                // ``pdf`` event (before discovery + assessment finish)
+                // so the iframe can display it below its title as soon
+                // as the file is ready.
+                ...(typeof event.overflow_graph_time === 'number'
+                    ? { overflow_graph_time: event.overflow_graph_time }
+                    : (event.overflow_graph_time === null
+                        ? { overflow_graph_time: null }
+                        : {})),
               } as AnalysisResult));
               if (setActiveTab) {
                 setActiveTab('overflow');

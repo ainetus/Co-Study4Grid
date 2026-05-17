@@ -118,6 +118,25 @@ class TestInjectOverlay:
             f"const SVG_NS declared {len(decls)}× in overlay (must be 1)"
         )
 
+    def test_overflow_meta_subtitle_handler_is_injected(self) -> None:
+        """The overlay reacts to ``cs4g:overflow-meta`` envelopes by
+        inserting / updating a ``#cs4g-overflow-meta`` subtitle right
+        after the sidebar ``<h1>``. The React parent posts the message
+        once the step-2 ``result`` event arrives — the overlay does the
+        DOM mutation. Smoke-checks the message wiring + the DOM hook
+        + the CSS hook are all in the injected block."""
+        out = inject_overlay(_BASE_HTML)
+        # Inbound wire-format constant.
+        assert "cs4g:overflow-meta" in out
+        # JS function name that owns the DOM mutation.
+        assert "function renderOverflowMeta(" in out
+        # The subtitle DOM hook.
+        assert "id=\"cs4g-overflow-meta\"" in out or "'cs4g-overflow-meta'" in out
+        # CSS rule for the subtitle.
+        assert "#cs4g-overflow-meta" in out
+        # User-facing label embedded in the JS body.
+        assert "Total execution time:" in out
+
     def test_action_filters_section_is_injected(self) -> None:
         """The overlay must inject an ``Action pins filters`` section.
         The section is ALWAYS visible — it carries the canonical pins

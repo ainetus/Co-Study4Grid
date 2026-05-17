@@ -107,6 +107,16 @@ interface ActionFeedProps {
      */
     activeModelLabel?: string | null;
     /**
+     * Per-stage execution times (seconds) for the current analysis,
+     * echoed by the backend in the step-2 ``result`` event. Rendered as
+     * a one-line breakdown right under "Suggestions produced by …".
+     * ``overflowGraphTime`` is ``null`` when the active model does not
+     * consume the overflow graph (its column is hidden in that case).
+     */
+    overflowGraphTime?: number | null;
+    actionPredictionTime?: number | null;
+    assessmentTime?: number | null;
+    /**
      * Clear the un-touched recommender suggestions — wipes entries
      * still in ``suggestedByRecommenderIds`` that the operator has
      * NOT starred / rejected / manually added. Lets the user relaunch
@@ -154,6 +164,9 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
     setRecommenderModel,
     availableModels,
     activeModelLabel,
+    overflowGraphTime,
+    actionPredictionTime,
+    assessmentTime,
     onClearSuggested,
 }) => {
     const [searchOpen, setSearchOpen] = useState(false);
@@ -997,39 +1010,90 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                     >Rejected Actions {rejectedEntries.length > 0 && <span style={{ background: suggestedTab === 'rejected' ? colors.dangerSoft : colors.surfaceMuted, color: suggestedTab === 'rejected' ? colors.danger : colors.textSecondary, fontSize: '11px', padding: '2px 6px', borderRadius: '10px', fontWeight: 'bold' }}>{rejectedEntries.length}</span>}</button>
                 </div>
 
-                {suggestedTab === 'prioritized' && prioritizedEntries.length > 0 && activeModelLabel && (
-                    <div
-                        data-testid="active-model-reminder"
-                        style={{
-                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                            gap: '8px', marginBottom: '8px',
-                            fontSize: '11px', color: colors.textTertiary, fontStyle: 'italic',
-                        }}
-                    >
-                        <span>Suggestions produced by <strong style={{ fontStyle: 'normal', color: colors.textSecondary }}>{activeModelLabel}</strong></span>
-                        {onClearSuggested && (
-                            <button
-                                type="button"
-                                onClick={onClearSuggested}
-                                title="Clear un-touched suggestions (keeps starred / rejected / manually-added actions) so a new analysis can be launched, optionally with a different model."
-                                style={{
-                                    padding: '3px 10px',
-                                    background: colors.danger,
-                                    color: colors.textOnBrand,
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    fontSize: '11px',
-                                    fontStyle: 'normal',
-                                    fontWeight: 'bold',
-                                    flexShrink: 0,
-                                }}
-                            >
-                                Clear
-                            </button>
-                        )}
-                    </div>
-                )}
+                {suggestedTab === 'prioritized' && prioritizedEntries.length > 0 && activeModelLabel && (() => {
+                    const fmt = (s: number) => s >= 10 ? `${s.toFixed(1)}s` : `${s.toFixed(2)}s`;
+                    const hasPrediction = typeof actionPredictionTime === 'number';
+                    const hasAssessment = typeof assessmentTime === 'number';
+                    const hasOverflow = typeof overflowGraphTime === 'number';
+                    const total = (hasPrediction ? actionPredictionTime! : 0)
+                        + (hasAssessment ? assessmentTime! : 0)
+                        + (hasOverflow ? overflowGraphTime! : 0);
+                    const showBreakdown = hasPrediction || hasAssessment || hasOverflow;
+                    return (
+                        <div
+                            data-testid="active-model-reminder"
+                            style={{
+                                display: 'flex', flexDirection: 'column',
+                                gap: '4px', marginBottom: '8px',
+                                fontSize: '11px', color: colors.textTertiary, fontStyle: 'italic',
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                                <span>Suggestions produced by <strong style={{ fontStyle: 'normal', color: colors.textSecondary }}>{activeModelLabel}</strong></span>
+                                {onClearSuggested && (
+                                    <button
+                                        type="button"
+                                        onClick={onClearSuggested}
+                                        title="Clear un-touched suggestions (keeps starred / rejected / manually-added actions) so a new analysis can be launched, optionally with a different model."
+                                        style={{
+                                            padding: '3px 10px',
+                                            background: colors.danger,
+                                            color: colors.textOnBrand,
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer',
+                                            fontSize: '11px',
+                                            fontStyle: 'normal',
+                                            fontWeight: 'bold',
+                                            flexShrink: 0,
+                                        }}
+                                    >
+                                        Clear
+                                    </button>
+                                )}
+                            </div>
+                            {showBreakdown && (
+                                <div
+                                    data-testid="execution-time-breakdown"
+                                    title="Execution time breakdown for this analysis run"
+                                    style={{
+                                        display: 'flex', flexWrap: 'wrap',
+                                        alignItems: 'center', columnGap: '8px', rowGap: '2px',
+                                        fontStyle: 'normal', color: colors.textTertiary,
+                                        fontVariantNumeric: 'tabular-nums',
+                                    }}
+                                >
+                                    <span>
+                                        Total:&nbsp;
+                                        <strong style={{ color: colors.textSecondary }}>{fmt(total)}</strong>
+                                    </span>
+                                    <span style={{ color: colors.borderStrong }}>·</span>
+                                    {hasOverflow && (
+                                        <>
+                                            <span title="Time to build the overflow analysis graph">
+                                                overflow analysis&nbsp;<strong style={{ color: colors.textSecondary }}>{fmt(overflowGraphTime!)}</strong>
+                                            </span>
+                                            <span style={{ color: colors.borderStrong }}>·</span>
+                                        </>
+                                    )}
+                                    {hasPrediction && (
+                                        <>
+                                            <span title="Time the model spent producing action suggestions">
+                                                action prediction&nbsp;<strong style={{ color: colors.textSecondary }}>{fmt(actionPredictionTime!)}</strong>
+                                            </span>
+                                            {hasAssessment && <span style={{ color: colors.borderStrong }}>·</span>}
+                                        </>
+                                    )}
+                                    {hasAssessment && (
+                                        <span title="Time spent assessing / enriching the proposed actions">
+                                            assessment&nbsp;<strong style={{ color: colors.textSecondary }}>{fmt(assessmentTime!)}</strong>
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })()}
 
                 {/* Unified analysis action slot: Analyze & Suggest → Analyzing… → Display N prioritized actions */}
                 {/* Show the analysis trigger slot whenever the Suggested

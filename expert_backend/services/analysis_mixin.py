@@ -490,6 +490,13 @@ class AnalysisMixin:
         )
         reuse_graph = self._can_reuse_step2_graph(step2_signature)
 
+        # Per-stage timings (seconds), forwarded to the result event so
+        # the frontend can display a per-stage breakdown next to
+        # "Suggestions produced by …".
+        overflow_graph_time: float | None = None
+        action_prediction_time: float = 0.0
+        assessment_time: float = 0.0
+
         try:
             if reuse_graph:
                 logger.info(
@@ -497,10 +504,12 @@ class AnalysisMixin:
                 )
                 context = self._last_step2_context
                 produced_pdf = self._overflow_layout_cache.get("hierarchical")
+                overflow_graph_time = 0.0
                 # Geo cache is keyed off the same hierarchical source; keep
                 # whatever the previous run produced so the toggle stays
                 # instant. `_overflow_layout_mode` is left untouched.
-                yield {"type": "pdf", "pdf_path": produced_pdf, "cached": True}
+                yield {"type": "pdf", "pdf_path": produced_pdf, "cached": True,
+                       "overflow_graph_time": overflow_graph_time}
             else:
                 context = self._narrow_context_to_selected_overloads(
                     self._analysis_context,
@@ -519,7 +528,9 @@ class AnalysisMixin:
                 self._overflow_layout_cache = {}
                 self._overflow_layout_mode = "hierarchical"
                 # Part 1: graph generation + HTML
+                _graph_t0 = time.time()
                 context = run_analysis_step2_graph(context)
+                overflow_graph_time = time.time() - _graph_t0
                 produced_pdf = self._get_latest_pdf_path(analysis_start_time)
                 if produced_pdf:
                     # Step-2 always produces the hierarchical layout — the
@@ -531,12 +542,16 @@ class AnalysisMixin:
                 # toggle itself no longer uses this.
                 self._last_step2_context = context
                 self._last_step2_signature = step2_signature
-                yield {"type": "pdf", "pdf_path": produced_pdf}
+                yield {"type": "pdf", "pdf_path": produced_pdf,
+                       "overflow_graph_time": overflow_graph_time}
 
             # Part 2: action discovery
+            _pred_t0 = time.time()
             results = run_analysis_step2_discovery(context)
+            action_prediction_time = time.time() - _pred_t0
             self._last_result = results
 
+            _assess_t0 = time.time()
             enriched_actions = self._enrich_actions(
                 results["prioritized_actions"],
                 lines_overloaded_names=results.get("lines_overloaded_names"),
@@ -554,10 +569,14 @@ class AnalysisMixin:
             self._augment_combined_actions_with_target_max_rho(results, context)
 
             action_scores = self._compute_mw_start_for_scores(results.get("action_scores", {}))
+            assessment_time = time.time() - _assess_t0
 
             logger.info(
-                "[Step 2] Yielding final result event with %d enriched actions",
+                "[Step 2] Yielding final result event with %d enriched actions "
+                "(overflow_graph=%.2fs, prediction=%.2fs, assessment=%.2fs)",
                 len(enriched_actions),
+                overflow_graph_time if overflow_graph_time is not None else -1.0,
+                action_prediction_time, assessment_time,
             )
             lines_we_care_about = context.get("lines_we_care_about")
             yield sanitize_for_json({
@@ -575,6 +594,9 @@ class AnalysisMixin:
                 ),
                 "message": "Analysis completed",
                 "dc_fallback": False,
+                "overflow_graph_time": overflow_graph_time,
+                "action_prediction_time": action_prediction_time,
+                "assessment_time": assessment_time,
             })
         except Exception as e:
             logger.exception("Backend Error in Analysis Resolution")
