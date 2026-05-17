@@ -77,12 +77,50 @@ npx playwright test demo_replay.spec.ts --headed
    - `ActionFeed.tsx` — `analyze-suggest`, `display-prioritized-actions`.
    - `ActionCard.tsx` — `favorite-${id}`, `reject-${id}` on the rail buttons.
 
-3. **(Optional) Real backend mode**: set `COSTUDY4GRID_REAL_BACKEND=1`
-   and start `uvicorn expert_backend.main:app --port 8000` separately.
-   The spec then skips the `page.route` mock layer. Wiring is partially
-   in place (the env-var branch in `registerMockBackend()` short-circuits);
-   a `globalSetup` that does `POST /api/config` with the small_grid paths
-   before the first test is still needed for end-to-end real-data runs.
+3. **Real backend mode** (now landed): set `COSTUDY4GRID_REAL_BACKEND=1`.
+   The mock-route layer short-circuits and `playwright.global-setup.ts`
+   POSTs `/api/config` with the small_grid paths so subsequent specs
+   hit a pre-loaded state. Two flavours:
+
+   ```bash
+   # (a) Run uvicorn yourself, point Playwright at it (default).
+   uvicorn expert_backend.main:app --port 8000 &
+   COSTUDY4GRID_REAL_BACKEND=1 npx playwright test
+
+   # (b) Let Playwright spawn + teardown uvicorn for you.
+   COSTUDY4GRID_REAL_BACKEND=1 \
+   COSTUDY4GRID_SPAWN_BACKEND=1 \
+   npx playwright test
+   ```
+
+   Override the backend URL with `COSTUDY4GRID_BACKEND_URL=http://host:port`
+   when running against a non-default address. The global-setup waits
+   up to 60 s for `/api/user-config` to respond before failing.
+
+## Numerical contract: pytest companion
+
+Étape D of the test plan lives at
+`expert_backend/tests/test_demo_scenario_small_grid.py`. It mirrors
+the numerical assertions the demo trace embeds (1 overload detected,
+10 prioritised actions including disco_BEON / node_merging_PYMONP3 /
+load_shedding_BEON3, two superposition pairs converging to
+the recorded rho values) — directly against the real backend via
+FastAPI's `TestClient`. Skipped when the small_grid data is missing
+or when the conftest mock layer is active.
+
+```bash
+# Run the demo-numerical suite (slow — loads the real network).
+pytest expert_backend/tests/test_demo_scenario_small_grid.py -m slow
+
+# Or run a single assertion:
+pytest expert_backend/tests/test_demo_scenario_small_grid.py::TestDemoScenarioSmallGrid::test_compute_superposition_matches_golden_trace
+```
+
+Tolerances on the superposition pairs (`COMBINED_PAIR_*` constants
+in the test file) are 1% absolute on `simulated_max_rho` — loose
+enough to absorb minor loadflow drift, tight enough to catch a real
+regression. Re-tune by re-running the demo and copying the new
+`simulated_max_rho` values from the saved `interaction_log.json`.
 
 ## What the scaffold does today
 

@@ -12,6 +12,8 @@ export default defineConfig({
   testDir: __dirname,
   testMatch: ['*parity.spec.ts', 'demo_*.spec.ts'],
   timeout: 90_000,
+  globalSetup: require.resolve('./playwright.global-setup.ts'),
+  globalTeardown: require.resolve('./playwright.global-teardown.ts'),
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: 'http://localhost:4173/',
