@@ -12,8 +12,10 @@ on the live DOM.
 |------|------|
 | `fixtures/demo_small_grid_log.golden.json` | **Golden trace.** Curated `interaction_log.json` from a real demo run on `config_small_grid`. 48 events (raw capture was 79; trimming rationale in `_meta.normalizations`). Re-capture by playing the demo and overwriting this file. |
 | `fixtures/demo_scenario.ts` | **Fiche-as-data.** Each checkpoint maps one paragraph of the fiche → expected events + structural invariants. **This is the file non-developers edit** to extend coverage. |
-| `demo_replay.spec.ts` | **Runner.** Walks the scenario, drives gestures with Playwright, asserts invariants on the live DOM, then diffs the captured `interactionLogger` log against the golden trace. |
-| `playwright.config.ts` | Shared with the existing `e2e_parity.spec.ts`; no changes needed. |
+| `demo_replay.spec.ts` | **Layer A — structural invariants.** Walks the scenario, drives gestures with Playwright, asserts invariants on the live DOM, then diffs the captured `interactionLogger` log against the golden trace. |
+| `demo_visual_snapshots.spec.ts` | **Layer B — normalised SVG/HTML snapshots.** Captures 3 stable surfaces (action card, overview map, combine modal) and diffs against text goldens under `__snapshots__/`. Scrubs auto-ids + rounds float coords + sorts attributes so the diffs stay readable. |
+| `demo_meta_invariants.spec.ts` | **Layer D — meta-invariants.** Cheap, broad sanity checks: no console errors, no empty visible text, no `undefined/null/NaN` ids, no degenerate viewBox, pin-count consistency. |
+| `playwright.config.ts` | Shared; `testMatch` now picks up `demo_*.spec.ts` alongside the existing `*parity.spec.ts`. |
 | `package.json` | Shared with the existing parity spec. |
 
 ## How the three layers interact
@@ -109,14 +111,18 @@ Notes column).
 
 | Layer | Implemented here | Cost | Catches |
 |-------|:---:|:---:|---|
-| **A — Structural invariants** (count, visible, class, attribute) | ✓ via `Invariant` | very low | 90 % of UI regressions (missing halo, lost pin, broken filter) |
-| **B — Normalised SVG snapshots** | — (planned) | low | Diagram-rendering drift |
-| **C — Pixel diff (targeted)** | — (planned) | high | Theme / token / font regressions |
-| **D — Meta-invariants** (no empty text, no console errors) | — (planned) | low | Catastrophic mis-renders |
+| **A — Structural invariants** (count, visible, class, attribute) | ✓ `demo_replay.spec.ts` | very low | 90 % of UI regressions (missing halo, lost pin, broken filter) |
+| **B — Normalised SVG/HTML snapshots** | ✓ `demo_visual_snapshots.spec.ts` | low | Diagram-rendering drift, lost attribute, renamed class |
+| **C — Pixel diff (targeted)** | — (not planned for now) | high | Theme / token / font regressions — already gated by the design-token rule in `check_code_quality.py` |
+| **D — Meta-invariants** (no empty text, no console errors, valid ids) | ✓ `demo_meta_invariants.spec.ts` | low | Catastrophic mis-renders |
 
-Layer A is in the scenario file. Layers B-D will live in companion specs
-(`demo_visual_snapshots.spec.ts`, `demo_meta_invariants.spec.ts`) once
-A is fully wired.
+Layer C remains deliberately out of scope — the design-token gate in
+`check_code_quality.py` already locks down the visual contract for
+colours/spacing/radius, and pixel diffs on pypowsybl NADs are
+prohibitively noisy. If a specific surface ever needs pixel-level
+guarantees (e.g. the printed legend in a PR-screenshot deliverable),
+extend `demo_visual_snapshots.spec.ts` with `toHaveScreenshot()` on a
+viewport-frozen locator.
 
 ## CI wiring
 
@@ -126,11 +132,20 @@ To add to `.github/workflows/parity.yml`:
   - run: cd frontend && npm ci && npm run build
   - run: cd scripts/parity_e2e && npm ci
   - run: cd scripts/parity_e2e && npx playwright install --with-deps chromium
-  - run: cd scripts/parity_e2e && npx playwright test demo_replay.spec.ts
+  - run: cd scripts/parity_e2e && npx playwright test
 ```
 
-Total expected cost once fully wired: ≤ 90 s (matches the existing
-`e2e_parity.spec.ts` budget).
+The three demo specs are independent and run in parallel under
+Playwright workers:
+
+| Spec | Approx. runtime |
+|------|---|
+| `demo_replay.spec.ts` (Actes 1-3 + golden diff) | ~ 90 s |
+| `demo_visual_snapshots.spec.ts` (3 surfaces) | ~ 25 s |
+| `demo_meta_invariants.spec.ts` (one battery) | ~ 20 s |
+
+Wall-clock with 2 workers: ~ 90 s, in line with the existing
+`e2e_parity.spec.ts` budget.
 
 ## Recapturing the golden trace
 
