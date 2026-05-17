@@ -17,19 +17,26 @@ def test_non_reconnectable_detection_with_date():
     Verify that non-reconnectable lines are detected correctly even when an analysis_date is provided.
     This was previously a bug where the detection was bypassed if analysis_date was not None.
     """
-    # 1. Setup paths relative to Co-Study4Grid root
+    # 1. Setup paths relative to Co-Study4Grid root.
+    # `expert_op4grid_recommender.environment_pypowsybl.get_env_first_obs_pypowsybl`
+    # joins them as `env_folder / env_name`, so `ENV_PATH` must be the
+    # PARENT data folder and `ENV_NAME` the env subdirectory name.
+    # Setting ENV_PATH to the full env path produced a doubled suffix
+    # (`.../data/bare_env_small_grid_test/bare_env_small_grid_test`)
+    # and a FileNotFoundError on the network lookup.
     project_root = Path(__file__).parent.parent.parent
-    test_env_path = project_root / "data" / "bare_env_small_grid_test"
-    
-    if not test_env_path.exists():
-        pytest.skip(f"Test data not found at {test_env_path}")
+    data_dir = project_root / "data"
+    env_subdir = data_dir / "bare_env_small_grid_test"
+
+    if not env_subdir.exists():
+        pytest.skip(f"Test data not found at {env_subdir}")
 
     # 2. Configure the environment
     original_env_name = config.ENV_NAME
     original_env_path = config.ENV_PATH
-    
+
     config.ENV_NAME = "bare_env_small_grid_test"
-    config.ENV_PATH = test_env_path
+    config.ENV_PATH = data_dir
     
     # 3. Use a dummy date - before the fix, this would skip topology-based detection
     dummy_date = datetime(2024, 1, 1)
