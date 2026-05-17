@@ -161,9 +161,22 @@ def _run_analysis_step2_with_model(
     # is None when the model does not consume the overflow graph (no time
     # was spent there); cached re-runs report 0.0 so a model swap is
     # distinguishable from a fresh run.
+    # ``overflow_graph_time`` covers the full graph-building phase:
+    # ``_narrow_context_to_selected_overloads`` + ``run_analysis_step2_graph``
+    # + the PDF mtime poll. That matches what the operator sees as
+    # "overflow analysis is appearing on screen".
     overflow_graph_time: float | None = None
     action_prediction_time: float = 0.0
     assessment_time: float = 0.0
+    # Enrichment = Co-Study4Grid post-processing AFTER assessment
+    # (action enrichment + combined-pair target_max_rho augmentation
+    # + MW-start scoring). Distinct from assessment because it is
+    # not part of the upstream library's discovery pipeline.
+    enrichment_time: float = 0.0
+    # Step 1 (contingency simulation + overload detection) ran in a
+    # separate HTTP call. We carry the value through via service state
+    # so the single ``result`` event surfaces the FULL backend breakdown.
+    step1_time: float | None = getattr(self, "_last_step1_time", None)
 
     try:
         if reuse_graph:
@@ -177,6 +190,10 @@ def _run_analysis_step2_with_model(
             yield {"type": "pdf", "pdf_path": produced_pdf, "cached": True,
                    "overflow_graph_time": overflow_graph_time}
         else:
+            # Time the entire graph-building phase: narrow + library
+            # call + PDF poll. That matches what the operator perceives
+            # as "the overflow graph appearing on screen".
+            _graph_phase_t0 = time.time()
             context = self._narrow_context_to_selected_overloads(
                 self._analysis_context,
                 selected_overloads,
@@ -188,10 +205,9 @@ def _run_analysis_step2_with_model(
             self._overflow_layout_cache = {}
             self._overflow_layout_mode = "hierarchical"
             if needs_graph:
-                _graph_t0 = time.time()
                 context = analysis_mixin.run_analysis_step2_graph(context)
-                overflow_graph_time = time.time() - _graph_t0
                 produced_pdf = self._get_latest_pdf_path(analysis_start_time)
+                overflow_graph_time = time.time() - _graph_phase_t0
                 if produced_pdf:
                     self._overflow_layout_cache["hierarchical"] = produced_pdf
                 self._last_step2_context = context
@@ -264,6 +280,12 @@ def _run_analysis_step2_with_model(
         }
         self._last_result = results
 
+        # Co-Study4Grid post-processing (enrichment + target_max_rho
+        # augmentation + MW-start scoring). Measured separately from
+        # ``assessment_time`` because it is not part of the upstream
+        # library's discovery pipeline — it's pure wrapping logic that
+        # decorates the recommender output with UI-facing details.
+        _t_enrich = time.time()
         enriched_actions = self._enrich_actions(
             results["prioritized_actions"],
             lines_overloaded_names=results.get("lines_overloaded_names"),
@@ -279,13 +301,16 @@ def _run_analysis_step2_with_model(
         action_scores = self._compute_mw_start_for_scores(
             results.get("action_scores", {})
         )
+        enrichment_time = time.time() - _t_enrich
 
         logger.info(
             "[Step 2] model=%s yielding result event with %d enriched actions "
-            "(overflow_graph=%.2fs, prediction=%.2fs, assessment=%.2fs)",
+            "(step1=%.2fs, overflow_graph=%.2fs, prediction=%.2fs, "
+            "assessment=%.2fs, enrichment=%.2fs)",
             recommender.name, len(enriched_actions),
+            step1_time if step1_time is not None else -1.0,
             overflow_graph_time if overflow_graph_time is not None else -1.0,
-            action_prediction_time, assessment_time,
+            action_prediction_time, assessment_time, enrichment_time,
         )
         lines_we_care_about = context.get("lines_we_care_about")
         yield sanitize_for_json({
@@ -301,6 +326,8 @@ def _run_analysis_step2_with_model(
             "dc_fallback": False,
             "active_model": recommender.name,
             "compute_overflow_graph": needs_graph,
+            "step1_time": step1_time,
+            "enrichment_time": enrichment_time,
             "overflow_graph_time": overflow_graph_time,
             "action_prediction_time": action_prediction_time,
             "assessment_time": assessment_time,

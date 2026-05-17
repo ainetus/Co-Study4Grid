@@ -3137,28 +3137,35 @@ describe('ActionFeed', () => {
             expect(screen.queryByTestId('active-model-reminder')).not.toBeInTheDocument();
         });
 
-        it('shows the total execution time next to the active-model label with a breakdown tooltip', () => {
+        it('shows the wall-clock total next to the active-model label with a full breakdown tooltip', () => {
             render(
                 <ActionFeed
                     {...defaultProps}
                     actions={{ rec_1: recAction }}
                     activeModelLabel="Expert system"
+                    step1Time={1.0}
                     overflowGraphTime={2.5}
                     actionPredictionTime={1.25}
                     assessmentTime={0.4}
+                    enrichmentTime={0.1}
+                    wallClockTime={5.5}
                 />,
             );
             const total = screen.getByTestId('execution-time-total');
-            // Total = overflow + prediction + assessment = 4.15s
-            expect(total).toHaveTextContent(/4\.15s/);
-            // The breakdown lives in the native tooltip so the line stays compact.
+            // Wall-clock wins over the backend-sum (5.25s).
+            expect(total).toHaveTextContent(/5\.50s/);
             const tooltip = total.getAttribute('title') ?? '';
+            expect(tooltip).toMatch(/Step 1.*1\.00s/);
             expect(tooltip).toMatch(/Overflow analysis:\s*2\.50s/);
             expect(tooltip).toMatch(/Action prediction:\s*1\.25s/);
             expect(tooltip).toMatch(/Action assessment:\s*0\.40s/);
+            expect(tooltip).toMatch(/Enrichment.*0\.10s/);
+            // Residual = wall-clock - backend sum = 5.50 - 5.25 = 0.25s.
+            expect(tooltip).toMatch(/Other.*0\.25s/);
+            expect(tooltip).toMatch(/Total \(wall-clock.*5\.50s/);
         });
 
-        it('omits the overflow-analysis line from the tooltip when the model does not consume the graph', () => {
+        it('falls back to the backend-sum total when wall-clock is not reported', () => {
             render(
                 <ActionFeed
                     {...defaultProps}
@@ -3170,6 +3177,7 @@ describe('ActionFeed', () => {
                 />,
             );
             const total = screen.getByTestId('execution-time-total');
+            // backend-sum = 0.8 + 0.2 = 1.00s
             expect(total).toHaveTextContent(/1\.00s/);
             const tooltip = total.getAttribute('title') ?? '';
             expect(tooltip).toMatch(/Action prediction/);

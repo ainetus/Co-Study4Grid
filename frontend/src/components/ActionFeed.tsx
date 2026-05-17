@@ -112,10 +112,17 @@ interface ActionFeedProps {
      * a one-line breakdown right under "Suggestions produced by …".
      * ``overflowGraphTime`` is ``null`` when the active model does not
      * consume the overflow graph (its column is hidden in that case).
+     * ``step1Time`` is the contingency simulation that runs before
+     * step 2; ``enrichmentTime`` is the Co-Study4Grid post-processing
+     * after assessment. ``wallClockTime`` is the frontend-measured
+     * round-trip from the click to the result event.
      */
     overflowGraphTime?: number | null;
     actionPredictionTime?: number | null;
     assessmentTime?: number | null;
+    step1Time?: number | null;
+    enrichmentTime?: number | null;
+    wallClockTime?: number | null;
     /**
      * Clear the un-touched recommender suggestions — wipes entries
      * still in ``suggestedByRecommenderIds`` that the operator has
@@ -167,6 +174,9 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
     overflowGraphTime,
     actionPredictionTime,
     assessmentTime,
+    step1Time,
+    enrichmentTime,
+    wallClockTime,
     onClearSuggested,
 }) => {
     const [searchOpen, setSearchOpen] = useState(false);
@@ -1015,20 +1025,41 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                     const hasPrediction = typeof actionPredictionTime === 'number';
                     const hasAssessment = typeof assessmentTime === 'number';
                     const hasOverflow = typeof overflowGraphTime === 'number';
-                    const total = (hasPrediction ? actionPredictionTime! : 0)
+                    const hasStep1 = typeof step1Time === 'number';
+                    const hasEnrichment = typeof enrichmentTime === 'number';
+                    const hasWallClock = typeof wallClockTime === 'number';
+                    const backendSum = (hasStep1 ? step1Time! : 0)
+                        + (hasOverflow ? overflowGraphTime! : 0)
+                        + (hasPrediction ? actionPredictionTime! : 0)
                         + (hasAssessment ? assessmentTime! : 0)
-                        + (hasOverflow ? overflowGraphTime! : 0);
-                    const showBreakdown = hasPrediction || hasAssessment || hasOverflow;
+                        + (hasEnrichment ? enrichmentTime! : 0);
+                    // Prefer the wall-clock figure as the headline number —
+                    // it matches what the operator perceives between
+                    // pressing "Analyze & Suggest" and the "Display N
+                    // prioritized actions" button appearing. The per-stage
+                    // backend buckets explain how that wall-clock was
+                    // spent; the residual is network / NDJSON overhead.
+                    const total = hasWallClock ? wallClockTime! : backendSum;
+                    const showBreakdown = hasPrediction || hasAssessment || hasOverflow
+                        || hasStep1 || hasEnrichment || hasWallClock;
                     // Native <title> tooltip lists the per-stage breakdown
                     // so the operator can see where each chunk of the
                     // total came from on hover, without dedicating
-                    // sidebar real-estate to a four-column row.
+                    // sidebar real-estate to a multi-column row.
                     const breakdownLines: string[] = [];
+                    if (hasStep1) breakdownLines.push(`Step 1 (contingency simulation): ${fmt(step1Time!)}`);
                     if (hasOverflow) breakdownLines.push(`Overflow analysis: ${fmt(overflowGraphTime!)}`);
                     if (hasPrediction) breakdownLines.push(`Action prediction: ${fmt(actionPredictionTime!)}`);
                     if (hasAssessment) breakdownLines.push(`Action assessment: ${fmt(assessmentTime!)}`);
+                    if (hasEnrichment) breakdownLines.push(`Enrichment / post-process: ${fmt(enrichmentTime!)}`);
+                    if (hasWallClock) {
+                        const residual = Math.max(0, wallClockTime! - backendSum);
+                        breakdownLines.push(`Other (network / streaming): ${fmt(residual)}`);
+                        breakdownLines.push(`──`);
+                        breakdownLines.push(`Total (wall-clock, click → display): ${fmt(wallClockTime!)}`);
+                    }
                     const breakdownTooltip = breakdownLines.length
-                        ? `Total execution time breakdown\n  ${breakdownLines.join('\n  ')}`
+                        ? `Execution time breakdown\n  ${breakdownLines.join('\n  ')}`
                         : '';
                     return (
                         <div

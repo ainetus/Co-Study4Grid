@@ -114,6 +114,10 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
         # rebuild and jumps straight to action discovery — see the
         # comment on the fast path in ``analysis_mixin.run_analysis_step2``.
         self._last_step2_signature = None
+        # Wall-clock for the most recent ``run_analysis_step1`` call so
+        # ``run_analysis_step2`` can echo it in the result event next to
+        # its own per-stage timings.
+        self._last_step1_time: float | None = None
 
     def reset(self):
         """Clear all cached analysis state. Called when loading a new study."""
@@ -159,6 +163,7 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
         self._overflow_layout_cache = {}
         self._last_step2_context = None
         self._last_step2_signature = None
+        self._last_step1_time = None
 
     # ------------------------------------------------------------------
     # Overflow-graph layout (Hierarchical / Geo)

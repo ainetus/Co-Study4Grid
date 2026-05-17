@@ -435,6 +435,9 @@ export function useSession(): SessionState {
           overflow_graph_time: a.overflow_graph_time ?? undefined,
           action_prediction_time: a.action_prediction_time ?? undefined,
           assessment_time: a.assessment_time ?? undefined,
+          step1_time: a.step1_time ?? undefined,
+          enrichment_time: a.enrichment_time ?? undefined,
+          wall_clock_time: a.wall_clock_time ?? undefined,
         };
 
         ctx.setResult(restoredResult);

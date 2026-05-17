@@ -165,6 +165,19 @@ export interface AnalysisResult {
     overflow_graph_time?: number | null;
     action_prediction_time?: number;
     assessment_time?: number;
+    // Step 1 (contingency simulation + overload detection) ran in a
+    // separate HTTP call before step 2. The backend echoes its
+    // wall-clock here so the breakdown can show the full pipeline.
+    step1_time?: number | null;
+    // Co-Study4Grid post-processing after assessment (action enrichment
+    // + combined-pair target_max_rho augmentation + MW-start scoring).
+    enrichment_time?: number;
+    // Frontend wall-clock from the "Analyze & Suggest" click until the
+    // result event arrives ("Display N prioritized actions" appears).
+    // Captures backend stages + network round-trip + NDJSON streaming
+    // overhead. Difference vs. the sum of the per-stage timings above
+    // is the "transit" overhead.
+    wall_clock_time?: number;
 }
 
 export interface BranchResponse {
@@ -470,6 +483,9 @@ export interface SessionResult {
         overflow_graph_time?: number | null;
         action_prediction_time?: number | null;
         assessment_time?: number | null;
+        step1_time?: number | null;
+        enrichment_time?: number | null;
+        wall_clock_time?: number | null;
     } | null;
     interaction_log?: InteractionLogEntry[];
 }

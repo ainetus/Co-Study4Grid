@@ -134,6 +134,9 @@ export function buildSessionResult(input: SessionInput): SessionResult {
             overflow_graph_time: result.overflow_graph_time ?? null,
             action_prediction_time: result.action_prediction_time ?? null,
             assessment_time: result.assessment_time ?? null,
+            step1_time: result.step1_time ?? null,
+            enrichment_time: result.enrichment_time ?? null,
+            wall_clock_time: result.wall_clock_time ?? null,
             actions: Object.fromEntries(
                 Object.entries(result.actions).map(([id, detail]): [string, SavedActionEntry] => [
                     id,
