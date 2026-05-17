@@ -1,0 +1,36 @@
+<div data-testid="action-overview-header">
+<span data-testid="overview-pin-counter" title="0 pins on the N-1 network">
+<span aria-hidden="true">📍</span>
+<span>0</span>
+</span>
+<label data-testid="filter-show-unsimulated" title="Show scored-but-not-yet-simulated actions as dimmed pins. Double-click a dimmed pin to run its simulation.">
+<input type="checkbox">
+<span>Show unsimulated</span>
+</label>
+<label data-testid="filter-combined-only" title="Show only pins related to combined actions (computed pairs). Constituents stay on the graph dimmed for context.">
+<input type="checkbox">
+<span>Combined only</span>
+</label>
+</div>
+<div class="svg-container nad-action-overview-container" data-zoom-tier="overview">
+<svg class="nad-overview-dimmed" height="100%" preserveAspectRatio="xMidYMid meet" viewBox="0 0 1000 1000" width="100%" xmlns="http://www.w3.org/2000/svg">
+<g class="nad-overview-highlight-layer">
+</g>
+  <g id="nad">
+    <g class="nad-vl" id="COUCHP6">
+<circle cx="200" cy="200" r="10">
+</circle>
+</g>
+    <g class="nad-vl" id="PYMONP3">
+<circle cx="400" cy="400" r="10">
+</circle>
+</g>
+    <g class="nad-vl" id="BEON3">
+<circle cx="600" cy="600" r="10">
+</circle>
+</g>
+  </g>
+<rect class="nad-overview-dim-rect" fill="white" height="1200" opacity="0.65" pointer-events="none" width="1200" x="-100" y="-100">
+</rect>
+</svg>
+</div>

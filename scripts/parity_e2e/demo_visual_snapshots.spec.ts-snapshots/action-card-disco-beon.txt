@@ -1,0 +1,29 @@
+<div>
+<h4>#1 — disco_BEON L31CPVAN</h4>
+<span aria-label="Solves overload" data-testid="action-card-disco_BEON L31CPVAN-severity" role="img" title="Solves overload">
+<svg aria-hidden="true" height="13" viewBox="0 0 16 16" width="13">
+<circle cx="8" cy="8" fill="currentColor" fill-opacity="0.18" r="7">
+</circle>
+<path d="M4.5 8.2 L7 10.5 L11.5 5.8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8">
+</path>
+</svg>
+</span>
+</div>
+<div>
+<div>
+<div>Max loading: <strong>85.0%</strong>
+<span> on <button title="Zoom to BEON L31CPVAN">BEON L31CPVAN</button>
+</span>
+</div>
+</div>
+<div>
+</div>
+<div class="action-card-rail">
+<button data-testid="favorite-disco_BEON L31CPVAN" title="Select this action">
+<span>⭐</span>
+</button>
+<button data-testid="reject-disco_BEON L31CPVAN" title="Reject this action">
+<span>❌</span>
+</button>
+</div>
+</div>
