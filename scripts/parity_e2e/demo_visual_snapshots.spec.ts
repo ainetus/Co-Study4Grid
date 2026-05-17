@@ -218,10 +218,12 @@ test.describe('Demo visual snapshots', () => {
             { timeout: 30_000 },
         );
 
-        const combobox = page.getByRole('combobox').first();
-        await combobox.waitFor({ state: 'visible', timeout: 10000 });
-        await combobox.click();
-        await combobox.pressSequentially(SMALL_GRID.contingency, { delay: 30 });
+        const control = page.locator('.cs4g-contingency__control').first();
+        const input = page.locator('.cs4g-contingency__input').first();
+        await control.waitFor({ state: 'visible', timeout: 10000 });
+        await control.click();
+        await input.focus();
+        await page.keyboard.type(SMALL_GRID.contingency, { delay: 30 });
         const option = page.locator('.cs4g-contingency__option', { hasText: SMALL_GRID.contingency }).first();
         await option.waitFor({ state: 'visible', timeout: 5000 });
         await option.click();

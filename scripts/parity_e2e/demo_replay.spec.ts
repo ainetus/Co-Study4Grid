@@ -327,14 +327,19 @@ async function addContingencyAndApply(page: Page, element: string): Promise<void
     //   - click the matching option instead of Enter for determinism
     //     (Enter relies on first-option highlight which is not
     //     guaranteed across react-select versions).
-    const combobox = page.getByRole('combobox').first();
+    // Use class-based locators tied to `classNamePrefix="cs4g-contingency"`
+    // rather than getByRole('combobox') — react-select v5 puts the
+    // accessible role on a hidden wrapper and `.first()` was picking it
+    // up, leaving the actual <input> unfocused so pressSequentially
+    // typed into the void (screenshot showed the input empty at the
+    // failure point).
+    const control = page.locator('.cs4g-contingency__control').first();
+    const input = page.locator('.cs4g-contingency__input').first();
     // The Select Contingency block only renders once `branches.length > 0`.
-    // /api/branches fires in parallel with /api/network-diagram in
-    // applySettingsImmediate; loadStudy() only waits for the latter, so we
-    // wait here for the combobox itself to be mounted.
-    await combobox.waitFor({ state: 'visible', timeout: 10000 });
-    await combobox.click();
-    await combobox.pressSequentially(element, { delay: 30 });
+    await control.waitFor({ state: 'visible', timeout: 10000 });
+    await control.click();
+    await input.focus();
+    await page.keyboard.type(element, { delay: 30 });
     const option = page.locator('.cs4g-contingency__option', { hasText: element }).first();
     await option.waitFor({ state: 'visible', timeout: 5000 });
     await option.click();
