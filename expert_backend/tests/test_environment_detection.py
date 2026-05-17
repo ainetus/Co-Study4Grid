@@ -18,12 +18,16 @@ def test_non_reconnectable_detection_with_date():
     This was previously a bug where the detection was bypassed if analysis_date was not None.
     """
     # 1. Setup paths relative to Co-Study4Grid root.
-    # `expert_op4grid_recommender.environment_pypowsybl.get_env_first_obs_pypowsybl`
-    # joins them as `env_folder / env_name`, so `ENV_PATH` must be the
-    # PARENT data folder and `ENV_NAME` the env subdirectory name.
-    # Setting ENV_PATH to the full env path produced a doubled suffix
-    # (`.../data/bare_env_small_grid_test/bare_env_small_grid_test`)
-    # and a FileNotFoundError on the network lookup.
+    # The upstream `setup_environment_configs_pypowsybl` reads
+    # `config.ENV_FOLDER` (parent data dir) + `config.ENV_NAME` (env
+    # subdirectory) and joins them. `config.ENV_PATH` is set for any
+    # downstream consumer that reads the full path directly. All three
+    # MUST be set together to match the contract in
+    # `recommender_service.update_config` (which is what other tests
+    # implicitly use via POST /api/config) — otherwise a prior test
+    # leaves ENV_FOLDER pointing at the env subdir itself and this
+    # test ends up with a doubled-suffix path
+    # (`.../data/bare_env_small_grid_test/bare_env_small_grid_test`).
     project_root = Path(__file__).parent.parent.parent
     data_dir = project_root / "data"
     env_subdir = data_dir / "bare_env_small_grid_test"
@@ -31,12 +35,14 @@ def test_non_reconnectable_detection_with_date():
     if not env_subdir.exists():
         pytest.skip(f"Test data not found at {env_subdir}")
 
-    # 2. Configure the environment
+    # 2. Configure the environment — snapshot + override all three vars.
     original_env_name = config.ENV_NAME
     original_env_path = config.ENV_PATH
+    original_env_folder = config.ENV_FOLDER
 
     config.ENV_NAME = "bare_env_small_grid_test"
-    config.ENV_PATH = data_dir
+    config.ENV_FOLDER = data_dir
+    config.ENV_PATH = env_subdir
     
     # 3. Use a dummy date - before the fix, this would skip topology-based detection
     dummy_date = datetime(2024, 1, 1)
@@ -62,6 +68,7 @@ def test_non_reconnectable_detection_with_date():
         # Restore configuration
         config.ENV_NAME = original_env_name
         config.ENV_PATH = original_env_path
+        config.ENV_FOLDER = original_env_folder
 
 if __name__ == "__main__":
     test_non_reconnectable_detection_with_date()
