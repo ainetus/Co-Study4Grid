@@ -134,7 +134,7 @@ regression. Re-tune by re-running the demo and copying the new
 | Étape 6 — Impact action | ✓ | — | Composable from `toggleViewMode`; no DOM invariant. |
 | Étape 7 — Detach | ✓ | ✓ | Real popup automation is best-effort: the gesture is logged even if Chromium blocks the popup. |
 | Étape 8 — Analyze | ✓ | ✓ | |
-| Étape 8b — Overflow layers | — | — | Cross-iframe postMessage; deferred. The mock backend doesn't serve the overflow HTML overlay. |
+| Étape 8b — Overflow layers | ✓ | ✓ | Driven via `simulateOverflowIframeGestures` — postMessages the 6 `cs4g:*` envelopes directly to the parent `window`. Validates the message → log pipeline; iframe-side rendering is not exercised (covered by alphaDeesp's own tests). |
 | Étape 8c — Display | ✓ | ✓ | |
 | Étape 9 — Explore | ✓ | ✓ | |
 | Étape 10 — Overview pins | ✓ | ✓ | |

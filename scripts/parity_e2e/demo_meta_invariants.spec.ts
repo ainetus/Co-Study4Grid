@@ -157,9 +157,15 @@ test.describe('Demo meta-invariants on config_small_grid', () => {
     test('No catastrophic mis-renders across the demo flow', async ({ page }) => {
         const consoleRecorder = attachConsoleRecorder(page);
 
+        // Real-backend mode: globalSetup has POSTed /api/config to a
+        // running uvicorn. Skip mocks — the meta battery (console
+        // errors, empty text, pin-count) is real-backend-agnostic.
+        const useRealBackend = process.env.COSTUDY4GRID_REAL_BACKEND === '1';
+
         // Lightweight inline mock-backend stub. Minimal set the meta
         // battery needs (no need for analysis / combine endpoints —
         // we focus on the Load + Contingency surfaces here).
+        if (!useRealBackend) {
         await page.route('**/api/user-config', (r) => r.fulfill({
             status: 200, contentType: 'application/json',
             body: JSON.stringify({
@@ -237,6 +243,7 @@ test.describe('Demo meta-invariants on config_small_grid', () => {
             status: 200, contentType: 'application/json',
             body: JSON.stringify({ mapping: { VL1: 'VL1_SUB' }}),
         }));
+        } // end of if (!useRealBackend)
 
         await page.goto('/');
 

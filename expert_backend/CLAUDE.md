@@ -163,9 +163,9 @@ Diagram & topology:
   Supports `?format=text` to return a JSON header + raw SVG body
   (saves ~500 ms of `JSON.parse` on 25 MB SVG strings — see
   `docs/performance/history/loading-parallel.md`).
-- `POST /api/n1-diagram` / `/api/action-variant-diagram` /
+- `POST /api/contingency-diagram` / `/api/action-variant-diagram` /
   `/api/focused-diagram` / `/api/action-variant-focused-diagram`
-- `POST /api/n1-diagram-patch` / `/api/action-variant-diagram-patch`
+- `POST /api/contingency-diagram-patch` / `/api/action-variant-diagram-patch`
   — **SVG-less per-branch deltas** for the frontend DOM-recycling
   fast path (PR #108). Return the same flow / contingency / topology
   metadata as the full endpoints but omit the multi-MB SVG body. The
@@ -173,7 +173,7 @@ Diagram & topology:
   SVG and patches it with this delta — ~80 % faster tab switches on
   the ~12 MB French NAD. See
   `docs/performance/history/svg-dom-recycling.md`.
-- `POST /api/n-sld` / `/api/n1-sld` / `/api/action-variant-sld`
+- `POST /api/n-sld` / `/api/contingency-sld` / `/api/action-variant-sld`
 
 Analysis:
 - `POST /api/run-analysis-step1` — detect overloads (returns once).

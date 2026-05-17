@@ -45,8 +45,8 @@ frontend/
     │   ├── useSession.ts           # Session save / restore
     │   ├── useDetachedTabs.ts      # Detached visualization windows
     │   ├── useTiedTabsSync.ts      # Mirror viewBox between detached + main
-    │   ├── useN1Fetch.ts           # N-1 diagram fetch (svgPatch fast-path
-    │   │                           # + full /api/n1-diagram fallback)
+    │   ├── useContingencyFetch.ts           # N-1 diagram fetch (svgPatch fast-path
+    │   │                           # + full /api/contingency-diagram fallback)
     │   └── useDiagramHighlights.ts # Per-tab SVG highlight pipeline
     │                               # (overload halos, contingency highlight,
     │                               # action targets, delta visuals) + the
@@ -101,7 +101,7 @@ frontend/
         │   └── highlights.ts          # - highlights: contingency / overload halos
         ├── svgPatch.ts                # SVG DOM recycling: clone N-state SVG
         │                              # and patch per-branch deltas on N-1 / action
-        │                              # tab switches (PR #108). Used by useN1Fetch.
+        │                              # tab switches (PR #108). Used by useContingencyFetch.
         ├── actionTypes.ts             # classifyActionType + matchesActionTypeFilter
         │                              # + DEFAULT_ACTION_OVERVIEW_FILTERS — shared
         │                              # by every filter UI surface (PR #109)
@@ -121,7 +121,7 @@ frontend/
 `App.tsx` is the **state orchestration hub** — it instantiates the
 custom hooks (`useSettings`, `useActions`, `useAnalysis`,
 `useDiagrams`, `useSession`, `useDetachedTabs`, `useTiedTabsSync`,
-`useN1Fetch`, `useDiagramHighlights`), wires them together, and
+`useContingencyFetch`, `useDiagramHighlights`), wires them together, and
 routes state into presentational components. It MUST NOT contain
 large inline JSX blocks — when adding UI sections, create a new
 component under `components/` or `components/modals/` and pass
@@ -169,7 +169,7 @@ in `App.tsx` because it needs multiple hook instances at once.
    N-1 useEffect when the value matches a valid branch. If analysis
    state already exists, a confirmation dialog appears
    (`hasAnalysisState()` / `committedBranchRef.current`). On
-   confirm, fetches `/api/n1-diagram` and stores it on
+   confirm, fetches `/api/contingency-diagram` and stores it on
    `diagrams.n1Diagram`.
 4. **Run analysis**: two-step flow. `runAnalysisStep1` returns the
    list of overloads; user selects which to resolve;
@@ -230,7 +230,7 @@ performance levers are applied today:
 - **SVG DOM recycling** (`utils/svgPatch.ts`, PR #108): on N-1 /
   action tab switches the N-state `SVGSVGElement` is cloned and
   patched with per-branch deltas from the new
-  `/api/n1-diagram-patch` and `/api/action-variant-diagram-patch`
+  `/api/contingency-diagram-patch` and `/api/action-variant-diagram-patch`
   endpoints instead of being re-fetched and re-parsed. ~80 % faster
   on the ~12 MB French NAD. Falls back to the full NAD on any
   unsupported edge case.
@@ -418,7 +418,7 @@ what has been extracted and what remains deferred.
 | Sticky contingency/N-1 summary strip | `components/SidebarSummary.tsx` | ~90 |
 | Sidebar layout shell (summary + contingency selector + children slot) | `components/AppSidebar.tsx` | ~160 |
 | Error / info floating toasts | `components/StatusToasts.tsx` | ~25 |
-| N-1 diagram fetch effect (svgPatch fast-path + `/api/n1-diagram` fallback + contingency-change confirm routing) | `hooks/useN1Fetch.ts` | ~120 |
+| N-1 diagram fetch effect (svgPatch fast-path + `/api/contingency-diagram` fallback + contingency-change confirm routing) | `hooks/useContingencyFetch.ts` | ~120 |
 | `applyHighlightsForTab` + driving effect + per-tab `detachedViewModes` state + `viewModeForTab` / `handleViewModeChangeForTab` | `hooks/useDiagramHighlights.ts` | ~155 |
 
 Net: **1575 → ~1150 lines** at PR #109. App.tsx remains the state

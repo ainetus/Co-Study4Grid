@@ -419,6 +419,42 @@ async function runFullAnalysis(page: Page): Promise<void> {
     await page.waitForResponse(r => r.url().includes('/api/run-analysis-step2'));
 }
 
+/**
+ * Étape 8b — drive the overflow-iframe layer toggles from the parent
+ * frame. We don't load the real iframe (the cross-origin overlay viewer
+ * is served by the backend and isn't reproducible against the mock);
+ * instead we postMessage the same `cs4g:*` envelope an iframe would,
+ * straight to `window`. `useOverflowIframe` listens on the parent's
+ * `message` event regardless of source, so the events land in the
+ * interactionLogger exactly as they would in a real run.
+ *
+ * Caveat: this validates the parent's MESSAGE → LOG pipeline, not the
+ * iframe's rendering. The iframe-side rendering is covered by the
+ * upstream alphaDeesp viewer's own tests; if we ever need to assert
+ * cross-frame, drop in a stub iframe served by `page.route()` that
+ * does the same postMessage from inside a real `<iframe>` element.
+ */
+async function simulateOverflowIframeGestures(page: Page): Promise<void> {
+    await page.evaluate(() => {
+        const messages = [
+            { type: 'cs4g:overflow-select-all-layers', visible: false },
+            { type: 'cs4g:overflow-layer-toggled', key: 'semantic:is_overload',
+              label: 'Overloads', visible: true },
+            { type: 'cs4g:overflow-layer-toggled', key: 'semantic:on_constrained_path',
+              label: 'Constrained path', visible: true },
+            { type: 'cs4g:overflow-layer-toggled', key: 'semantic:in_red_loop',
+              label: 'Red-loop paths', visible: true },
+            { type: 'cs4g:overflow-layer-toggled', key: 'style:dashed',
+              label: 'Reconnectable', visible: true },
+            { type: 'cs4g:overflow-layer-toggled', key: 'style:dotted',
+              label: 'Non-reconnectable', visible: true },
+        ];
+        for (const msg of messages) window.postMessage(msg, '*');
+    });
+    // Let React flush the message handlers + interactionLogger writes.
+    await page.waitForTimeout(100);
+}
+
 async function displayPrioritizedActions(page: Page): Promise<void> {
     await page.locator('[data-testid="display-prioritized-actions"]').click();
 }
@@ -536,10 +572,17 @@ test.describe('Demo replay on config_small_grid', () => {
         await runFullAnalysis(page);
         await assertCheckpointInvariants(page, byStep('Étape 8a — Lancer l\'analyse'));
 
-        // Étape 8b (overflow layers): the toggles fire across the
-        // overflow iframe via postMessage. The DOM-level invariants for
-        // this checkpoint are empty by design (see scenario file); we
-        // keep the gesture for the golden-trace diff.
+        // Étape 8b — drive the iframe layer toggles via postMessage
+        // (no real iframe; see simulateOverflowIframeGestures comment).
+        await simulateOverflowIframeGestures(page);
+        await assertCheckpointInvariants(page, byStep('Étape 8b — Lecture de l\'overflow graph'));
+        // Verify the 6 cs4g messages were each recorded by the parent.
+        const logAfter8b = await captureLog(page);
+        const overflowGestureCount = logAfter8b.filter(e => {
+            const t = (e as { type: string }).type;
+            return t === 'overflow_layer_toggled' || t === 'overflow_select_all_layers';
+        }).length;
+        expect.soft(overflowGestureCount, 'étape 8b emitted 6 overflow gestures').toBeGreaterThanOrEqual(6);
 
         await displayPrioritizedActions(page);
         await assertCheckpointInvariants(page, byStep('Étape 8c — Afficher les actions suggérées'));

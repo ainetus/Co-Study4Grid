@@ -55,7 +55,7 @@ Co-Study4Grid/
 │       │                          # literals outside these two files.
 │       ├── hooks/                 # useSettings / useActions / useAnalysis / useDiagrams /
 │       │                          # useSession / useDetachedTabs / useTiedTabsSync /
-│       │                          # usePanZoom / useSldOverlay / useN1Fetch (svgPatch fast-
+│       │                          # usePanZoom / useSldOverlay / useContingencyFetch (svgPatch fast-
 │       │                          # path + full fallback) / useDiagramHighlights (per-tab
 │       │                          # highlight pipeline + Flow/Impacts view-mode state) /
 │       │                          # useOverflowIframe (PR #116 — iframe lifecycle, layer
@@ -242,14 +242,14 @@ Both scripts run in CI (`.github/workflows/code-quality.yml` and
 | POST | `/api/run-analysis-step1` | Two-step analysis Part 1: detect overloads |
 | POST | `/api/run-analysis-step2` | Two-step analysis Part 2: resolve with actions (streaming NDJSON) |
 | GET  | `/api/network-diagram` | Get N-state network SVG diagram (NAD) |
-| POST | `/api/n1-diagram` | Get post-contingency N-1 diagram with flow deltas |
-| POST | `/api/n1-diagram-patch` | SVG-less per-branch delta for DOM-recycling fast path (PR #108) |
+| POST | `/api/contingency-diagram` | Get post-contingency N-1 diagram with flow deltas |
+| POST | `/api/contingency-diagram-patch` | SVG-less per-branch delta for DOM-recycling fast path (PR #108) |
 | POST | `/api/action-variant-diagram` | Get network state after applying a remedial action |
 | POST | `/api/action-variant-diagram-patch` | Per-branch delta + VL-subtree splice for action DOM recycling |
 | POST | `/api/focused-diagram` | Generate NAD sub-diagram focused on a specific element |
 | POST | `/api/action-variant-focused-diagram` | Focused NAD for specific VL in post-action state |
 | POST | `/api/n-sld` | Single Line Diagram for voltage level in N state |
-| POST | `/api/n1-sld` | Single Line Diagram in N-1 state (with flow deltas) |
+| POST | `/api/contingency-sld` | Single Line Diagram in N-1 state (with flow deltas) |
 | POST | `/api/action-variant-sld` | SLD in post-action state |
 | GET  | `/api/actions` | Return all available action IDs and descriptions |
 | POST | `/api/regenerate-overflow-graph` | Regenerate (or serve from cache) the overflow graph in hierarchical / geo layout — drives the toggle on the Overflow Analysis tab |
@@ -272,7 +272,7 @@ Both scripts run in CI (`.github/workflows/code-quality.yml` and
 - **Threaded analysis**: `run_analysis` runs the computation in a background thread and polls for PDF generation
 - **JSON sanitization**: NumPy types are recursively converted to native Python types via `sanitize_for_json()`
 - **Mixin → helper-package decomposition (PR #104 / #106)**: `DiagramMixin`, `AnalysisMixin` and `SimulationMixin` are thin orchestrators. Pure numerics live in `services/diagram/`, `services/analysis/` and `services/simulation_helpers.py` respectively — dependency-injected so existing `@patch` tests keep working.
-- **SVG DOM recycling (PR #108)**: patch endpoints (`/api/n1-diagram-patch`, `/api/action-variant-diagram-patch`) return per-branch deltas + optional VL-subtree splices so the frontend can clone the already-mounted N-state SVG instead of re-downloading the full NAD (~80 % faster tab switches on large grids).
+- **SVG DOM recycling (PR #108)**: patch endpoints (`/api/contingency-diagram-patch`, `/api/action-variant-diagram-patch`) return per-branch deltas + optional VL-subtree splices so the frontend can clone the already-mounted N-state SVG instead of re-downloading the full NAD (~80 % faster tab switches on large grids).
 - **Interactive overflow viewer (PR #116, 0.7.0)**: `services/overflow_overlay.py` injects a Co-Study4Grid pin / filter overlay (`<style>` + `<script>` block) into the upstream `expert_op4grid_recommender` HTML viewer before serving it from `/results/pdf/{filename}`. `services/analysis/overflow_geo_transform.py` is a pure lxml transform that rewrites the hierarchical-layout SVG to geographic coordinates for the `/api/regenerate-overflow-graph` toggle; the geo cache is per-study and cleared on `reset()`.
 - **Shared diagram helpers**: `RecommenderService` uses `_load_network()`, `_load_layout()`, `_default_nad_parameters()`, and `_generate_diagram()` to deduplicate diagram generation logic across endpoints
 - **Focused diagrams**: The `/api/focused-diagram` endpoint resolves an element to its voltage levels and generates a sub-diagram with configurable depth, useful for inspecting specific parts of large grids
@@ -286,7 +286,7 @@ Both scripts run in CI (`.github/workflows/code-quality.yml` and
 - **Component architecture (Phase 2 hook extraction, PR #109)**:
   - `App.tsx` (~1400 lines) is the **state orchestration hub** — it wires all hooks together and handles cross-hook logic (e.g., `handleApplySettings`). It should NOT contain large JSX blocks.
   - **Presentational components** live in `components/` and `components/modals/`. They receive data and callbacks via typed props; all business logic stays in `App.tsx` or in hooks.
-  - `hooks/useN1Fetch.ts` owns the N-1 diagram fetch pipeline (svgPatch fast-path + `/api/n1-diagram` fallback + contingency-change confirm routing).
+  - `hooks/useContingencyFetch.ts` owns the N-1 diagram fetch pipeline (svgPatch fast-path + `/api/contingency-diagram` fallback + contingency-change confirm routing).
   - `hooks/useDiagramHighlights.ts` owns the per-tab SVG highlight pipeline (overload halos, contingency highlight, action targets, delta visuals) + per-tab Flow/Impacts view-mode state.
   - `hooks/useOverflowIframe.ts` (PR #116, 0.7.0) owns the interactive overflow viewer — iframe lifecycle, layer-toggle state, hierarchical ↔ geo layout switch, postMessage bridge to the host, and the action-pin overlay payload computation.
   - `useSettings.ts` exposes `SettingsState` (all settings values + setters), which is passed wholesale to `SettingsModal` to avoid 30+ prop-drilling.
@@ -359,7 +359,7 @@ NAD/SLD payloads:
 
 - The backend API base URL is hardcoded to `http://localhost:8000` in `frontend/src/api.ts`
 - CORS is wide-open by default (`allow_origins=["*"]`) but configurable via the `CORS_ALLOWED_ORIGINS` env var (PR #104, see `.env.example`)
-- **Frontend architecture (Phase 2 hook extraction, PR #109)**: `App.tsx` is the state orchestration hub; it must NOT contain large inline JSX blocks. Extracted presentational components live in `components/` and `components/modals/`; cross-cutting state pipelines live in `hooks/` (notably `useN1Fetch` and `useDiagramHighlights`). When adding new UI sections, create a new component file (or hook for stateful pipelines) and wire it in `App.tsx`.
+- **Frontend architecture (Phase 2 hook extraction, PR #109)**: `App.tsx` is the state orchestration hub; it must NOT contain large inline JSX blocks. Extracted presentational components live in `components/` and `components/modals/`; cross-cutting state pipelines live in `hooks/` (notably `useContingencyFetch` and `useDiagramHighlights`). When adding new UI sections, create a new component file (or hook for stateful pipelines) and wire it in `App.tsx`.
 - **`useSettings` hook**: Exposes a `SettingsState` object with all settings fields + setters. This is passed wholesale to `SettingsModal` to avoid excessive prop drilling. Adding a new setting means: (1) add to `useSettings.ts`, (2) add to `SettingsModal.tsx`. No manual standalone mirror is required — the legacy hand-maintained file has been decommissioned and the auto-generated bundle inherits from the React source automatically.
 - **Standalone bundle (auto-generated)**: `npm run build:standalone` in `frontend/` produces `frontend/dist-standalone/standalone.html` — a single-file HTML with React + CSS inlined via `vite-plugin-singlefile`. This is the canonical distribution artifact replacing the former `standalone_interface.html`. The legacy file remains on disk as `standalone_interface_legacy.html` (tracked as a frozen snapshot — do NOT edit).
 - **CI pipelines**: GitHub Actions (`.github/workflows/code-quality.yml`, `parity.yml`) and CircleCI (`.circleci/config.yml`) both run the code-quality gate, ruff, and the parity scripts. No Dockerfile / containerization.

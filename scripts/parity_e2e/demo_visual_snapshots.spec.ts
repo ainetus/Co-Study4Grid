@@ -66,6 +66,12 @@ function mockActionsPayload() {
 }
 
 async function registerMockBackend(page: Page): Promise<void> {
+    // Real-backend mode: globalSetup (or the operator) has already
+    // POSTed /api/config to a running uvicorn on
+    // COSTUDY4GRID_BACKEND_URL. Don't shadow it with mocks — the
+    // visual-snapshot baselines are normalised so the real backend's
+    // richer payloads still produce stable diffs.
+    if (process.env.COSTUDY4GRID_REAL_BACKEND === '1') return;
     await page.route('**/api/user-config', (r) => r.fulfill({
         status: 200, contentType: 'application/json',
         body: JSON.stringify({

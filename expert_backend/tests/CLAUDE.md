@@ -44,7 +44,7 @@ Configuration in `frontend/vite.config.ts` (Vitest plugin).
 #### API & Service Layer
 | File | Description |
 |------|-------------|
-| `test_api_endpoints.py` | FastAPI endpoint testing with TestClient and mocked services (covers the patch endpoints `/api/n1-diagram-patch`, `/api/action-variant-diagram-patch`, `/api/simulate-and-variant-diagram`). |
+| `test_api_endpoints.py` | FastAPI endpoint testing with TestClient and mocked services (covers the patch endpoints `/api/contingency-diagram-patch`, `/api/action-variant-diagram-patch`, `/api/simulate-and-variant-diagram`). |
 | `test_recommender_service.py` | RecommenderService config updates and action enrichment |
 | `test_network_service.py` | NetworkService initialization, loading, and element lookup |
 
@@ -101,7 +101,7 @@ Configuration in `frontend/vite.config.ts` (Vitest plugin).
 | `test_analysis_helpers.py` | 68 tests for `services/analysis/` (MW-start, action enrichment, PDF watcher, analysis runner) |
 | `test_diagram_helpers.py` | 39 tests for `services/diagram/` (layout cache, NAD params, NAD render, SLD render, overloads, flows, deltas) |
 | `test_diagram_mixin.py` | Orchestrator-level coverage for `DiagramMixin` after the decomposition |
-| `test_diagram_patch_helpers.py` | Patch-endpoint delta math (`/api/n1-diagram-patch`, `/api/action-variant-diagram-patch`) — PR #108 |
+| `test_diagram_patch_helpers.py` | Patch-endpoint delta math (`/api/contingency-diagram-patch`, `/api/action-variant-diagram-patch`) — PR #108 |
 | `test_n1_diagram_fast_path.py` | Fast-path guards for the N-1 diagram pipeline |
 
 #### Performance & Regression
@@ -148,7 +148,7 @@ Every presentational component has a colocated test file —
 
 One test file per hook — `useActions`, `useAnalysis`, `useDetachedTabs`,
 `useDiagramHighlights`, `useDiagrams`, `usePanZoom`, `useSession`,
-`useSettings`, `useSldOverlay`, `useTiedTabsSync`. `useN1Fetch` is
+`useSettings`, `useSldOverlay`, `useTiedTabsSync`. `useContingencyFetch` is
 covered transitively by `useDiagrams` + the App-integration suite.
 
 ### Utilities (`frontend/src/utils/**/*.test.ts`)

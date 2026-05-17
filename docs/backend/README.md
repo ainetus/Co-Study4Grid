@@ -207,11 +207,11 @@ The groups, by responsibility:
 - **Analysis**: `/api/run-analysis`, `/api/run-analysis-step1`,
   `/api/run-analysis-step2` (NDJSON stream),
   `/api/simulate-manual-action`, `/api/compute-superposition`.
-- **Diagrams**: `/api/network-diagram`, `/api/n1-diagram`,
-  `/api/n1-diagram-patch`, `/api/action-variant-diagram`,
+- **Diagrams**: `/api/network-diagram`, `/api/contingency-diagram`,
+  `/api/contingency-diagram-patch`, `/api/action-variant-diagram`,
   `/api/action-variant-diagram-patch`, `/api/focused-diagram`,
   `/api/action-variant-focused-diagram`, `/api/n-sld`,
-  `/api/n1-sld`, `/api/action-variant-sld`,
+  `/api/contingency-sld`, `/api/action-variant-sld`,
   `/api/simulate-and-variant-diagram`, `/api/regenerate-overflow-graph`,
   `/results/pdf/{filename}`.
 
