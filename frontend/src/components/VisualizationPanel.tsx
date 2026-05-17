@@ -306,6 +306,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
         overflowPinsEnabled,
         overflowPins,
         overviewFilters,
+        overflowGraphTime: result?.overflow_graph_time ?? null,
         onOverflowPinPreview,
         onOverflowPinDoubleClick,
         onSimulateUnsimulatedAction,

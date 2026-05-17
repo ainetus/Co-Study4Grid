@@ -119,8 +119,17 @@ The `RecommenderService.reset()` method clears, in order:
    `_last_disconnected_element`, `_dict_action`, `_analysis_context`,
    `_saved_computed_pairs`.
 3. Fast-path caches: `_cached_obs_n`, `_cached_obs_n_id`,
-   `_cached_obs_n1`, `_cached_obs_n1_id`, `_cached_env_context`,
-   `_initial_pst_taps`, `_lf_status_by_variant`.
+   `_cached_obs_n1`, `_cached_obs_n1_id`, `_cached_obs_n1_elements`,
+   `_cached_env_context`, `_initial_pst_taps`, `_lf_status_by_variant`,
+   `_last_step1_time`.
+   - `_cached_obs_n1_elements` is the exact contingency element list
+     that produced `_cached_obs_n1` (defense-in-depth on top of the
+     variant-ID check, used by `run_analysis_step1` to decide whether
+     to reuse the pre-warmed obs and skip the contingency LF). See
+     [docs/backend/recommender_models.md § Execution-time breakdown](../backend/recommender_models.md#execution-time-breakdown).
+   - `_last_step1_time` stashes the wall-clock of the most recent
+     `run_analysis_step1` so the step-2 result event can echo it to
+     the React UI for the "Suggestions produced by …" breakdown.
 4. `_layout_cache` — the cached `grid_layout.json` DataFrame used as
    `fixed_positions` for NAD generation. Must be cleared so a new
    study loaded from a different grid does not reuse the previous

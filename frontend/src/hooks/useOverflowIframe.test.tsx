@@ -93,6 +93,40 @@ describe('useOverflowIframe', () => {
         );
     });
 
+    it('broadcasts cs4g:overflow-meta whenever overflowGraphTime changes after the handshake', () => {
+        const postMessage = vi.fn();
+        const { result, rerender } = renderHook(
+            ({ time }: { time: number | null }) => useOverflowIframe({
+                ...noopArgs,
+                overflowGraphTime: time,
+            }),
+            { initialProps: { time: null as number | null } },
+        );
+        act(() => {
+            (result.current.overflowIframeRef as { current: unknown }).current = {
+                contentWindow: { postMessage },
+            };
+        });
+        act(() => {
+            window.dispatchEvent(new MessageEvent('message', {
+                data: { type: 'cs4g:overlay-ready' },
+            }));
+        });
+        // After the handshake, the initial null meta is forwarded so the
+        // iframe can wipe any prior subtitle.
+        expect(postMessage).toHaveBeenCalledWith(
+            { type: 'cs4g:overflow-meta', overflowGraphTime: null },
+            '*',
+        );
+        // Update the time — the new value reaches the iframe.
+        postMessage.mockClear();
+        rerender({ time: 3.42 });
+        expect(postMessage).toHaveBeenCalledWith(
+            { type: 'cs4g:overflow-meta', overflowGraphTime: 3.42 },
+            '*',
+        );
+    });
+
     it('removes the popup-window listener on unmount and on detachedWindow change', () => {
         const popupA = makePopupWindow();
         const popupB = makePopupWindow();

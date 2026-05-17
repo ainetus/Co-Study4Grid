@@ -102,6 +102,11 @@ export function useAnalysis(): AnalysisState {
 
     const step1CorrId = interactionLogger.record('analysis_step1_started', { element: selectedContingency.join('+') });
     const step1StartTs = new Date().toISOString();
+    // Wall-clock from the "Analyze & Suggest" click until the result
+    // event arrives (= "Display N prioritized actions" button appears).
+    // Captures step1 + step2 backend stages + network round-trip +
+    // NDJSON streaming overhead.
+    const wallClockStart = performance.now();
 
     try {
       // Step 1: Detection
@@ -187,7 +192,16 @@ export function useAnalysis(): AnalysisState {
               setResult((p: AnalysisResult | null) => ({
                 ...(p || {}),
                 pdf_url: event.pdf_url,
-                pdf_path: event.pdf_path
+                pdf_path: event.pdf_path,
+                // The overflow-graph build time is emitted on the
+                // ``pdf`` event (before discovery + assessment finish)
+                // so the iframe can display it below its title as soon
+                // as the file is ready.
+                ...(typeof event.overflow_graph_time === 'number'
+                    ? { overflow_graph_time: event.overflow_graph_time }
+                    : (event.overflow_graph_time === null
+                        ? { overflow_graph_time: null }
+                        : {})),
               } as AnalysisResult));
               if (setActiveTab) {
                 setActiveTab('overflow');
@@ -214,7 +228,12 @@ export function useAnalysis(): AnalysisState {
               }
               setSuggestedByRecommenderIds(prev => new Set([...prev, ...Object.keys(actionsWithFlags)]));
               step2ActionsCount = Object.keys(actionsWithFlags).length;
-              setPendingAnalysisResult({ ...event, actions: actionsWithFlags });
+              const wallClockTime = (performance.now() - wallClockStart) / 1000;
+              setPendingAnalysisResult({
+                ...event,
+                actions: actionsWithFlags,
+                wall_clock_time: wallClockTime,
+              });
               if (event.message) setInfoMessage(event.message);
             } else if (event.type === 'error') {
               setError('Analysis failed: ' + event.message);

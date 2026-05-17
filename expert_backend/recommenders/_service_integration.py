@@ -156,6 +156,28 @@ def _run_analysis_step2_with_model(
     )
     reuse_graph = needs_graph and self._can_reuse_step2_graph(step2_signature)
 
+    # Per-stage timings (seconds). Reported back to the frontend so the
+    # operator can see the breakdown of an analysis run. ``overflow_graph``
+    # is None when the model does not consume the overflow graph (no time
+    # was spent there); cached re-runs report 0.0 so a model swap is
+    # distinguishable from a fresh run.
+    # ``overflow_graph_time`` covers the full graph-building phase:
+    # ``_narrow_context_to_selected_overloads`` + ``run_analysis_step2_graph``
+    # + the PDF mtime poll. That matches what the operator sees as
+    # "overflow analysis is appearing on screen".
+    overflow_graph_time: float | None = None
+    action_prediction_time: float = 0.0
+    assessment_time: float = 0.0
+    # Enrichment = Co-Study4Grid post-processing AFTER assessment
+    # (action enrichment + combined-pair target_max_rho augmentation
+    # + MW-start scoring). Distinct from assessment because it is
+    # not part of the upstream library's discovery pipeline.
+    enrichment_time: float = 0.0
+    # Step 1 (contingency simulation + overload detection) ran in a
+    # separate HTTP call. We carry the value through via service state
+    # so the single ``result`` event surfaces the FULL backend breakdown.
+    step1_time: float | None = getattr(self, "_last_step1_time", None)
+
     try:
         if reuse_graph:
             logger.info(
@@ -164,8 +186,14 @@ def _run_analysis_step2_with_model(
             )
             context = self._last_step2_context
             produced_pdf = self._overflow_layout_cache.get("hierarchical")
-            yield {"type": "pdf", "pdf_path": produced_pdf, "cached": True}
+            overflow_graph_time = 0.0
+            yield {"type": "pdf", "pdf_path": produced_pdf, "cached": True,
+                   "overflow_graph_time": overflow_graph_time}
         else:
+            # Time the entire graph-building phase: narrow + library
+            # call + PDF poll. That matches what the operator perceives
+            # as "the overflow graph appearing on screen".
+            _graph_phase_t0 = time.time()
             context = self._narrow_context_to_selected_overloads(
                 self._analysis_context,
                 selected_overloads,
@@ -179,11 +207,13 @@ def _run_analysis_step2_with_model(
             if needs_graph:
                 context = analysis_mixin.run_analysis_step2_graph(context)
                 produced_pdf = self._get_latest_pdf_path(analysis_start_time)
+                overflow_graph_time = time.time() - _graph_phase_t0
                 if produced_pdf:
                     self._overflow_layout_cache["hierarchical"] = produced_pdf
                 self._last_step2_context = context
                 self._last_step2_signature = step2_signature
-                yield {"type": "pdf", "pdf_path": produced_pdf}
+                yield {"type": "pdf", "pdf_path": produced_pdf,
+                       "overflow_graph_time": overflow_graph_time}
             else:
                 # Model does not consume the overflow graph: emit an empty
                 # `pdf` event so the frontend knows it should not wait for
@@ -194,12 +224,46 @@ def _run_analysis_step2_with_model(
                 self._last_step2_signature = None
                 yield {"type": "pdf", "pdf_path": None}
 
+        # Action discovery goes through ``run_analysis_step2_discovery``
+        # so the long-standing
+        # ``@patch('expert_backend.services.analysis_mixin.run_analysis_step2_discovery')``
+        # seam used by ``test_overload_filtering.py`` and
+        # ``test_superposition_service.py`` keeps working.
+        #
+        # The upstream library (``expert_op4grid_recommender >=
+        # 0.2.2.post1``) returns per-stage timings (``prediction_time``
+        # = ``recommender.recommend()``, ``assessment_time`` =
+        # re-simulation of the prioritized actions) alongside the
+        # result payload. Older releases don't, in which case we fall
+        # back to a single "total discovery" figure surfaced as
+        # ``action_prediction_time`` (and ``assessment_time = 0``) so
+        # the React UI still shows a non-zero number.
         params = {"n_prioritized_actions": config.N_PRIORITIZED_ACTIONS}
+        _t_disc = time.time()
         results = analysis_mixin.run_analysis_step2_discovery(
             context, recommender=recommender, params=params,
         )
+        total_disc_time = time.time() - _t_disc
+
+        prediction_t = results.pop("prediction_time", None)
+        assessment_t = results.pop("assessment_time", None)
+        if prediction_t is not None and assessment_t is not None:
+            action_prediction_time = float(prediction_t)
+            assessment_time = float(assessment_t)
+        else:
+            # Older upstream — surface the total as "prediction" and
+            # leave "assessment" at 0 rather than fabricating a split.
+            action_prediction_time = total_disc_time
+            assessment_time = 0.0
+
         self._last_result = results
 
+        # Co-Study4Grid post-processing (enrichment + target_max_rho
+        # augmentation + MW-start scoring). Measured separately from
+        # ``assessment_time`` because it is not part of the upstream
+        # library's discovery pipeline — it's pure wrapping logic that
+        # decorates the recommender output with UI-facing details.
+        _t_enrich = time.time()
         enriched_actions = self._enrich_actions(
             results["prioritized_actions"],
             lines_overloaded_names=results.get("lines_overloaded_names"),
@@ -215,10 +279,16 @@ def _run_analysis_step2_with_model(
         action_scores = self._compute_mw_start_for_scores(
             results.get("action_scores", {})
         )
+        enrichment_time = time.time() - _t_enrich
 
         logger.info(
-            "[Step 2] model=%s yielding result event with %d enriched actions",
+            "[Step 2] model=%s yielding result event with %d enriched actions "
+            "(step1=%.2fs, overflow_graph=%.2fs, prediction=%.2fs, "
+            "assessment=%.2fs, enrichment=%.2fs)",
             recommender.name, len(enriched_actions),
+            step1_time if step1_time is not None else -1.0,
+            overflow_graph_time if overflow_graph_time is not None else -1.0,
+            action_prediction_time, assessment_time, enrichment_time,
         )
         lines_we_care_about = context.get("lines_we_care_about")
         yield sanitize_for_json({
@@ -234,6 +304,11 @@ def _run_analysis_step2_with_model(
             "dc_fallback": False,
             "active_model": recommender.name,
             "compute_overflow_graph": needs_graph,
+            "step1_time": step1_time,
+            "enrichment_time": enrichment_time,
+            "overflow_graph_time": overflow_graph_time,
+            "action_prediction_time": action_prediction_time,
+            "assessment_time": assessment_time,
         })
     except Exception as e:
         logger.exception("Backend Error in Analysis Resolution")

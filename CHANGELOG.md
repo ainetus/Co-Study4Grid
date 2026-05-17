@@ -7,6 +7,79 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Execution-time breakdown for the "Suggestions produced by …" line
+
+- **Per-stage timing** for every two-step analysis run. The backend
+  measures five stages — `step1_time` (contingency simulation +
+  overload detection), `overflow_graph_time` (graph build phase),
+  `action_prediction_time` (model `recommend()`),
+  `assessment_time` (re-simulation of prioritized actions +
+  combined-pair computation), `enrichment_time` (Co-Study4Grid
+  post-processing) — and echoes them on the streaming NDJSON
+  `result` event. The frontend additionally stamps a
+  `wall_clock_time` from the "Analyze & Suggest" click until the
+  result arrives. All six fields are persisted in saved sessions
+  (`analysis.*`) and restored on reload so a re-opened study shows
+  the same breakdown without re-running the analysis.
+- **Compact ActionFeed reminder** — replaces the inline four-column
+  row with a single "Suggestions produced by **\<model\>** in
+  **\<X\>s** ⓘ" line where `X` is the wall-clock total. Hovering the
+  underlined number opens a native tooltip listing every stage plus
+  the `Other (network / streaming)` residual.
+- **Overflow Analysis subtitle** — the iframe overlay
+  (`services/overflow_overlay.py`) gains a
+  `cs4g:overflow-meta` postMessage handler that injects a
+  `Total execution time: <X>s` subtitle right below the sidebar
+  `<h1>` filename.
+- **Skip the duplicate contingency load flow** — the N-1 diagram
+  fetch already runs the AC load flow on a contingency variant.
+  `DiagramMixin._cache_obs_for_variant` now builds a
+  `PypowsyblObservation` off the converged variant and stores it in
+  `_cached_obs_n1` / `_cached_obs_n1_id` / `_cached_obs_n1_elements`.
+  `AnalysisMixin.run_analysis_step1` validates the cache against the
+  contingency variant ID + element list and forwards the obs to the
+  upstream library through the new `prebuilt_obs_simu_defaut` kwarg
+  so the LF runs **once** instead of twice (saves ~1-3 s per
+  analysis on the French grid). Safety gate disables the reuse path
+  when `DO_RECO_MAINTENANCE=True`. `inspect.signature` introspection
+  keeps Co-Study4Grid working against pre-kwarg upstream releases.
+- **Skip the maintenance-line scan when no reconnections are
+  attempted** — upstream
+  `expert_op4grid_recommender.utils.helpers_pypowsybl.get_maintenance_timestep_pypowsybl`
+  now fast-exits with an empty action when `do_reco_maintenance=False`.
+  Saves ~150-300 ms per run on large grids with many pre-disconnected
+  lines (the function used to scan every disconnected line and
+  `print` the full list, even though the result was informational
+  only when the flag was off).
+- See [docs/backend/recommender_models.md § Execution-time
+  breakdown](docs/backend/recommender_models.md#execution-time-breakdown)
+  and [docs/features/save-results.md § analysis](docs/features/save-results.md#analysis).
+
+### Internal refactor — diagram-mixin decomposition
+
+- **`services/diagram/action_patch.py`** (new): extracted the entire
+  `/api/action-variant-diagram-patch` pipeline (~510 LoC) from
+  `diagram_mixin.py` — the 280-line `get_action_variant_diagram_patch`
+  orchestrator, the three patch helpers (`compute_vl_topology_diff`,
+  `extract_vl_subtrees_with_edges`,
+  `get_disconnected_branches_from_snapshot`), plus three private
+  helpers (`_extract_convergence_status`, `_capture_action_snapshots`,
+  `_unpatchable_response`) that keep the orchestrator under the
+  function-LoC ceiling.
+- **`services/diagram/obs_prewarm.py`** (new): extracted the
+  post-contingency observation pre-warm helper
+  (`build_prewarmed_obs`) — the seam that drives `_cached_obs_n1`
+  so `run_analysis_step1` can skip the redundant LF.
+- `diagram_mixin.py`: **1220 → 769 lines** (-451, 37% reduction).
+  431-line buffer below the 1200 ceiling guarded by the code-quality
+  gate. Test backwards-compat preserved: `_compute_vl_topology_diff`
+  and `_get_disconnected_branches_from_snapshot` remain re-exported
+  as static methods on `DiagramMixin` so the existing
+  `test_diagram_patch_helpers.py` suite passes unchanged.
+- New test files: `test_obs_prewarm_for_step1.py` (9 tests),
+  `test_action_patch_module.py` (16 tests) cover the extracted
+  surfaces.
+
 ### UI consolidation — sidebar Action Filter rings
 
 - **Severity + action-type filters → shared `<ActionFilterRings>`
