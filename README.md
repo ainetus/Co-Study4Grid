@@ -20,6 +20,11 @@ to extend it.
 ## Key Features
 
 ### Contingency analysis & remediation
+
+<table>
+<tr>
+<td valign="top">
+
 - **Two-step N-1 workflow**: detect overloads first (`run-analysis-step1`), let the operator pick which ones to resolve, then stream suggestions (`run-analysis-step2`). The legacy one-shot `run-analysis` endpoint is still exposed for backward compatibility.
 - **Pluggable recommendation models**: select Expert / Random / RandomOverflow
   from the Settings dropdown **or** the model selector above the Analyze &
@@ -51,6 +56,15 @@ to extend it.
 - **Auto-zoom** on contingency, newly overloaded line, or action target; pinned sticky feed summary and overload-click to jump to the N-1 tab (PR #88).
 - **Zoom-tier level-of-detail** (PR #76): labels, nodes and flow arrows are dynamically boosted proportional to `sqrt(diagramSize / referenceSize)`, so large grids remain legible at any zoom.
 - **Voltage-level names toggle** (PR #118): a `🏷 VL` chip flips visibility of the pypowsybl VL labels with a native `<title>` tooltip fallback so cluttered grids stay readable.
+
+</td>
+<td valign="top" width="200">
+
+<a href="docs/images/readme/ActionRecommenderFeed.png"><img src="docs/images/readme/ActionRecommenderFeed.png" alt="Suggested Actions feed" width="300"></a>
+  <sub><b>Suggested Actions feed</b> — ranked cards with severity badges (green = solves overload, yellow = low margin, red = still overloaded), per-action max-loading %, target chip, and star / reject controls. The header shows the active contingency, the live N-1 overload, and the recommender that produced the suggestions.</sub>
+</td>
+</tr>
+</table>
 
 <table>
   <tr>
