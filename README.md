@@ -46,7 +46,11 @@ to extend it.
   - Topological switches and bus reconfiguration
   - **Phase Shifting Transformer (PST)** tap adjustment with tap-start / target columns, re-simulation, and superposition fallback (PR #78)
   - **Renewable curtailment** and **load shedding** via the `set_load_p` / `set_gen_p` power-reduction format, with configurable MW reduction (PR #72, #73). See [`docs/features/curtailment-loadshedding-pst-actions.md`](docs/features/curtailment-loadshedding-pst-actions.md).
+<td valign="top" width="200">
 
+<a href="docs/images/readme/ActionRecommenderFeed.png"><img src="docs/images/readme/ActionRecommenderFeed.png" alt="Suggested Actions feed" width="300"></a>
+  <sub><b>Suggested Actions feed</b> — ranked cards with severity badges (green = solves overload, yellow = low margin, red = still overloaded), per-action max-loading %, target chip, and star / reject controls. The header shows the active contingency, the live N-1 overload, and the recommender that produced the suggestions.</sub>
+</td>
 ### Visualization
 - **Four synchronized tabs** — *Network N*, *Contingency N-1*, *Remedial Action*, *Overflow Analysis* — rendered as pypowsybl Network-Area Diagrams (NAD) with flow-delta overlays. A **Flow ↔ Impacts** view-mode switch on every NAD recolours the branches by post-contingency Δ-rho (orange = newly more loaded, blue = offloaded, grey = unchanged), so the operator reads *cause* of the constraint, not just loading.
 - **Interactive overflow analysis** (PRs #116, #122–#127): the legacy static PDF is replaced by a same-origin HTML viewer with a layer-toggle sidebar (Constrained path, Red-loop, Overloads, Hubs, Reconnectable, Production / Consumption nodes, flow polarities), a hierarchical ↔ geographic layout switch backed by a per-study cache, and a double-click → SLD drill-down on any node. Stackable filters answer the operator's reading of *"if I block my constraint, where does the flow re-report itself?"* directly on the graph. See [`docs/features/interactive-overflow-analysis.md`](docs/features/interactive-overflow-analysis.md).
@@ -58,11 +62,7 @@ to extend it.
 - **Voltage-level names toggle** (PR #118): a `🏷 VL` chip flips visibility of the pypowsybl VL labels with a native `<title>` tooltip fallback so cluttered grids stay readable.
 
 </td>
-<td valign="top" width="200">
 
-<a href="docs/images/readme/ActionRecommenderFeed.png"><img src="docs/images/readme/ActionRecommenderFeed.png" alt="Suggested Actions feed" width="300"></a>
-  <sub><b>Suggested Actions feed</b> — ranked cards with severity badges (green = solves overload, yellow = low margin, red = still overloaded), per-action max-loading %, target chip, and star / reject controls. The header shows the active contingency, the live N-1 overload, and the recommender that produced the suggestions.</sub>
-</td>
 </tr>
 </table>
 
