@@ -116,7 +116,7 @@ async function registerMockBackend(page: Page): Promise<void> {
         status: 200, contentType: 'text/plain; charset=utf-8',
         body: `${JSON.stringify({ metadata: {}, lines_overloaded: [], lines_overloaded_rho: [] })}\n${MOCK_SVG}`,
     }));
-    await page.route('**/api/n1-diagram', (r) => r.fulfill({
+    await page.route('**/api/contingency-diagram', (r) => r.fulfill({
         status: 200, contentType: 'application/json',
         body: JSON.stringify({ svg: MOCK_SVG, metadata: {},
             lines_overloaded: [SMALL_GRID.overload], lines_overloaded_rho: [1.15],
@@ -136,6 +136,31 @@ async function registerMockBackend(page: Page): Promise<void> {
         body: JSON.stringify({ svg: MOCK_SVG, metadata: {}, action_id: SMALL_GRID.discoBeon,
             flow_deltas: {}, reactive_flow_deltas: {}, asset_deltas: {},
             lf_converged: true, lf_status: 'CONVERGED' }),
+    }));
+    // Patch endpoints + recommender registry + VL→substation mapping
+    // (renamed/added since the spec was first written; see trace.zip
+    // analysis on PR #149).
+    await page.route('**/api/contingency-diagram-patch', (r) => r.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({
+            lines_overloaded: [SMALL_GRID.overload], lines_overloaded_rho: [1.15],
+            flow_deltas: {}, reactive_flow_deltas: {}, asset_deltas: {},
+            lf_converged: true, lf_status: 'CONVERGED' }),
+    }));
+    await page.route('**/api/action-variant-diagram-patch', (r) => r.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ action_id: SMALL_GRID.discoBeon,
+            flow_deltas: {}, reactive_flow_deltas: {}, asset_deltas: {},
+            lf_converged: true, lf_status: 'CONVERGED' }),
+    }));
+    await page.route('**/api/models', (r) => r.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ models: [{ id: 'expert', label: 'Expert system',
+            params_spec: [], requires_overflow_graph: true }]}),
+    }));
+    await page.route('**/api/voltage-level-substations', (r) => r.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ mapping: { COUCHP6: 'COUCHP6_SUB', PYMONP3: 'PYMONP3_SUB', BEON3: 'BEON3_SUB' }}),
     }));
     await page.route('**/api/compute-superposition', (r) => {
         const body = r.request().postDataJSON() as { action1_id?: string; action2_id?: string };
@@ -210,11 +235,11 @@ test.describe('Demo visual snapshots', () => {
         // Set the contingency + run analysis to get the action feed + overview populated.
         // react-select pattern — see demo_replay.spec.ts:addContingencyAndApply
         // for the rationale (click-type-clickOption beats fill-Enter).
-        // Subscribe BEFORE the actions that trigger /api/n1-diagram —
+        // Subscribe BEFORE the actions that trigger /api/contingency-diagram —
         // see demo_replay.spec.ts:addContingencyAndApply for the
         // race-condition rationale.
         const n1DiagramPromise = page.waitForResponse(
-            r => r.url().includes('/api/n1-diagram') && r.request().method() === 'POST',
+            r => r.url().includes('/api/contingency-diagram') && r.request().method() === 'POST',
             { timeout: 30_000 },
         );
 

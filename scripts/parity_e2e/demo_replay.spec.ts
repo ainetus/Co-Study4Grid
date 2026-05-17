@@ -178,7 +178,7 @@ async function registerMockBackend(page: Page): Promise<void> {
         route.fulfill({ status: 200, contentType: 'text/plain; charset=utf-8',
             body: `${header}\n${MOCK_NAD_SVG}` });
     });
-    await page.route('**/api/n1-diagram', (route) =>
+    await page.route('**/api/contingency-diagram', (route) =>
         route.fulfill({ status: 200, contentType: 'application/json',
             body: JSON.stringify({ svg: MOCK_NAD_SVG, metadata: {},
                 lines_overloaded: [SMALL_GRID.overload],
@@ -204,6 +204,34 @@ async function registerMockBackend(page: Page): Promise<void> {
             body: JSON.stringify({ svg: MOCK_NAD_SVG, metadata: {}, action_id: SMALL_GRID.discoBeon,
                 flow_deltas: {}, reactive_flow_deltas: {}, asset_deltas: {},
                 lf_converged: true, lf_status: 'CONVERGED'})}));
+    // Patch endpoints (PR #108 fast path): SVG-less per-branch delta.
+    // The frontend hits these FIRST on a contingency / action change,
+    // falling back to the full diagram only on error.
+    await page.route('**/api/contingency-diagram-patch', (route) =>
+        route.fulfill({ status: 200, contentType: 'application/json',
+            body: JSON.stringify({
+                lines_overloaded: [SMALL_GRID.overload],
+                lines_overloaded_rho: [1.15],
+                flow_deltas: { [SMALL_GRID.overload]: 0.4, 'OTHER_LINE': -0.2 },
+                reactive_flow_deltas: {}, asset_deltas: {},
+                lf_converged: true, lf_status: 'CONVERGED' })}));
+    await page.route('**/api/action-variant-diagram-patch', (route) =>
+        route.fulfill({ status: 200, contentType: 'application/json',
+            body: JSON.stringify({ action_id: SMALL_GRID.discoBeon,
+                flow_deltas: {}, reactive_flow_deltas: {}, asset_deltas: {},
+                lf_converged: true, lf_status: 'CONVERGED' })}));
+    // Pluggable recommender registry — minimal payload so the model
+    // dropdown in Settings + above Analyze & Suggest can hydrate.
+    await page.route('**/api/models', (route) =>
+        route.fulfill({ status: 200, contentType: 'application/json',
+            body: JSON.stringify({ models: [{
+                id: 'expert', label: 'Expert system',
+                params_spec: [], requires_overflow_graph: true,
+            }]})}));
+    // VL → parent substation map (SLD overlay + overflow pin pipeline).
+    await page.route('**/api/voltage-level-substations', (route) =>
+        route.fulfill({ status: 200, contentType: 'application/json',
+            body: JSON.stringify({ mapping: { COUCHP6: 'COUCHP6_SUB', PYMONP3: 'PYMONP3_SUB', BEON3: 'BEON3_SUB' }})}));
     await page.route('**/api/simulate-manual-action', (route) => {
         const body = route.request().postDataJSON() as { action_id?: string };
         const id = body?.action_id ?? 'manual_simulated';
@@ -305,13 +333,13 @@ async function loadStudy(page: Page): Promise<void> {
 }
 
 async function addContingencyAndApply(page: Page, element: string): Promise<void> {
-    // Race-free pattern: subscribe to the /api/n1-diagram response
+    // Race-free pattern: subscribe to the /api/contingency-diagram response
     // BEFORE the action that triggers it. With the mock backend the
     // response can land DURING `option.click()` (auto-commit on
     // selection in some UI states), and a waitForResponse set up
     // afterwards would miss the event and time out.
     const n1DiagramPromise = page.waitForResponse(
-        r => r.url().includes('/api/n1-diagram') && r.request().method() === 'POST',
+        r => r.url().includes('/api/contingency-diagram') && r.request().method() === 'POST',
         { timeout: 30_000 },
     );
 

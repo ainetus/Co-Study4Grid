@@ -214,12 +214,28 @@ test.describe('Demo meta-invariants on config_small_grid', () => {
             status: 200, contentType: 'text/plain; charset=utf-8',
             body: `${JSON.stringify({ metadata: {}, lines_overloaded: [], lines_overloaded_rho: [] })}\n${MOCK_SVG}`,
         }));
-        await page.route('**/api/n1-diagram', (r) => r.fulfill({
+        await page.route('**/api/contingency-diagram', (r) => r.fulfill({
             status: 200, contentType: 'application/json',
             body: JSON.stringify({ svg: MOCK_SVG, metadata: {},
                 lines_overloaded: ['BEON L31CPVAN'], lines_overloaded_rho: [1.15],
                 flow_deltas: {}, reactive_flow_deltas: {}, asset_deltas: {},
                 lf_converged: true, lf_status: 'CONVERGED' }),
+        }));
+        await page.route('**/api/contingency-diagram-patch', (r) => r.fulfill({
+            status: 200, contentType: 'application/json',
+            body: JSON.stringify({
+                lines_overloaded: ['BEON L31CPVAN'], lines_overloaded_rho: [1.15],
+                flow_deltas: {}, reactive_flow_deltas: {}, asset_deltas: {},
+                lf_converged: true, lf_status: 'CONVERGED' }),
+        }));
+        await page.route('**/api/models', (r) => r.fulfill({
+            status: 200, contentType: 'application/json',
+            body: JSON.stringify({ models: [{ id: 'expert', label: 'Expert system',
+                params_spec: [], requires_overflow_graph: true }]}),
+        }));
+        await page.route('**/api/voltage-level-substations', (r) => r.fulfill({
+            status: 200, contentType: 'application/json',
+            body: JSON.stringify({ mapping: { VL1: 'VL1_SUB' }}),
         }));
 
         await page.goto('/');
@@ -240,13 +256,13 @@ test.describe('Demo meta-invariants on config_small_grid', () => {
         // for the react-select interaction rationale (click-type-clickOption
         // beats fill-Enter; react-select filters via keystroke events, not
         // value assignment).
-        // Subscribe BEFORE the actions that trigger /api/n1-diagram —
+        // Subscribe BEFORE the actions that trigger /api/contingency-diagram —
         // see demo_replay.spec.ts:addContingencyAndApply for the
         // race-condition rationale (the mock backend can respond
         // before the waitForResponse promise is set up if it is
         // created after the click).
         const n1DiagramPromise = page.waitForResponse(
-            r => r.url().includes('/api/n1-diagram') && r.request().method() === 'POST',
+            r => r.url().includes('/api/contingency-diagram') && r.request().method() === 'POST',
             { timeout: 30_000 },
         );
 
