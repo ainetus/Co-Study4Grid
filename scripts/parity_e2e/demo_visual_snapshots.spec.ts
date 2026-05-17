@@ -280,7 +280,10 @@ test.describe('Demo visual snapshots', () => {
     });
 
     test('combine modal body — structural snapshot', async ({ page }) => {
-        await page.getByRole('button', { name: /Combine Actions/i }).click();
+        // The button is labelled "++ Combine" in the Simulated Actions
+        // panel (see ActionFeed.tsx, alongside "+ Manual Selection").
+        // `/Combine/i` is unambiguous — only the combine button matches.
+        await page.getByRole('button', { name: /Combine/i }).click();
         await expect(page.locator('[data-testid="combine-modal-body"]')).toBeVisible();
         const html = await captureNormalisedHtml(page, '[data-testid="combine-modal-body"]');
         expect(html).toMatchSnapshot('combine-modal-body.txt');

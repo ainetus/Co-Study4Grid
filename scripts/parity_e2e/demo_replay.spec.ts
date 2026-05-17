@@ -479,7 +479,9 @@ async function editMwAndResimulate(page: Page, actionId: string, mw: number): Pr
 }
 
 async function openCombineModal(page: Page): Promise<void> {
-    await page.getByRole('button', { name: /Combine Actions/i }).click();
+    // The button is labelled "++ Combine" in the Simulated Actions
+    // panel (see ActionFeed.tsx, alongside "+ Manual Selection").
+    await page.getByRole('button', { name: /Combine/i }).click();
     await expect(page.locator('[data-testid="combine-modal-body"]')).toBeVisible();
 }
 
