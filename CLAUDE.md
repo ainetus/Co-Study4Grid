@@ -38,7 +38,10 @@ Co-Study4Grid/
 │   │   └── diagram/               # PR #104 decomposition — layout_cache, nad_params,
 │   │                              # nad_render, sld_render, overloads, flows, deltas,
 │   │                              # obs_prewarm (post-contingency obs cache prewarm
-│   │                              # that lets run_analysis_step1 skip the LF)
+│   │                              # that lets run_analysis_step1 skip the LF),
+│   │                              # action_patch (extracted action-variant patch
+│   │                              # pipeline — keeps diagram_mixin under the LoC
+│   │                              # ceiling)
 │   └── tests/                 # pytest suite — see tests/CLAUDE.md for the mock layer
 ├── frontend/                  # React 19 + TypeScript 5.9 + Vite 7 frontend
 │   ├── CLAUDE.md              # Frontend-scoped guide (App.tsx hub, hooks, SVG levers)

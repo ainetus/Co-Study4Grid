@@ -35,10 +35,18 @@ expert_backend/
 │   │   ├── overloads.py           # - overload filtering, element-currents
 │   │   ├── flows.py               # - branch + asset flow extractors (vectorised)
 │   │   ├── deltas.py              # - terminal-aware flow-delta math (pure)
-│   │   └── obs_prewarm.py         # - post-contingency obs prewarm helper
-│   │                              #   (build_prewarmed_obs) — drives the
-│   │                              #   _cached_obs_n1 cache that lets
-│   │                              #   run_analysis_step1 skip the LF
+│   │   ├── obs_prewarm.py         # - post-contingency obs prewarm helper
+│   │   │                          #   (build_prewarmed_obs) — drives the
+│   │   │                          #   _cached_obs_n1 cache that lets
+│   │   │                          #   run_analysis_step1 skip the LF
+│   │   └── action_patch.py        # - /api/action-variant-diagram-patch
+│   │                              #   pipeline (PR #108): snapshot capture,
+│   │                              #   VL topology diff, focused-NAD subtree
+│   │                              #   extraction, payload orchestrator.
+│   │                              #   compute_vl_topology_diff +
+│   │                              #   get_disconnected_branches_from_snapshot
+│   │                              #   stay re-exported as static methods on
+│   │                              #   DiagramMixin for test backwards-compat.
 │   ├── analysis_mixin.py          # Two-step orchestrator — delegates pure
 │   │                              # numerics to services/analysis/ helpers
 │   ├── analysis/                  # PR #104 decomposition (ex-analysis_mixin):
