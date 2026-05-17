@@ -1,14 +1,26 @@
-# Parity checks between the React frontend and standalone_interface.html.
+# Parity checks between the React frontend and standalone_interface.html,
+# plus the demo-scenario replay suite (config_small_grid coverage).
 #
-# See scripts/PARITY_README.md for the four-layer design. Summary:
-#   Layer 1 — static inventory (events, API paths, settings, schema drift)
-#   Layer 2 — session-reload fidelity (save-vs-restore symmetry)
+# See scripts/PARITY_README.md for the four-layer parity design and
+# scripts/parity_e2e/DEMO_REPLAY_README.md for the demo-replay layers.
+# Summary:
+#   Layer 1  — static inventory (events, API paths, settings, schema drift)
+#   Layer 2  — session-reload fidelity (save-vs-restore symmetry)
 #   Layer 3a — gesture-sequence static proxy (ordered event emission)
-#   Layer 3b — behavioural E2E with Playwright (real DOM, mocked backend)
+#   Layer 3b — behavioural E2E + demo-replay (real DOM, mocked backend):
+#              * `e2e_parity.spec.ts`             — React ↔ standalone parity
+#              * `demo_replay.spec.ts`            — fiche-as-data scenario walker
+#              * `demo_visual_snapshots.spec.ts`  — normalised SVG/HTML diffs
+#              * `demo_meta_invariants.spec.ts`   — console errors, empty
+#                                                   text, pin-count sanity
+#   Layer 4  — user-observable invariants (static source patterns)
 #
-# Layers 1 + 2 + 3a run on every PR (fast, deterministic, no browser).
-# Layer 3b runs nightly + on a PR that carries the `e2e` label — it
-# needs a Playwright-compatible browser and ~90 s per run.
+# Layers 1 + 2 + 3a + 4 run on every PR (fast, deterministic, no browser).
+# The cheap `demo_meta_invariants` slice runs on every PR too (~1 min
+# Chromium install + ~20 s test) — it catches console errors and
+# undefined-id leaks that no static pattern can see.
+# The full Layer 3b suite (parity + replay + snapshots) runs nightly +
+# on PRs labelled `e2e`. ~3 min per run.
 name: Parity
 
 on:
@@ -139,12 +151,60 @@ jobs:
         run: python scripts/check_invariants.py
 
   # -------------------------------------------------------------------
-  # Layer 3b — behavioural E2E with Playwright.  Needs a browser
-  # download, so it only runs nightly (schedule) or when a PR carries
-  # the `e2e` label.  Per-commit gating would be too slow.
+  # Demo meta-invariants — cheap Playwright slice that catches console
+  # errors, empty visible text, undefined-id leaks and pin-count
+  # inconsistencies on the small_grid demo flow. Runs on every PR
+  # because the signal-to-cost ratio is high (~1 min total: Chromium
+  # install + ~20 s test). The full Layer 3b suite still gates on
+  # the `e2e` label / nightly schedule.
+  # -------------------------------------------------------------------
+  demo-meta-invariants:
+    name: 'Demo · meta-invariants (Playwright, fast)'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            scripts/parity_e2e/package-lock.json
+      - name: Install frontend deps + build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+      - name: Install E2E deps
+        working-directory: scripts/parity_e2e
+        run: npm ci
+      - name: Install Playwright Chromium
+        working-directory: scripts/parity_e2e
+        run: npx playwright install --with-deps chromium
+      - name: Run demo meta-invariants only
+        working-directory: scripts/parity_e2e
+        run: npx playwright test demo_meta_invariants.spec.ts
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-demo-meta-report
+          path: scripts/parity_e2e/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # -------------------------------------------------------------------
+  # Layer 3b — behavioural E2E + demo-replay full suite with
+  # Playwright. Runs every spec matched by `playwright.config.ts`'s
+  # testMatch (`*parity.spec.ts` + `demo_*.spec.ts`): the React ↔
+  # standalone parity check, the fiche-as-data scenario walker, the
+  # normalised SVG/HTML snapshot diffs, and the meta-invariants
+  # battery. Browser install + 4 specs ≈ 3 min per run, so this job
+  # only fires nightly or on PRs carrying the `e2e` label.
   # -------------------------------------------------------------------
   layer3b-behavioural-e2e:
-    name: 'Layer 3b · behavioural E2E (Playwright)'
+    name: 'Layer 3b · behavioural E2E + demo replay (Playwright)'
     runs-on: ubuntu-latest
     if: |
       github.event_name == 'schedule'

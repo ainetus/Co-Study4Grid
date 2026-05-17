@@ -162,28 +162,46 @@ guarantees (e.g. the printed legend in a PR-screenshot deliverable),
 extend `demo_visual_snapshots.spec.ts` with `toHaveScreenshot()` on a
 viewport-frozen locator.
 
-## CI wiring
+## CI wiring (landed)
 
-To add to `.github/workflows/parity.yml`:
+`.github/workflows/parity.yml` now ships two Playwright jobs:
 
-```yaml
-  - run: cd frontend && npm ci && npm run build
-  - run: cd scripts/parity_e2e && npm ci
-  - run: cd scripts/parity_e2e && npx playwright install --with-deps chromium
-  - run: cd scripts/parity_e2e && npx playwright test
+| Job | When | What it runs | Cost |
+|-----|------|--------------|------|
+| `demo-meta-invariants` | every push/PR | `demo_meta_invariants.spec.ts` only | ~ 1.5 min |
+| `layer3b-behavioural-e2e` | nightly + PRs with `e2e` label | ALL specs (`e2e_parity` + 3 demo specs) | ~ 3 min |
+
+The fast lane runs on every commit because the meta-invariants
+catch console errors and undefined-id leaks at low cost — bugs no
+static check can see. The full lane stays gated to keep the
+per-commit CI minutes bounded.
+
+## OS-agnostic snapshots
+
+`playwright.config.ts` sets:
+
+```ts
+snapshotPathTemplate: '{testFilePath}-snapshots/{arg}{ext}',
 ```
 
-The three demo specs are independent and run in parallel under
-Playwright workers:
+This drops the default `{-projectName}{-platform}` suffix. Rationale:
+the snapshots in `demo_visual_snapshots.spec.ts` are **text-serialised
++ normalised DOM/SVG** — they carry no antialias, no font rendering,
+no pixel data. The same baseline holds on macOS (dev), Linux (CI) and
+Windows. Per-channel separation (chromium vs firefox) would matter
+only if we add a non-chromium project, which we don't.
 
-| Spec | Approx. runtime |
-|------|---|
-| `demo_replay.spec.ts` (Actes 1-3 + golden diff) | ~ 90 s |
-| `demo_visual_snapshots.spec.ts` (3 surfaces) | ~ 25 s |
-| `demo_meta_invariants.spec.ts` (one battery) | ~ 20 s |
+If you regenerate the baselines, the resulting files are
+`<surface>.txt` (no suffix) — commit them as-is. Existing baselines
+generated with the default template (e.g. `<surface>-chromium-darwin.txt`)
+need to be renamed or regenerated once after this config change:
 
-Wall-clock with 2 workers: ~ 90 s, in line with the existing
-`e2e_parity.spec.ts` budget.
+```bash
+cd scripts/parity_e2e
+rm -rf demo_visual_snapshots.spec.ts-snapshots/
+npx playwright test demo_visual_snapshots.spec.ts --update-snapshots
+git add demo_visual_snapshots.spec.ts-snapshots/
+```
 
 ## Recapturing the golden trace
 
