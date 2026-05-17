@@ -54,6 +54,7 @@ to extend it.
 </td>
 </tr>
 </table>
+
 ### Visualization
 - **Four synchronized tabs** — *Network N*, *Contingency N-1*, *Remedial Action*, *Overflow Analysis* — rendered as pypowsybl Network-Area Diagrams (NAD) with flow-delta overlays. A **Flow ↔ Impacts** view-mode switch on every NAD recolours the branches by post-contingency Δ-rho (orange = newly more loaded, blue = offloaded, grey = unchanged), so the operator reads *cause* of the constraint, not just loading.
 - **Interactive overflow analysis** (PRs #116, #122–#127): the legacy static PDF is replaced by a same-origin HTML viewer with a layer-toggle sidebar (Constrained path, Red-loop, Overloads, Hubs, Reconnectable, Production / Consumption nodes, flow polarities), a hierarchical ↔ geographic layout switch backed by a per-study cache, and a double-click → SLD drill-down on any node. Stackable filters answer the operator's reading of *"if I block my constraint, where does the flow re-report itself?"* directly on the graph. See [`docs/features/interactive-overflow-analysis.md`](docs/features/interactive-overflow-analysis.md).
