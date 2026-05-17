@@ -1054,6 +1054,7 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                             </button>
                         ) : pendingAnalysisResult ? (
                             <button
+                                data-testid="display-prioritized-actions"
                                 onClick={onDisplayPrioritizedActions}
                                 style={{
                                     width: '100%', padding: '10px 16px',
@@ -1116,6 +1117,7 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                                     </div>
                                 )}
                                 <button
+                                    data-testid="analyze-suggest"
                                     onClick={onRunAnalysis}
                                     disabled={!canRunAnalysis}
                                     style={{

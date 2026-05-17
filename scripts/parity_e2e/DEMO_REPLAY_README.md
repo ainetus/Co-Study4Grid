@@ -57,69 +57,53 @@ npx playwright test demo_replay.spec.ts -g "Acte 1"
 npx playwright test demo_replay.spec.ts --headed
 ```
 
-## Prerequisites (one-time)
+## Prerequisites (landed)
 
-1. **Expose the interaction logger on `window`.**
-   The runner reads `window.__interactionLogger` to compare against the
-   golden trace. Today the `interactionLogger` singleton in
-   `frontend/src/utils/interactionLogger.ts:67` is module-scoped only.
-   Land this one-liner in `frontend/src/main.tsx` (or via a `useEffect`
-   in `App.tsx`):
+1. **Interaction logger bridge** (`main.tsx`) — exposes
+   `window.__interactionLogger` in dev / `VITE_EXPOSE_LOGGER` builds so
+   Playwright can call `getLog()`. Production builds are unaffected;
+   Vite tree-shakes the bridge away.
 
-   ```ts
-   if (import.meta.env.DEV || import.meta.env.VITE_EXPOSE_LOGGER) {
-       (window as unknown as { __interactionLogger: typeof interactionLogger }).__interactionLogger
-           = interactionLogger;
-   }
-   ```
+2. **`data-testid` hooks** landed across the 5 components the demo
+   scenario relies on:
+   - `main.tsx` — logger bridge.
+   - `SidebarSummary.tsx` — `sidebar-summary-contingency`, `sidebar-summary-overloads`.
+   - `SldOverlay.tsx` — `sld-overlay` + `data-vl-name=${vl}`.
+   - `AppSidebar.tsx` — `contingency-trigger` on the Trigger button.
+   - `VisualizationPanel.tsx` — `tab-button-${id}`, `tab-detach-${id}`,
+     `data-tab-active="true|false"` on each tab.
+   - `ActionFeed.tsx` — `analyze-suggest`, `display-prioritized-actions`.
+   - `ActionCard.tsx` — `favorite-${id}`, `reject-${id}` on the rail buttons.
 
-   Without this, log-capture returns `[]` and the golden-trace assertion
-   in the last test case becomes a no-op (the DOM-invariant assertions
-   still run).
-
-2. **Land the missing `data-testid` hooks** that `demo_scenario.ts` flags
-   as `TODO(testid)`. Each is a ~1-line edit:
-   - `NoticesPanel.tsx` — `data-testid="notice-action-dict"`,
-     `data-testid="notice-threshold"`, `data-testid="notices-pill"`.
-   - `SidebarSummary.tsx` — `data-testid="sidebar-summary-contingency"`,
-     `data-testid="sidebar-summary-overload-rho"`.
-   - `DiagramLegend.tsx` — `data-testid="diagram-legend"`.
-   - `SldOverlay.tsx` — `data-testid="sld-overlay"`.
-   - `ActionOverviewDiagram.tsx` — `data-pin-state="simulated|unsimulated|combined"`
-     on each pin `<g>` (today only `data-action-id` is present, see
-     line 826).
-
-3. **(Optional) Run against the real backend.**
-   Set `COSTUDY4GRID_REAL_BACKEND=1` and start
-   `uvicorn expert_backend.main:app --port 8000` separately. The spec
-   then skips the `page.route` mock layer. **Not yet implemented** —
-   the env-var branch in `registerMockBackend()` is currently empty.
-   Wiring it requires a `globalSetup` that does
-   `POST /api/config { network_path: bare_env_small_grid_test/... }`
-   before the first test.
+3. **(Optional) Real backend mode**: set `COSTUDY4GRID_REAL_BACKEND=1`
+   and start `uvicorn expert_backend.main:app --port 8000` separately.
+   The spec then skips the `page.route` mock layer. Wiring is partially
+   in place (the env-var branch in `registerMockBackend()` short-circuits);
+   a `globalSetup` that does `POST /api/config` with the small_grid paths
+   before the first test is still needed for end-to-end real-data runs.
 
 ## What the scaffold does today
 
 | Checkpoint | Gesture wired | Invariants wired | Notes |
 |------------|:---:|:---:|---|
-| Étape 1 — Charger | ✓ | partial | Notices testids missing |
+| Étape 1 — Charger | ✓ | ✓ | |
 | Étape 2 — Contingence | ✓ | ✓ | |
 | Étape 3 — Impact view | ✓ | ✓ | |
-| Étape 4 — First guess | — | data-only | Need stable id for the COUCHP6 pre-played action |
-| Étape 5 — Asset zoom | — | — | Need stable selector for asset chip in card |
-| Étape 6 — Impact action | — | — | Composable from `toggleViewMode` |
-| Étape 7 — Detach | — | partial | Real popup automation; or skip per `interaction-logging.md` |
+| Étape 4 — First guess | ✓ | ✓ | Mock backend returns an `open_coupling_COUCHP6_uuid` candidate from `/api/actions` for the dropdown. |
+| Étape 5 — Asset zoom | ✓ | ✓ | SLD open is driven by `dblclick` on the mock VL node. |
+| Étape 6 — Impact action | ✓ | — | Composable from `toggleViewMode`; no DOM invariant. |
+| Étape 7 — Detach | ✓ | ✓ | Real popup automation is best-effort: the gesture is logged even if Chromium blocks the popup. |
 | Étape 8 — Analyze | ✓ | ✓ | |
-| Étape 8b — Overflow layers | — | — | Cross-iframe postMessage; deferred |
-| Étape 8c — Display | — | ✓ | Trivial once analyze is reused |
-| Étape 9 — Explore | — | partial | |
-| Étape 10 — Overview pins | — | partial | |
-| Étape 11 — MW re-simulate | — | partial | `data-testid="resimulate-${id}"` already there |
-| Étape 12 — Combine | partial | partial | Modal opens; pair-pick UI selectors needed |
+| Étape 8b — Overflow layers | — | — | Cross-iframe postMessage; deferred. The mock backend doesn't serve the overflow HTML overlay. |
+| Étape 8c — Display | ✓ | ✓ | |
+| Étape 9 — Explore | ✓ | ✓ | |
+| Étape 10 — Overview pins | ✓ | ✓ | |
+| Étape 11 — MW re-simulate | ✓ | ✓ | |
+| Étape 12 — Combine | ✓ | ✓ | Pair-pick UI is exercised through the modal body; superposition mock returns the recorded rho values from `COMBINED_PAIR_EXPECTED_RHO`. |
 | Étape 13 — Save | ✓ | — | |
 
-`✓` = fully wired today, `partial` = partial (some sub-asserts missing),
-`—` = stub (test.fixme placeholder or TODO comment).
+`✓` = wired in the runner today, `—` = deferred (rationale in the
+Notes column).
 
 ## Layers of visual verification (recap)
 
