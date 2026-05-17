@@ -374,6 +374,33 @@ class AnalysisMixin:
         # See docs/performance/history/grid2op-shared-network.md.
         self._ensure_n_state_ready()
         _t0 = time.time()
+        # Re-use the post-contingency observation pre-warmed by
+        # ``get_contingency_diagram`` if the cache key still matches the
+        # contingency we are about to analyse. Saves a redundant AC load
+        # flow (the heaviest step in the pipeline) on every analysis run.
+        # Cache miss / mismatch falls back to the upstream
+        # ``simulate_contingency_pypowsybl`` path inside ``run_analysis_step1``.
+        # SAFETY GATE: the diagram path applies the contingency only —
+        # NOT any maintenance reconnections. With the default
+        # ``DO_RECO_MAINTENANCE=False`` the analysis path also skips
+        # those reconnections (empty action), so the two states are
+        # equivalent and the cache is safe to reuse. When the operator
+        # opts into maintenance reconnections, fall back to the full
+        # path so the analysis state matches the upstream contract.
+        prebuilt_obs = None
+        cont_variant = self._contingency_variant_id(list(norm))
+        cache_safe = not getattr(config, "DO_RECO_MAINTENANCE", False)
+        if (
+            cache_safe
+            and getattr(self, "_cached_obs_n1", None) is not None
+            and getattr(self, "_cached_obs_n1_id", None) == cont_variant
+            and getattr(self, "_cached_obs_n1_elements", None) == tuple(norm)
+        ):
+            prebuilt_obs = self._cached_obs_n1
+            logger.info(
+                "[Step 1] Re-using cached post-contingency obs for %s "
+                "(skips contingency load-flow)", list(norm),
+            )
         try:
             res_step1, context = run_analysis_step1(
                 analysis_date=config.DATE,
@@ -383,6 +410,7 @@ class AnalysisMixin:
                 fast_mode=getattr(config, "PYPOWSYBL_FAST_MODE", True),
                 dict_action=self._dict_action,
                 prebuilt_env_context=self._cached_env_context,
+                prebuilt_obs_simu_defaut=prebuilt_obs,
             )
             self._last_disconnected_elements = list(norm)
             # Stash the wall-clock so step 2 can forward it to the result

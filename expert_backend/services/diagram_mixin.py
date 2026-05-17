@@ -234,9 +234,58 @@ class DiagramMixin:
             )
             diagram["lines_overloaded"] = names
             diagram["lines_overloaded_rho"] = rhos
+            # Pre-warm the post-contingency observation cache while the
+            # variant is already set. Step 1 of the analysis pipeline
+            # then re-uses this observation instead of running a second
+            # AC load flow on a fresh variant. The cache key is the
+            # contingency variant ID; switching to a different
+            # contingency naturally falls back to a fresh build.
+            if converged:
+                try:
+                    self._cache_obs_for_variant(n, variant_id, norm)
+                except Exception as exc:
+                    # Pre-warming is a best-effort optimisation — a failure
+                    # here must never break the diagram fetch. Step 1 will
+                    # just rebuild the obs the slow way.
+                    logger.debug("[RECO] obs prewarm skipped for %s: %s", norm, exc)
             return diagram
         finally:
             n.set_working_variant(original_variant)
+
+    def _cache_obs_for_variant(self, n, variant_id: str, disconnected_elements):
+        """Build a ``PypowsyblObservation`` for the currently-active
+        variant and store it on ``_cached_obs_n1`` / ``_cached_obs_n1_id``.
+
+        ``n`` is assumed to already be positioned on ``variant_id`` (the
+        caller owns the variant lifecycle). The observation is built via
+        the SimulationEnvironment that ``run_analysis_step1`` will reuse
+        (``_cached_env_context['env']``) so it is byte-for-byte
+        equivalent to what ``simulate_contingency_pypowsybl`` would have
+        produced — same network, same thermal limits, same action_space.
+        """
+        env = None
+        if self._cached_env_context is not None:
+            env = self._cached_env_context.get("env")
+        if env is None:
+            try:
+                env = self._get_simulation_env()
+            except Exception as exc:
+                logger.debug("[RECO] no simulation env yet for prewarm: %s", exc)
+                return
+        if env is None:
+            return
+        obs = env.get_obs()
+        obs._variant_id = variant_id
+        self._cached_obs_n1 = obs
+        self._cached_obs_n1_id = variant_id
+        # Stamp the contingency too so the analysis-side reuse check can
+        # validate against the exact element list (not just the variant
+        # name) before trusting the cache.
+        self._cached_obs_n1_elements = tuple(disconnected_elements or ())
+        logger.info(
+            "[RECO] Pre-warmed post-contingency obs for %s (variant=%s)",
+            disconnected_elements, variant_id,
+        )
 
     def get_action_variant_diagram(self, action_id, voltage_level_ids=None, depth=0, mode="network"):
         """Generate a NAD showing the network state after applying a remedial action.

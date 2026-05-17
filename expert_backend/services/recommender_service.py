@@ -71,6 +71,11 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
         self._cached_obs_n_id = None
         self._cached_obs_n1 = None
         self._cached_obs_n1_id = None
+        # Tuple of contingency element IDs that produced ``_cached_obs_n1``.
+        # Lets ``run_analysis_step1`` validate the cache against the exact
+        # element list before trusting it (defense-in-depth on top of the
+        # variant-ID check).
+        self._cached_obs_n1_elements: tuple[str, ...] | None = None
         # Pre-built SimulationEnvironment reused across contingency analyses
         self._cached_env_context = None
         # N-state PST tap positions captured at network load time
@@ -141,6 +146,7 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
         self._cached_obs_n_id = None
         self._cached_obs_n1 = None
         self._cached_obs_n1_id = None
+        self._cached_obs_n1_elements = None
         self._cached_env_context = None
         self._initial_pst_taps = None
         self._lf_status_by_variant = {}
