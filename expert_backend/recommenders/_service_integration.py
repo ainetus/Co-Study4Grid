@@ -209,14 +209,19 @@ def _run_analysis_step2_with_model(
                 yield {"type": "pdf", "pdf_path": None}
 
         params = {"n_prioritized_actions": config.N_PRIORITIZED_ACTIONS}
-        _pred_t0 = time.time()
         results = analysis_mixin.run_analysis_step2_discovery(
             context, recommender=recommender, params=params,
         )
-        action_prediction_time = time.time() - _pred_t0
+        # The upstream library returns the model's intrinsic
+        # ``recommend()`` time as ``prediction_time`` and the
+        # re-simulation of the prioritized actions (which scales linearly
+        # with the action count) as ``assessment_time``. Pull them out
+        # of the result dict so the React UI can show the same
+        # breakdown the upstream developer is looking at.
+        action_prediction_time = float(results.pop("prediction_time", 0.0) or 0.0)
+        assessment_time = float(results.pop("assessment_time", 0.0) or 0.0)
         self._last_result = results
 
-        _assess_t0 = time.time()
         enriched_actions = self._enrich_actions(
             results["prioritized_actions"],
             lines_overloaded_names=results.get("lines_overloaded_names"),
@@ -232,7 +237,6 @@ def _run_analysis_step2_with_model(
         action_scores = self._compute_mw_start_for_scores(
             results.get("action_scores", {})
         )
-        assessment_time = time.time() - _assess_t0
 
         logger.info(
             "[Step 2] model=%s yielding result event with %d enriched actions "

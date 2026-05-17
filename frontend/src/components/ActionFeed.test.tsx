@@ -3137,7 +3137,7 @@ describe('ActionFeed', () => {
             expect(screen.queryByTestId('active-model-reminder')).not.toBeInTheDocument();
         });
 
-        it('shows an execution-time breakdown next to the active-model label', () => {
+        it('shows the total execution time next to the active-model label with a breakdown tooltip', () => {
             render(
                 <ActionFeed
                     {...defaultProps}
@@ -3148,15 +3148,17 @@ describe('ActionFeed', () => {
                     assessmentTime={0.4}
                 />,
             );
-            const breakdown = screen.getByTestId('execution-time-breakdown');
+            const total = screen.getByTestId('execution-time-total');
             // Total = overflow + prediction + assessment = 4.15s
-            expect(breakdown).toHaveTextContent(/Total:\s*4\.15s/);
-            expect(breakdown).toHaveTextContent(/overflow analysis\s*2\.50s/);
-            expect(breakdown).toHaveTextContent(/action prediction\s*1\.25s/);
-            expect(breakdown).toHaveTextContent(/assessment\s*0\.40s/);
+            expect(total).toHaveTextContent(/4\.15s/);
+            // The breakdown lives in the native tooltip so the line stays compact.
+            const tooltip = total.getAttribute('title') ?? '';
+            expect(tooltip).toMatch(/Overflow analysis:\s*2\.50s/);
+            expect(tooltip).toMatch(/Action prediction:\s*1\.25s/);
+            expect(tooltip).toMatch(/Action assessment:\s*0\.40s/);
         });
 
-        it('omits the overflow-analysis column when the model does not consume the graph', () => {
+        it('omits the overflow-analysis line from the tooltip when the model does not consume the graph', () => {
             render(
                 <ActionFeed
                     {...defaultProps}
@@ -3167,14 +3169,15 @@ describe('ActionFeed', () => {
                     assessmentTime={0.2}
                 />,
             );
-            const breakdown = screen.getByTestId('execution-time-breakdown');
-            expect(breakdown).toHaveTextContent(/Total:\s*1\.00s/);
-            expect(breakdown).toHaveTextContent(/action prediction/);
-            expect(breakdown).toHaveTextContent(/assessment/);
-            expect(breakdown).not.toHaveTextContent(/overflow analysis/);
+            const total = screen.getByTestId('execution-time-total');
+            expect(total).toHaveTextContent(/1\.00s/);
+            const tooltip = total.getAttribute('title') ?? '';
+            expect(tooltip).toMatch(/Action prediction/);
+            expect(tooltip).toMatch(/Action assessment/);
+            expect(tooltip).not.toMatch(/Overflow analysis/);
         });
 
-        it('hides the execution-time breakdown when no timings are reported', () => {
+        it('hides the execution-time total when no timings are reported', () => {
             render(
                 <ActionFeed
                     {...defaultProps}
@@ -3182,7 +3185,7 @@ describe('ActionFeed', () => {
                     activeModelLabel="Expert system"
                 />,
             );
-            expect(screen.queryByTestId('execution-time-breakdown')).not.toBeInTheDocument();
+            expect(screen.queryByTestId('execution-time-total')).not.toBeInTheDocument();
         });
 
         it('Clear button calls onClearSuggested', () => {

@@ -546,12 +546,15 @@ class AnalysisMixin:
                        "overflow_graph_time": overflow_graph_time}
 
             # Part 2: action discovery
-            _pred_t0 = time.time()
             results = run_analysis_step2_discovery(context)
-            action_prediction_time = time.time() - _pred_t0
+            # Upstream now returns model-prediction and action-assessment
+            # times alongside the result payload (the model's intrinsic
+            # ``recommend()`` call vs. the per-action re-simulation that
+            # scales with the prioritized-action count).
+            action_prediction_time = float(results.pop("prediction_time", 0.0) or 0.0)
+            assessment_time = float(results.pop("assessment_time", 0.0) or 0.0)
             self._last_result = results
 
-            _assess_t0 = time.time()
             enriched_actions = self._enrich_actions(
                 results["prioritized_actions"],
                 lines_overloaded_names=results.get("lines_overloaded_names"),
@@ -569,7 +572,6 @@ class AnalysisMixin:
             self._augment_combined_actions_with_target_max_rho(results, context)
 
             action_scores = self._compute_mw_start_for_scores(results.get("action_scores", {}))
-            assessment_time = time.time() - _assess_t0
 
             logger.info(
                 "[Step 2] Yielding final result event with %d enriched actions "

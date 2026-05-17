@@ -1019,6 +1019,17 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                         + (hasAssessment ? assessmentTime! : 0)
                         + (hasOverflow ? overflowGraphTime! : 0);
                     const showBreakdown = hasPrediction || hasAssessment || hasOverflow;
+                    // Native <title> tooltip lists the per-stage breakdown
+                    // so the operator can see where each chunk of the
+                    // total came from on hover, without dedicating
+                    // sidebar real-estate to a four-column row.
+                    const breakdownLines: string[] = [];
+                    if (hasOverflow) breakdownLines.push(`Overflow analysis: ${fmt(overflowGraphTime!)}`);
+                    if (hasPrediction) breakdownLines.push(`Action prediction: ${fmt(actionPredictionTime!)}`);
+                    if (hasAssessment) breakdownLines.push(`Action assessment: ${fmt(assessmentTime!)}`);
+                    const breakdownTooltip = breakdownLines.length
+                        ? `Total execution time breakdown\n  ${breakdownLines.join('\n  ')}`
+                        : '';
                     return (
                         <div
                             data-testid="active-model-reminder"
@@ -1029,7 +1040,30 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                             }}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                                <span>Suggestions produced by <strong style={{ fontStyle: 'normal', color: colors.textSecondary }}>{activeModelLabel}</strong></span>
+                                <span>
+                                    Suggestions produced by <strong style={{ fontStyle: 'normal', color: colors.textSecondary }}>{activeModelLabel}</strong>
+                                    {showBreakdown && (
+                                        <>
+                                            {' '}in{' '}
+                                            <span
+                                                data-testid="execution-time-total"
+                                                title={breakdownTooltip}
+                                                style={{
+                                                    fontStyle: 'normal', cursor: 'help',
+                                                    fontVariantNumeric: 'tabular-nums',
+                                                    color: colors.textSecondary, fontWeight: 600,
+                                                    borderBottom: `1px dotted ${colors.borderStrong}`,
+                                                }}
+                                            >
+                                                {fmt(total)}
+                                                <span aria-hidden="true" style={{
+                                                    marginLeft: '3px', fontWeight: 700,
+                                                    color: colors.textTertiary, fontSize: '10px',
+                                                }}>&#9432;</span>
+                                            </span>
+                                        </>
+                                    )}
+                                </span>
                                 {onClearSuggested && (
                                     <button
                                         type="button"
@@ -1052,45 +1086,6 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                                     </button>
                                 )}
                             </div>
-                            {showBreakdown && (
-                                <div
-                                    data-testid="execution-time-breakdown"
-                                    title="Execution time breakdown for this analysis run"
-                                    style={{
-                                        display: 'flex', flexWrap: 'wrap',
-                                        alignItems: 'center', columnGap: '8px', rowGap: '2px',
-                                        fontStyle: 'normal', color: colors.textTertiary,
-                                        fontVariantNumeric: 'tabular-nums',
-                                    }}
-                                >
-                                    <span>
-                                        Total:&nbsp;
-                                        <strong style={{ color: colors.textSecondary }}>{fmt(total)}</strong>
-                                    </span>
-                                    <span style={{ color: colors.borderStrong }}>·</span>
-                                    {hasOverflow && (
-                                        <>
-                                            <span title="Time to build the overflow analysis graph">
-                                                overflow analysis&nbsp;<strong style={{ color: colors.textSecondary }}>{fmt(overflowGraphTime!)}</strong>
-                                            </span>
-                                            <span style={{ color: colors.borderStrong }}>·</span>
-                                        </>
-                                    )}
-                                    {hasPrediction && (
-                                        <>
-                                            <span title="Time the model spent producing action suggestions">
-                                                action prediction&nbsp;<strong style={{ color: colors.textSecondary }}>{fmt(actionPredictionTime!)}</strong>
-                                            </span>
-                                            {hasAssessment && <span style={{ color: colors.borderStrong }}>·</span>}
-                                        </>
-                                    )}
-                                    {hasAssessment && (
-                                        <span title="Time spent assessing / enriching the proposed actions">
-                                            assessment&nbsp;<strong style={{ color: colors.textSecondary }}>{fmt(assessmentTime!)}</strong>
-                                        </span>
-                                    )}
-                                </div>
-                            )}
                         </div>
                     );
                 })()}
