@@ -18,9 +18,9 @@ import { ActionTypeIcon } from './ActionTypeIcon';
  *
  *  - the SEVERITY ring — colour-coded pictograms (one per outcome
  *    bucket: solved / low-margin / still-overloaded / divergent).
- *    Single-click toggles one bucket on/off; double-click "solos" it
- *    (enables only that bucket) and double-clicking the solo bucket
- *    again restores the full set.
+ *    Single-click "solos" the bucket (enables only that outcome) and
+ *    single-clicking the soloed bucket again restores the full set;
+ *    double-click toggles one bucket on/off without touching the others.
  *  - the ACTION-TYPE ring — uncoloured pictograms (disco / reco /
  *    open / close / ls / rc / pst). Single-select; re-clicking the
  *    active one clears back to `all`.
@@ -118,21 +118,23 @@ const ActionFilterRings: React.FC<ActionFilterRingsProps> = ({ filters, onFilter
         onFiltersChange({ ...f, categories });
     }, [onFiltersChange]);
 
-    // Single-click toggles one bucket, double-click solos it. The
-    // single-click action is deferred by one double-click window so a
-    // double-click does not also fire two stray toggles first.
+    // Single-click solos one bucket (or restores all if it is already
+    // the lone enabled one); double-click toggles the bucket on/off
+    // without touching the others. The single-click action is deferred
+    // by one double-click window so a double-click does not also fire
+    // a stray solo first.
     const handleCategoryClick = useCallback((cat: ActionSeverityCategory) => {
         const timers = clickTimers.current;
         const pending = timers.get(cat);
         if (pending !== undefined) {
             clearTimeout(pending);
             timers.delete(cat);
-            soloCategory(cat);
+            toggleCategory(cat);
             return;
         }
         const timer = setTimeout(() => {
             timers.delete(cat);
-            toggleCategory(cat);
+            soloCategory(cat);
         }, DOUBLE_CLICK_MS);
         timers.set(cat, timer);
     }, [soloCategory, toggleCategory]);
@@ -189,7 +191,7 @@ const ActionFilterRings: React.FC<ActionFilterRingsProps> = ({ filters, onFilter
                             type="button"
                             data-testid={`sidebar-filter-category-${cat}`}
                             aria-pressed={enabled}
-                            title={`${label} — click to ${enabled ? 'hide' : 'show'}, double-click to isolate`}
+                            title={`${label} — click to isolate, double-click to ${enabled ? 'hide' : 'show'}`}
                             onClick={() => handleCategoryClick(cat)}
                             style={{
                                 ...toggleBase,
