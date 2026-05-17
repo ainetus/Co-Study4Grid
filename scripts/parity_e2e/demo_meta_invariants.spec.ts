@@ -230,11 +230,19 @@ test.describe('Demo meta-invariants on config_small_grid', () => {
         await page.waitForResponse(r => r.url().includes('/api/network-diagram'));
         await runMetaInvariantBattery(page, 'after Load Study');
 
-        // Contingency
-        const sel = page.locator('.cs4g-contingency__input').first();
-        await sel.fill(SMALL_GRID_CONTINGENCY);
-        await page.keyboard.press('Enter');
-        await page.locator('[data-testid="contingency-trigger"]').click();
+        // Contingency — see demo_replay.spec.ts:addContingencyAndApply
+        // for the react-select interaction rationale (click-type-clickOption
+        // beats fill-Enter; react-select filters via keystroke events, not
+        // value assignment).
+        const combobox = page.getByRole('combobox').first();
+        await combobox.click();
+        await combobox.pressSequentially(SMALL_GRID_CONTINGENCY);
+        const option = page.locator('.cs4g-contingency__option', { hasText: SMALL_GRID_CONTINGENCY }).first();
+        await option.waitFor({ state: 'visible', timeout: 5000 });
+        await option.click();
+        const trigger = page.locator('[data-testid="contingency-trigger"]');
+        await expect(trigger).toBeEnabled({ timeout: 5000 });
+        await trigger.click();
         await page.waitForResponse(r => r.url().includes('/api/n1-diagram'));
         await runMetaInvariantBattery(page, 'after contingency');
 

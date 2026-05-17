@@ -299,11 +299,28 @@ async function loadStudy(page: Page): Promise<void> {
 }
 
 async function addContingencyAndApply(page: Page, element: string): Promise<void> {
-    // react-select with classNamePrefix="cs4g-contingency".
-    const input = page.locator('.cs4g-contingency__input').first();
-    await input.fill(element);
-    await page.keyboard.press('Enter');
-    await page.locator('[data-testid="contingency-trigger"]').click();
+    // react-select pattern (mirrors frontend/src/App.contingency.test.tsx:169):
+    //   - target `role="combobox"` (NOT the `.cs4g-contingency__input`
+    //     directly — react-select exposes the accessible role on the
+    //     control wrapper)
+    //   - click to focus and open the menu
+    //   - pressSequentially to type char-by-char so react-select's
+    //     `onChange` filter fires per keystroke (`.fill()` sets the
+    //     raw value and the filter never runs → option list stays empty
+    //     → Enter is a no-op → Trigger button stays disabled)
+    //   - click the matching option instead of Enter for determinism
+    //     (Enter relies on first-option highlight which is not
+    //     guaranteed across react-select versions).
+    const combobox = page.getByRole('combobox').first();
+    await combobox.click();
+    await combobox.pressSequentially(element);
+    const option = page.locator('.cs4g-contingency__option', { hasText: element }).first();
+    await option.waitFor({ state: 'visible', timeout: 5000 });
+    await option.click();
+
+    const trigger = page.locator('[data-testid="contingency-trigger"]');
+    await expect(trigger).toBeEnabled({ timeout: 5000 });
+    await trigger.click();
     await page.waitForResponse(r => r.url().includes('/api/n1-diagram'));
 }
 

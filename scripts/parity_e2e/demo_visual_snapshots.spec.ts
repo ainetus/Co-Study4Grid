@@ -202,10 +202,17 @@ test.describe('Demo visual snapshots', () => {
         await page.waitForResponse(r => r.url().includes('/api/network-diagram'));
 
         // Set the contingency + run analysis to get the action feed + overview populated.
-        const sel = page.locator('.cs4g-contingency__input').first();
-        await sel.fill(SMALL_GRID.contingency);
-        await page.keyboard.press('Enter');
-        await page.locator('[data-testid="contingency-trigger"]').click();
+        // react-select pattern — see demo_replay.spec.ts:addContingencyAndApply
+        // for the rationale (click-type-clickOption beats fill-Enter).
+        const combobox = page.getByRole('combobox').first();
+        await combobox.click();
+        await combobox.pressSequentially(SMALL_GRID.contingency);
+        const option = page.locator('.cs4g-contingency__option', { hasText: SMALL_GRID.contingency }).first();
+        await option.waitFor({ state: 'visible', timeout: 5000 });
+        await option.click();
+        const trigger = page.locator('[data-testid="contingency-trigger"]');
+        await expect(trigger).toBeEnabled({ timeout: 5000 });
+        await trigger.click();
         await page.waitForResponse(r => r.url().includes('/api/n1-diagram'));
 
         await page.locator('[data-testid="analyze-suggest"]').click();
