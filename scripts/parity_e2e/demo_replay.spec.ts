@@ -133,8 +133,14 @@ async function registerMockBackend(page: Page): Promise<void> {
 
     await page.route('**/api/user-config', (route: Route) =>
         route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
-            network_path: '', action_file_path: '', layout_path: '',
-            output_folder_path: '', lines_monitoring_path: '',
+            // Non-empty paths so the Settings modal does NOT auto-open
+            // on boot — otherwise it stays mounted over the sidebar and
+            // blocks every interaction with the contingency combobox.
+            network_path: '/data/bare_env_small_grid_test/grid.xiidm',
+            action_file_path: '/data/action_space/reduced_model_actions_test.json',
+            layout_path: '/data/bare_env_small_grid_test/grid_layout.json',
+            output_folder_path: '/data/sessions',
+            lines_monitoring_path: '',
             min_line_reconnections: 2.0, min_close_coupling: 3.0,
             min_open_coupling: 2.0, min_line_disconnections: 3.0,
             min_pst: 1.0, min_load_shedding: 2.0,
@@ -312,8 +318,13 @@ async function addContingencyAndApply(page: Page, element: string): Promise<void
     //     (Enter relies on first-option highlight which is not
     //     guaranteed across react-select versions).
     const combobox = page.getByRole('combobox').first();
+    // The Select Contingency block only renders once `branches.length > 0`.
+    // /api/branches fires in parallel with /api/network-diagram in
+    // applySettingsImmediate; loadStudy() only waits for the latter, so we
+    // wait here for the combobox itself to be mounted.
+    await combobox.waitFor({ state: 'visible', timeout: 10000 });
     await combobox.click();
-    await combobox.pressSequentially(element);
+    await combobox.pressSequentially(element, { delay: 30 });
     const option = page.locator('.cs4g-contingency__option', { hasText: element }).first();
     await option.waitFor({ state: 'visible', timeout: 5000 });
     await option.click();
