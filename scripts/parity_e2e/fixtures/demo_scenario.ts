@@ -101,13 +101,14 @@ export const DEMO_SCENARIO: ScenarioCheckpoint[] = [
                 visible: true,
             },
             {
-                description: 'Notices pill shows active notices count',
+                description: 'Notices pill is visible (notices exist post-load)',
                 selector: '[data-testid="notices-pill"]',
                 visible: true,
             },
-            // TODO(testid): assert notices panel content (action-dict line, threshold 95%).
-            // Need `data-testid="notice-action-dict"` and `data-testid="notice-threshold"`
-            // landed on NoticesPanel.tsx items.
+            // Per-notice content (action-dict line, threshold 95%) lives in
+            // `data-testid="notice-${notice.id}"` cards inside the panel.
+            // To assert content, the spec must open the pill first; see the
+            // Acte 1 helper `openNoticesAndAssert` in demo_replay.spec.ts.
         ],
     },
     {
@@ -137,9 +138,11 @@ export const DEMO_SCENARIO: ScenarioCheckpoint[] = [
                 selector: '[data-testid="sidebar-summary-contingency"]',
                 visible: true,
             },
-            // TODO(testid): add data-testid on the overload rho row in
-            // SidebarSummary so we can assert rho is displayed (Étape 2:
-            // "traçabilité [...] du taux de charge").
+            {
+                description: 'Sidebar summary shows the overload row (rho %)',
+                selector: '[data-testid="sidebar-summary-overloads"]',
+                visible: true,
+            },
         ],
     },
     {
@@ -168,8 +171,13 @@ export const DEMO_SCENARIO: ScenarioCheckpoint[] = [
                 count: { min: 1 },
             },
             {
-                description: 'Legend visible while in delta mode',
-                selector: '[data-testid="diagram-legend"]',
+                description: 'Legend pill is mounted on the contingency tab',
+                // DiagramLegend renders the collapsed pill by default
+                // (`data-testid="diagram-legend-pill-{tab}"`); clicking it
+                // expands to `data-testid="diagram-legend-{tab}"`. The fiche
+                // step 3 explicitly mentions opening the legend — to assert
+                // the expanded panel, the runner can click the pill first.
+                selector: '[data-testid="diagram-legend-pill-contingency"]',
                 visible: true,
             },
         ],
@@ -213,7 +221,7 @@ export const DEMO_SCENARIO: ScenarioCheckpoint[] = [
         invariants: [
             {
                 description: 'SLD overlay is rendered for COUCHP6',
-                selector: '[data-testid="sld-overlay"]',
+                selector: '[data-testid="sld-overlay"][data-vl-name="COUCHP6"]',
                 visible: true,
             },
             // TODO(testid): assert the disjoncteur manipulé is highlighted
@@ -371,9 +379,18 @@ export const DEMO_SCENARIO: ScenarioCheckpoint[] = [
                 selector: '[data-testid="overview-pin-counter"]',
                 visible: true,
             },
-            // TODO(testid): assert that at least one dashed unsimulated pin
-            // becomes visible after `Show unsimulated` is enabled. Need a
-            // `data-pin-state` discriminator on the pin <g>.
+            {
+                description: 'At least one unsimulated dashed pin once Show unsimulated is on',
+                // Existing markers already discriminate the three pin
+                // states without needing a new data-pin-state attribute:
+                //   simulated  : .nad-action-overview-pin without
+                //                .nad-combined-action-pin or
+                //                [data-unsimulated]
+                //   unsimulated: .nad-action-overview-pin[data-unsimulated="true"]
+                //   combined   : .nad-action-overview-pin.nad-combined-action-pin
+                selector: '[data-testid="action-overview-diagram"] .nad-action-overview-pin[data-unsimulated="true"]',
+                count: { min: 1 },
+            },
         ],
     },
     {
@@ -433,7 +450,14 @@ export const DEMO_SCENARIO: ScenarioCheckpoint[] = [
             },
             {
                 description: 'Two new combined cards now appear in the feed',
+                // Combined ids carry a "+" separator (see
+                // CombinedActionsModal.tsx:455 + combine_pair_simulated payload).
                 selector: '[data-testid^="action-card-"][data-action-id*="+"]',
+                count: { min: 2 },
+            },
+            {
+                description: 'Two combined pins now visible on the overview',
+                selector: '[data-testid="action-overview-diagram"] .nad-combined-action-pin',
                 count: { min: 2 },
             },
         ],

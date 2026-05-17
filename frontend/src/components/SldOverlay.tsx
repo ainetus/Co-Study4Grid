@@ -800,14 +800,18 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
     };
 
     return (
-        <div style={{
-            position: 'absolute', top: overlayPos.y + 'px', left: overlayPos.x + 'px',
-            width: '440px', height: '420px', minWidth: '220px', minHeight: '150px',
-            background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '8px',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.22)', zIndex: 45,
-            display: 'flex', flexDirection: 'column', overflow: 'hidden',
-            resize: 'both', boxSizing: 'border-box',
-        }}>
+        <div
+            data-testid="sld-overlay"
+            data-vl-name={vlOverlay.vlName}
+            style={{
+                position: 'absolute', top: overlayPos.y + 'px', left: overlayPos.x + 'px',
+                width: '440px', height: '420px', minWidth: '220px', minHeight: '150px',
+                background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '8px',
+                boxShadow: '0 4px 24px rgba(0,0,0,0.22)', zIndex: 45,
+                display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                resize: 'both', boxSizing: 'border-box',
+            }}
+        >
             {/* Header — drag handle */}
             <div
                 onMouseDown={startOverlayDrag}

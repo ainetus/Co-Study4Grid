@@ -73,7 +73,10 @@ export default function SidebarSummary({
       }}
     >
       {hasContingency && (
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: space[1], flexWrap: 'wrap' }}>
+        <div
+          data-testid="sidebar-summary-contingency"
+          style={{ display: 'flex', alignItems: 'baseline', gap: space[1], flexWrap: 'wrap' }}
+        >
           <span style={{ color: colors.textSecondary, fontWeight: 600, whiteSpace: 'nowrap' }}>
             ⚡ Contingency{selectedContingency.length > 1 ? ` (N-${selectedContingency.length})` : ''}:
           </span>
@@ -103,7 +106,10 @@ export default function SidebarSummary({
         </div>
       )}
       {hasOverloads && (
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: space[1] }}>
+        <div
+          data-testid="sidebar-summary-overloads"
+          style={{ display: 'flex', alignItems: 'baseline', gap: space[1] }}
+        >
           <span style={{ color: colors.dangerStrong, fontWeight: 600, whiteSpace: 'nowrap' }}>⚠️ Overloads:</span>
           <span style={{ wordBreak: 'break-word' }}>
             {n1LinesOverloaded!.map((name, i) => {
