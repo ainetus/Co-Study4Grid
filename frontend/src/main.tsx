@@ -11,6 +11,12 @@ import './styles/tokens.css'
 import './index.css'
 import App from './App.tsx'
 import ErrorBoundary from './components/ErrorBoundary.tsx'
+import { interactionLogger } from './utils/interactionLogger'
+
+if (import.meta.env.DEV || import.meta.env.VITE_EXPOSE_LOGGER) {
+  (window as unknown as { __interactionLogger: typeof interactionLogger }).__interactionLogger
+    = interactionLogger;
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -111,7 +111,7 @@ en bout, sur ~2,5 k LoC.
 
 ```
 POST /api/config              GET  /api/network-diagram
-GET  /api/branches            POST /api/n1-diagram
+GET  /api/branches            POST /api/contingency-diagram
 GET  /api/voltage-levels      POST /api/run-analysis  (NDJSON streaming)
 GET  /api/pick-path           ↳ via tkinter en subprocess
 ```
@@ -339,7 +339,7 @@ sequenceDiagram
     participant R as Recommender
 
     U->>F: Sélectionne contingence
-    F->>B: POST /api/n1-diagram
+    F->>B: POST /api/contingency-diagram
     B-->>F: SVG N-1 + lines_overloaded
     F-->>U: Affiche N-1 + halos surcharges
 
@@ -468,7 +468,7 @@ graph LR
     B -- "PRs cleanup<br/>22-28/03" --> B2["~800 LoC"]
     B2 -- "PR #74 (08/04)<br/>Header + 3 modals" --> C["~650 LoC"]
     C -- "PR #75 (08/04)<br/>useCallback + React.memo" --> D["~650 LoC<br/>memoizé"]
-    D -- "PR #109 (post-0.5.0)<br/>useN1Fetch + Sidebar" --> E["~1 150 LoC<br/>orchestration hub"]
+    D -- "PR #109 (post-0.5.0)<br/>useContingencyFetch + Sidebar" --> E["~1 150 LoC<br/>orchestration hub"]
 ```
 
 ### 2.5. Onglets de visualisation détachables (PRs #84, #87, #90)
@@ -522,7 +522,7 @@ Refonte multi-écran complète :
 Les features ralentissent au profit de l'architecture, de la dette
 technique et de la non-régression :
 
-- **Phase 2 hooks `App.tsx` (PR #109)** — extraction de `useN1Fetch`,
+- **Phase 2 hooks `App.tsx` (PR #109)** — extraction de `useContingencyFetch`,
   `useDiagramHighlights`, `AppSidebar`, `SidebarSummary`,
   `StatusToasts`. Le hub remonte de ~650 à **~1 150 lignes** (le
   prix à payer pour réinjecter de l'orchestration cross-hook propre).
@@ -574,7 +574,7 @@ graph TB
   + `check_code_quality.py` + workflow GitHub Actions/CircleCI
   publiant le rapport au job summary, plafonds LoC, zéro `print()`
   / `any` / `@ts-ignore`.
-- **Perf SVG DOM recycling** (PR #108) : `/api/n1-diagram-patch`
+- **Perf SVG DOM recycling** (PR #108) : `/api/contingency-diagram-patch`
   & `/api/action-variant-diagram-patch`, ~80 % plus rapide sur les
   bascules d'onglets, payload 27 → 5,5 MB.
 - **Réorganisation `docs/`** en `features/ performance/{,history/}

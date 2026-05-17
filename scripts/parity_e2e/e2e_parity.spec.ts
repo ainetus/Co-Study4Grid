@@ -131,7 +131,7 @@ async function registerMockBackend(page: Page): Promise<void> {
     route.fulfill({ status: 200, contentType: 'text/plain; charset=utf-8', body });
   });
 
-  await page.route('**/api/n1-diagram', (route) =>
+  await page.route('**/api/contingency-diagram', (route) =>
     route.fulfill({
       status: 200, contentType: 'application/json',
       body: JSON.stringify({
@@ -272,7 +272,7 @@ async function runCanonicalSession(page: Page): Promise<{
   const contingencyInput = page.getByPlaceholder(/Search line\/bus/i);
   await contingencyInput.fill('LINE_A');
   await contingencyInput.press('Enter');
-  await page.waitForResponse((r) => r.url().includes('/api/n1-diagram'));
+  await page.waitForResponse((r) => r.url().includes('/api/contingency-diagram'));
 
   // 3. Run step 1.
   await page.getByRole('button', { name: /Detect Overloads/i }).click();

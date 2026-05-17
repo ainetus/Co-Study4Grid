@@ -182,7 +182,7 @@ See `docs/performance/history/` for the per-change writeups.
 |------|------|
 | `POST /api/config` (cold) | ~9.0 s |
 | `GET /api/network-diagram` (base NAD) | ~5.4 s |
-| `POST /api/n1-diagram` | ~5.1 s |
+| `POST /api/contingency-diagram` | ~5.1 s |
 | `boostSvgForLargeGrid` (6835 VLs) | ~389–464 ms |
 | DOM injection (base) | ~118 ms |
 | DOM injection (N-1) | ~369 ms |

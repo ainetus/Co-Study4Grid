@@ -1,0 +1,21 @@
+<div>
+<table class="action-table">
+<thead>
+<tr>
+<th>Action 1</th>
+<th>Action 2</th>
+<th>Betas</th>
+<th>Max Loading (Est.)</th>
+<th>Line (Est.)</th>
+<th>Simulated Max Rho</th>
+<th>Simulated Line</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td colspan="8">No computed combinations found.<br>Go to <strong>Explore Pairs</strong> to create new ones.</td>
+</tr>
+</tbody>
+</table>
+</div>

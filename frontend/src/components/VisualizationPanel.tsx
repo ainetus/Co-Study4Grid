@@ -736,6 +736,8 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                             }}
                         >
                             <button
+                                data-testid={`tab-button-${tab.id}`}
+                                data-tab-active={isActive ? 'true' : 'false'}
                                 onClick={() => {
                                     if (isDetached) {
                                         focusDetachedTabCb(tab.id);
@@ -772,6 +774,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                             </button>
                             {tab.available && (
                                 <button
+                                    data-testid={`tab-detach-${tab.id}`}
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         if (isDetached) reattachTabCb(tab.id);

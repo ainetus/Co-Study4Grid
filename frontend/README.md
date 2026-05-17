@@ -47,7 +47,7 @@ src/
 │   ├── useActions.ts            # Action selection / favorite / reject
 │   ├── useAnalysis.ts           # Two-step analysis pipeline (step1 / step2)
 │   ├── useDiagrams.ts           # NAD fetching + tab management
-│   ├── useN1Fetch.ts            # svgPatch fast-path + /api/n1-diagram fallback
+│   ├── useContingencyFetch.ts            # svgPatch fast-path + /api/contingency-diagram fallback
 │   ├── useDiagramHighlights.ts  # Per-tab SVG highlight pipeline + Flow/Impacts view-mode
 │   ├── useSession.ts            # Session save / reload
 │   ├── useDetachedTabs.ts       # Detached visualization windows

@@ -94,7 +94,7 @@ Co-Study4Grid is built around the operator's ability to triage hundreds of remed
 ### Frontend engineering
 - **React 19 + TypeScript 5.9 + Vite 7**, strict mode (`noUnusedLocals`, `noUnusedParameters`).
 - **Phase 1 refactor** (PR #74): `App.tsx` reduced from ~2100 lines to a pure state-orchestration hub; UI split into focused presentational components under `components/` and `components/modals/`.
-- **Phase 2 hook extraction** (PR #109): `useN1Fetch` (svgPatch fast-path + `/api/n1-diagram` fallback) and `useDiagramHighlights` (per-tab SVG highlight pipeline) extracted out of `App.tsx`; sidebar moved into dedicated `AppSidebar` / `SidebarSummary` / `StatusToasts` components.
+- **Phase 2 hook extraction** (PR #109): `useContingencyFetch` (svgPatch fast-path + `/api/contingency-diagram` fallback) and `useDiagramHighlights` (per-tab SVG highlight pipeline) extracted out of `App.tsx`; sidebar moved into dedicated `AppSidebar` / `SidebarSummary` / `StatusToasts` components.
 - **SVG DOM recycling** (PR #108): `utils/svgPatch.ts` clones the mounted N-state SVG and patches only per-branch deltas on N-1 / action tab switches — **~80 % faster** tab switching on the ~12 MB French NAD (full benches in [`CHANGELOG.md`](CHANGELOG.md) 0.6.5).
 - **Code-quality gate** (PR #104): CI enforces zero `print()` / bare except / `any` / `@ts-ignore`, module-size ceilings, and publishes a full Markdown metrics report to each run's workflow summary.
 - **React ErrorBoundary** wrapping the app root (PR #82) to contain crashes.
@@ -266,8 +266,8 @@ the backend micro-benches under `benchmarks/`. Full write-ups in
 
 | Endpoint | Cold | Warm (median of 3) | Payload |
 |---|---|---|---|
-| `/api/n1-diagram` (full)      | 3.01 s | 2.39 s | 27.1 MB |
-| `/api/n1-diagram-patch` (new) | 0.49 s | 0.50 s |  5.5 MB |
+| `/api/contingency-diagram` (full)      | 3.01 s | 2.39 s | 27.1 MB |
+| `/api/contingency-diagram-patch` (new) | 0.49 s | 0.50 s |  5.5 MB |
 | **Δ** | **−83.8 %** | **−79.1 %** | 20.3 % of full |
 
 Mirrored on `/api/action-variant-diagram-patch` with dashed-class
@@ -495,7 +495,7 @@ Co-Study4Grid/
 │       ├── styles/                  # Design-token palette: tokens.{css,ts}
 │       │                            # (single source of truth, gate-enforced)
 │       ├── hooks/                   # useSettings / useAnalysis / useDiagrams /
-│       │                            # useN1Fetch / useDiagramHighlights /
+│       │                            # useContingencyFetch / useDiagramHighlights /
 │       │                            # useOverflowIframe / …
 │       ├── utils/                   # svgUtils (barrel) + svg/* submodules,
 │       │                            # svgPatch, actionTypes, sessionUtils,
@@ -615,14 +615,14 @@ Open the Vite dev-server URL shown in the terminal (typically `http://localhost:
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET`  | `/api/network-diagram` | Get the N-state network SVG (NAD) |
-| `POST` | `/api/n1-diagram` | Get the post-contingency N-1 diagram with flow deltas |
-| `POST` | `/api/n1-diagram-patch` | Per-branch delta (SVG-less) for DOM-recycling fast path (PR #108) |
+| `POST` | `/api/contingency-diagram` | Get the post-contingency N-1 diagram with flow deltas |
+| `POST` | `/api/contingency-diagram-patch` | Per-branch delta (SVG-less) for DOM-recycling fast path (PR #108) |
 | `POST` | `/api/action-variant-diagram` | Diagram after applying a remedial action |
 | `POST` | `/api/action-variant-diagram-patch` | Per-branch delta + VL-subtree splice for action DOM recycling |
 | `POST` | `/api/focused-diagram` | Sub-diagram focused on an element with configurable depth |
 | `POST` | `/api/action-variant-focused-diagram` | Focused NAD for a specific VL in post-action state |
 | `POST` | `/api/n-sld` | Single Line Diagram for a voltage level in N state |
-| `POST` | `/api/n1-sld` | SLD in N-1 state with flow deltas |
+| `POST` | `/api/contingency-sld` | SLD in N-1 state with flow deltas |
 | `POST` | `/api/action-variant-sld` | SLD in post-action state |
 | `POST` | `/api/simulate-and-variant-diagram` | NDJSON stream: `{type:"metrics"}` then `{type:"diagram"}` so sidebar updates ahead of the SVG |
 | `POST` | `/api/regenerate-overflow-graph` | Toggle the overflow graph between hierarchical and geo layout (per-study cache, 0.7.0) |

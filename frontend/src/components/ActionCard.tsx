@@ -323,6 +323,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
                 <div className="action-card-rail" style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                     {!isSelected && (
                         <button
+                            data-testid={`favorite-${id}`}
                             onClick={(e) => { e.stopPropagation(); onActionFavorite(id); }}
                             style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '4px', cursor: 'pointer', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                             title="Select this action"
@@ -330,6 +331,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
                     )}
                     {!isRejected && (
                         <button
+                            data-testid={`reject-${id}`}
                             onClick={(e) => { e.stopPropagation(); onActionReject(id); }}
                             style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '4px', cursor: 'pointer', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                             title={isSelected ? "Remove from selected" : "Reject this action"}

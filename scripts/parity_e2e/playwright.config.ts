@@ -10,8 +10,18 @@ import * as path from 'node:path';
  */
 export default defineConfig({
   testDir: __dirname,
-  testMatch: '*parity.spec.ts',
+  testMatch: ['*parity.spec.ts', 'demo_*.spec.ts'],
   timeout: 90_000,
+  globalSetup: require.resolve('./playwright.global-setup.ts'),
+  globalTeardown: require.resolve('./playwright.global-teardown.ts'),
+  // Text snapshots (DOM/SVG sérialisés et normalisés par
+  // `demo_visual_snapshots.spec.ts`) are OS-agnostic by construction
+  // — no antialias, no font rendering, only attribute values + class
+  // names. Drop the default `{-projectName}{-platform}` suffix so the
+  // same baseline runs on macOS (dev) and Linux (CI). Per-channel
+  // separation (chromium vs firefox) would only matter if we add a
+  // non-chromium project, which we don't.
+  snapshotPathTemplate: '{testFilePath}-snapshots/{arg}{ext}',
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: 'http://localhost:4173/',

@@ -128,6 +128,7 @@ export default function AppSidebar({
               <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>⚡ Select Contingency</label>
               <button
                 type="button"
+                data-testid="contingency-trigger"
                 onClick={onContingencyApply}
                 disabled={pendingContingency.length === 0 || !dirty}
                 title={

@@ -184,7 +184,7 @@ Two new SVG-less endpoints ship only the per-branch delta needed to transform th
 
 | Endpoint | When | Payload |
 |---|---|---|
-| `POST /api/n1-diagram-patch` | N-1 tab fetch | `{disconnected_edges, absolute_flows, lines_overloaded, flow_deltas, asset_deltas, lf_*, ...}` — no SVG body |
+| `POST /api/contingency-diagram-patch` | N-1 tab fetch | `{disconnected_edges, absolute_flows, lines_overloaded, flow_deltas, asset_deltas, lf_*, ...}` — no SVG body |
 | `POST /api/action-variant-diagram-patch` | Action click | Same shape, plus `vl_subtrees` (per-VL node subtree + affected edges) when bus counts change |
 
 Client-side pipeline in `applyPatchToClone`:
@@ -224,8 +224,8 @@ Two large-grid-only hazards:
 
 | Situation | Path |
 |---|---|
-| Normal N-1 selection with N diagram loaded | **patch** (`/api/n1-diagram-patch`) |
-| N-1 selection during session reload | full (`/api/n1-diagram`) — preserves save/load contract |
+| Normal N-1 selection with N diagram loaded | **patch** (`/api/contingency-diagram-patch`) |
+| N-1 selection during session reload | full (`/api/contingency-diagram`) — preserves save/load contract |
 | N-1 selection before N SVG is mounted | full fallback |
 | PST / redispatch / load-shedding / curtailment | **patch** |
 | Line disconnect / reconnect (`disco_*` / `reco_*`) | **patch** (toggles the `nad-disconnected` class) |
@@ -243,8 +243,8 @@ On `bare_env_20240828T0100Z`, contingency `ARGIAL71CANTE`, warm-median of 3:
 
 | Endpoint | Cold | Warm | Payload |
 |---|---|---|---|
-| `/api/n1-diagram` (full)         | 3.01 s | 2.39 s | 27.1 MB |
-| `/api/n1-diagram-patch` (new)    | 0.49 s | 0.50 s |  5.5 MB |
+| `/api/contingency-diagram` (full)         | 3.01 s | 2.39 s | 27.1 MB |
+| `/api/contingency-diagram-patch` (new)    | 0.49 s | 0.50 s |  5.5 MB |
 | **Δ** | **−83.8 %** | **−79.1 %** | **20.3 % of full** |
 
 Raw numbers in `profiling_patch_results.json`, benchmark driver in `benchmarks/bench_n1_diagram_patch.py`. Historical detail in `docs/performance/history/svg-dom-recycling.md`.

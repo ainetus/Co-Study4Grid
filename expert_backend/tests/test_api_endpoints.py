@@ -312,7 +312,7 @@ class TestGetN1Diagram:
 # ------------------------------------------------------------------
 # SVG DOM recycling — patch endpoints
 # ------------------------------------------------------------------
-# /api/n1-diagram-patch and /api/action-variant-diagram-patch return the
+# /api/contingency-diagram-patch and /api/action-variant-diagram-patch return the
 # same delta / overload payload as their full-NAD siblings but SKIP the
 # ~2-4 s pypowsybl NAD generation and the ~20-28 MB SVG transfer. The
 # frontend patches a clone of the already-loaded N-state SVG DOM.

@@ -44,7 +44,7 @@ Configuration in `frontend/vite.config.ts` (Vitest plugin).
 #### API & Service Layer
 | File | Description |
 |------|-------------|
-| `test_api_endpoints.py` | FastAPI endpoint testing with TestClient and mocked services (covers the patch endpoints `/api/n1-diagram-patch`, `/api/action-variant-diagram-patch`, `/api/simulate-and-variant-diagram`). |
+| `test_api_endpoints.py` | FastAPI endpoint testing with TestClient and mocked services (covers the patch endpoints `/api/contingency-diagram-patch`, `/api/action-variant-diagram-patch`, `/api/simulate-and-variant-diagram`). |
 | `test_recommender_service.py` | RecommenderService config updates and action enrichment |
 | `test_network_service.py` | NetworkService initialization, loading, and element lookup |
 
@@ -150,7 +150,7 @@ Every presentational component has a colocated test file —
 
 One test file per hook — `useActions`, `useAnalysis`, `useDetachedTabs`,
 `useDiagramHighlights`, `useDiagrams`, `usePanZoom`, `useSession`,
-`useSettings`, `useSldOverlay`, `useTiedTabsSync`. `useN1Fetch` is
+`useSettings`, `useSldOverlay`, `useTiedTabsSync`. `useContingencyFetch` is
 covered transitively by `useDiagrams` + the App-integration suite.
 
 ### Utilities (`frontend/src/utils/**/*.test.ts`)
