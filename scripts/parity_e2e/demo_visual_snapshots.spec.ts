@@ -210,6 +210,14 @@ test.describe('Demo visual snapshots', () => {
         // Set the contingency + run analysis to get the action feed + overview populated.
         // react-select pattern — see demo_replay.spec.ts:addContingencyAndApply
         // for the rationale (click-type-clickOption beats fill-Enter).
+        // Subscribe BEFORE the actions that trigger /api/n1-diagram —
+        // see demo_replay.spec.ts:addContingencyAndApply for the
+        // race-condition rationale.
+        const n1DiagramPromise = page.waitForResponse(
+            r => r.url().includes('/api/n1-diagram') && r.request().method() === 'POST',
+            { timeout: 30_000 },
+        );
+
         const combobox = page.getByRole('combobox').first();
         await combobox.waitFor({ state: 'visible', timeout: 10000 });
         await combobox.click();
@@ -218,9 +226,10 @@ test.describe('Demo visual snapshots', () => {
         await option.waitFor({ state: 'visible', timeout: 5000 });
         await option.click();
         const trigger = page.locator('[data-testid="contingency-trigger"]');
-        await expect(trigger).toBeEnabled({ timeout: 5000 });
-        await trigger.click();
-        await page.waitForResponse(r => r.url().includes('/api/n1-diagram'));
+        if (await trigger.isEnabled().catch(() => false)) {
+            await trigger.click();
+        }
+        await n1DiagramPromise;
 
         await page.locator('[data-testid="analyze-suggest"]').click();
         await page.waitForResponse(r => r.url().includes('/api/run-analysis-step2'));

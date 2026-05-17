@@ -305,6 +305,16 @@ async function loadStudy(page: Page): Promise<void> {
 }
 
 async function addContingencyAndApply(page: Page, element: string): Promise<void> {
+    // Race-free pattern: subscribe to the /api/n1-diagram response
+    // BEFORE the action that triggers it. With the mock backend the
+    // response can land DURING `option.click()` (auto-commit on
+    // selection in some UI states), and a waitForResponse set up
+    // afterwards would miss the event and time out.
+    const n1DiagramPromise = page.waitForResponse(
+        r => r.url().includes('/api/n1-diagram') && r.request().method() === 'POST',
+        { timeout: 30_000 },
+    );
+
     // react-select pattern (mirrors frontend/src/App.contingency.test.tsx:169):
     //   - target `role="combobox"` (NOT the `.cs4g-contingency__input`
     //     directly — react-select exposes the accessible role on the
@@ -329,10 +339,16 @@ async function addContingencyAndApply(page: Page, element: string): Promise<void
     await option.waitFor({ state: 'visible', timeout: 5000 });
     await option.click();
 
+    // Trigger may already be disabled by the time we read it (if the
+    // option click auto-committed the contingency — UI behaviour
+    // depends on whether `pendingContingency` is treated as committed
+    // on selection). Click it only when still enabled, otherwise the
+    // request has already fired during option.click().
     const trigger = page.locator('[data-testid="contingency-trigger"]');
-    await expect(trigger).toBeEnabled({ timeout: 5000 });
-    await trigger.click();
-    await page.waitForResponse(r => r.url().includes('/api/n1-diagram'));
+    if (await trigger.isEnabled().catch(() => false)) {
+        await trigger.click();
+    }
+    await n1DiagramPromise;
 }
 
 async function toggleViewMode(page: Page, mode: 'delta' | 'network', scope: 'main' | 'detached' = 'main'): Promise<void> {

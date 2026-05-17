@@ -240,6 +240,16 @@ test.describe('Demo meta-invariants on config_small_grid', () => {
         // for the react-select interaction rationale (click-type-clickOption
         // beats fill-Enter; react-select filters via keystroke events, not
         // value assignment).
+        // Subscribe BEFORE the actions that trigger /api/n1-diagram —
+        // see demo_replay.spec.ts:addContingencyAndApply for the
+        // race-condition rationale (the mock backend can respond
+        // before the waitForResponse promise is set up if it is
+        // created after the click).
+        const n1DiagramPromise = page.waitForResponse(
+            r => r.url().includes('/api/n1-diagram') && r.request().method() === 'POST',
+            { timeout: 30_000 },
+        );
+
         const combobox = page.getByRole('combobox').first();
         await combobox.waitFor({ state: 'visible', timeout: 10000 });
         await combobox.click();
@@ -248,9 +258,10 @@ test.describe('Demo meta-invariants on config_small_grid', () => {
         await option.waitFor({ state: 'visible', timeout: 5000 });
         await option.click();
         const trigger = page.locator('[data-testid="contingency-trigger"]');
-        await expect(trigger).toBeEnabled({ timeout: 5000 });
-        await trigger.click();
-        await page.waitForResponse(r => r.url().includes('/api/n1-diagram'));
+        if (await trigger.isEnabled().catch(() => false)) {
+            await trigger.click();
+        }
+        await n1DiagramPromise;
         await runMetaInvariantBattery(page, 'after contingency');
 
         // Tab toggles
