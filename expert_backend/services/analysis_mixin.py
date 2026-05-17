@@ -416,6 +416,21 @@ class AnalysisMixin:
                 "[Step 1] Re-using cached post-contingency obs for %s "
                 "(skips contingency load-flow)", list(norm),
             )
+        else:
+            # One-line diagnostic so the operator can tell why the cache
+            # wasn't reused. ``cache_safe`` is the maintenance-reconnect
+            # gate; the rest report whether the prewarm key matches the
+            # current contingency.
+            cached_id = getattr(self, "_cached_obs_n1_id", None)
+            cached_elements = getattr(self, "_cached_obs_n1_elements", None)
+            logger.info(
+                "[Step 1] post-contingency obs cache miss for %s "
+                "(cache_safe=%s, have_obs=%s, expected_variant=%r, cached_variant=%r, "
+                "cached_elements=%r)",
+                list(norm), cache_safe,
+                getattr(self, "_cached_obs_n1", None) is not None,
+                cont_variant, cached_id, cached_elements,
+            )
         try:
             step1_kwargs = {
                 "analysis_date": config.DATE,

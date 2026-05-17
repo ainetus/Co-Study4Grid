@@ -426,6 +426,17 @@ class DiagramMixin:
                 "base_state": "N",
                 "elapsed_ms": int((time.time() - t_start) * 1000),
             }
+            # Pre-warm the post-contingency observation cache while the
+            # variant is already set. ``run_analysis_step1`` then re-uses
+            # it instead of running a second AC load flow. Mirrors the
+            # prewarm in ``get_contingency_diagram`` — the React frontend
+            # uses the patch endpoint by default (SVG DOM recycling
+            # fast path), so the prewarm must live here too.
+            if converged:
+                try:
+                    self._cache_obs_for_variant(n, variant_id, norm)
+                except Exception as exc:
+                    logger.debug("[RECO] obs prewarm skipped for %s: %s", norm, exc)
             return sanitize_for_json(payload)
         finally:
             n.set_working_variant(original_variant)
