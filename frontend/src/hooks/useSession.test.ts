@@ -442,6 +442,91 @@ describe('useSession — handleRestoreSession', () => {
         expect(ctx.committedNetworkPathRef.current).toBe('');
     });
 
+    it('sets restoringSessionRef BEFORE the first state update so every intermediate render is flagged as a restore (regression for spurious Change Contingency? dialog on session reload with different contingency)', async () => {
+        // The dialog is suppressed by useContingencyFetch when
+        // restoringSessionRef.current === true. If the ref is only
+        // flipped late (after the awaits inside handleRestoreSession),
+        // any intermediate render that fires the
+        // useContingencyFetch effect with the still-old
+        // selectedContingency BUT a newly mutated
+        // committedBranchRef OR a fresh hasAnalysisState callback can
+        // misclassify the restore as a user-driven contingency
+        // change. The ref must therefore flip BEFORE any state
+        // mutation — i.e. before setNetworkPath, before
+        // setSessionRestoring's render etc.
+        const order: string[] = [];
+        const ctx = makeCtx();
+        const restoringRef = { current: false };
+        Object.defineProperty(restoringRef, 'current', {
+            set(v: boolean) {
+                if (v) order.push('restoringSessionRef=true');
+                else order.push('restoringSessionRef=false');
+                Object.defineProperty(this, '_v', { value: v, writable: true, configurable: true });
+            },
+            get() { return (this as unknown as { _v?: boolean })._v ?? false; },
+            configurable: true,
+        });
+        ctx.restoringSessionRef = restoringRef as unknown as typeof ctx.restoringSessionRef;
+        ctx.setNetworkPath = vi.fn(() => order.push('setNetworkPath'));
+        ctx.setSelectedContingency = vi.fn(() => order.push('setSelectedContingency'));
+
+        mockLoadSession.mockResolvedValue(makeSession({
+            contingency: { disconnected_elements: ['LINE_B'], selected_overloads: [], monitor_deselected: false },
+        }));
+        const { result } = renderHook(() => useSession());
+        await act(async () => {
+            await result.current.handleRestoreSession('session_early_ref', ctx);
+        });
+
+        const earlyRefIdx = order.indexOf('restoringSessionRef=true');
+        const networkPathIdx = order.indexOf('setNetworkPath');
+        const branchIdx = order.indexOf('setSelectedContingency');
+        // The ref must flip true at the very top of the function —
+        // before ANY ctx.setX call has had a chance to render
+        // intermediate state. ``setNetworkPath`` is the FIRST setter
+        // exercised by handleRestoreSession, so it is the canonical
+        // marker of "the restore has started touching state".
+        expect(earlyRefIdx).toBeGreaterThanOrEqual(0);
+        expect(networkPathIdx).toBeGreaterThanOrEqual(0);
+        expect(branchIdx).toBeGreaterThanOrEqual(0);
+        expect(earlyRefIdx).toBeLessThan(networkPathIdx);
+        expect(earlyRefIdx).toBeLessThan(branchIdx);
+    });
+
+    it('keeps restoringSessionRef true through the entire restore even when api.loadSession errors are caught (ref is cleared so the next user gesture is not misclassified)', async () => {
+        // Defensive: if the restore aborts mid-flight, the ref must
+        // be reset to false — otherwise the very next user-driven
+        // contingency change would silently bypass the confirmation
+        // dialog (because useContingencyFetch reads
+        // restoringSessionRef.current and would still see true).
+        const ctx = makeCtx();
+        mockLoadSession.mockRejectedValue({ response: { data: { detail: 'oops' } } });
+
+        const { result } = renderHook(() => useSession());
+        await act(async () => {
+            await result.current.handleRestoreSession('session_failing', ctx);
+        });
+
+        expect(ctx.restoringSessionRef.current).toBe(false);
+        expect(ctx.setError).toHaveBeenCalled();
+    });
+
+    it('also resyncs pendingContingency so the Trigger button does not stay dirty after restore (UX guard against accidental replay of the pre-restore branch)', async () => {
+        const ctx = makeCtx();
+        const setPendingContingency = vi.fn();
+        (ctx as RestoreContext & { setPendingContingency: typeof setPendingContingency }).setPendingContingency = setPendingContingency;
+
+        mockLoadSession.mockResolvedValue(makeSession({
+            contingency: { disconnected_elements: ['LINE_B'], selected_overloads: [], monitor_deselected: false },
+        }));
+        const { result } = renderHook(() => useSession());
+        await act(async () => {
+            await result.current.handleRestoreSession('session_pending_sync', ctx);
+        });
+
+        expect(setPendingContingency).toHaveBeenCalledWith(['LINE_B']);
+    });
+
     it('sets restoringSessionRef BEFORE setSelectedContingency so the N-1 fetch effect bypasses its hasAnalysisState short-circuit (regression)', async () => {
         // Without the ref being flipped to `true` first, the N-1
         // useEffect in App.tsx short-circuits the second a session

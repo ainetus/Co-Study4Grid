@@ -798,6 +798,7 @@ function App() {
     setManuallyAddedIds: actionsHook.setManuallyAddedIds,
     setSuggestedByRecommenderIds: actionsHook.setSuggestedByRecommenderIds,
     setSelectedContingency,
+    setPendingContingency,
     restoringSessionRef: diagrams.restoringSessionRef,
     committedBranchRef: diagrams.committedBranchRef,
     committedNetworkPathRef,
@@ -816,7 +817,7 @@ function App() {
     setMinRenewableCurtailmentActions, setNPrioritizedActions,
     setLinesMonitoringPath, setMonitoringFactor, setPreExistingOverloadThreshold,
     setIgnoreReconnections, setPypowsyblFastMode,
-    analysis, actionsHook, setResult, setSelectedContingency,
+    analysis, actionsHook, setResult, setSelectedContingency, setPendingContingency,
     diagrams, setError, applyConfigResponse, setBranches, setVoltageLevels, setNameMap,
   ]);
 

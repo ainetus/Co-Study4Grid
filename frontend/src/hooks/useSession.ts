@@ -117,6 +117,14 @@ export interface RestoreContext {
   // or fires a spurious dialog against a stale value. See PR #83.
   committedNetworkPathRef: MutableRefObject<string>;
   setSelectedContingency: (v: string[]) => void;
+  /** Re-sync the contingency multi-select's pending list to the
+   *  restored value so a subsequent click on the (now disabled)
+   *  Trigger button can't replay the pre-restore branch back into
+   *  ``selectedContingency`` — which would fire the "Change
+   *  Contingency?" dialog and wipe the just-restored analysis state
+   *  via ``clearContingencyState``. Optional for compatibility with
+   *  test mocks that predate the field. */
+  setPendingContingency?: (v: string[]) => void;
   setInfoMessage: (v: string) => void;
   setError: (v: string) => void;
 }
@@ -220,6 +228,17 @@ export function useSession(): SessionState {
   const handleRestoreSession = useCallback(async (sessionName: string, ctx: RestoreContext) => {
     if (!ctx.outputFolderPath) return;
     setSessionRestoring(true);
+    // Flag the restore BEFORE any state update so every intermediate
+    // render during the restore (paths set, branches re-fetched,
+    // base diagram re-ingested, …) sees ``restoringSessionRef===true``
+    // and short-circuits the contingency-change confirmation dialog
+    // in ``useContingencyFetch``. Resetting late (after all the awaits
+    // and setResult calls) leaves a window where the effect can fire
+    // the "Change Contingency?" dialog against the just-restored
+    // selectedContingency — which on Confirm would clear the
+    // freshly-restored analysis state. The flag is consumed and
+    // reset to false inside the effect on its first run.
+    ctx.restoringSessionRef.current = true;
     try {
       const session: SessionResult = await api.loadSession(ctx.outputFolderPath, sessionName);
 
@@ -459,14 +478,25 @@ export function useSession(): SessionState {
       const restoredElements: string[] = contingency.disconnected_elements
         ? contingency.disconnected_elements
         : (contingency.disconnected_element ? [contingency.disconnected_element] : []);
-      ctx.restoringSessionRef.current = true;
       ctx.committedBranchRef.current = [...restoredElements];
       ctx.setSelectedContingency(restoredElements);
+      // Sync the multi-select's pending list with the restored applied
+      // value so the Trigger button stays disabled — otherwise an
+      // accidental click replays the pre-restore branch back into
+      // ``selectedContingency`` and reopens the contingency-change
+      // dialog, which on Confirm wipes the just-restored analysis.
+      ctx.setPendingContingency?.(restoredElements);
 
       setShowReloadModal(false);
       interactionLogger.record('session_reloaded', { session_name: sessionName });
       ctx.setInfoMessage(`SUCCESS: Session "${sessionName}" restored`);
     } catch (err: unknown) {
+      // If the restore aborts before useContingencyFetch had a chance
+      // to consume the flag, clear it here — leaving it sticky would
+      // misclassify the next user-driven contingency change as a
+      // session restore and skip the confirmation dialog when it IS
+      // expected.
+      ctx.restoringSessionRef.current = false;
       const e = err as { response?: { data?: { detail?: string } }; message?: string };
       ctx.setError('Failed to restore session: ' + (e.response?.data?.detail || e.message));
     } finally {
