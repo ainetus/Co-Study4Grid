@@ -405,6 +405,11 @@ function App() {
     setShowMonitoringWarning(false);
     setVlToSubstation({});
     setOverflowPinsEnabled(false);
+    // Dismiss any in-flight confirmation dialog. A stale "Change
+    // Contingency?" dialog left over from a prior gesture (or a
+    // session reload race that briefly flipped the ref window) must
+    // not survive a fresh reset.
+    setConfirmDialog(null);
   }, [clearContingencyState, diagrams, setShowMonitoringWarning]);
 
   // Pre-compute the pin descriptors posted to the overflow-graph
