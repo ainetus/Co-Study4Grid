@@ -125,6 +125,13 @@ export interface RestoreContext {
    *  via ``clearContingencyState``. Optional for compatibility with
    *  test mocks that predate the field. */
   setPendingContingency?: (v: string[]) => void;
+  /** Wipe every piece of per-study state at the start of a restore
+   *  — same semantics as a fresh Load Study. Required so the dialog
+   *  guard in ``useContingencyFetch`` never sees a stale
+   *  ``hasAnalysisState() === true`` against the pre-restore
+   *  ``committedBranchRef`` while the restore is still in flight.
+   *  Optional for test mocks that predate the field. */
+  resetAllState?: () => void;
   setInfoMessage: (v: string) => void;
   setError: (v: string) => void;
 }
@@ -227,17 +234,18 @@ export function useSession(): SessionState {
 
   const handleRestoreSession = useCallback(async (sessionName: string, ctx: RestoreContext) => {
     if (!ctx.outputFolderPath) return;
+    // Treat a restore like a fresh Load Study: wipe every piece of
+    // per-study state (result, action selections, committed branch,
+    // pending branch, diagrams, …) BEFORE any of the restore's own
+    // setters fire. Without this, the contingency-change dialog
+    // guard in ``useContingencyFetch`` can race the restore — at any
+    // intermediate render where the new ``selectedContingency`` has
+    // landed but ``committedBranchRef`` still points at the
+    // pre-restore branch (or vice versa), ``hasAnalysisState() &&
+    // !sameElements`` evaluates true and fires "Change Contingency?",
+    // which on Confirm wipes the just-restored suggestions.
+    ctx.resetAllState?.();
     setSessionRestoring(true);
-    // Flag the restore BEFORE any state update so every intermediate
-    // render during the restore (paths set, branches re-fetched,
-    // base diagram re-ingested, …) sees ``restoringSessionRef===true``
-    // and short-circuits the contingency-change confirmation dialog
-    // in ``useContingencyFetch``. Resetting late (after all the awaits
-    // and setResult calls) leaves a window where the effect can fire
-    // the "Change Contingency?" dialog against the just-restored
-    // selectedContingency — which on Confirm would clear the
-    // freshly-restored analysis state. The flag is consumed and
-    // reset to false inside the effect on its first run.
     ctx.restoringSessionRef.current = true;
     try {
       const session: SessionResult = await api.loadSession(ctx.outputFolderPath, sessionName);

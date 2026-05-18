@@ -527,6 +527,37 @@ describe('useSession — handleRestoreSession', () => {
         expect(setPendingContingency).toHaveBeenCalledWith(['LINE_B']);
     });
 
+    it('calls resetAllState BEFORE api.loadSession so the dialog guard cannot race the restore', async () => {
+        // The user-requested fix: clean the existing per-study state
+        // at the START of the restore, exactly like a Load Study,
+        // so ``hasAnalysisState()`` reads false during the entire
+        // window between resetAllState and setResult(restored). That
+        // window is what used to make the contingency-change dialog
+        // fire and wipe the just-restored suggestions on Confirm.
+        const order: string[] = [];
+        const ctx = makeCtx();
+        const resetAllState = vi.fn(() => order.push('resetAllState'));
+        (ctx as RestoreContext & { resetAllState: typeof resetAllState }).resetAllState = resetAllState;
+        mockLoadSession.mockImplementation(async () => {
+            order.push('loadSession');
+            return makeSession({
+                contingency: { disconnected_elements: ['LINE_B'], selected_overloads: [], monitor_deselected: false },
+            });
+        });
+
+        const { result } = renderHook(() => useSession());
+        await act(async () => {
+            await result.current.handleRestoreSession('session_reset', ctx);
+        });
+
+        expect(resetAllState).toHaveBeenCalledTimes(1);
+        const resetIdx = order.indexOf('resetAllState');
+        const loadIdx = order.indexOf('loadSession');
+        expect(resetIdx).toBeGreaterThanOrEqual(0);
+        expect(loadIdx).toBeGreaterThanOrEqual(0);
+        expect(resetIdx).toBeLessThan(loadIdx);
+    });
+
     it('sets restoringSessionRef BEFORE setSelectedContingency so the N-1 fetch effect bypasses its hasAnalysisState short-circuit (regression)', async () => {
         // Without the ref being flipped to `true` first, the N-1
         // useEffect in App.tsx short-circuits the second a session
