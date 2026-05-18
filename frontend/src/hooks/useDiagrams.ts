@@ -910,15 +910,25 @@ export function useDiagrams(
         }
       }
 
+      // Guard against NaN/Infinity coordinates: pypowsybl strips NaN
+      // SVG elements (services/diagram/nad_render.py:_strip_nan_elements)
+      // but leaves the corresponding metadata entry intact. Accumulating
+      // a non-finite point would propagate NaN through Math.min/max into
+      // the viewBox, yielding `<svg viewBox="NaN … NaN …">` and a blank
+      // diagram on tab switch.
       const addNodePointsBySvgId = (svgId: string) => {
         const n = effectiveIndex.nodesBySvgId.get(svgId);
-        if (n) points.push({ x: n.x, y: n.y });
+        if (n && Number.isFinite(n.x) && Number.isFinite(n.y)) {
+          points.push({ x: n.x, y: n.y });
+        }
         return n;
       };
 
       if (targetNode) {
         if (!usingFallbackIndex) targetSvgId = targetNode.svgId;
-        points.push({ x: targetNode.x, y: targetNode.y });
+        if (Number.isFinite(targetNode.x) && Number.isFinite(targetNode.y)) {
+          points.push({ x: targetNode.x, y: targetNode.y });
+        }
         (effectiveIndex.edgesByNode.get(targetNode.svgId) || []).forEach(e => {
           addNodePointsBySvgId(e.node1);
           addNodePointsBySvgId(e.node2);
