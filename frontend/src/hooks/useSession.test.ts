@@ -558,6 +558,63 @@ describe('useSession — handleRestoreSession', () => {
         expect(resetIdx).toBeLessThan(loadIdx);
     });
 
+    it('on a SECOND consecutive reload, resetAllState fires first and ends with committedBranchRef matching the newly-restored contingency (regression for "Change Contingency?" appearing after successive reloads)', async () => {
+        // Pre-populate the refs as if a previous restore landed
+        // ``LINE_A`` with non-null analysis state. The new reload then
+        // restores ``LINE_B``. Without resetAllState clearing the refs
+        // first, the dialog guard in useContingencyFetch sees committed
+        // != selected with hasAnalysisState() true during the
+        // intermediate window and fires the spurious dialog.
+        const order: string[] = [];
+        const ctx = makeCtx();
+        const restoringRef = { current: false };
+        ctx.restoringSessionRef = restoringRef as unknown as typeof ctx.restoringSessionRef;
+        const committedBranchRef = { current: ['LINE_A'] as string[] };
+        Object.defineProperty(committedBranchRef, 'current', {
+            set(v: string[]) {
+                order.push(`committedBranchRef=${(v ?? []).join('+')}`);
+                Object.defineProperty(this, '_v', { value: v, writable: true, configurable: true });
+            },
+            get() { return (this as unknown as { _v?: string[] })._v ?? ['LINE_A']; },
+            configurable: true,
+        });
+        ctx.committedBranchRef = committedBranchRef as unknown as typeof ctx.committedBranchRef;
+        const resetAllState = vi.fn(() => {
+            order.push('resetAllState');
+            // Mirror what App.resetAllState actually does to the ref —
+            // wipe to empty BEFORE the restore continues.
+            committedBranchRef.current = [];
+        });
+        (ctx as RestoreContext & { resetAllState: typeof resetAllState }).resetAllState = resetAllState;
+        ctx.setSelectedContingency = vi.fn(() => order.push('setSelectedContingency'));
+        ctx.setResult = vi.fn(() => order.push('setResult'));
+
+        mockLoadSession.mockResolvedValue(makeSession({
+            contingency: { disconnected_elements: ['LINE_B'], selected_overloads: [], monitor_deselected: false },
+        }));
+        const { result } = renderHook(() => useSession());
+        await act(async () => {
+            await result.current.handleRestoreSession('session_double_reload', ctx);
+        });
+
+        // resetAllState must fire FIRST, wiping committedBranchRef
+        // from the previous reload's LINE_A.
+        const resetIdx = order.indexOf('resetAllState');
+        const wipeIdx = order.indexOf('committedBranchRef=');
+        const setLineBIdx = order.indexOf('committedBranchRef=LINE_B');
+        expect(resetIdx).toBe(0);
+        expect(wipeIdx).toBeGreaterThan(resetIdx);
+        expect(wipeIdx).toBeLessThan(setLineBIdx);
+        // Final state: committedBranchRef matches the restored
+        // contingency (LINE_B), so the dialog guard's sameElements
+        // check evaluates true on the post-restore render.
+        expect(committedBranchRef.current).toEqual(['LINE_B']);
+        // restoringSessionRef must be set to true between resetAllState
+        // and the restore's setX calls — see the dedicated test below
+        // for the strict ordering. Here we only assert it was flipped.
+        expect(restoringRef.current).toBe(true);
+    });
+
     it('sets restoringSessionRef BEFORE setSelectedContingency so the N-1 fetch effect bypasses its hasAnalysisState short-circuit (regression)', async () => {
         // Without the ref being flipped to `true` first, the N-1
         // useEffect in App.tsx short-circuits the second a session

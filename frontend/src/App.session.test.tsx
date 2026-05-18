@@ -928,4 +928,122 @@ describe('Session reload — different contingency than current', () => {
       expect(screen.queryByText('Change Contingency?')).not.toBeInTheDocument();
     });
   });
+
+  // Second-reload regression: clicking Reload Session a SECOND time —
+  // when the previous reload has already populated `result`,
+  // `committedBranchRef` and `selectedContingency` — must still
+  // suppress the contingency-change dialog. The defensive guard added
+  // to resetAllState (which wipes per-study state at the START of
+  // every restore + dismisses any stale confirmDialog) closes this
+  // race window.
+  it('does NOT show "Change Contingency?" on a SECOND consecutive reload of a different session', async () => {
+    interface ApiWithSessionMocks {
+      listSessions: ReturnType<typeof vi.fn>;
+      loadSession: ReturnType<typeof vi.fn>;
+      restoreAnalysisContext: ReturnType<typeof vi.fn>;
+    }
+    const apiAny = mockApi as unknown as ApiWithSessionMocks;
+    apiAny.listSessions = vi.fn().mockResolvedValue({
+      sessions: [
+        'costudy4grid_session_BRANCH_B_2026-05-18T14-46-53',
+        'costudy4grid_session_BRANCH_A_2026-05-18T15-12-04',
+      ],
+    });
+    apiAny.restoreAnalysisContext = vi.fn().mockResolvedValue({
+      status: 'success',
+      lines_we_care_about_count: 0,
+      computed_pairs_count: 0,
+    });
+    const sessionPayload = (branch: string) => ({
+      saved_at: '2026-05-18T14:46:53.000Z',
+      configuration: {
+        network_path: '/home/user/data/grid.xiidm',
+        action_file_path: '/home/user/data/actions.json',
+        layout_path: '',
+        min_line_reconnections: 2,
+        min_close_coupling: 3,
+        min_open_coupling: 2,
+        min_line_disconnections: 3,
+        min_pst: 1,
+        min_load_shedding: 0,
+        min_renewable_curtailment_actions: 0,
+        n_prioritized_actions: 10,
+        lines_monitoring_path: '',
+        monitoring_factor: 0.95,
+        pre_existing_overload_threshold: 0.02,
+        ignore_reconnections: false,
+        pypowsybl_fast_mode: true,
+      },
+      contingency: {
+        disconnected_elements: [branch],
+        selected_overloads: [],
+        monitor_deselected: false,
+      },
+      overloads: {
+        n_overloads: [],
+        n1_overloads: ['LINE_OL_RESTORED'],
+        resolved_overloads: ['LINE_OL_RESTORED'],
+      },
+      overflow_graph: null,
+      analysis: {
+        message: 'restored',
+        dc_fallback: false,
+        action_scores: {},
+        actions: {
+          [`RESTORED_ACT_${branch}`]: {
+            description_unitaire: `Restored action for ${branch}`,
+            rho_before: [1.05],
+            rho_after: [0.92],
+            max_rho: 0.92,
+            max_rho_line: 'LINE_OL_RESTORED',
+            is_rho_reduction: true,
+            status: { is_selected: false, is_rejected: false, is_manually_simulated: false, is_suggested: true },
+          },
+        },
+        combined_actions: {},
+        lines_we_care_about: null,
+        computed_pairs: null,
+      },
+    });
+    apiAny.loadSession = vi.fn().mockImplementation(async (_folder: string, name: string) => {
+      const branch = name.includes('BRANCH_B') ? 'BRANCH_B' : 'BRANCH_A';
+      return sessionPayload(branch);
+    });
+
+    await renderAndLoadStudy();
+
+    // First reload — BRANCH_B.
+    const reloadBtn = screen.getByText('Reload Session');
+    await act(async () => {
+      await userEvent.click(reloadBtn);
+    });
+    const firstEntry = await screen.findByText(/costudy4grid_session_BRANCH_B/);
+    await act(async () => {
+      await userEvent.click(firstEntry);
+    });
+    await waitFor(() => {
+      expect(apiAny.loadSession).toHaveBeenCalledTimes(1);
+    });
+    // First reload must not have left a stale dialog.
+    expect(screen.queryByText('Change Contingency?')).not.toBeInTheDocument();
+
+    // Second reload — BRANCH_A. The pre-existing refs from the first
+    // reload (committedBranchRef=BRANCH_B, result=non-null) are the
+    // exact race conditions that re-fired the dialog before the
+    // resetAllState-at-top-of-restore fix.
+    await act(async () => {
+      await userEvent.click(screen.getByText('Reload Session'));
+    });
+    const secondEntry = await screen.findByText(/costudy4grid_session_BRANCH_A/);
+    await act(async () => {
+      await userEvent.click(secondEntry);
+    });
+    await waitFor(() => {
+      expect(apiAny.loadSession).toHaveBeenCalledTimes(2);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Change Contingency?')).not.toBeInTheDocument();
+    });
+  });
 });
