@@ -3055,6 +3055,60 @@ describe('ActionFeed', () => {
             expect(screen.queryByTestId('action-card-reco_GEN.PY762')).not.toBeInTheDocument();
             expect(screen.getByTestId('overview-filter-hint')).toBeInTheDocument();
         });
+
+        it('suppresses the Analyze & Suggest button and shows the no-match notice when the filter hides every action', () => {
+            // Product rule (PR — fix-empty-filter-message): when the
+            // overview filter hides every otherwise-eligible action,
+            // the Analyze & Suggest button must NOT reappear — only
+            // clearing the filter (or pressing Clear) should bring it
+            // back. The notice tells the operator why their feed
+            // is empty.
+            render(
+                <ActionFeed
+                    {...defaultProps}
+                    actions={{ 'reco_GEN.PY762': recoDetail }}
+                    actionScores={{ line_reconnection: { scores: { 'reco_GEN.PY762': 0.04 } } }}
+                    overviewFilters={{ ...DEFAULT_FILTERS, actionType: 'disco' }}
+                    onOverviewFiltersChange={vi.fn()}
+                    canRunAnalysis
+                />,
+            );
+            expect(screen.queryByRole('button', { name: /Analyze & Suggest/ })).not.toBeInTheDocument();
+            expect(screen.getByTestId('no-actions-match-filter')).toBeInTheDocument();
+            expect(screen.getByText(/No actions match the active filter/)).toBeInTheDocument();
+        });
+
+        it('reshows the Analyze & Suggest button once the filter is cleared', () => {
+            // Same fixture as above but with `actionType: 'all'` —
+            // the action matches the filter, so the feed renders the
+            // card AND the Analyze & Suggest slot stays hidden because
+            // prioritizedEntries is non-empty. Clearing the type
+            // filter alone is enough to restore the slot when no card
+            // is left visible (verified by removing the action below).
+            const { rerender } = render(
+                <ActionFeed
+                    {...defaultProps}
+                    actions={{ 'reco_GEN.PY762': recoDetail }}
+                    actionScores={{ line_reconnection: { scores: { 'reco_GEN.PY762': 0.04 } } }}
+                    overviewFilters={{ ...DEFAULT_FILTERS, actionType: 'disco' }}
+                    onOverviewFiltersChange={vi.fn()}
+                    canRunAnalysis
+                />,
+            );
+            expect(screen.queryByRole('button', { name: /Analyze & Suggest/ })).not.toBeInTheDocument();
+            rerender(
+                <ActionFeed
+                    {...defaultProps}
+                    actions={{}}
+                    actionScores={{}}
+                    overviewFilters={{ ...DEFAULT_FILTERS, actionType: 'all' }}
+                    onOverviewFiltersChange={vi.fn()}
+                    canRunAnalysis
+                />,
+            );
+            expect(screen.getByRole('button', { name: /Analyze & Suggest/ })).toBeInTheDocument();
+            expect(screen.queryByTestId('no-actions-match-filter')).not.toBeInTheDocument();
+        });
     });
 
     describe('recommendation-model selector + Clear', () => {

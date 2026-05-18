@@ -1129,8 +1129,14 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                     result.actions with is_manual=false; gating on
                     prioritizedEntries (which already excludes selected +
                     rejected) is what makes the Analyze & Suggest button
-                    reappear post-Clear. */}
-                {(analysisLoading || pendingAnalysisResult || prioritizedEntries.length === 0) && (
+                    reappear post-Clear.
+
+                    When the overview filter hides every otherwise-
+                    eligible action, suppress the Analyze & Suggest
+                    button and surface a "no actions match the filter"
+                    notice instead — the operator should clear the
+                    filter before re-running an analysis. */}
+                {(analysisLoading || pendingAnalysisResult || (prioritizedEntries.length === 0 && overviewFilteredOutCount === 0)) && (
                     <div style={{ marginBottom: '10px' }}>
                         {analysisLoading ? (
                             <button disabled style={{
@@ -1233,8 +1239,13 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                     prioritizedEntries.length > 0 ? renderActionList(prioritizedEntries) : (
                         !analysisLoading ? (
                             <div style={{ textAlign: 'center' }}>
-                                <p style={{ color: colors.textTertiary, fontStyle: 'italic', fontSize: '13px', margin: '5px 0' }}>
-                                    {!pendingAnalysisResult ? 'Click \u201cAnalyze & Suggest\u201d above to get action suggestions.' : 'No suggested actions available.'}
+                                <p
+                                    data-testid={overviewFilteredOutCount > 0 && !pendingAnalysisResult ? 'no-actions-match-filter' : undefined}
+                                    style={{ color: colors.textTertiary, fontStyle: 'italic', fontSize: '13px', margin: '5px 0' }}
+                                >
+                                    {overviewFilteredOutCount > 0 && !pendingAnalysisResult
+                                        ? 'No actions match the active filter. Clear the filter to see suggestions.'
+                                        : (!pendingAnalysisResult ? 'Click \u201cAnalyze & Suggest\u201d above to get action suggestions.' : 'No suggested actions available.')}
                                 </p>
                                 {/* Recommender thresholds banner moved into NoticesPanel
                                     (tier-warning-system PR — see `docs/proposals/ui-design-critique.md`
