@@ -73,8 +73,25 @@ export const usePanZoom = (
     // Direct DOM update — no React involved
     const applyViewBox = useCallback((vb: ViewBox | null) => {
         const svg = svgElRef.current;
-        if (svg && vb) {
+        // Safety net: a NaN/Infinity in any field would yield e.g.
+        // `viewBox="NaN -2245943 NaN NaN"`, which SVG rejects and
+        // renders as a blank diagram. The upstream callers should
+        // never produce non-finite values, but a missing/malformed
+        // coordinate in grid_layout.json can leak through the
+        // pypowsybl metadata; refuse rather than corrupt the DOM.
+        if (
+            svg && vb &&
+            Number.isFinite(vb.x) && Number.isFinite(vb.y) &&
+            Number.isFinite(vb.w) && Number.isFinite(vb.h)
+        ) {
             svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+        } else if (vb) {
+            // Trace the upstream caller so we can pinpoint which path
+            // (handleZoomToElement, useTabSync, useTiedTabsSync, an
+            // overflow-iframe postMessage handler, …) leaked a NaN /
+            // Infinity field. Stack-trace via Error() — works in every
+            // browser that supports SVG.
+            console.warn('[usePanZoom] rejected non-finite viewBox', vb, new Error().stack);
         }
         // Invalidate CTM cache after viewBox change
         ctmCacheRef.current = null;
