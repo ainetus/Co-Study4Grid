@@ -79,13 +79,15 @@ export const usePanZoom = (
         // never produce non-finite values, but a missing/malformed
         // coordinate in grid_layout.json can leak through the
         // pypowsybl metadata; refuse rather than corrupt the DOM.
-        if (
-            svg && vb &&
+        // `svg == null` is benign (tab sync writes a valid viewBox
+        // before the target tab's SVG is mounted) — don't warn on it,
+        // only warn on the real bug (a non-finite field).
+        const vbIsFinite = !!vb &&
             Number.isFinite(vb.x) && Number.isFinite(vb.y) &&
-            Number.isFinite(vb.w) && Number.isFinite(vb.h)
-        ) {
-            svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
-        } else if (vb) {
+            Number.isFinite(vb.w) && Number.isFinite(vb.h);
+        if (svg && vbIsFinite) {
+            svg.setAttribute('viewBox', `${vb!.x} ${vb!.y} ${vb!.w} ${vb!.h}`);
+        } else if (vb && !vbIsFinite) {
             // Trace the upstream caller so we can pinpoint which path
             // (handleZoomToElement, useTabSync, useTiedTabsSync, an
             // overflow-iframe postMessage handler, …) leaked a NaN /
@@ -315,6 +317,20 @@ export const usePanZoom = (
 
     // Public API: updates ref + DOM + React state immediately
     const setViewBoxPublic = useCallback((vb: ViewBox) => {
+        // Reject non-finite viewBoxes at the public boundary too —
+        // otherwise viewBoxRef.current gets polluted with NaN and the
+        // tab-active layout effect re-emits the bad value at the next
+        // tab switch (which would slip past applyViewBox's DOM guard
+        // but pollute downstream React state). applyViewBox itself
+        // will log the stack trace.
+        if (
+            !vb ||
+            !Number.isFinite(vb.x) || !Number.isFinite(vb.y) ||
+            !Number.isFinite(vb.w) || !Number.isFinite(vb.h)
+        ) {
+            applyViewBox(vb);
+            return;
+        }
         viewBoxRef.current = vb;
         applyViewBox(vb);
         setViewBox(prev => {
