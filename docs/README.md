@@ -73,6 +73,7 @@ folder's index for the full list.
 | [`phase2-state-management-optimization.md`](architecture/phase2-state-management-optimization.md) | Memoize wrapper functions with `useCallback` (shipped 0.5.0). |
 | [`code-quality-analysis.md`](architecture/code-quality-analysis.md) | Continuous audit; latest deltas (§14–15) cover the 0.7.0 release + the function-LoC ceiling, postMessage envelope, FastAPI return-type follow-ups. |
 | [`development-cycle.md`](architecture/development-cycle.md) | Chronological retrospective covering the four development phases through 0.7.0 (minimal end-to-end → features → consolidation → PyPSA-EUR + interactive overflow). |
+| [`simulation-pipeline.md`](architecture/simulation-pipeline.md) | End-to-end backend simulation pipeline: state lifecycle, two-step analysis, manual-action flow, superposition, available modes, hypotheses, UI → config mapping. Companion to the lib's `docs/architecture/simulation-pipeline.md` (physical / numerical layer). |
 
 ## Proposals (`proposals/`)
 
