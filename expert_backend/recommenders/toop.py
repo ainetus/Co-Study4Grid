@@ -364,8 +364,14 @@ class ToOpRecommender(RecommenderModel):
             "lf_config": {"distributed": False},
             "ga_config": {
                 "runtime_seconds": runtime_seconds,
-                "me_descriptors": [{"metric": "branch_switches", "num_cells": 4}],
-                "observed_metrics": ["overload_energy_n_1", "branch_switches"],
+                # `disconnected_branches` is ToOp's metric for the count
+                # of opened branches in a topology — the right axis for
+                # a line-switching-only Map Elites search. ToOp's
+                # accepted metric names are pinned in
+                # BatchedMEParameters; if it doesn't match the enum,
+                # the optimiser fails with a pydantic ValidationError.
+                "me_descriptors": [{"metric": "disconnected_branches", "num_cells": 4}],
+                "observed_metrics": ["overload_energy_n_1", "disconnected_branches"],
                 "n_worst_contingencies": n_worst_contingencies,
             },
         })
