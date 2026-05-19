@@ -25,6 +25,9 @@ interface AppSidebarProps {
   nameMap: Record<string, string>;
   n1LinesOverloaded: string[] | undefined;
   n1LinesOverloadedRho: number[] | undefined;
+  /** N-state pre-existing overloads, surfaced in the SidebarSummary info bubble. */
+  nLinesOverloaded?: string[];
+  nLinesOverloadedRho?: number[];
   selectedOverloads: Set<string> | null | undefined;
   /** Replace the pending list with the user's current selection. */
   onPendingContingencyChange: (next: string[]) => void;
@@ -33,6 +36,23 @@ interface AppSidebarProps {
   displayName: (id: string) => string;
   onContingencyZoom: (assetName: string) => void;
   onOverloadClick: (actionId: string, assetName: string, tab: 'n' | 'contingency') => void;
+  /** Toggle an N-1 overload's inclusion in the analysis monitoring set.
+   *  Forwarded to SidebarSummary's info bubble. */
+  onToggleOverload?: (overload: string) => void;
+  monitorDeselected?: boolean;
+  onToggleMonitorDeselected?: () => void;
+  monitoringHint?: string | null;
+  /** Drop the current contingency to investigate a new one. Triggers
+   *  the confirmation dialog at the call site. */
+  onClearContingency?: () => void;
+  /** Hide the "Select Contingency" card. Used after a contingency has
+   *  been committed AND its overloads detected, since the sticky banner
+   *  then carries the same info plus a Clear shortcut. */
+  hideContingencyPicker?: boolean;
+  /** Collapsed mode: the sidebar shrinks to a thin strip so the
+   *  visualization panel can take the full width. */
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
   /** Shared severity + action-type filters; forwarded to
    *  SidebarSummary so the persistent strip can host the filter
    *  rings alongside the contingency / overload lines. */
@@ -49,19 +69,16 @@ interface AppSidebarProps {
  * - A COMPACT sticky strip at the top (<SidebarSummary>) keeps only
  *   the clickable fields of interest visible while scrolling
  *   (selected contingency → zoom active tab; contingency overloads →
- *   jump to the contingency tab + zoom).
- * - Everything else — the full Select Contingency card with the
- *   multi-select picker + Apply button, the Overloads panel with its
- *   warnings and N / contingency breakdown, and the ActionFeed —
- *   scrolls together in a single column below (rendered as
- *   ``children``), saving vertical space.
+ *   jump to the contingency tab + zoom). The strip also hosts the
+ *   Clear-contingency shortcut and the overload-info bubble.
+ * - The Select Contingency card with the multi-select picker + Trigger
+ *   button shows below the strip — but only as long as no contingency
+ *   has been committed (after that, the strip carries the same info
+ *   and the picker would be redundant).
+ * - The ActionFeed (rendered as ``children``) sits below.
  *
- * The Select Contingency card supports N-1 AND N-K studies: the user
- * picks elements one-by-one from the searchable multi-select (chips
- * appear inline; ✕ removes a chip) and confirms the full list with
- * the Apply button. Pressing Apply commits the pending list to the
- * actual ``selectedContingency`` which then drives the diagram fetch
- * and analysis.
+ * The shell can be collapsed to a thin strip when the operator wants
+ * to expand the visualization panel.
  */
 export default function AppSidebar({
   selectedContingency,
@@ -70,19 +87,29 @@ export default function AppSidebar({
   nameMap,
   n1LinesOverloaded,
   n1LinesOverloadedRho,
+  nLinesOverloaded,
+  nLinesOverloadedRho,
   selectedOverloads,
   onPendingContingencyChange,
   onContingencyApply,
   displayName,
   onContingencyZoom,
   onOverloadClick,
+  onToggleOverload,
+  monitorDeselected,
+  onToggleMonitorDeselected,
+  monitoringHint,
+  onClearContingency,
+  hideContingencyPicker,
+  collapsed,
+  onToggleCollapsed,
   overviewFilters,
   onOverviewFiltersChange,
   hasActions,
   children,
 }: AppSidebarProps) {
   // Pending differs from applied → user has unconfirmed edits to the
-  // contingency that won't take effect until they hit Apply.
+  // contingency that won't take effect until they hit Trigger.
   const samePendingApplied =
     pendingContingency.length === selectedContingency.length &&
     pendingContingency.every((e, i) => e === selectedContingency[i]);
@@ -107,22 +134,97 @@ export default function AppSidebar({
     [pendingContingency, optionByValue, nameMap],
   );
 
+  if (collapsed) {
+    return (
+      <div
+        data-testid="sidebar"
+        data-collapsed="true"
+        style={{
+          width: '32px',
+          background: colors.borderSubtle,
+          borderRight: `1px solid ${colors.border}`,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          padding: `${space[2]} 0`,
+        }}
+      >
+        <button
+          data-testid="sidebar-expand-button"
+          onClick={onToggleCollapsed}
+          title="Expand sidebar"
+          style={{
+            background: colors.surface,
+            border: `1px solid ${colors.border}`,
+            borderRadius: radius.sm,
+            cursor: 'pointer',
+            width: '24px',
+            height: '24px',
+            fontSize: '12px',
+            color: colors.textSecondary,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+          }}
+        >
+          ›
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div data-testid="sidebar" style={{ width: '25%', background: colors.borderSubtle, borderRight: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div data-testid="sidebar" style={{ width: '25%', background: colors.borderSubtle, borderRight: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+      {onToggleCollapsed && (
+        <button
+          data-testid="sidebar-collapse-button"
+          onClick={onToggleCollapsed}
+          title="Collapse sidebar to widen the visualization panel"
+          style={{
+            position: 'absolute',
+            top: '4px',
+            right: '4px',
+            zIndex: 5,
+            background: colors.surface,
+            border: `1px solid ${colors.border}`,
+            borderRadius: radius.sm,
+            cursor: 'pointer',
+            width: '20px',
+            height: '20px',
+            fontSize: '11px',
+            color: colors.textSecondary,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            lineHeight: 1,
+          }}
+        >
+          ‹
+        </button>
+      )}
       <SidebarSummary
         selectedContingency={selectedContingency}
         n1LinesOverloaded={n1LinesOverloaded}
         n1LinesOverloadedRho={n1LinesOverloadedRho}
+        nLinesOverloaded={nLinesOverloaded}
+        nLinesOverloadedRho={nLinesOverloadedRho}
         selectedOverloads={selectedOverloads}
         displayName={displayName}
         onContingencyZoom={onContingencyZoom}
         onOverloadClick={onOverloadClick}
+        onToggleOverload={onToggleOverload}
+        monitorDeselected={monitorDeselected}
+        onToggleMonitorDeselected={onToggleMonitorDeselected}
+        monitoringHint={monitoringHint}
+        onClearContingency={onClearContingency}
         overviewFilters={overviewFilters}
         onOverviewFiltersChange={onOverviewFiltersChange}
         hasActions={hasActions}
       />
       <div style={{ flex: 1, overflowY: 'auto', padding: space[4], minHeight: 0, display: 'flex', flexDirection: 'column', gap: space[4] }}>
-        {branches.length > 0 && (
+        {branches.length > 0 && !hideContingencyPicker && (
           <div style={{ flexShrink: 0, padding: `${space[3]} ${space[4]}`, background: colors.surface, borderRadius: radius.lg, border: `1px solid ${colors.border}`, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: space[2], marginBottom: '5px' }}>
               <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>⚡ Select Contingency</label>

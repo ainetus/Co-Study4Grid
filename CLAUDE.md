@@ -67,8 +67,14 @@ Co-Study4Grid/
 │       │                          # toggles, postMessage bridge, pin overlay payload)
 │       ├── components/            # Header, ActionFeed, ActionCard, ActionCardPopover,
 │       │                          # ActionSearchDropdown, ActionTypeFilterChips,
-│       │                          # ActionOverviewDiagram, AppSidebar, SidebarSummary,
-│       │                          # StatusToasts, VisualizationPanel, OverloadPanel,
+│       │                          # ActionOverviewDiagram, AppSidebar (collapsible
+│       │                          # shell — readability-feed PR), SidebarSummary
+│       │                          # (sticky strip — hosts Clear button + overload
+│       │                          # info bubble that absorbed the legacy
+│       │                          # OverloadPanel affordances),
+│       │                          # StatusToasts, VisualizationPanel, OverloadPanel
+│       │                          # (kept on disk for unit-test backwards-compat;
+│       │                          # no longer rendered from App.tsx),
 │       │                          # CombinedActionsModal, ComputedPairsTable,
 │       │                          # ExplorePairsTab, SldOverlay, DetachableTabHost,
 │       │                          # MemoizedSvgContainer, ErrorBoundary, NoticesPanel

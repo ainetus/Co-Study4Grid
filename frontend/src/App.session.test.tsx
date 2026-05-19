@@ -304,7 +304,7 @@ describe('Full State Reset on Load Study', () => {
     await renderAndLoadStudy();
     await selectBranch('BRANCH_A');
 
-    expect(document.querySelector('.cs4g-contingency__multi-value__label')?.textContent).toBe('BRANCH_A');
+    expect(screen.getByTestId('sidebar-summary-contingency').textContent).toContain('BRANCH_A');
 
     mockApi.updateConfig.mockClear();
     mockApi.getBranches.mockClear();
@@ -325,7 +325,7 @@ describe('Full State Reset on Load Study', () => {
     });
 
     // Branch input should be cleared
-    expect(document.querySelector('.cs4g-contingency__multi-value__label')).toBeNull();
+    expect(screen.queryByTestId('sidebar-summary-contingency')).toBeNull();
   });
 
   it('clears branch selection after confirming Load Study with analysis state', async () => {
@@ -333,7 +333,7 @@ describe('Full State Reset on Load Study', () => {
     await selectBranch('BRANCH_A');
     await runAnalysis();
 
-    expect(document.querySelector('.cs4g-contingency__multi-value__label')?.textContent).toBe('BRANCH_A');
+    expect(screen.getByTestId('sidebar-summary-contingency').textContent).toContain('BRANCH_A');
 
     mockApi.updateConfig.mockClear();
     mockApi.getBranches.mockClear();
@@ -361,7 +361,7 @@ describe('Full State Reset on Load Study', () => {
     });
 
     // Branch input must be cleared after reset
-    expect(document.querySelector('.cs4g-contingency__multi-value__label')).toBeNull();
+    expect(screen.queryByTestId('sidebar-summary-contingency')).toBeNull();
   });
 
   it('re-fetches branches after Load Study reset', async () => {
@@ -441,7 +441,7 @@ describe('Full State Reset on Apply Settings', () => {
     await renderAndLoadStudy();
     await selectBranch('BRANCH_A');
 
-    expect(document.querySelector('.cs4g-contingency__multi-value__label')?.textContent).toBe('BRANCH_A');
+    expect(screen.getByTestId('sidebar-summary-contingency').textContent).toContain('BRANCH_A');
 
     mockApi.updateConfig.mockClear();
 
@@ -452,7 +452,7 @@ describe('Full State Reset on Apply Settings', () => {
       expect(mockApi.updateConfig).toHaveBeenCalled();
     });
 
-    expect(document.querySelector('.cs4g-contingency__multi-value__label')).toBeNull();
+    expect(screen.queryByTestId('sidebar-summary-contingency')).toBeNull();
     expect(screen.queryByText('Apply')).not.toBeInTheDocument();
   });
 
@@ -461,7 +461,7 @@ describe('Full State Reset on Apply Settings', () => {
     await selectBranch('BRANCH_A');
     await runAnalysis();
 
-    expect(document.querySelector('.cs4g-contingency__multi-value__label')?.textContent).toBe('BRANCH_A');
+    expect(screen.getByTestId('sidebar-summary-contingency').textContent).toContain('BRANCH_A');
 
     mockApi.updateConfig.mockClear();
 
@@ -472,7 +472,7 @@ describe('Full State Reset on Apply Settings', () => {
       expect(mockApi.updateConfig).toHaveBeenCalled();
     });
 
-    expect(document.querySelector('.cs4g-contingency__multi-value__label')).toBeNull();
+    expect(screen.queryByTestId('sidebar-summary-contingency')).toBeNull();
     expect(screen.queryByText('Apply')).not.toBeInTheDocument();
   });
 
@@ -677,7 +677,7 @@ describe('Apply Settings Confirmation', () => {
     expect(mockApi.updateConfig).not.toHaveBeenCalled();
     expect(screen.getByText('Apply')).toBeInTheDocument();
     // The contingency selection must also still be intact.
-    expect(document.querySelector('.cs4g-contingency__multi-value__label')?.textContent).toBe('BRANCH_A');
+    expect(screen.getByTestId('sidebar-summary-contingency').textContent).toContain('BRANCH_A');
   });
 });
 
@@ -901,7 +901,7 @@ describe('Session reload — different contingency than current', () => {
     await runAnalysis();
 
     // Verify pre-state: BRANCH_A committed and analysis result present.
-    expect(document.querySelector('.cs4g-contingency__multi-value__label')?.textContent).toBe('BRANCH_A');
+    expect(screen.getByTestId('sidebar-summary-contingency').textContent).toContain('BRANCH_A');
 
     // 2. Open the Reload Session modal and pick the BRANCH_B session.
     const reloadBtn = screen.getByText('Reload Session');

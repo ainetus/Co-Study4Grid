@@ -849,7 +849,7 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
         <div style={{ padding: '15px' }}>
             {/* Header with search */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', position: 'relative' }}>
-                <h3 data-testid="action-feed-header" style={{ margin: 0, flex: 1 }}>Simulated Actions</h3>
+                <h3 data-testid="action-feed-header" style={{ margin: 0, flex: 1 }}>Remedial Actions</h3>
                 <button
                     onClick={handleOpenSearch}
                     style={{
