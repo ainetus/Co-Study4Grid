@@ -222,6 +222,8 @@ SPEC_DETAILS: dict[str, dict] = {
     # --- Sidebar layout / contingency clear ---
     "sidebar_collapsed_toggled": _spec_row({"collapsed"}),
     "contingency_clear_requested": _spec_row({"had_analysis_state"}),
+    # --- Theme ---
+    "theme_toggled":            _spec_row({"theme"}),
 }
 
 # Event types whose details argument is a bare identifier or a

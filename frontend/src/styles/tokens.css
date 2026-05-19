@@ -155,3 +155,66 @@ remaining hex-literal count after each migration.
      Kept as a token so the dark-mode initial-paint color has a name. */
   --color-surface-dark: #242424;
 }
+
+/* ===== Dark theme =====
+   Engaged via `<html data-theme="dark">`, set by useTheme + the
+   pre-mount script in index.html. Only chrome tokens flip — domain
+   signals (overload / contingency / action-target / pin palette)
+   stay identical because pypowsybl SVGs render on a light backdrop
+   and the colors encode semantic state. The diagram <svg> container
+   keeps `colors.surface` here = light grey-blue so flow arrows /
+   delta colors keep their meaning. */
+[data-theme="dark"] {
+  /* Surfaces — diagram canvases stay near-white, app shell is dark. */
+  --color-surface: #1b1f24;            /* base app background */
+  --color-surface-muted: #232830;      /* sidebar / cards */
+  --color-surface-raised: #2a3038;     /* hover / raised tiles */
+
+  /* Borders */
+  --color-border: #3a4049;
+  --color-border-subtle: #2d333b;
+  --color-border-strong: #555c66;
+
+  /* Text — high-contrast on the dark surfaces above. */
+  --color-text-primary: #e6e8eb;
+  --color-text-secondary: #b5bac1;
+  --color-text-tertiary: #8b9098;
+  --color-text-on-brand: #ffffff;
+
+  /* Brand — lift the Tailwind blue one step so it stays vivid on dark. */
+  --color-brand: #3b82f6;              /* blue-500 — primary CTAs */
+  --color-brand-strong: #60a5fa;       /* blue-400 — hover */
+  --color-brand-soft: #1e3a8a;         /* blue-900 — selection bg */
+  --color-brand-mid: #60a5fa;          /* slider / range fills */
+
+  /* Success / Warning / Danger / Info — keep hue, deepen the soft
+     backgrounds so badge text stays readable on dark cards. */
+  --color-success: #22c55e;
+  --color-success-strong: #16a34a;
+  --color-success-soft: #14532d;
+  --color-success-text: #bbf7d0;
+
+  --color-warning: #facc15;
+  --color-warning-strong: #eab308;
+  --color-warning-soft: #422006;
+  --color-warning-border: #713f12;
+  --color-warning-text: #fde68a;
+
+  --color-danger: #ef4444;
+  --color-danger-strong: #dc2626;
+  --color-danger-soft: #4c1d1d;
+  --color-danger-text: #fecaca;
+
+  --color-accent: #c084fc;             /* save/secondary action */
+  --color-accent-soft: #3b1f5c;
+  --color-accent-border: #7e22ce;
+  --color-accent-text: #e9d5ff;
+  --color-chrome: #0f1419;             /* header background */
+  --color-chrome-soft: #4a5159;        /* settings cog */
+  --color-disabled: #4b5563;
+
+  --color-info: #38bdf8;
+  --color-info-soft: #0c3445;
+  --color-info-border: #075985;
+  --color-info-text: #bae6fd;
+}
