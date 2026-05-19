@@ -1644,6 +1644,8 @@ function App() {
             displayName={displayName}
             overviewFilters={overviewFilters}
             onOverviewFiltersChange={setOverviewFilters}
+            sidebarCollapsed={sidebarCollapsed}
+            hasActions={Object.keys(result?.actions || {}).length > 0}
             unsimulatedActionIds={unsimulatedActionIds}
             unsimulatedActionInfo={unsimulatedActionInfo}
             onSimulateUnsimulatedAction={handleSimulateUnsimulatedAction}

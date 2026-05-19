@@ -153,24 +153,25 @@ export default function SidebarSummary({
           ))}
           {onClearContingency && (
             <button
+              type="button"
               data-testid="sidebar-summary-clear"
               onClick={(e) => { e.stopPropagation(); onClearContingency(); }}
               title="Clear the current contingency and pick a new one"
               style={{
-                marginLeft: 'auto',
-                background: 'none',
-                border: `1px solid ${colors.border}`,
+                padding: '3px 10px',
+                background: colors.danger,
+                color: colors.textOnBrand,
+                border: 'none',
                 borderRadius: radius.sm,
-                padding: `0 ${space[1]}`,
                 cursor: 'pointer',
-                fontSize: '10px',
-                color: colors.textSecondary,
-                fontWeight: 600,
-                lineHeight: 1.5,
+                fontSize: '11px',
+                fontWeight: 'bold',
+                flexShrink: 0,
+                marginLeft: space[1],
                 whiteSpace: 'nowrap',
               }}
             >
-              ✕ Clear
+              Clear
             </button>
           )}
         </div>
@@ -191,7 +192,17 @@ export default function SidebarSummary({
                   {i > 0 && ', '}
                   <button
                     onClick={(e) => { e.stopPropagation(); onOverloadClick('', name, 'contingency'); }}
-                    title={`Open Contingency tab and zoom to ${name}`}
+                    onDoubleClick={(e) => {
+                      if (onToggleOverload) {
+                        e.stopPropagation();
+                        onToggleOverload(name);
+                      }
+                    }}
+                    title={onToggleOverload
+                      ? (isSelected
+                        ? `Zoom to ${name} (Double-click to unselect)`
+                        : `Zoom to ${name} (Double-click to select)`)
+                      : `Open Contingency tab and zoom to ${name}`}
                     style={{
                       background: 'none',
                       border: 'none',

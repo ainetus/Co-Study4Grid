@@ -61,7 +61,7 @@ vi.mock('./components/ActionFeed', () => ({
       data-loading={!!props.analysisLoading}
     >
       <div>
-        <h3 data-testid="action-feed-header">Simulated Actions</h3>
+        <h3 data-testid="action-feed-header">Remedial Actions</h3>
       </div>
       {props.analysisLoading ? (
         <button disabled>⚙️ Analyzing…</button>

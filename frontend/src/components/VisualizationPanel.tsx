@@ -15,6 +15,7 @@ import ActionCardPopover from './ActionCardPopover';
 import DiagramLegend from './DiagramLegend';
 import InspectSearchField from './InspectSearchField';
 import DetachedPlaceholder from './DetachedPlaceholder';
+import ActionFilterRings from './ActionFilterRings';
 import type { DetachedTabsMap } from '../hooks/useDetachedTabs';
 import type { PZInstance } from '../hooks/useTiedTabsSync';
 import { useOverflowIframe } from '../hooks/useOverflowIframe';
@@ -164,6 +165,15 @@ interface VisualizationPanelProps {
     overviewFilters?: ActionOverviewFilters;
     /** Setter for the shared overview filter state (owned by App.tsx). */
     onOverviewFiltersChange?: (next: ActionOverviewFilters) => void;
+    /** When true, the sidebar is collapsed and its ActionFilterRings
+     *  row is unreachable. Surface a copy of the strip on the left
+     *  side of this panel's tab row so the filter remains accessible
+     *  even with the sidebar folded away. */
+    sidebarCollapsed?: boolean;
+    /** Whether the action feed currently holds any card to filter —
+     *  the inline filter strip stays hidden until there is something
+     *  to act on, mirroring the sidebar's gating. */
+    hasActions?: boolean;
     /** Ids of scored-but-not-simulated actions to render as dimmed pins. */
     unsimulatedActionIds?: readonly string[];
     /** Per-id score metadata used to enrich the un-simulated pin tooltip. */
@@ -255,6 +265,8 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     displayName,
     overviewFilters,
     onOverviewFiltersChange,
+    sidebarCollapsed,
+    hasActions,
     unsimulatedActionIds,
     unsimulatedActionInfo,
     onSimulateUnsimulatedAction,
@@ -614,8 +626,22 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
         <>
             {/* Tab bar — all 4 tabs always visible; unavailable ones show placeholder.
                 Each tab exposes a small detach/reattach button so the user can move
-                its content into a secondary browser window and back. */}
-            <div style={{ display: 'flex', borderBottom: `1px solid ${colors.border}`, flexShrink: 0 }}>
+                its content into a secondary browser window and back. When the
+                sidebar is collapsed, the action-filter rings move into the same
+                row on the left so the operator can still tune the overview filter
+                without re-expanding the sidebar. */}
+            <div style={{ display: 'flex', alignItems: 'center', borderBottom: `1px solid ${colors.border}`, flexShrink: 0 }}>
+                {sidebarCollapsed && hasActions && overviewFilters && onOverviewFiltersChange && (
+                    <div
+                        data-testid="viz-panel-overview-filters"
+                        style={{ flexShrink: 0, padding: '4px 8px', borderRight: `1px solid ${colors.border}` }}
+                    >
+                        <ActionFilterRings
+                            filters={overviewFilters}
+                            onFiltersChange={onOverviewFiltersChange}
+                        />
+                    </div>
+                )}
                 {(
                     [
                         { id: 'n' as TabId, label: 'Network (N)' as React.ReactNode, available: !!nDiagram?.svg, accentColor: colors.brand, dimColor: colors.chromeSoft, placeholder: 'Configure a network path in Settings to load the base-case diagram.' },
