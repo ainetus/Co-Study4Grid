@@ -277,76 +277,124 @@ class TestMaterialiseActions:
 # Busbar-split materialisation
 # ---------------------------------------------------------------------
 class TestMaterialiseBusbarActions:
-    def test_surfaces_every_dict_action_entry_for_matching_VL(self):
+    def _make_enrich_mock(self, set_content_for: set):
+        """Return a fake enrich_actions_lazy that fills `content` for the listed ids."""
+        def fake_enrich(raw, _network):
+            out = {}
+            for aid, entry in raw.items():
+                entry = dict(entry)
+                if aid in set_content_for:
+                    entry["content"] = {
+                        "set_bus": {"lines_or_id": {}, "lines_ex_id": {},
+                                    "loads_id": {}, "generators_id": {},
+                                    "shunts_id": {}},
+                        "switches": entry["switches"],
+                    }
+                # else leave content as None to exercise the "didn't populate" path
+                out[aid] = entry
+            return out
+        return fake_enrich
+
+    def test_synthesizes_switch_action_via_enrich(self):
         env = MagicMock()
         env.action_space.side_effect = lambda c: ("ACTION", c)
-        dict_action = {
-            "split_VL_A_v1": {"VoltageLevelId": "VL_A", "content": {"set_bus": {"switches": ["s1"]}}},
-            "split_VL_A_v2": {"VoltageLevelId": "VL_A", "content": {"set_bus": {"switches": ["s2"]}}},
-            "split_VL_B_v1": {"VoltageLevelId": "VL_B", "content": {"set_bus": {"switches": ["s5"]}}},
-        }
-        prioritized, scores = ToOpRecommender()._materialise_busbar_actions(
-            splits=[("VL_A", 0.0)], env=env, dict_action=dict_action,
-        )
-        # Both VL_A variants surface; VL_B is untouched.
-        assert set(prioritized.keys()) == {"split_VL_A_v1", "split_VL_A_v2"}
-        assert "split_VL_B_v1" not in prioritized
-        # Score 0.0 → negated → 0.0 (higher is better).
-        assert scores["split_VL_A_v1"] == 0.0
+        network = MagicMock()
+        action_id = "toop_split_VL_A"
+        enrich = self._make_enrich_mock({action_id})
+        with patch(
+            "expert_op4grid_recommender.data_loader.enrich_actions_lazy",
+            enrich, create=True,
+        ):
+            prioritized, scores = ToOpRecommender()._materialise_busbar_actions(
+                splits=[("VL_A", {"sw1": True, "sw2": False}, 0.0)],
+                env=env, network=network,
+            )
+        assert list(prioritized.keys()) == [action_id]
+        assert scores[action_id] == 0.0
+        # The synthesised action's switch ids are VL-prefixed.
+        action_tuple = prioritized[action_id]
+        assert action_tuple[0] == "ACTION"
+        assert set(action_tuple[1]["switches"]) == {"VL_A_sw1", "VL_A_sw2"}
 
-    def test_accepts_lowercase_voltage_level_id_alias(self):
+    def test_already_prefixed_switch_id_not_double_prefixed(self):
         env = MagicMock()
         env.action_space.side_effect = lambda c: ("ACTION", c)
-        dict_action = {
-            "node_VL_A": {"voltage_level_id": "VL_A",
-                          "content": {"set_bus": {"switches": ["s1"]}}},
-        }
-        prioritized, _ = ToOpRecommender()._materialise_busbar_actions(
-            splits=[("VL_A", 0.0)], env=env, dict_action=dict_action,
-        )
-        assert "node_VL_A" in prioritized
+        network = MagicMock()
+        action_id = "toop_split_VL_A"
+        enrich = self._make_enrich_mock({action_id})
+        with patch(
+            "expert_op4grid_recommender.data_loader.enrich_actions_lazy",
+            enrich, create=True,
+        ):
+            prioritized, _ = ToOpRecommender()._materialise_busbar_actions(
+                splits=[("VL_A", {"VL_A_sw1": True}, 0.0)],
+                env=env, network=network,
+            )
+        action_tuple = prioritized[action_id]
+        # Only one prefix, not VL_A_VL_A_sw1.
+        assert set(action_tuple[1]["switches"]) == {"VL_A_sw1"}
 
-    def test_empty_dict_action_yields_empty(self):
+    def test_empty_switches_dict_skipped(self):
         env = MagicMock()
-        prioritized, scores = ToOpRecommender()._materialise_busbar_actions(
-            splits=[("VL_A", 0.0)], env=env, dict_action={},
-        )
+        network = MagicMock()
+        with patch(
+            "expert_op4grid_recommender.data_loader.enrich_actions_lazy",
+            self._make_enrich_mock(set()), create=True,
+        ):
+            prioritized, scores = ToOpRecommender()._materialise_busbar_actions(
+                splits=[("VL_A", {}, 0.0)],
+                env=env, network=network,
+            )
         assert prioritized == {} and scores == {}
 
-    def test_skips_entries_with_no_content(self):
+    def test_enrich_failure_yields_empty(self):
         env = MagicMock()
-        env.action_space.side_effect = lambda c: ("ACTION", c)
-        dict_action = {
-            "lazy_VL_A": {"VoltageLevelId": "VL_A", "content": None},
-        }
-        prioritized, _ = ToOpRecommender()._materialise_busbar_actions(
-            splits=[("VL_A", 0.0)], env=env, dict_action=dict_action,
-        )
-        assert prioritized == {}
-
-    def test_skips_entries_env_rejects(self):
-        env = MagicMock()
-        env.action_space.side_effect = RuntimeError("rejected")
-        dict_action = {
-            "split_VL_A_v1": {"VoltageLevelId": "VL_A", "content": {"set_bus": {"switches": ["s1"]}}},
-        }
-        prioritized, _ = ToOpRecommender()._materialise_busbar_actions(
-            splits=[("VL_A", 0.0)], env=env, dict_action=dict_action,
-        )
-        assert prioritized == {}
-
-    def test_no_matching_VL_logs_gap_and_returns_empty(self, caplog):
-        env = MagicMock()
-        dict_action = {
-            "split_VL_A_v1": {"VoltageLevelId": "VL_A", "content": {"set_bus": {"switches": ["s1"]}}},
-        }
-        with caplog.at_level("WARNING"):
+        network = MagicMock()
+        def boom(_raw, _network):
+            raise RuntimeError("enrich blew up")
+        with patch(
+            "expert_op4grid_recommender.data_loader.enrich_actions_lazy",
+            boom, create=True,
+        ):
             prioritized, _ = ToOpRecommender()._materialise_busbar_actions(
-                splits=[("VL_GHOST", 0.0)], env=env, dict_action=dict_action,
+                splits=[("VL_A", {"sw1": True}, 0.0)],
+                env=env, network=network,
             )
         assert prioritized == {}
-        # The "no dict_action entry" warning is the operator-actionable signal.
-        assert any("no dict_action entry" in r.getMessage() for r in caplog.records)
+
+    def test_unpopulated_content_warned_and_skipped(self, caplog):
+        env = MagicMock()
+        network = MagicMock()
+        # enrich returns an entry whose content stays None (not populated).
+        with patch(
+            "expert_op4grid_recommender.data_loader.enrich_actions_lazy",
+            self._make_enrich_mock(set()), create=True,
+        ):
+            with caplog.at_level("WARNING"):
+                prioritized, _ = ToOpRecommender()._materialise_busbar_actions(
+                    splits=[("VL_A", {"sw1": True}, 0.0)],
+                    env=env, network=network,
+                )
+        assert prioritized == {}
+        assert any(
+            "did not populate content" in r.getMessage()
+            for r in caplog.records
+        )
+
+    def test_env_rejection_skips_action(self):
+        env = MagicMock()
+        env.action_space.side_effect = RuntimeError("backend rejected")
+        network = MagicMock()
+        action_id = "toop_split_VL_A"
+        with patch(
+            "expert_op4grid_recommender.data_loader.enrich_actions_lazy",
+            self._make_enrich_mock({action_id}), create=True,
+        ):
+            prioritized, _ = ToOpRecommender()._materialise_busbar_actions(
+                splits=[("VL_A", {"sw1": True}, 0.0)],
+                env=env, network=network,
+            )
+        assert prioritized == {}
 
 
 # ---------------------------------------------------------------------

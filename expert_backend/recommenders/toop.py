@@ -285,7 +285,7 @@ class ToOpRecommender(RecommenderModel):
             bs_prioritized, bs_scores = self._materialise_busbar_actions(
                 splits=splits,
                 env=env,
-                dict_action=inputs.dict_action,
+                network=inputs.network,
             )
             # Line-switch matches win on key collisions — they're the
             # more specific surface form. In practice the two namespaces
@@ -476,8 +476,8 @@ class ToOpRecommender(RecommenderModel):
         self,
         topology_paths: Iterable[Any],
         original_grid_file: Path,
-    ) -> List[Tuple[str, float]]:
-        """Return ``[(voltage_level_id, rank_score)]`` for VLs ToOp split.
+    ) -> List[Tuple[str, Dict[str, bool], float]]:
+        """Return ``[(vl_id, {switch_id: new_open}, rank_score)]`` triples.
 
         Diffs each topology's switch states (via
         ``Network.get_switches()``) against the original grid. A
@@ -486,9 +486,13 @@ class ToOpRecommender(RecommenderModel):
         line-switch extraction missed it — is a *busbar split*: ToOp
         reconfigured the node-breaker topology inside a substation.
 
-        Returns the list sorted best-first (rank 0 = topology_0). De-
-        duplicated by VL so multiple topologies touching the same VL
-        keep the best rank.
+        Returns one triple per affected VL, sorted best-first (rank 0
+        = ``topology_0``). The switch dict captures *which* switches
+        flipped and to *which* state — the payload `_materialise_busbar_actions`
+        needs to synthesise a switch-based action in the exact shape
+        the pypowsybl backend (and operator-curated coupling actions)
+        consume. De-duplicated by VL keeping the best-rank topology's
+        switch set.
         """
         import pypowsybl.network as pn
 
@@ -519,7 +523,8 @@ class ToOpRecommender(RecommenderModel):
             except Exception:
                 continue
 
-        best_rank_by_vl: Dict[str, float] = {}
+        # vl_id -> (best_rank_so_far, {switch_id: new_open_state})
+        best: Dict[str, Tuple[float, Dict[str, bool]]] = {}
         for rank, topo in enumerate(topology_paths or []):
             topo_dir = Path(topo) if not isinstance(topo, Path) else topo
             modified = topo_dir / "modified_network.xiidm"
@@ -535,6 +540,7 @@ class ToOpRecommender(RecommenderModel):
                 )
                 continue
 
+            per_vl: Dict[str, Dict[str, bool]] = {}
             for sid in mod_switches.index:
                 if sid not in orig_open:
                     continue
@@ -547,76 +553,137 @@ class ToOpRecommender(RecommenderModel):
                 vl = orig_vl.get(sid)
                 if not vl:
                     continue
-                cur = best_rank_by_vl.get(vl)
-                if cur is None or rank < cur:
-                    best_rank_by_vl[vl] = float(rank)
+                per_vl.setdefault(vl, {})[sid] = new_open
 
-        return sorted(best_rank_by_vl.items(), key=lambda kv: kv[1])
+            for vl, switches in per_vl.items():
+                cur = best.get(vl)
+                if cur is None or rank < cur[0]:
+                    best[vl] = (float(rank), switches)
+
+        return sorted(
+            [(vl, switches, rank) for vl, (rank, switches) in best.items()],
+            key=lambda triple: triple[2],
+        )
 
     def _materialise_busbar_actions(
         self,
-        splits: List[Tuple[str, float]],
+        splits: List[Tuple[str, Dict[str, bool], float]],
         env: Any,
-        dict_action: Optional[Dict[str, Any]],
+        network: Any,
     ) -> Tuple[Dict[str, Any], Dict[str, float]]:
-        """Surface every ``dict_action`` entry whose VL ToOp split.
+        """Synthesize switch-based actions from ToOp's split decisions.
 
-        We piggy-back on the operator's substation-action vocabulary
-        rather than synthesising one from ToOp's raw switch list: the
-        translation from a switch-flip set to grid2op's set-bus
-        topology vector requires substation-specific knowledge the
-        operator already encoded when curating ``dict_action``. ToOp
-        tells us *which* substation to split; the operator's library
-        tells us *how*.
+        The pypowsybl backend in ``expert_op4grid_recommender`` accepts
+        the same switch-action format the operator's curated coupling
+        actions use: top-level ``VoltageLevelId`` + ``switches`` dict
+        mapping ``<vl_id>_<switch_id>`` → ``true`` (open) / ``false``
+        (closed). The ``content`` field can be left ``None`` and is
+        populated by ``enrich_actions_lazy``, which reads the live
+        network to compute the resulting per-connectable bus
+        assignments.
 
-        When a VL ToOp split has no matching dict_action entry, we
-        log it — that's a gap for the operator to fill, not a bug.
+        We build one synthetic action per VL ToOp split (grouping all
+        switches it flipped in that VL), enrich, and hand the
+        materialised content to ``env.action_space``. Score is ToOp's
+        topology rank, negated so "higher is better" matches the UI's
+        sort convention.
         """
+        if not splits:
+            return {}, {}
+
+        try:
+            from expert_op4grid_recommender.data_loader import enrich_actions_lazy
+        except Exception as exc:
+            logger.warning(
+                "ToOpRecommender: enrich_actions_lazy not importable (%s: %s); "
+                "cannot synthesize busbar-split actions.",
+                type(exc).__name__, exc,
+            )
+            return {}, {}
+
+        # Build a raw dict_action containing only our synthesised entries.
+        raw: Dict[str, Dict[str, Any]] = {}
+        pending: List[Tuple[str, str, float]] = []
+        for vl_id, switches, rank in splits:
+            if not switches:
+                continue
+            prefixed = {
+                (sid if sid.startswith(f"{vl_id}_") else f"{vl_id}_{sid}"): bool(new_open)
+                for sid, new_open in switches.items()
+            }
+            action_id = f"toop_split_{vl_id}"
+            sample = ", ".join(sorted(prefixed.keys())[:3])
+            raw[action_id] = {
+                "description": (
+                    f"ToOp: substation reconfiguration at '{vl_id}' "
+                    f"({len(prefixed)} switch operation(s): {sample}"
+                    f"{'…' if len(prefixed) > 3 else ''})"
+                ),
+                "description_unitaire": f"ToOp: split at {vl_id}",
+                "VoltageLevelId": vl_id,
+                "switches": prefixed,
+                # content=None → enrich_actions_lazy computes it on demand.
+                "content": None,
+            }
+            pending.append((action_id, vl_id, rank))
+
+        if not raw:
+            return {}, {}
+
+        try:
+            enriched = enrich_actions_lazy(raw, network)
+        except Exception:
+            logger.exception(
+                "ToOpRecommender: enrich_actions_lazy failed; "
+                "cannot synthesize busbar-split actions."
+            )
+            return {}, {}
+
         prioritized: Dict[str, Any] = {}
         scores: Dict[str, float] = {}
-        if not dict_action:
-            for vl_id, _ in splits:
-                logger.warning(
-                    "ToOpRecommender: ToOp split VL %s but dict_action is empty.",
-                    vl_id,
-                )
-            return prioritized, scores
-
-        for vl_id, rank in splits:
-            matched: List[str] = []
-            for action_id, entry in dict_action.items():
-                if not isinstance(entry, dict):
-                    continue
-                entry_vl = entry.get("VoltageLevelId") or entry.get("voltage_level_id")
-                if entry_vl != vl_id:
-                    continue
-                content = entry.get("content")
-                if content is None:
-                    continue
+        for action_id, vl_id, rank in pending:
+            entry = enriched.get(action_id) if hasattr(enriched, "get") else None
+            if not isinstance(entry, dict):
+                # LazyActionDict supports mapping access but not
+                # always .get(); fall back to direct indexing.
                 try:
-                    prioritized[action_id] = env.action_space(content)
-                except Exception as e:
-                    logger.debug(
-                        "ToOpRecommender: dict_action %s for VL %s rejected by env: %s",
-                        action_id, vl_id, e,
+                    entry = enriched[action_id]
+                except Exception:
+                    logger.warning(
+                        "ToOpRecommender: enriched dict lacks %s — skipping.",
+                        action_id,
                     )
                     continue
-                # Same negation convention as line switches — higher is better.
-                scores[action_id] = -float(rank)
-                matched.append(action_id)
-            if matched:
-                logger.warning(
-                    "ToOpRecommender: VL %s split → surfacing %d matching "
-                    "dict_action entry(s): %s",
-                    vl_id, len(matched), matched[:5],
+            try:
+                content = entry.get("content") if isinstance(entry, dict) else None
+            except Exception:
+                logger.exception(
+                    "ToOpRecommender: content compute failed for %s (VL %s).",
+                    action_id, vl_id,
                 )
-            else:
+                continue
+            if content is None:
                 logger.warning(
-                    "ToOpRecommender: VL %s split but no dict_action entry "
-                    "with matching VoltageLevelId; consider adding split_%s "
-                    "to your action library.",
-                    vl_id, vl_id,
+                    "ToOpRecommender: enrich_actions_lazy did not populate "
+                    "content for %s (VL %s) — backend cannot apply this split.",
+                    action_id, vl_id,
                 )
+                continue
+            try:
+                prioritized[action_id] = env.action_space(content)
+            except Exception as e:
+                logger.debug(
+                    "ToOpRecommender: env.action_space() rejected %s (VL %s): %s",
+                    action_id, vl_id, e,
+                )
+                continue
+            scores[action_id] = -float(rank)
+            logger.warning(
+                "ToOpRecommender: synthesized busbar action %s for VL %s "
+                "with %d switch operation(s).",
+                action_id, vl_id, len(raw[action_id]["switches"]),
+            )
+
         return prioritized, scores
 
     def _extract_switches_from_topology_paths(
