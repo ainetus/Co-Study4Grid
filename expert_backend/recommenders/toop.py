@@ -104,7 +104,7 @@ class ToOpRecommender(RecommenderModel):
     """
 
     name = "toop"
-    label = "ToOp (Elia Group — line switching)"
+    label = "ToOp (Elia Group)"
     requires_overflow_graph = False
 
     @classmethod
@@ -118,8 +118,20 @@ class ToOpRecommender(RecommenderModel):
                 min=1,
                 max=50,
                 description=(
-                    "Number of line-switching suggestions surfaced from "
-                    "the Pareto front (top-N by congestion reduction)."
+                    "Maximum number of suggestions surfaced — covers "
+                    "both line switches and busbar splits, ranked by "
+                    "ToOp's congestion-reduction order."
+                ),
+            ),
+            ParamSpec(
+                "include_busbar_splits",
+                "Include Busbar Splits",
+                "bool",
+                default=True,
+                description=(
+                    "Surface dict_action entries whose VoltageLevelId "
+                    "matches a substation ToOp split. Disable to "
+                    "restrict suggestions to line switches only."
                 ),
             ),
             ParamSpec(
@@ -176,6 +188,7 @@ class ToOpRecommender(RecommenderModel):
         n = int(params.get("n_prioritized_actions", 5))
         runtime_seconds = int(params.get("runtime_seconds", 15))
         n_worst = int(params.get("n_worst_contingencies", 2))
+        include_busbar_splits = bool(params.get("include_busbar_splits", True))
 
         env = inputs.env
         if env is None:
@@ -224,31 +237,72 @@ class ToOpRecommender(RecommenderModel):
             # ``optimizer_snapshot/run_0/res.json`` exists too but its
             # genome encoding is undocumented; the network-diff path
             # is the robust choice for the line-switching MVP.
+            topology_list = pareto if isinstance(pareto, (list, tuple)) else []
             logger.warning(
                 "ToOpRecommender: run_pipeline returned %d topology path(s); "
                 "diffing modified_network.xiidm against the input grid.",
-                len(pareto) if isinstance(pareto, (list, tuple)) else 0,
+                len(topology_list),
             )
+            # 1. Line switches (lines whose end-connection flags changed).
             switches = self._extract_switches_from_topology_paths(
-                topology_paths=pareto if isinstance(pareto, (list, tuple)) else [],
+                topology_paths=topology_list,
                 original_grid_file=grid_file,
                 n=n,
             )
+            # 2. Busbar splits (voltage levels whose internal switches
+            #    changed without any line being toggled). Detected
+            #    inside the tempdir so the modified_network.xiidm files
+            #    are still on disk.
+            if include_busbar_splits:
+                splits = self._extract_busbar_splits_from_topology_paths(
+                    topology_paths=topology_list,
+                    original_grid_file=grid_file,
+                )
+            else:
+                splits = []
 
         logger.warning(
-            "ToOpRecommender: extracted %d line-switch suggestion(s)",
-            len(switches),
+            "ToOpRecommender: extracted %d line-switch suggestion(s), "
+            "%d busbar-split voltage level(s)",
+            len(switches), len(splits),
         )
-        if not switches:
-            return RecommenderOutput(prioritized_actions={}, action_scores={})
 
-        prioritized, scores = self._materialise_actions(
-            switches=switches,
-            env=env,
-            dict_action=inputs.dict_action,
-            non_connected_reconnectable_lines=inputs.non_connected_reconnectable_lines,
-            network=inputs.network,
-        )
+        prioritized: Dict[str, Any] = {}
+        scores: Dict[str, float] = {}
+
+        if switches:
+            ls_prioritized, ls_scores = self._materialise_actions(
+                switches=switches,
+                env=env,
+                dict_action=inputs.dict_action,
+                non_connected_reconnectable_lines=inputs.non_connected_reconnectable_lines,
+                network=inputs.network,
+            )
+            prioritized.update(ls_prioritized)
+            scores.update(ls_scores)
+
+        if splits:
+            bs_prioritized, bs_scores = self._materialise_busbar_actions(
+                splits=splits,
+                env=env,
+                dict_action=inputs.dict_action,
+            )
+            # Line-switch matches win on key collisions — they're the
+            # more specific surface form. In practice the two namespaces
+            # don't overlap (line ids vs node-action ids), but be safe.
+            for aid, action in bs_prioritized.items():
+                if aid not in prioritized:
+                    prioritized[aid] = action
+                    scores[aid] = bs_scores[aid]
+
+        # Cap the merged surfaced list at the requested top-N to keep
+        # the UI feed manageable. Stable sort by score ascending (better
+        # ToOp ranks first, since we negate the score before exposing).
+        if len(prioritized) > n:
+            ranked = sorted(prioritized.keys(), key=lambda a: -scores.get(a, 0.0))[:n]
+            prioritized = {a: prioritized[a] for a in ranked}
+            scores = {a: scores[a] for a in ranked}
+
         logger.warning(
             "ToOpRecommender: returning %d prioritized action(s): %s",
             len(prioritized), list(prioritized.keys()),
@@ -417,6 +471,153 @@ class ToOpRecommender(RecommenderModel):
                 sorted(data[0].keys())[:20] if data and isinstance(data[0], dict) else None,
             )
         return data
+
+    def _extract_busbar_splits_from_topology_paths(
+        self,
+        topology_paths: Iterable[Any],
+        original_grid_file: Path,
+    ) -> List[Tuple[str, float]]:
+        """Return ``[(voltage_level_id, rank_score)]`` for VLs ToOp split.
+
+        Diffs each topology's switch states (via
+        ``Network.get_switches()``) against the original grid. A
+        voltage level whose internal switches changed open/closed
+        state — but whose line terminal connections did NOT, so
+        line-switch extraction missed it — is a *busbar split*: ToOp
+        reconfigured the node-breaker topology inside a substation.
+
+        Returns the list sorted best-first (rank 0 = topology_0). De-
+        duplicated by VL so multiple topologies touching the same VL
+        keep the best rank.
+        """
+        import pypowsybl.network as pn
+
+        try:
+            original = pn.load(str(original_grid_file))
+            orig_switches = original.get_switches()
+        except Exception:
+            logger.exception(
+                "ToOpRecommender: cannot read switches from original grid %s",
+                original_grid_file,
+            )
+            return []
+
+        if "open" not in orig_switches.columns or "voltage_level_id" not in orig_switches.columns:
+            logger.warning(
+                "ToOpRecommender: pypowsybl get_switches() lacks expected "
+                "columns (have %s); skipping busbar-split detection.",
+                list(orig_switches.columns),
+            )
+            return []
+
+        orig_open: Dict[str, bool] = {}
+        orig_vl: Dict[str, str] = {}
+        for sid in orig_switches.index:
+            try:
+                orig_open[sid] = bool(orig_switches.at[sid, "open"])
+                orig_vl[sid] = str(orig_switches.at[sid, "voltage_level_id"])
+            except Exception:
+                continue
+
+        best_rank_by_vl: Dict[str, float] = {}
+        for rank, topo in enumerate(topology_paths or []):
+            topo_dir = Path(topo) if not isinstance(topo, Path) else topo
+            modified = topo_dir / "modified_network.xiidm"
+            if not modified.exists():
+                continue
+            try:
+                mod_net = pn.load(str(modified))
+                mod_switches = mod_net.get_switches()
+            except Exception:
+                logger.exception(
+                    "ToOpRecommender: cannot read switches from %s",
+                    modified,
+                )
+                continue
+
+            for sid in mod_switches.index:
+                if sid not in orig_open:
+                    continue
+                try:
+                    new_open = bool(mod_switches.at[sid, "open"])
+                except Exception:
+                    continue
+                if new_open == orig_open[sid]:
+                    continue
+                vl = orig_vl.get(sid)
+                if not vl:
+                    continue
+                cur = best_rank_by_vl.get(vl)
+                if cur is None or rank < cur:
+                    best_rank_by_vl[vl] = float(rank)
+
+        return sorted(best_rank_by_vl.items(), key=lambda kv: kv[1])
+
+    def _materialise_busbar_actions(
+        self,
+        splits: List[Tuple[str, float]],
+        env: Any,
+        dict_action: Optional[Dict[str, Any]],
+    ) -> Tuple[Dict[str, Any], Dict[str, float]]:
+        """Surface every ``dict_action`` entry whose VL ToOp split.
+
+        We piggy-back on the operator's substation-action vocabulary
+        rather than synthesising one from ToOp's raw switch list: the
+        translation from a switch-flip set to grid2op's set-bus
+        topology vector requires substation-specific knowledge the
+        operator already encoded when curating ``dict_action``. ToOp
+        tells us *which* substation to split; the operator's library
+        tells us *how*.
+
+        When a VL ToOp split has no matching dict_action entry, we
+        log it — that's a gap for the operator to fill, not a bug.
+        """
+        prioritized: Dict[str, Any] = {}
+        scores: Dict[str, float] = {}
+        if not dict_action:
+            for vl_id, _ in splits:
+                logger.warning(
+                    "ToOpRecommender: ToOp split VL %s but dict_action is empty.",
+                    vl_id,
+                )
+            return prioritized, scores
+
+        for vl_id, rank in splits:
+            matched: List[str] = []
+            for action_id, entry in dict_action.items():
+                if not isinstance(entry, dict):
+                    continue
+                entry_vl = entry.get("VoltageLevelId") or entry.get("voltage_level_id")
+                if entry_vl != vl_id:
+                    continue
+                content = entry.get("content")
+                if content is None:
+                    continue
+                try:
+                    prioritized[action_id] = env.action_space(content)
+                except Exception as e:
+                    logger.debug(
+                        "ToOpRecommender: dict_action %s for VL %s rejected by env: %s",
+                        action_id, vl_id, e,
+                    )
+                    continue
+                # Same negation convention as line switches — higher is better.
+                scores[action_id] = -float(rank)
+                matched.append(action_id)
+            if matched:
+                logger.warning(
+                    "ToOpRecommender: VL %s split → surfacing %d matching "
+                    "dict_action entry(s): %s",
+                    vl_id, len(matched), matched[:5],
+                )
+            else:
+                logger.warning(
+                    "ToOpRecommender: VL %s split but no dict_action entry "
+                    "with matching VoltageLevelId; consider adding split_%s "
+                    "to your action library.",
+                    vl_id, vl_id,
+                )
+        return prioritized, scores
 
     def _extract_switches_from_topology_paths(
         self,

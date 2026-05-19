@@ -274,6 +274,82 @@ class TestMaterialiseActions:
 
 
 # ---------------------------------------------------------------------
+# Busbar-split materialisation
+# ---------------------------------------------------------------------
+class TestMaterialiseBusbarActions:
+    def test_surfaces_every_dict_action_entry_for_matching_VL(self):
+        env = MagicMock()
+        env.action_space.side_effect = lambda c: ("ACTION", c)
+        dict_action = {
+            "split_VL_A_v1": {"VoltageLevelId": "VL_A", "content": {"set_bus": {"switches": ["s1"]}}},
+            "split_VL_A_v2": {"VoltageLevelId": "VL_A", "content": {"set_bus": {"switches": ["s2"]}}},
+            "split_VL_B_v1": {"VoltageLevelId": "VL_B", "content": {"set_bus": {"switches": ["s5"]}}},
+        }
+        prioritized, scores = ToOpRecommender()._materialise_busbar_actions(
+            splits=[("VL_A", 0.0)], env=env, dict_action=dict_action,
+        )
+        # Both VL_A variants surface; VL_B is untouched.
+        assert set(prioritized.keys()) == {"split_VL_A_v1", "split_VL_A_v2"}
+        assert "split_VL_B_v1" not in prioritized
+        # Score 0.0 → negated → 0.0 (higher is better).
+        assert scores["split_VL_A_v1"] == 0.0
+
+    def test_accepts_lowercase_voltage_level_id_alias(self):
+        env = MagicMock()
+        env.action_space.side_effect = lambda c: ("ACTION", c)
+        dict_action = {
+            "node_VL_A": {"voltage_level_id": "VL_A",
+                          "content": {"set_bus": {"switches": ["s1"]}}},
+        }
+        prioritized, _ = ToOpRecommender()._materialise_busbar_actions(
+            splits=[("VL_A", 0.0)], env=env, dict_action=dict_action,
+        )
+        assert "node_VL_A" in prioritized
+
+    def test_empty_dict_action_yields_empty(self):
+        env = MagicMock()
+        prioritized, scores = ToOpRecommender()._materialise_busbar_actions(
+            splits=[("VL_A", 0.0)], env=env, dict_action={},
+        )
+        assert prioritized == {} and scores == {}
+
+    def test_skips_entries_with_no_content(self):
+        env = MagicMock()
+        env.action_space.side_effect = lambda c: ("ACTION", c)
+        dict_action = {
+            "lazy_VL_A": {"VoltageLevelId": "VL_A", "content": None},
+        }
+        prioritized, _ = ToOpRecommender()._materialise_busbar_actions(
+            splits=[("VL_A", 0.0)], env=env, dict_action=dict_action,
+        )
+        assert prioritized == {}
+
+    def test_skips_entries_env_rejects(self):
+        env = MagicMock()
+        env.action_space.side_effect = RuntimeError("rejected")
+        dict_action = {
+            "split_VL_A_v1": {"VoltageLevelId": "VL_A", "content": {"set_bus": {"switches": ["s1"]}}},
+        }
+        prioritized, _ = ToOpRecommender()._materialise_busbar_actions(
+            splits=[("VL_A", 0.0)], env=env, dict_action=dict_action,
+        )
+        assert prioritized == {}
+
+    def test_no_matching_VL_logs_gap_and_returns_empty(self, caplog):
+        env = MagicMock()
+        dict_action = {
+            "split_VL_A_v1": {"VoltageLevelId": "VL_A", "content": {"set_bus": {"switches": ["s1"]}}},
+        }
+        with caplog.at_level("WARNING"):
+            prioritized, _ = ToOpRecommender()._materialise_busbar_actions(
+                splits=[("VL_GHOST", 0.0)], env=env, dict_action=dict_action,
+            )
+        assert prioritized == {}
+        # The "no dict_action entry" warning is the operator-actionable signal.
+        assert any("no dict_action entry" in r.getMessage() for r in caplog.records)
+
+
+# ---------------------------------------------------------------------
 # Light end-to-end with everything mocked — the happy path
 # ---------------------------------------------------------------------
 class TestRecommendHappyPath:
