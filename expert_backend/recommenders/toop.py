@@ -213,38 +213,30 @@ class ToOpRecommender(RecommenderModel):
                 logger.exception("ToOpRecommender: run_pipeline failed; returning {}.")
                 return RecommenderOutput(prioritized_actions={}, action_scores={})
 
-            # `run_pipeline` returns `topology_paths` (list of files written by
-            # the AC validation stage). The richer Pareto data lives in the
-            # `output.json` produced by the DC optimisation stage — try that
-            # first; fall back to the topology_paths only if it's missing.
-            output_json = tmp_path / "iter" / "results" / "output.json"
-            if output_json.exists():
-                try:
-                    pareto = self._load_output_json(output_json)
-                    logger.warning(
-                        "ToOpRecommender: loaded Pareto front from %s", output_json,
-                    )
-                except Exception:
-                    logger.exception(
-                        "ToOpRecommender: failed to parse output.json at %s",
-                        output_json,
-                    )
-            else:
-                logger.warning(
-                    "ToOpRecommender: output.json not found at %s; relying on "
-                    "run_pipeline return value (%s topology paths).",
-                    output_json,
-                    len(pareto) if isinstance(pareto, (list, tuple)) else "?",
-                )
+            # `run_pipeline` returns ``topology_paths`` — a list of
+            # *directories* (``<snapshot_dir>/run_*/topology_*``), each
+            # containing a ``modified_network.xiidm`` ToOp wrote during
+            # AC validation. The primary extraction path is therefore
+            # to load that modified network back through pypowsybl and
+            # diff its line statuses against the original grid we
+            # exported a few lines above — no need to reverse-engineer
+            # ToOp's internal Pareto-front schema. The richer
+            # ``optimizer_snapshot/run_0/res.json`` exists too but its
+            # genome encoding is undocumented; the network-diff path
+            # is the robust choice for the line-switching MVP.
+            logger.warning(
+                "ToOpRecommender: run_pipeline returned %d topology path(s); "
+                "diffing modified_network.xiidm against the input grid.",
+                len(pareto) if isinstance(pareto, (list, tuple)) else 0,
+            )
+            switches = self._extract_switches_from_topology_paths(
+                topology_paths=pareto if isinstance(pareto, (list, tuple)) else [],
+                original_grid_file=grid_file,
+                n=n,
+            )
 
         logger.warning(
-            "ToOpRecommender: run_pipeline returned %s (type=%s)",
-            "an iterable" if pareto is not None else "None",
-            type(pareto).__name__ if pareto is not None else None,
-        )
-        switches = self._extract_line_switches(pareto, n=n)
-        logger.warning(
-            "ToOpRecommender: extracted %d line-switch suggestion(s) from Pareto front",
+            "ToOpRecommender: extracted %d line-switch suggestion(s)",
             len(switches),
         )
         if not switches:
@@ -426,6 +418,73 @@ class ToOpRecommender(RecommenderModel):
             )
         return data
 
+    def _extract_switches_from_topology_paths(
+        self,
+        topology_paths: Iterable[Any],
+        original_grid_file: Path,
+        n: int,
+    ) -> List[Tuple[str, int, float]]:
+        """Diff each topology's ``modified_network.xiidm`` against the input grid.
+
+        For every topology directory ToOp surfaces, load
+        ``modified_network.xiidm`` and compare per-line ``connected1`` /
+        ``connected2`` flags against the original exported grid. Lines
+        that flipped are returned as ``(line_id, target_status, score)``
+        tuples where ``target_status`` is ``-1`` (opened) or ``+1``
+        (closed). Score is the topology's rank in ``topology_paths``
+        (ToOp returns them best-first), so the surfaced list mirrors
+        ToOp's own ordering. Duplicate (line, status) pairs across
+        topologies keep the best (lowest-rank) score.
+        """
+        import pypowsybl.network as pn  # lazy: only loaded when ToOp ran
+
+        try:
+            original = pn.load(str(original_grid_file))
+            original_lines = original.get_lines()
+        except Exception:
+            logger.exception(
+                "ToOpRecommender: cannot reload original grid file %s for diff.",
+                original_grid_file,
+            )
+            return []
+
+        original_open: Dict[str, bool] = {}
+        for line_id in original_lines.index:
+            original_open[line_id] = _is_line_open(original_lines, line_id)
+
+        best: Dict[Tuple[str, int], float] = {}
+        for rank, topo in enumerate(topology_paths or []):
+            topo_dir = Path(topo) if not isinstance(topo, Path) else topo
+            modified = topo_dir / "modified_network.xiidm"
+            if not modified.exists():
+                logger.warning(
+                    "ToOpRecommender: no modified_network.xiidm under %s",
+                    topo_dir,
+                )
+                continue
+            try:
+                mod_net = pn.load(str(modified))
+                mod_lines = mod_net.get_lines()
+            except Exception:
+                logger.exception(
+                    "ToOpRecommender: cannot load %s for diff.", modified,
+                )
+                continue
+            for line_id in mod_lines.index:
+                if line_id not in original_open:
+                    continue
+                new_open = _is_line_open(mod_lines, line_id)
+                if new_open == original_open[line_id]:
+                    continue
+                target_status = -1 if new_open else 1
+                key = (line_id, target_status)
+                score = float(rank)
+                if key not in best or score < best[key]:
+                    best[key] = score
+
+        ranked = sorted(best.items(), key=lambda kv: kv[1])
+        return [(lid, st, sc) for ((lid, st), sc) in ranked[:n]]
+
     def _extract_line_switches(
         self,
         pareto: Any,
@@ -599,6 +658,29 @@ class ToOpRecommender(RecommenderModel):
 # ---------------------------------------------------------------------
 # Tolerant parsers — kept module-level so tests can swap them out.
 # ---------------------------------------------------------------------
+def _is_line_open(lines_df: Any, line_id: str) -> bool:
+    """Return True when at least one terminal of the line is disconnected.
+
+    pypowsybl exposes per-terminal ``connected1`` / ``connected2``
+    booleans on its lines DataFrame. A line is "open" (in operator
+    terms) when *either* terminal is disconnected. Older pypowsybl
+    builds used different column names — fall back conservatively to
+    ``connected`` or treat the line as closed when columns are
+    missing so a schema change doesn't silently flag every line as
+    toggled.
+    """
+    for col_pair in (("connected1", "connected2"), ("connected",)):
+        if all(c in lines_df.columns for c in col_pair):
+            for c in col_pair:
+                try:
+                    if not bool(lines_df.at[line_id, c]):
+                        return True
+                except KeyError:
+                    return False
+            return False
+    return False
+
+
 def _coerce_score(sol: Any) -> float:
     """Pull a numeric congestion score off a ToOp solution-like object.
 
