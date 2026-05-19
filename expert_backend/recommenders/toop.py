@@ -69,11 +69,12 @@ def _import_run_pipeline() -> Optional[Any]:
             run_pipeline,
         )
     except Exception as exc:  # ImportError, but also ModuleNotFoundError, etc.
-        logger.info(
-            "ToOpRecommender: toop_engine_topology_optimizer is not installed (%s). "
-            "Install it from https://github.com/eliagroup/ToOp on a Python 3.11 "
-            "environment to enable this model.",
-            exc,
+        logger.warning(
+            "ToOpRecommender: toop_engine_topology_optimizer is not importable "
+            "from this backend's Python (%s: %s). Install it from "
+            "https://github.com/eliagroup/ToOp on a Python 3.11 environment, "
+            "in the SAME venv that runs `uvicorn expert_backend.main`.",
+            type(exc).__name__, exc,
         )
         return None
     return run_pipeline
@@ -84,7 +85,10 @@ def _import_dictconfig() -> Optional[Any]:
     try:
         from omegaconf import DictConfig  # type: ignore[import-not-found]
     except Exception as exc:
-        logger.info("ToOpRecommender: omegaconf not available (%s).", exc)
+        logger.warning(
+            "ToOpRecommender: omegaconf not available (%s: %s).",
+            type(exc).__name__, exc,
+        )
         return None
     return DictConfig
 
@@ -149,12 +153,24 @@ class ToOpRecommender(RecommenderModel):
     # Public entry point
     # ------------------------------------------------------------------
     def recommend(self, inputs: RecommenderInputs, params: dict) -> RecommenderOutput:
+        logger.warning(
+            "ToOpRecommender: recommend() entry — params=%s, env=%s, network=%s, "
+            "dict_action_size=%s",
+            params,
+            type(inputs.env).__name__ if inputs.env is not None else None,
+            type(inputs.network).__name__ if inputs.network is not None else None,
+            len(inputs.dict_action or {}),
+        )
         run_pipeline = _import_run_pipeline()
         if run_pipeline is None:
+            logger.warning(
+                "ToOpRecommender: aborting because ToOp is not importable in this venv."
+            )
             return RecommenderOutput(prioritized_actions={}, action_scores={})
 
         DictConfig = _import_dictconfig()
         if DictConfig is None:
+            logger.warning("ToOpRecommender: aborting because omegaconf is not importable.")
             return RecommenderOutput(prioritized_actions={}, action_scores={})
 
         n = int(params.get("n_prioritized_actions", 5))
@@ -168,10 +184,20 @@ class ToOpRecommender(RecommenderModel):
 
         with tempfile.TemporaryDirectory(prefix="toop_") as tmp:
             tmp_path = Path(tmp)
+            logger.warning(
+                "ToOpRecommender: exporting pypowsybl network to CGMES under %s",
+                tmp_path,
+            )
             cgmes_path = self._export_to_cgmes(inputs.network, tmp_path)
             if cgmes_path is None:
+                logger.warning("ToOpRecommender: CGMES export returned None — aborting.")
                 return RecommenderOutput(prioritized_actions={}, action_scores={})
 
+            logger.warning(
+                "ToOpRecommender: calling run_pipeline (runtime_seconds=%d, "
+                "n_worst_contingencies=%d) on %s",
+                runtime_seconds, n_worst, cgmes_path,
+            )
             try:
                 pareto = self._run_toop(
                     run_pipeline=run_pipeline,
@@ -185,9 +211,17 @@ class ToOpRecommender(RecommenderModel):
                 logger.exception("ToOpRecommender: run_pipeline failed; returning {}.")
                 return RecommenderOutput(prioritized_actions={}, action_scores={})
 
+        logger.warning(
+            "ToOpRecommender: run_pipeline returned %s (type=%s)",
+            "an iterable" if pareto is not None else "None",
+            type(pareto).__name__ if pareto is not None else None,
+        )
         switches = self._extract_line_switches(pareto, n=n)
+        logger.warning(
+            "ToOpRecommender: extracted %d line-switch suggestion(s) from Pareto front",
+            len(switches),
+        )
         if not switches:
-            logger.info("ToOpRecommender: no line-switching suggestions in Pareto front.")
             return RecommenderOutput(prioritized_actions={}, action_scores={})
 
         prioritized, scores = self._materialise_actions(
@@ -196,6 +230,10 @@ class ToOpRecommender(RecommenderModel):
             dict_action=inputs.dict_action,
             non_connected_reconnectable_lines=inputs.non_connected_reconnectable_lines,
             network=inputs.network,
+        )
+        logger.warning(
+            "ToOpRecommender: returning %d prioritized action(s): %s",
+            len(prioritized), list(prioritized.keys()),
         )
         return RecommenderOutput(
             prioritized_actions=prioritized,
