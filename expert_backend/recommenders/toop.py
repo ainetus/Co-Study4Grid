@@ -347,9 +347,16 @@ class ToOpRecommender(RecommenderModel):
         results_dir = iteration_path / "results"
         results_dir.mkdir(parents=True, exist_ok=True)
 
+        # Preprocessing writes ``static_information.hdf5`` under
+        # ``data_folder``; the DC-optimisation stage reads it back via
+        # ``fixed_files``. The path must be supplied even though the
+        # file doesn't exist yet at config-build time — ToOp's
+        # preprocessing creates it before the optimiser runs.
+        static_info_file = data_folder / pipeline_cfg.static_info_relpath
+
         dc_optimization_cfg = DictConfig({
             "task_name": "costudy4grid",
-            "fixed_files": [],
+            "fixed_files": [str(static_info_file)],
             "double_precision": None,
             "tensorboard_dir": str(results_dir / "{task_name}"),
             "stats_dir": str(results_dir / "{task_name}"),
