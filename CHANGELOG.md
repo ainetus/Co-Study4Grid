@@ -7,6 +7,42 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Sidebar readability refresh — collapsible feed, banner Clear, overload info bubble
+
+- **Sidebar visibility gate** — the "Select Contingency" picker card
+  and the "Remedial Actions" feed (renamed from "Simulated Actions")
+  now flip together at the moment a contingency is committed. The
+  picker folds away and the feed mounts, so the sidebar shows only
+  the affordance relevant to the current stage of the workflow.
+- **Sticky-banner Clear shortcut** — `SidebarSummary` grows a red
+  `Clear` button next to the contingency label that routes through
+  the existing "Change Contingency?" confirmation dialog when
+  analysis state would otherwise be lost (clears directly otherwise),
+  then makes the picker reappear. Emits a new
+  `contingency_clear_requested { had_analysis_state }` interaction
+  event.
+- **Overload info bubble** — a `?` icon next to the Overloads label
+  opens a hover popover listing N-state pre-existing overloads,
+  hosting the per-N-1 monitoring checkboxes, the
+  `monitor deselected` switch, and the monitoring-coverage hint.
+  Together with the restored double-click-to-toggle gesture on the
+  banner overload links themselves, the popover replaces the
+  inline `OverloadPanel` card (the component file is kept on disk
+  for unit-test backwards-compat but is no longer rendered).
+- **Collapsible sidebar** — `AppSidebar` accepts a `collapsed` prop
+  that shrinks the shell to a 32-px strip with an expand caret,
+  giving the visualization panel the freed width. When collapsed,
+  the `ActionFilterRings` strip rides along in the
+  `VisualizationPanel` tab row on the left (testid
+  `viz-panel-overview-filters`) so the overview filter remains
+  reachable without re-expanding the sidebar. Emits a new
+  `sidebar_collapsed_toggled { collapsed }` interaction event.
+- **Test coverage** — new `AppSidebar.test.tsx`, extended
+  `SidebarSummary.test.tsx` (Clear button, double-click toggle,
+  info-bubble popover) and `VisualizationPanel.test.tsx` (inline
+  filter strip gating). App-level integration tests in
+  `App.contingency.test.tsx` rewired to the Clear-driven flow.
+
 ### Execution-time breakdown for the "Suggestions produced by …" line
 
 - **Per-stage timing** for every two-step analysis run. The backend

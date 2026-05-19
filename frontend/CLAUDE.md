@@ -80,9 +80,20 @@ frontend/
     │   ├── DetachableTabHost.tsx, ErrorBoundary.tsx, ExplorePairsTab.tsx,
     │   ├── MemoizedSvgContainer.tsx, SldOverlay.tsx,
     │   ├── AppSidebar.tsx          # Sidebar layout shell (summary +
-    │   │                           # contingency selector + children)
+    │   │                           # contingency picker + children).
+    │   │                           # Collapsible to a 32-px strip via
+    │   │                           # the `collapsed` / `onToggleCollapsed`
+    │   │                           # props; hides the picker when
+    │   │                           # `hideContingencyPicker` is on
+    │   │                           # (readability-feed PR).
     │   ├── SidebarSummary.tsx      # Sticky top strip — contingency
-    │   │                           # zoom shortcut + N-1 overload jumps
+    │   │                           # zoom shortcut + Clear button +
+    │   │                           # N-1 overload jumps (double-click
+    │   │                           # to toggle monitoring) + overload
+    │   │                           # info bubble (popover hosts N-state
+    │   │                           # overloads, per-N-1 monitoring
+    │   │                           # checkboxes, monitor-deselected
+    │   │                           # switch, monitoring-coverage hint).
     │   ├── StatusToasts.tsx        # Fixed-position error/info banners
     │   └── modals/
     │       ├── SettingsModal.tsx          # 3-tab settings dialog
@@ -194,9 +205,43 @@ AND make sure the backend mixin clears whatever cache shadows it.
 
 Confirmation dialog flow lives in `App.tsx`:
 - `confirmDialog` state: `{ type: 'contingency' | 'loadStudy' |
-  'applySettings', pendingBranch?: string } | null`.
-- `<ConfirmationDialog />` is the shared modal — used for all three
-  contingency-loss-warning gestures.
+  'applySettings' | 'changeNetwork' | 'clearSuggested', pendingBranch?:
+  string, pendingNetworkPath?: string } | null`.
+- `<ConfirmationDialog />` is the shared modal — used for all
+  contingency-loss-warning gestures (picker-driven *and* the new
+  sticky-banner Clear shortcut, see below).
+
+## Sidebar visibility & banner Clear shortcut
+
+`App.tsx` flips two visibility gates the moment the operator commits
+a contingency (`selectedContingency.length > 0`):
+- `hideContingencyPicker` is passed to `AppSidebar` so the "Select
+  Contingency" card folds away — the sticky banner already echoes
+  the contingency label and the `Clear` button (see below) replaces
+  the picker's affordance.
+- The `ActionFeed` is rendered only inside the same gate. Pre-trigger
+  the sidebar shows only the picker; post-trigger it shows the feed.
+
+The sticky banner (`SidebarSummary`) hosts:
+- a `Clear` button (`requestClearContingency`) that routes through
+  `<ConfirmationDialog type="contingency">` when `hasAnalysisState()`
+  would otherwise be lost, and clears in place otherwise;
+- a `?` info bubble next to the Overloads label whose popover lists
+  N-state pre-existing overloads, hosts the per-N-1 monitoring
+  checkboxes (`onToggleOverload`), the `monitorDeselected` switch,
+  and the monitoring-coverage hint — i.e. every affordance that
+  used to live in the now-retired `OverloadPanel` card.
+
+`AppSidebar` accepts a `collapsed` flag; when set, the shell shrinks
+to a 32-px strip with an expand caret. The `VisualizationPanel`
+mirrors this by hosting an inline copy of `ActionFilterRings` on the
+left of its tab row (testid `viz-panel-overview-filters`) so the
+filter remains reachable without re-expanding the sidebar.
+
+Interaction-log events emitted by this flow:
+`sidebar_collapsed_toggled { collapsed }`,
+`contingency_clear_requested { had_analysis_state }`. Both are
+mirrored in `scripts/check_standalone_parity.py`'s `SPEC_DETAILS`.
 
 ## SVG handling
 

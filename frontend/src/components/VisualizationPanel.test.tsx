@@ -11,7 +11,8 @@ import '@testing-library/jest-dom/vitest';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import VisualizationPanel from './VisualizationPanel';
-import type { DiagramData, AnalysisResult, TabId } from '../types';
+import type { DiagramData, AnalysisResult, TabId, ActionOverviewFilters } from '../types';
+import { DEFAULT_ACTION_OVERVIEW_FILTERS } from '../utils/actionTypes';
 
 const createDefaultProps = (overrides: Record<string, unknown> = {}) => ({
     activeTab: 'n' as TabId,
@@ -1047,6 +1048,40 @@ describe('VisualizationPanel', () => {
             await openFilter();
             const [low, high] = sliders();
             expect(parseInt(low.style.zIndex, 10)).toBeLessThan(parseInt(high.style.zIndex, 10));
+        });
+    });
+
+    // ===== readability-feed PR: ActionFilterRings ride along when the
+    // sidebar is collapsed. The strip moves into the tab row on the
+    // left so the operator can still tune the overview filter without
+    // re-expanding the sidebar.
+    describe('Overview filter strip when the sidebar is collapsed', () => {
+        const filterProps = (overrides: Record<string, unknown> = {}) => createDefaultProps({
+            overviewFilters: DEFAULT_ACTION_OVERVIEW_FILTERS as ActionOverviewFilters,
+            onOverviewFiltersChange: vi.fn(),
+            hasActions: true,
+            sidebarCollapsed: true,
+            ...overrides,
+        });
+
+        it('renders the inline filter strip when sidebar is collapsed and actions exist', () => {
+            render(<VisualizationPanel {...filterProps()} />);
+            expect(screen.getByTestId('viz-panel-overview-filters')).toBeInTheDocument();
+        });
+
+        it('hides the inline filter strip when the sidebar is expanded', () => {
+            render(<VisualizationPanel {...filterProps({ sidebarCollapsed: false })} />);
+            expect(screen.queryByTestId('viz-panel-overview-filters')).not.toBeInTheDocument();
+        });
+
+        it('hides the inline filter strip when there are no actions to filter', () => {
+            render(<VisualizationPanel {...filterProps({ hasActions: false })} />);
+            expect(screen.queryByTestId('viz-panel-overview-filters')).not.toBeInTheDocument();
+        });
+
+        it('hides the inline filter strip when no filter state is wired', () => {
+            render(<VisualizationPanel {...filterProps({ overviewFilters: undefined, onOverviewFiltersChange: undefined })} />);
+            expect(screen.queryByTestId('viz-panel-overview-filters')).not.toBeInTheDocument();
         });
     });
 });
