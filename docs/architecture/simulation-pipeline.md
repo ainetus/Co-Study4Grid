@@ -6,12 +6,19 @@ UI and the moment a result lands back in their browser. It focuses on
 the simulation mechanics, the parameters that are exposed, the
 hypotheses that are baked in, and the modes the system supports.
 
-For the **physical / numerical** layer (load-flow modes, voltage init,
-variant lifecycle, retry strategy) see the companion document in the
-sister repo:
-[`Expert_op4grid_recommender/docs/architecture/simulation-pipeline.md`](https://github.com/marota/Expert_op4grid_recommender/blob/main/docs/architecture/simulation-pipeline.md).
-The present file is the **backend-side glue** that orchestrates that
-machinery on top of the FastAPI endpoints.
+> **Start here for the simulation deep-dive.** Anything below that
+> mentions `obs.simulate`, `run_load_flow`, a load-flow mode, voltage
+> initialisation, variant management, the `DC_VALUES` fallback or
+> the `maxOuterLoopIterations` cap is **implemented in the lib** — the
+> backend just wires the right knobs. The full mechanism, the four
+> orthogonal LF knobs and every retry branch are documented in the
+> sister doc:
+> **[`Expert_op4grid_recommender/docs/architecture/simulation-pipeline.md`](https://github.com/marota/Expert_op4grid_recommender/blob/main/docs/architecture/simulation-pipeline.md)**.
+> The present file describes the **backend-side glue** that exposes
+> that machinery through the FastAPI endpoints and the React UI.
+> Sections 4.4 and 5.2 below also surface the **fast vs slow mode**
+> cheat-sheet inline for quick reference — for the rationale and the
+> retry tree, keep the lib doc handy.
 
 ## 1. High-level flow
 
@@ -247,6 +254,68 @@ action's impact on a pre-existing overloaded line is counted as
 it to rho=4.345 (+0.005), the action is **not** flagged as
 "worsening" because the delta is below 2 %.
 
+### 4.4 Load-flow modes — inline cheat-sheet
+
+Every `obs.simulate(...)` call inside step 1 and step 2 forwards
+`fast_mode=actual_fast_mode` down to
+`NetworkManager.run_load_flow(fast=…)`. The same applies to manual
+simulations (§ 5) and combined-pair re-simulations (§ 6). Resolved at
+the top of `lib.run_analysis`:
+
+```python
+if fast_mode:                             # explicit override
+    actual_fast_mode = True
+else:
+    actual_fast_mode = (
+        config.PYPOWSYBL_FAST_MODE if fast_mode is None else fast_mode
+    )
+```
+
+Backend default for `config.PYPOWSYBL_FAST_MODE` is **`True`**, set
+from the UI Settings checkbox `pypowsybl_fast_mode` and persisted in
+`user_config.json`. So every analysis / simulation runs in **fast
+AC** unless the user toggles it off.
+
+Reproduced from the lib doc § 9 — keep this open when reading the
+flows below:
+
+| Mode | Knobs | When the backend uses it | Trade-off |
+|---|---|---|---|
+| **AC fast (default)** | `dc=False, fast=True, init=PREVIOUS_VALUES` | every `obs.simulate(...)` triggered by step 1 / step 2 / `simulate-manual-action` / `compute-superposition` while the UI setting `pypowsybl_fast_mode` is on (default). | quickest AC; ignores tap / shunt re-regulation. |
+| **AC slow** | `dc=False, fast=False, init=PREVIOUS_VALUES` | (a) UI setting `pypowsybl_fast_mode=false` propagates through `config.PYPOWSYBL_FAST_MODE` to `actual_fast_mode=False`; (b) automatic retry by the lib when fast didn't converge. | full physics; ~2× slower; converges more cases. |
+| **AC + DC seed** | `dc=False, init=DC_VALUES` | implicit retry inside the lib's `_run_ac_with_init_fallback` whenever the initial `PREVIOUS_VALUES` attempt raises OR returns a non-`CONVERGED` status (`FAILED` "Unrealistic state", `MAX_ITERATION_REACHED`). Not directly exposed to the UI. | robust to topology perturbations; +1 internal DC LF. |
+| **DC LF** | `dc=True` | only used internally by the lib for screening (`use_dc=True` flag of `run_analysis_step2_discovery`) and by the recommender models that declare a DC scoring path. Never the path picked by the regular analysis endpoints. | linear, no reactive, ignores tap ratios; converges almost always; **not** suitable for thermal-overload arbitration close to limits. |
+| **Initial LF** | `dc=False, init=DC_VALUES` (forced) | inside `SimulationEnvironment._ensure_valid_state` — called once at network load and again on `reset()`. | avoids the spurious "Voltage magnitude is undefined" warning + retry on cold load. |
+
+What `fast=True` actually disables (mirrors lib doc § 3.3):
+
+| OpenLoadFlow outer loop | `fast=True` |
+|---|---|
+| `IncrementalTransformerVoltageControl` (tap-changer voltage regulation) | **OFF** |
+| `IncrementalShuntVoltageControl` (shunt section switching) | **OFF** |
+| Phase-shifter regulation (`phase_shifter_regulation_on`) | unchanged (ON) |
+| Reactive limits enforcement (`use_reactive_limits`) | unchanged (ON) |
+| Distributed slack (`distributed_slack`) | unchanged (ON) |
+
+Physical meaning: in `fast` mode the network is still a valid AC
+solution **assuming taps and shunt sections stay at their input
+values**. Voltages and reactive flows are slightly off but the
+thermal-overload signal (rho on each branch) is usually within a few
+percent of the slow-mode answer — good enough for the recommender's
+ranking step. The retry tree (lib doc § 3.7) escalates to slow / DC
+automatically when this approximation breaks down.
+
+When to flip the UI checkbox off:
+
+- A specific action keeps coming back with `non_convergence`
+  in fast mode on a small or medium grid (slow mode often resolves
+  it, at the cost of analysis runtime — count ~1.5–3× longer on the
+  French grid).
+- The operator wants reference-grade `max_rho` for an action under
+  comparison (e.g. exporting to a third-party study). Slow + the
+  `DC_VALUES` fallback is the closest you can get to the lib's
+  reference `run_load_flow` semantics.
+
 ## 5. Manual action simulation
 
 `POST /api/simulate-manual-action {action_id, disconnected_elements, action_content?, lines_overloaded?, target_mw?, target_tap?}`
@@ -293,6 +362,13 @@ Pipeline:
 10. **Enrich** with curtailment / load-shedding / PST details, register
     on `_dict_action` (for subsequent superposition computations),
     serialise with `serialize_action_result`.
+
+Same `fast_mode` resolution rule as § 4.4: the simulate call uses
+`fast_mode=config.PYPOWSYBL_FAST_MODE` (UI checkbox), which is `True`
+by default. The lib's `_run_ac_with_init_fallback` handles the
+retry-with-DC_VALUES escalation transparently — the backend just
+surfaces the final status (CONVERGED or one of the failure modes
+listed in § 9) on the action card.
 
 ### 5.1 `_analysis_context` re-use — why
 
@@ -354,7 +430,7 @@ The Settings modal surfaces these knobs (mapped to `ConfigRequest`):
 | **Lines monitoring path** | `lines_monitoring_path` | `LINES_TO_MONITOR_PATH` | — | optional whitelist of branches to monitor (empty = all). |
 | **Recommender model** | `model` | — | `"expert"` | active `RecommenderModel`. See `/api/models`. |
 | **Compute overflow graph** | `compute_overflow_graph` | `DO_CONSOLIDATE_GRAPH` | `True` | toggles the overflow-graph build in step 2. Needed by Expert + every model declaring `requires_overflow_graph=True`. |
-| **Use pypowsybl fast mode** | `pypowsybl_fast_mode` | `PYPOWSYBL_FAST_MODE` | `True` | passed through to `obs.simulate(..., fast_mode=...)`. See § 3 of the lib doc. |
+| **Use pypowsybl fast mode** | `pypowsybl_fast_mode` | `PYPOWSYBL_FAST_MODE` | `True` | drives `obs.simulate(..., fast_mode=...)` across every analysis / manual / superposition call. See § 4.4 above for the inline cheat-sheet and the lib doc [§ 3.3](https://github.com/marota/Expert_op4grid_recommender/blob/main/docs/architecture/simulation-pipeline.md#33-fast-vs-slow--what-gets-disabled) for what `fast=True` actually disables in OpenLoadFlow. |
 | **Monitoring factor** | `monitoring_factor` | `MONITORING_FACTOR_THERMAL_LIMITS` | `0.95` | thermal-limit multiplier; 0.95 means "alarm at 95 % of `permanent_limit`". |
 | **Pre-existing overload threshold** | `pre_existing_overload_threshold` | `PRE_EXISTING_OVERLOAD_WORSENING_THRESHOLD` | `0.02` | min. delta on rho to count as "worsening" a pre-existing overload. |
 | **n_prioritized_actions** | `n_prioritized_actions` | `N_PRIORITIZED_ACTIONS` | `10` | cap on the action list returned by the model. |
