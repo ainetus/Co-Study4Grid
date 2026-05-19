@@ -170,13 +170,27 @@ async function clearContingencyChips() {
 // tests keep their semantics; pass ``{ append: true }`` to grow a
 // multi-element contingency on top of the existing chips.
 async function selectBranch(branchName: string, opts: { append?: boolean } = {}) {
-  if (!opts.append) {
+  // The picker card hides once a contingency has been committed —
+  // the sticky banner Clear shortcut brings it back. Route through
+  // Clear when the combobox is missing so the helper keeps a
+  // legacy-feel "switch branch" API for the existing test suite.
+  let combobox = screen.queryByRole('combobox');
+  if (!combobox) {
+    const clearBtn = screen.queryByTestId('sidebar-summary-clear');
+    if (clearBtn) {
+      await act(async () => { await userEvent.click(clearBtn); });
+      const confirmDialog = screen.queryByText('Change Contingency?');
+      if (confirmDialog) {
+        await act(async () => { await userEvent.click(screen.getByText('Confirm')); });
+      }
+    }
+    combobox = screen.getByRole('combobox');
+  } else if (!opts.append) {
     await clearContingencyChips();
   }
-  const combobox = screen.getByRole('combobox');
   await act(async () => {
-    await userEvent.click(combobox);
-    await userEvent.type(combobox, branchName);
+    await userEvent.click(combobox!);
+    await userEvent.type(combobox!, branchName);
     await userEvent.keyboard('{Enter}');
   });
   const trigger = await screen.findByRole('button', { name: /Trigger/ });
@@ -230,6 +244,9 @@ describe('Phase 2: State Management Optimization', () => {
 
     it('does NOT pass individual recommender settings as separate props', async () => {
       await renderAndLoadStudy();
+      // ActionFeed mounts only after a contingency is committed
+      // (sidebar visibility gate from the readability-feed PR).
+      await selectBranch('BRANCH_A');
 
       const lastRender = actionFeedRenderLog[actionFeedRenderLog.length - 1];
       // These should NOT exist as individual props since they're now grouped
@@ -265,6 +282,8 @@ describe('Phase 2: State Management Optimization', () => {
 
     it('provides stable onActionFavorite callback to ActionFeed', async () => {
       await renderAndLoadStudy();
+      // ActionFeed only mounts post-contingency.
+      await selectBranch('BRANCH_A');
 
       const lastRender = actionFeedRenderLog[actionFeedRenderLog.length - 1];
       expect(typeof lastRender.onActionFavorite).toBe('function');
@@ -275,13 +294,12 @@ describe('Phase 2: State Management Optimization', () => {
       expect(typeof lastRender.onManualActionAdded).toBe('function');
     });
 
-    it('provides stable toggle callbacks to OverloadPanel', async () => {
-      // tier-warning-system PR retired the inline yellow monitoring banner —
-      // OverloadPanel now receives a one-line `monitoringHint` string
-      // and the dismiss/openSettings affordances live in NoticesPanel.
-      // What remains stable here are the overload-toggle callbacks.
+    it.skip('provides stable toggle callbacks to OverloadPanel', async () => {
+      // readability-feed PR retired the inline OverloadPanel — the
+      // overload-toggle callbacks now route through the sticky
+      // banner info-bubble popover (SidebarSummary). The component
+      // is no longer mounted, so this assertion is dead weight.
       await renderAndLoadStudy();
-
       const lastRender = overloadPanelRenderLog[overloadPanelRenderLog.length - 1];
       expect(typeof lastRender.onToggleOverload).toBe('function');
       expect(typeof lastRender.onToggleMonitorDeselected).toBe('function');
@@ -340,12 +358,15 @@ describe('Phase 2: State Management Optimization', () => {
       expect(actionFeed).toHaveAttribute('data-has-recommender-config', 'true');
     });
 
-    it('renders all three memoized panels', async () => {
+    it('renders the visualization and action-feed memoized panels after a contingency is committed', async () => {
+      // The OverloadPanel was removed in the readability-feed PR;
+      // its functionality moved to SidebarSummary's info bubble.
+      // ActionFeed mounts only after a contingency is committed.
       await renderAndLoadStudy();
+      await selectBranch('BRANCH_A');
 
       expect(screen.getByTestId('visualization-panel')).toBeInTheDocument();
       expect(screen.getByTestId('action-feed')).toBeInTheDocument();
-      expect(screen.getByTestId('overload-panel')).toBeInTheDocument();
     });
   });
 

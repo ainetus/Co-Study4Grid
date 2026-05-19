@@ -9,7 +9,6 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import './App.css';
 import VisualizationPanel from './components/VisualizationPanel';
 import ActionFeed from './components/ActionFeed';
-import OverloadPanel from './components/OverloadPanel';
 import Header from './components/Header';
 import AppSidebar from './components/AppSidebar';
 import StatusToasts from './components/StatusToasts';
@@ -153,6 +152,18 @@ function App() {
   // Confirmation dialog state for contingency change / load study /
   // apply settings / change network path.
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>(null);
+
+  // Collapsed mode for the left sidebar. When true the sidebar shrinks
+  // to a thin strip and the visualization panel takes the full width.
+  // Toggleable from the Clear/Collapse caret rendered by `AppSidebar`.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const handleToggleSidebarCollapsed = useCallback(() => {
+    setSidebarCollapsed(c => {
+      const next = !c;
+      interactionLogger.record('sidebar_collapsed_toggled', { collapsed: next });
+      return next;
+    });
+  }, []);
 
   // Path of the network file the currently-loaded study was loaded from.
   // Updated after every successful handleLoadConfig / applySettings, used
@@ -411,6 +422,16 @@ function App() {
     // not survive a fresh reset.
     setConfirmDialog(null);
   }, [clearContingencyState, diagrams, setShowMonitoringWarning]);
+
+  // Sidebar visibility gates. The picker card and the action feed
+  // flip together at the moment the operator has played a contingency.
+  // From that point on the sticky banner echoes the contingency +
+  // overload labels with its own Clear shortcut, so the picker would
+  // just duplicate state — and the feed becomes useful (Analyze &
+  // Suggest, manual selection, …). Pre-trigger states keep the picker
+  // visible and the feed hidden so the sidebar stays focused.
+  const hasCommittedContingency = selectedContingency.length > 0;
+  const sidebarSwitchedToFeed = hasCommittedContingency;
 
   // Pre-compute the pin descriptors posted to the overflow-graph
   // iframe. Memoised so unrelated re-renders don't churn the iframe
@@ -836,6 +857,23 @@ function App() {
   const hasAnalysisState = useCallback(() => {
     return !!(result || pendingAnalysisResult || selectedActionId || actionDiagram || manuallyAddedIds.size > 0 || selectedActionIds.size > 0 || rejectedActionIds.size > 0);
   }, [result, pendingAnalysisResult, selectedActionId, actionDiagram, manuallyAddedIds, selectedActionIds, rejectedActionIds]);
+
+  // Sidebar-banner Clear button: drops the current contingency and
+  // returns to the picker. Routes through the contingency confirmation
+  // dialog when analysis state would otherwise be lost; clears
+  // directly otherwise (mirroring the picker-driven flow's gating).
+  const requestClearContingency = useCallback(() => {
+    interactionLogger.record('contingency_clear_requested', {
+      had_analysis_state: hasAnalysisState(),
+    });
+    if (hasAnalysisState()) {
+      setConfirmDialog({ type: 'contingency', pendingBranch: '' });
+      return;
+    }
+    clearContingencyState();
+    setSelectedContingency([]);
+    setPendingContingency([]);
+  }, [hasAnalysisState, clearContingencyState]);
 
   // Full-fidelity snapshot of every parameter an agent would need to
   // replay a config-loaded / settings-applied gesture. Per the
@@ -1451,35 +1489,31 @@ function App() {
           nameMap={nameMap}
           n1LinesOverloaded={n1Diagram?.lines_overloaded}
           n1LinesOverloadedRho={n1Diagram?.lines_overloaded_rho}
+          nLinesOverloaded={nDiagram?.lines_overloaded}
+          nLinesOverloadedRho={nDiagram?.lines_overloaded_rho}
           selectedOverloads={selectedOverloads}
           onPendingContingencyChange={handlePendingContingencyChange}
           onContingencyApply={handleContingencyApply}
           displayName={displayName}
           onContingencyZoom={handleZoomOnActiveTab}
           onOverloadClick={wrappedAssetClick as (actionId: string, assetName: string, tab: 'n' | 'contingency') => void}
+          onToggleOverload={analysis.handleToggleOverload}
+          monitorDeselected={monitorDeselected}
+          onToggleMonitorDeselected={handleToggleMonitorDeselected}
+          monitoringHint={
+            showMonitoringWarning && totalLinesCount && totalLinesCount > 0
+              ? `${monitoredLinesCount || 0}/${totalLinesCount} lines monitored — see Notices for details.`
+              : null
+          }
+          onClearContingency={requestClearContingency}
+          hideContingencyPicker={sidebarSwitchedToFeed}
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={handleToggleSidebarCollapsed}
           overviewFilters={overviewFilters}
           onOverviewFiltersChange={setOverviewFilters}
           hasActions={Object.keys(result?.actions || {}).length > 0}
         >
-          <div style={{ flexShrink: 0 }}>
-            <OverloadPanel
-              nOverloads={nDiagram?.lines_overloaded || []}
-              n1Overloads={n1Diagram?.lines_overloaded || []}
-              nOverloadsRho={nDiagram?.lines_overloaded_rho}
-              n1OverloadsRho={n1Diagram?.lines_overloaded_rho}
-              onAssetClick={wrappedAssetClick as (actionId: string, assetName: string, tab?: 'n' | 'contingency') => void}
-              monitoringHint={
-                showMonitoringWarning && totalLinesCount && totalLinesCount > 0
-                  ? `${monitoredLinesCount || 0}/${totalLinesCount} lines monitored — see Notices for details.`
-                  : null
-              }
-              selectedOverloads={selectedOverloads}
-              onToggleOverload={analysis.handleToggleOverload}
-              monitorDeselected={monitorDeselected}
-              onToggleMonitorDeselected={handleToggleMonitorDeselected}
-              displayName={displayName}
-            />
-          </div>
+          {sidebarSwitchedToFeed && (
           <ActionFeed
             actions={result?.actions || {}}
             actionScores={result?.action_scores}
@@ -1545,6 +1579,7 @@ function App() {
             wallClockTime={result?.wall_clock_time ?? null}
             onClearSuggested={requestClearSuggested}
           />
+          )}
         </AppSidebar>
         <div style={{ flex: 1, background: 'white', display: 'flex', flexDirection: 'column' }}>
           <VisualizationPanel

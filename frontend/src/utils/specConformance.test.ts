@@ -136,6 +136,9 @@ const SPEC: Record<string, SpecRow> = {
   session_saved:                  { required: new Set(['output_folder']) },
   session_reload_modal_opened:    { required: new Set() },
   session_reloaded:               { required: new Set(['session_name']) },
+  // --- Sidebar layout / contingency clear ---
+  sidebar_collapsed_toggled:      { required: new Set(['collapsed']) },
+  contingency_clear_requested:    { required: new Set(['had_analysis_state']) },
 };
 
 // ---------------------------------------------------------------------

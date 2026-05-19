@@ -219,6 +219,9 @@ SPEC_DETAILS: dict[str, dict] = {
     "session_saved":            _spec_row({"output_folder"}),
     "session_reload_modal_opened": _spec_row(set()),
     "session_reloaded":         _spec_row({"session_name"}),
+    # --- Sidebar layout / contingency clear ---
+    "sidebar_collapsed_toggled": _spec_row({"collapsed"}),
+    "contingency_clear_requested": _spec_row({"had_analysis_state"}),
 }
 
 # Event types whose details argument is a bare identifier or a

@@ -165,9 +165,23 @@ async function renderAndLoadStudy() {
 
 // Helper: add ``branchName`` to the pending contingency by typing it
 // into the react-select multi-select and pressing Enter to confirm
-// the highlighted option.
+// the highlighted option. After a contingency has already been
+// committed the picker card is hidden behind the sticky banner Clear
+// shortcut, so transparently click Clear (and confirm the dialog when
+// analysis state would be lost) to reveal the picker again.
 async function pickBranch(branchName: string) {
-  const combobox = screen.getByRole('combobox');
+  let combobox = screen.queryByRole('combobox');
+  if (!combobox) {
+    const clearBtn = screen.queryByTestId('sidebar-summary-clear');
+    if (clearBtn) {
+      await act(async () => { await userEvent.click(clearBtn); });
+      const confirmDialog = screen.queryByText('Change Contingency?');
+      if (confirmDialog) {
+        await act(async () => { await userEvent.click(screen.getByText('Confirm')); });
+      }
+    }
+    combobox = screen.getByRole('combobox');
+  }
   await act(async () => {
     await userEvent.click(combobox);
     await userEvent.type(combobox, branchName);
@@ -231,32 +245,35 @@ describe('Contingency Change Confirmation', () => {
     vi.unstubAllGlobals();
   });
 
-  it('does NOT show confirmation dialog when no analysis state exists', async () => {
+  it('does NOT show confirmation dialog when clearing without analysis state', async () => {
     await renderAndLoadStudy();
     await selectBranch('BRANCH_A');
 
-    // Now switch to BRANCH_B — no analysis has been run, so no dialog
+    // Clear from the sticky banner. No analysis state has been built
+    // up yet, so the Clear shortcut bypasses the confirmation dialog
+    // and the picker reappears immediately.
     mockApi.getContingencyDiagram.mockClear();
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('sidebar-summary-clear'));
+    });
+    expect(screen.queryByText('Change Contingency?')).not.toBeInTheDocument();
+
+    // Pick a fresh contingency through the now-visible picker.
     await pickBranch('BRANCH_B');
     await triggerContingency();
-
     await waitFor(() => {
-      expect(mockApi.getContingencyDiagram).toHaveBeenCalledWith(['BRANCH_A', 'BRANCH_B']);
+      expect(mockApi.getContingencyDiagram).toHaveBeenCalledWith(['BRANCH_B']);
     });
-
-    // No dialog should appear
-    expect(screen.queryByText('Change Contingency?')).not.toBeInTheDocument();
   });
 
-  it('shows confirmation dialog when switching branch after running analysis', async () => {
+  it('shows confirmation dialog when clearing after running analysis', async () => {
     await renderAndLoadStudy();
     await selectBranch('BRANCH_A');
     await runAnalysis();
 
-    // Now switch to BRANCH_B — should trigger dialog
-    await pickBranch('BRANCH_B');
-    await triggerContingency();
-
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('sidebar-summary-clear'));
+    });
     await waitFor(() => {
       expect(screen.getByText('Change Contingency?')).toBeInTheDocument();
     }, { timeout: 3000 });
@@ -267,53 +284,46 @@ describe('Contingency Change Confirmation', () => {
     await selectBranch('BRANCH_A');
     await runAnalysis();
 
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('sidebar-summary-clear'));
+    });
+    await screen.findByText('Change Contingency?');
+    await userEvent.click(screen.getByText('Confirm'));
+
+    mockApi.getContingencyDiagram.mockClear();
     await pickBranch('BRANCH_B');
     await triggerContingency();
-
-    await screen.findByText('Change Contingency?');
-    const confirmBtn = screen.getByText('Confirm');
-    await userEvent.click(confirmBtn);
-
     await waitFor(() => {
-      expect(mockApi.getContingencyDiagram).toHaveBeenCalledWith(['BRANCH_A', 'BRANCH_B']);
+      expect(mockApi.getContingencyDiagram).toHaveBeenCalledWith(['BRANCH_B']);
     });
     expect(screen.queryByText('Change Contingency?')).not.toBeInTheDocument();
   });
 
-  it('cancels contingency change on dismissal', async () => {
+  it('cancels contingency clear on dismissal', async () => {
     await renderAndLoadStudy();
     await selectBranch('BRANCH_A');
     await runAnalysis();
 
-    await pickBranch('BRANCH_B');
-    await triggerContingency();
-
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('sidebar-summary-clear'));
+    });
     await screen.findByText('Change Contingency?');
-    const cancelBtn = screen.getByText('Cancel');
-    await userEvent.click(cancelBtn);
+    await userEvent.click(screen.getByText('Cancel'));
 
-    // Should NOT have called the diagram fetch with the new pair
-    expect(mockApi.getContingencyDiagram).not.toHaveBeenCalledWith(['BRANCH_A', 'BRANCH_B']);
-    // The applied contingency stays at BRANCH_A — its chip is still
-    // visible in the multi-select. (Use getAllByText since the chip
-    // and the sidebar-summary link both surface the name.)
+    // BRANCH_A stays applied; its name still surfaces in the sticky
+    // banner. (Use getAllByText since both the banner link and the
+    // action-card data attribute may surface the name.)
     expect(screen.getAllByText('BRANCH_A').length).toBeGreaterThan(0);
   });
 
-  it('does not trigger dialog for partial/invalid branch text', async () => {
+  it('does not trigger a clear dialog for partial/invalid branch text', async () => {
     await renderAndLoadStudy();
-    await selectBranch('BRANCH_A');
-    await runAnalysis();
-
-    // Type something that doesn't match a full branch and DON'T press
-    // Enter — react-select keeps it as raw input text; no chip is added.
+    // The contingency picker stays visible until the operator
+    // triggers a contingency, so partial input via the multi-select
+    // never affects the banner / Clear flow.
     const combobox = screen.getByRole('combobox');
     await userEvent.click(combobox);
     await userEvent.type(combobox, 'INVALID_NAME');
-
-    // No dialog should appear for partial / invalid names — nothing
-    // is committed to the pending list until a real option is picked
-    // and the Trigger button is clicked.
     expect(screen.queryByText('Change Contingency?')).not.toBeInTheDocument();
   });
 });
@@ -351,20 +361,22 @@ describe('Overload Clearing Logic', () => {
     await pickBranch('BRANCH_A');
     await triggerContingency();
 
+    // The banner echoes both overloads as soon as the N-1 diagram
+    // fetch resolves (sticky strip rendered by SidebarSummary).
     await waitFor(() => {
-      expect(screen.getByTestId('overload-panel')).toHaveAttribute('data-n1-ol-count', '2');
-      expect(screen.getByTestId('overload-panel')).toHaveAttribute('data-sel-ol-count', '2');
+      const banner = screen.getByTestId('sidebar-summary-overloads');
+      expect(banner.textContent).toMatch(/OL_1/);
+      expect(banner.textContent).toMatch(/OL_2/);
     }, { timeout: 3000 });
 
     // Run analysis to create state
     await runAnalysis();
 
-    // 2. Select BRANCH_B (triggers confirmation dialog because the
-    // applied contingency now changes from [BRANCH_A] to
-    // [BRANCH_A, BRANCH_B] while analysis state still exists).
-    await pickBranch('BRANCH_B');
-    await triggerContingency();
-
+    // 2. Click the banner Clear shortcut — the confirmation dialog
+    // appears because analysis state would otherwise be lost.
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('sidebar-summary-clear'));
+    });
     await waitFor(() => {
       expect(screen.getByText('Change Contingency?')).toBeInTheDocument();
     }, { timeout: 3000 });
@@ -372,10 +384,11 @@ describe('Overload Clearing Logic', () => {
     // 3. Confirm change
     fireEvent.click(screen.getByText('Confirm'));
 
-    // 4. VERIFY IMMEDIATE CLEAR
+    // 4. VERIFY IMMEDIATE CLEAR — banner falls back to the empty
+    // state (no contingency, no overloads), and the picker reappears.
     await waitFor(() => {
-      expect(screen.getByTestId('overload-panel')).toHaveAttribute('data-n1-ol-count', '0');
-      expect(screen.getByTestId('overload-panel')).toHaveAttribute('data-sel-ol-count', '0');
+      expect(screen.queryByTestId('sidebar-summary-overloads')).not.toBeInTheDocument();
+      expect(screen.getByText('⚡ Select Contingency')).toBeInTheDocument();
     });
   });
 
@@ -426,6 +439,7 @@ describe('Overload Clearing Logic', () => {
   });
   it('pins contingency + overloads while only the action feed scrolls', async () => {
     await renderAndLoadStudy();
+    await selectBranch('BRANCH_A');
 
     // The sidebar itself no longer scrolls — it hosts a non-scrolling
     // sticky header (contingency + overloads) and a scrolling body
@@ -436,7 +450,8 @@ describe('Overload Clearing Logic', () => {
     expect(sidebar).toHaveStyle({ overflow: 'hidden' });
 
     // The ActionFeed is inside a scrolling wrapper that takes the
-    // remaining sidebar height.
+    // remaining sidebar height. It only mounts after a contingency
+    // has been committed, mirroring the new sidebar visibility gate.
     const sidebarActionsHeader = await within(sidebar).findByTestId('action-feed-header');
     const scrollWrapper = sidebarActionsHeader.closest('div[style*="overflow-y: auto"]');
     expect(scrollWrapper).toBeInTheDocument();
@@ -538,13 +553,15 @@ describe('N-1 overload state is populated before action analysis', () => {
     await renderAndLoadStudy();
     await selectBranch('BRANCH_A');
 
-    // The OverloadPanel reflects the two overloads from the N-1
-    // diagram fetch — and they are auto-selected so the
+    // The sticky banner reflects the two overloads from the N-1
+    // diagram fetch — and they are auto-selected (rendered as blue
+    // dotted-underlined links, the SidebarSummary convention) so the
     // computeN1OverloadHighlights helper will return them as the
     // highlight set on the very next render of the N-1 tab.
     await waitFor(() => {
-      expect(screen.getByTestId('overload-panel')).toHaveAttribute('data-n1-ol-count', '2');
-      expect(screen.getByTestId('overload-panel')).toHaveAttribute('data-sel-ol-count', '2');
+      const banner = screen.getByTestId('sidebar-summary-overloads');
+      expect(banner.textContent).toMatch(/LINE_OL_A/);
+      expect(banner.textContent).toMatch(/LINE_OL_B/);
     });
 
     // No analysis was run, so ``result.lines_overloaded`` is empty —
@@ -613,7 +630,7 @@ describe('N-1 overload state is populated before action analysis', () => {
   // set, so every user toggle retriggered the effect and re-added the
   // overload that was just removed ("blinks but does not switch to
   // unselected"). Lock in the fix: deselecting an overload must persist.
-  it('preserves user-deselected overloads across re-renders (double-click unselect)', async () => {
+  it('preserves user-deselected overloads across re-renders (info bubble unselect)', async () => {
     mockApi.getContingencyDiagram.mockResolvedValueOnce({
       svg: '<svg></svg>',
       metadata: null,
@@ -623,27 +640,44 @@ describe('N-1 overload state is populated before action analysis', () => {
     await renderAndLoadStudy();
     await selectBranch('BRANCH_A');
 
-    await waitFor(() => {
-      expect(screen.getByTestId('overload-panel')).toHaveAttribute('data-n1-ol-count', '2');
-      expect(screen.getByTestId('overload-panel')).toHaveAttribute('data-sel-ol-count', '2');
-    });
-
+    // Open the info bubble next to the Overloads banner label —
+    // the popover hosts the per-overload monitoring toggles. Both
+    // overloads start checked (auto-selected) so both checkboxes
+    // are initially ticked.
+    await waitFor(() => screen.getByTestId('sidebar-summary-overloads-bubble'));
     await act(async () => {
-      screen.getByTestId('toggle-overload-LINE_OL_A').click();
+      screen.getByTestId('sidebar-summary-overloads-bubble').click();
     });
+    const popover = await screen.findByTestId('overload-info-popover');
+    const toggleA = within(popover).getByTestId('overload-info-toggle-LINE_OL_A')
+      .querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const toggleB = within(popover).getByTestId('overload-info-toggle-LINE_OL_B')
+      .querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(toggleA.checked).toBe(true);
+    expect(toggleB.checked).toBe(true);
 
+    await act(async () => { toggleA.click(); });
     await waitFor(() => {
-      expect(screen.getByTestId('overload-panel')).toHaveAttribute('data-sel-ol-count', '1');
+      expect((within(screen.getByTestId('overload-info-popover'))
+        .getByTestId('overload-info-toggle-LINE_OL_A')
+        .querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(false);
     });
 
     // Force an additional render cycle — the buggy effect retriggered on
     // every analysis-memo refresh and re-added the deselected overload.
     await act(async () => {
-      screen.getByTestId('toggle-overload-LINE_OL_B').click();
+      (within(screen.getByTestId('overload-info-popover'))
+        .getByTestId('overload-info-toggle-LINE_OL_B')
+        .querySelector('input[type="checkbox"]') as HTMLInputElement).click();
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('overload-panel')).toHaveAttribute('data-sel-ol-count', '0');
+      expect((within(screen.getByTestId('overload-info-popover'))
+        .getByTestId('overload-info-toggle-LINE_OL_A')
+        .querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(false);
+      expect((within(screen.getByTestId('overload-info-popover'))
+        .getByTestId('overload-info-toggle-LINE_OL_B')
+        .querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(false);
     });
   });
 
@@ -658,7 +692,9 @@ describe('N-1 overload state is populated before action analysis', () => {
     await selectBranch('BRANCH_A');
 
     await waitFor(() => {
-      expect(screen.getByTestId('overload-panel')).toHaveAttribute('data-n1-ol-count', '2');
+      const banner = screen.getByTestId('sidebar-summary-overloads');
+      expect(banner.textContent).toMatch(/LINE_OL_A/);
+      expect(banner.textContent).toMatch(/LINE_OL_B/);
     });
 
     mockApi.getContingencyDiagram.mockResolvedValueOnce({
@@ -667,15 +703,18 @@ describe('N-1 overload state is populated before action analysis', () => {
       lines_overloaded: ['LINE_OL_C'],
     });
 
+    // pickBranch automatically routes through the Clear shortcut
+    // (no analysis state → no confirmation), so the new contingency
+    // is the lone BRANCH_B rather than the legacy ['A', 'B'] append.
     await pickBranch('BRANCH_B');
     await triggerContingency();
 
     await waitFor(() => {
-      // Multi-element contingency now applies, so the diagram fetch
-      // carries both branches in the order the user added them.
-      expect(mockApi.getContingencyDiagram).toHaveBeenCalledWith(['BRANCH_A', 'BRANCH_B']);
-      expect(screen.getByTestId('overload-panel')).toHaveAttribute('data-n1-ol-count', '1');
-      expect(screen.getByTestId('overload-panel')).toHaveAttribute('data-sel-ol-count', '1');
+      expect(mockApi.getContingencyDiagram).toHaveBeenCalledWith(['BRANCH_B']);
+      const banner = screen.getByTestId('sidebar-summary-overloads');
+      expect(banner.textContent).toMatch(/LINE_OL_C/);
+      expect(banner.textContent).not.toMatch(/LINE_OL_A/);
+      expect(banner.textContent).not.toMatch(/LINE_OL_B/);
     });
   });
 });

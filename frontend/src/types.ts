@@ -564,7 +564,9 @@ export type InteractionType =
     | 'overview_unsimulated_pin_simulated'
     | 'session_saved'
     | 'session_reload_modal_opened'
-    | 'session_reloaded';
+    | 'session_reloaded'
+    | 'sidebar_collapsed_toggled'
+    | 'contingency_clear_requested';
 
 export interface InteractionLogEntry {
     seq: number;
