@@ -184,25 +184,27 @@ class ToOpRecommender(RecommenderModel):
 
         with tempfile.TemporaryDirectory(prefix="toop_") as tmp:
             tmp_path = Path(tmp)
+            iteration_dir = tmp_path / "iter"
+            iteration_dir.mkdir(parents=True, exist_ok=True)
             logger.warning(
-                "ToOpRecommender: exporting pypowsybl network to CGMES under %s",
-                tmp_path,
+                "ToOpRecommender: exporting pypowsybl network to XIIDM under %s",
+                iteration_dir,
             )
-            cgmes_path = self._export_to_cgmes(inputs.network, tmp_path)
-            if cgmes_path is None:
-                logger.warning("ToOpRecommender: CGMES export returned None — aborting.")
+            grid_file = self._export_network(inputs.network, iteration_dir)
+            if grid_file is None:
+                logger.warning("ToOpRecommender: network export returned None — aborting.")
                 return RecommenderOutput(prioritized_actions={}, action_scores={})
 
             logger.warning(
                 "ToOpRecommender: calling run_pipeline (runtime_seconds=%d, "
                 "n_worst_contingencies=%d) on %s",
-                runtime_seconds, n_worst, cgmes_path,
+                runtime_seconds, n_worst, grid_file,
             )
             try:
                 pareto = self._run_toop(
                     run_pipeline=run_pipeline,
                     DictConfig=DictConfig,
-                    cgmes_path=cgmes_path,
+                    grid_file=grid_file,
                     work_dir=tmp_path,
                     runtime_seconds=runtime_seconds,
                     n_worst_contingencies=n_worst,
@@ -210,6 +212,30 @@ class ToOpRecommender(RecommenderModel):
             except Exception:
                 logger.exception("ToOpRecommender: run_pipeline failed; returning {}.")
                 return RecommenderOutput(prioritized_actions={}, action_scores={})
+
+            # `run_pipeline` returns `topology_paths` (list of files written by
+            # the AC validation stage). The richer Pareto data lives in the
+            # `output.json` produced by the DC optimisation stage — try that
+            # first; fall back to the topology_paths only if it's missing.
+            output_json = tmp_path / "iter" / "results" / "output.json"
+            if output_json.exists():
+                try:
+                    pareto = self._load_output_json(output_json)
+                    logger.warning(
+                        "ToOpRecommender: loaded Pareto front from %s", output_json,
+                    )
+                except Exception:
+                    logger.exception(
+                        "ToOpRecommender: failed to parse output.json at %s",
+                        output_json,
+                    )
+            else:
+                logger.warning(
+                    "ToOpRecommender: output.json not found at %s; relying on "
+                    "run_pipeline return value (%s topology paths).",
+                    output_json,
+                    len(pareto) if isinstance(pareto, (list, tuple)) else "?",
+                )
 
         logger.warning(
             "ToOpRecommender: run_pipeline returned %s (type=%s)",
@@ -243,31 +269,42 @@ class ToOpRecommender(RecommenderModel):
     # ------------------------------------------------------------------
     # Internals (kept as methods so tests can patch them individually)
     # ------------------------------------------------------------------
-    def _export_to_cgmes(self, network: Any, work_dir: Path) -> Optional[Path]:
-        """Save the live pypowsybl Network to a CGMES bundle in ``work_dir``.
+    def _export_network(self, network: Any, iteration_dir: Path) -> Optional[Path]:
+        """Save the live pypowsybl Network as XIIDM under ``iteration_dir``.
 
-        Returns the bundle path, or ``None`` on failure. pypowsybl's
-        CGMES export is best-effort: networks built from XIIDM with
-        missing CGMES-required identifiers can fail here. We log the
-        error and degrade gracefully — ToOp simply produces no
-        suggestions on this grid.
+        ToOp's example notebooks consume XIIDM directly (``grid.xiidm``);
+        no CGMES round-trip is necessary. Returns the absolute path of
+        the saved file, or ``None`` on failure. The directory is
+        already created by the caller.
         """
         if network is None:
-            logger.warning("ToOpRecommender: inputs.network is None — cannot export to CGMES.")
+            logger.warning("ToOpRecommender: inputs.network is None — cannot export.")
             return None
-        out = work_dir / "grid_cgmes"
+        out = iteration_dir / "grid.xiidm"
         try:
             # pypowsybl Network exposes either ``save`` (newer API) or
-            # ``dump`` (older). We try both before giving up.
+            # ``dump`` (older).
             if hasattr(network, "save"):
-                network.save(str(out), format="CGMES")
+                network.save(str(out), format="XIIDM")
             elif hasattr(network, "dump"):
-                network.dump(str(out), format="CGMES")
+                network.dump(str(out), format="XIIDM")
             else:
                 logger.warning("ToOpRecommender: pypowsybl Network has no save()/dump() method.")
                 return None
         except Exception:
-            logger.exception("ToOpRecommender: CGMES export failed.")
+            logger.exception("ToOpRecommender: XIIDM export failed.")
+            return None
+        if not out.exists():
+            # Some pypowsybl builds add the extension themselves or write
+            # multiple files. Look for the first plausible match.
+            for ext in (".xiidm", ".iidm", ".xml"):
+                hits = list(iteration_dir.glob(f"*{ext}"))
+                if hits:
+                    return hits[0]
+            logger.warning(
+                "ToOpRecommender: XIIDM export produced no file under %s",
+                iteration_dir,
+            )
             return None
         return out
 
@@ -275,37 +312,73 @@ class ToOpRecommender(RecommenderModel):
         self,
         run_pipeline: Any,
         DictConfig: Any,
-        cgmes_path: Path,
+        grid_file: Path,
         work_dir: Path,
         runtime_seconds: int,
         n_worst_contingencies: int,
     ) -> Any:
-        """Invoke ToOp's ``run_pipeline`` with a line-switching-only config.
+        """Invoke ToOp's ``run_pipeline`` against an XIIDM grid file.
 
-        ``me_descriptors`` is restricted to a single metric so the Map
-        Elites search prioritises the line-switching axis; busbar-split
-        descriptors are intentionally omitted in this MVP. Returns
-        whatever ``run_pipeline`` returns (typically a path or a
-        result object) — parsing is the caller's responsibility.
+        Mirrors the structure of ``notebooks/example2_small_grid_toop.ipynb``
+        but constrains the Map Elites search to a single
+        ``branch_switches`` descriptor so the optimiser prioritises the
+        line-switching axis (busbar splits are out of scope for this
+        MVP).
         """
+        # Lazy imports — these symbols only exist when ToOp is installed.
+        from toop_engine_topology_optimizer.benchmark.benchmark_utils import (
+            PipelineConfig,
+            PreprocessParameters,
+            get_paths,
+            prepare_importer_parameters,
+        )
+
+        iteration_name = grid_file.parent.name  # e.g. "iter"
+        pipeline_cfg = PipelineConfig(
+            root_path=work_dir,
+            iteration_name=iteration_name,
+            file_name=grid_file.name,
+            grid_type="powsybl",
+        )
+        # `get_paths` validates the grid file exists, creates the
+        # optimizer-snapshot directory, and returns the resolved sub-paths
+        # we plug into the rest of the configs.
+        iteration_path, file_path, data_folder, _snapshot_dir = get_paths(pipeline_cfg)
+        results_dir = iteration_path / "results"
+        results_dir.mkdir(parents=True, exist_ok=True)
+
         dc_optimization_cfg = DictConfig({
             "task_name": "costudy4grid",
-            "fixed_files": [str(cgmes_path)],
-            "runtime_seconds": runtime_seconds,
-            "me_descriptors": [{"metric": "branch_switches", "num_cells": 4}],
-            "observed_metrics": ["overload_energy_n_1", "branch_switches"],
-            "n_worst_contingencies": n_worst_contingencies,
+            "fixed_files": [],
+            "double_precision": None,
+            "tensorboard_dir": str(results_dir / "{task_name}"),
+            "stats_dir": str(results_dir / "{task_name}"),
+            "summary_frequency": None,
+            "checkpoint_frequency": None,
+            "stdout": None,
+            "double_limits": None,
+            "num_cuda_devices": 1,
+            "omp_num_threads": 1,
+            "xla_force_host_platform_device_count": None,
+            "output_json": str(results_dir / "output.json"),
+            "lf_config": {"distributed": False},
+            "ga_config": {
+                "runtime_seconds": runtime_seconds,
+                "me_descriptors": [{"metric": "branch_switches", "num_cells": 4}],
+                "observed_metrics": ["overload_energy_n_1", "branch_switches"],
+                "n_worst_contingencies": n_worst_contingencies,
+            },
         })
         ac_validation_cfg = DictConfig({
-            "enabled": True,
+            "n_processes": 1,
+            "k_best_topos": 5,
         })
-        importer_parameters = DictConfig({
-            "input_path": str(cgmes_path),
-        })
-        preprocessing_parameters = DictConfig({})
-        pipeline_cfg = DictConfig({
-            "work_dir": str(work_dir),
-        })
+        importer_parameters = prepare_importer_parameters(file_path, data_folder)
+        preprocessing_parameters = PreprocessParameters(
+            action_set_clip=1024,
+            enable_bb_outage=False,
+            bb_outage_as_nminus1=False,
+        )
         return run_pipeline(
             pipeline_cfg=pipeline_cfg,
             dc_optim_config=dc_optimization_cfg,
@@ -313,6 +386,32 @@ class ToOpRecommender(RecommenderModel):
             importer_parameters=importer_parameters,
             preprocessing_parameters=preprocessing_parameters,
         )
+
+    def _load_output_json(self, path: Path) -> Any:
+        """Read ToOp's DC-optimisation output JSON and return its content.
+
+        Format is currently treated as opaque: the parser downstream
+        (:meth:`_extract_line_switches`) consumes several plausible
+        shapes, so we just hand the decoded payload over and log a
+        sample of the top-level keys for forensic purposes.
+        """
+        import json
+
+        with path.open("r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        if isinstance(data, dict):
+            logger.warning(
+                "ToOpRecommender: output.json top-level keys: %s",
+                sorted(data.keys())[:20],
+            )
+        elif isinstance(data, list):
+            logger.warning(
+                "ToOpRecommender: output.json is a list of %d entries; "
+                "first entry keys: %s",
+                len(data),
+                sorted(data[0].keys())[:20] if data and isinstance(data[0], dict) else None,
+            )
+        return data
 
     def _extract_line_switches(
         self,

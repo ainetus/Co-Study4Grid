@@ -81,11 +81,11 @@ class TestOptionalInstall:
             out = ToOpRecommender().recommend(inputs, {})
         assert out.prioritized_actions == {}
 
-    def test_cgmes_export_failure_yields_empty(self):
+    def test_xiidm_export_failure_yields_empty(self):
         inputs = MagicMock()
         inputs.network = MagicMock()
-        # Make save() raise to simulate an XIIDM that can't be CGMES-mapped.
-        inputs.network.save.side_effect = RuntimeError("CGMES export unsupported")
+        # Make save() raise to simulate an unsupported network shape.
+        inputs.network.save.side_effect = RuntimeError("XIIDM export unsupported")
         inputs.env = MagicMock()
         with patch.object(toop_module, "_import_run_pipeline", return_value=lambda **_: None), \
              patch.object(toop_module, "_import_dictconfig", return_value=dict):
@@ -293,11 +293,13 @@ class TestRecommendHappyPath:
         inputs.dict_action = {}
         inputs.non_connected_reconnectable_lines = []
 
-        # Bypass real CGMES export — pypowsybl's CGMES mapping isn't relevant here.
+        # Bypass real XIIDM export AND the ToOp config-building (PipelineConfig /
+        # prepare_importer_parameters / etc. only exist when ToOp is installed).
+        fake_grid_file = MagicMock()
         with patch.object(toop_module, "_import_run_pipeline", return_value=fake_run_pipeline), \
              patch.object(toop_module, "_import_dictconfig", return_value=dict), \
-             patch.object(ToOpRecommender, "_export_to_cgmes",
-                          return_value=mock_network):  # any non-None Path-like sentinel
+             patch.object(ToOpRecommender, "_export_network", return_value=fake_grid_file), \
+             patch.object(ToOpRecommender, "_run_toop", return_value=fake_pareto):
             out = ToOpRecommender().recommend(inputs, {"n_prioritized_actions": 3})
 
         assert "toop_disco_LINE_A" in out.prioritized_actions
