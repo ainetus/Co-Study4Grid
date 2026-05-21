@@ -34,6 +34,12 @@ This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface t
    class. `!important` beats pypowsybl's appended inline <style>. */
 [data-theme="dark"] .svg-container .nad-edge-infos text {
     fill: var(--color-text-primary) !important;
+    /* pypowsybl paints a white stroke "halo" under each flow value so it
+       reads over the coloured line. On the near-black backdrop that white
+       halo turns the light text fuzzy — repaint the halo in the backdrop
+       colour (still legible over lines, no white fringe). */
+    stroke: var(--color-diagram-surface) !important;
+    paint-order: stroke fill !important;
 }
 
 [data-theme="dark"] .svg-container foreignObject.nad-text-nodes div,
