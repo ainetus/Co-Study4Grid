@@ -930,7 +930,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                                                 padding: '4px 12px', border: 'none',
                                                 cursor: loading ? 'wait' : 'pointer',
                                                 backgroundColor: mode === 'hierarchical' ? colors.brand : colors.surface,
-                                                color: mode === 'hierarchical' ? colors.surface : colors.textSecondary,
+                                                color: mode === 'hierarchical' ? colors.textOnBrand : colors.textSecondary,
                                                 transition: 'all 0.15s ease',
                                             }}
                                         >
@@ -946,7 +946,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                                                 padding: '4px 12px', border: 'none', borderLeft: `1px solid ${colors.border}`,
                                                 cursor: (loading || !hasLayout) ? 'not-allowed' : 'pointer',
                                                 backgroundColor: mode === 'geo' ? colors.brand : colors.surface,
-                                                color: mode === 'geo' ? colors.surface : (hasLayout ? colors.textSecondary : colors.borderStrong),
+                                                color: mode === 'geo' ? colors.textOnBrand : (hasLayout ? colors.textSecondary : colors.borderStrong),
                                                 transition: 'all 0.15s ease',
                                             }}
                                         >
