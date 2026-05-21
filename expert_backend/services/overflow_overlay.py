@@ -198,6 +198,45 @@ def _build_overlay_block() -> str:
   html[data-cs4g-theme="dark"] #cs4g-overflow-meta strong {{
     color: #e6e8eb !important;
   }}
+
+  /* --- Graphviz edge legibility on the dark canvas ---
+     Edges live in <g class="edge"> (path = the line, polygon = the
+     arrowhead, text = the flow-value label). Scope every rule to
+     `g.edge` so node ellipses / their labels are never touched. */
+  /* Flow-value labels → light ink (their white background <polygon>
+     is already repainted dark by the white-polygon rule above). */
+  html[data-cs4g-theme="dark"] #stage svg g.edge text {{
+    fill: #e6e8eb !important;
+  }}
+  /* "Null redispatch" grey edges are near-invisible on dark → lighten
+     the line + its arrowhead toward white. */
+  html[data-cs4g-theme="dark"] #stage svg g.edge path[stroke="grey"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge path[stroke="gray"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge path[stroke="#808080"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge path[stroke="#999999"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge path[stroke="#cccccc"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge path[stroke="#c0c0c0"] {{
+    stroke: #e6e8eb !important;
+  }}
+  html[data-cs4g-theme="dark"] #stage svg g.edge polygon[fill="grey"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge polygon[fill="gray"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge polygon[fill="#808080"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge polygon[fill="#999999"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge polygon[fill="#cccccc"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge polygon[fill="#c0c0c0"] {{
+    fill: #e6e8eb !important;
+    stroke: #e6e8eb !important;
+  }}
+  /* "Overload" edges are drawn black → invisible on dark; repaint red. */
+  html[data-cs4g-theme="dark"] #stage svg g.edge path[stroke="black"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge path[stroke="#000000"] {{
+    stroke: #ef4444 !important;
+  }}
+  html[data-cs4g-theme="dark"] #stage svg g.edge polygon[fill="black"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge polygon[fill="#000000"] {{
+    fill: #ef4444 !important;
+    stroke: #ef4444 !important;
+  }}
 </style>
 <script id="cs4g-overlay-script">
 (function() {{
