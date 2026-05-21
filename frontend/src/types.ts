@@ -566,7 +566,8 @@ export type InteractionType =
     | 'session_reload_modal_opened'
     | 'session_reloaded'
     | 'sidebar_collapsed_toggled'
-    | 'contingency_clear_requested';
+    | 'contingency_clear_requested'
+    | 'theme_toggled';
 
 export interface InteractionLogEntry {
     seq: number;
@@ -676,4 +677,11 @@ export type ParentToIframeMessage =
         // can see how long the graph took to produce.
         type: 'cs4g:overflow-meta';
         overflowGraphTime: number | null;
+    }
+    | {
+        // Light/dark theme of the host app. Posted on overlay-ready and
+        // whenever the parent's `<html data-theme>` flips, so the
+        // embedded overflow viewer can match the surrounding chrome.
+        type: 'cs4g:theme';
+        theme: 'light' | 'dark';
     };

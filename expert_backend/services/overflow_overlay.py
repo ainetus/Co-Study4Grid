@@ -153,6 +153,110 @@ def _build_overlay_block() -> str:
     font-style: normal; font-weight: 600;
     color: #111;
   }}
+
+  /* ===== Dark theme =====
+     Engaged when the React parent posts a ``cs4g:theme`` message and
+     the overlay script sets ``<html data-cs4g-theme="dark">``. The
+     upstream alphaDeesp viewer drives its palette through CSS custom
+     properties (``--border`` / ``--muted`` / …) with light fallbacks,
+     so we mostly redefine those + flip the structural surfaces. The
+     graphviz canvas is a white background <polygon> — repaint it dark
+     so the colour-coded nodes / edges pop. Node/edge label text stays
+     as-authored (it sits on light node fills). */
+  html[data-cs4g-theme="dark"] {{
+    --bg: #0c0f13; --panel: #1b1f24; --border: #3a4049;
+    --muted: #9aa1ab; --text: #e6e8eb;
+    background: #0c0f13;
+    color-scheme: dark;
+  }}
+  html[data-cs4g-theme="dark"] body {{
+    background: #0c0f13 !important;
+    color: #e6e8eb !important;
+  }}
+  html[data-cs4g-theme="dark"] #sidebar {{
+    background: #1b1f24 !important;
+    color: #e6e8eb !important;
+    border-color: #3a4049 !important;
+  }}
+  html[data-cs4g-theme="dark"] #stage {{
+    background: #0c0f13 !important;
+  }}
+  /* Graphviz emits the canvas (and edge-label backgrounds, e.g. a flow
+     "%…" chip) as white-filled shapes. Repaint them dark. Attribute
+     matching is case-insensitive (`i`) because graphviz may emit
+     `#FFFFFF` / `WHITE` / `#fff`, and covers both <polygon> and <rect>. */
+  html[data-cs4g-theme="dark"] #stage svg > g > polygon:first-of-type,
+  html[data-cs4g-theme="dark"] #stage svg polygon[fill="#ffffff" i],
+  html[data-cs4g-theme="dark"] #stage svg polygon[fill="#fff" i],
+  html[data-cs4g-theme="dark"] #stage svg polygon[fill="white" i],
+  html[data-cs4g-theme="dark"] #stage svg rect[fill="#ffffff" i],
+  html[data-cs4g-theme="dark"] #stage svg rect[fill="#fff" i],
+  html[data-cs4g-theme="dark"] #stage svg rect[fill="white" i] {{
+    fill: #0c0f13 !important;
+  }}
+  html[data-cs4g-theme="dark"] a {{ color: #60a5fa !important; }}
+  html[data-cs4g-theme="dark"] input,
+  html[data-cs4g-theme="dark"] select,
+  html[data-cs4g-theme="dark"] textarea {{
+    background: #232830 !important; color: #e6e8eb !important;
+    border-color: #3a4049 !important;
+  }}
+  /* The sidebar "SELECTION" info box (and any similar white panel)
+     renders on a hard white background that flashes on the dark UI.
+     Darken it. Best-effort selectors — the upstream viewer's exact id
+     varies, so we cover the common shapes (pre/textarea + any element
+     whose id/class mentions "selection"/"info"). */
+  html[data-cs4g-theme="dark"] #sidebar pre,
+  html[data-cs4g-theme="dark"] #sidebar [id*="selection" i],
+  html[data-cs4g-theme="dark"] #sidebar [class*="selection" i],
+  html[data-cs4g-theme="dark"] #sidebar [id*="info" i],
+  html[data-cs4g-theme="dark"] #sidebar [class*="info" i] {{
+    background: #232830 !important; color: #e6e8eb !important;
+    border-color: #3a4049 !important;
+  }}
+  html[data-cs4g-theme="dark"] #cs4g-filters .filters-counter,
+  html[data-cs4g-theme="dark"] #cs4g-overflow-meta strong {{
+    color: #e6e8eb !important;
+  }}
+
+  /* --- Graphviz edge legibility on the dark canvas ---
+     Edges live in <g class="edge"> (path = the line, polygon = the
+     arrowhead, text = the flow-value label). Scope every rule to
+     `g.edge` so node ellipses / their labels are never touched. */
+  /* Flow-value labels → light ink (their white background <polygon>
+     is already repainted dark by the white-polygon rule above). */
+  html[data-cs4g-theme="dark"] #stage svg g.edge text {{
+    fill: #e6e8eb !important;
+  }}
+  /* "Null redispatch" grey edges are near-invisible on dark → lighten
+     the line + its arrowhead toward white. */
+  html[data-cs4g-theme="dark"] #stage svg g.edge path[stroke="grey"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge path[stroke="gray"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge path[stroke="#808080"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge path[stroke="#999999"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge path[stroke="#cccccc"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge path[stroke="#c0c0c0"] {{
+    stroke: #e6e8eb !important;
+  }}
+  html[data-cs4g-theme="dark"] #stage svg g.edge polygon[fill="grey"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge polygon[fill="gray"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge polygon[fill="#808080"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge polygon[fill="#999999"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge polygon[fill="#cccccc"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge polygon[fill="#c0c0c0"] {{
+    fill: #e6e8eb !important;
+    stroke: #e6e8eb !important;
+  }}
+  /* "Overload" edges are drawn black → invisible on dark; repaint red. */
+  html[data-cs4g-theme="dark"] #stage svg g.edge path[stroke="black"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge path[stroke="#000000"] {{
+    stroke: #ef4444 !important;
+  }}
+  html[data-cs4g-theme="dark"] #stage svg g.edge polygon[fill="black"],
+  html[data-cs4g-theme="dark"] #stage svg g.edge polygon[fill="#000000"] {{
+    fill: #ef4444 !important;
+    stroke: #ef4444 !important;
+  }}
 </style>
 <script id="cs4g-overlay-script">
 (function() {{
@@ -869,6 +973,13 @@ def _build_overlay_block() -> str:
     }}
     if (msg.type === 'cs4g:overflow-meta') {{
       renderOverflowMeta(msg.overflowGraphTime);
+      return;
+    }}
+    if (msg.type === 'cs4g:theme') {{
+      // Parent broadcasts its light/dark theme. Flip a data attribute
+      // on <html>; the dark CSS in the injected <style> keys off it.
+      const t = msg.theme === 'dark' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-cs4g-theme', t);
       return;
     }}
     if (msg.type !== 'cs4g:pins') return;

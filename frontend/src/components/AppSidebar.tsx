@@ -272,8 +272,11 @@ export default function AppSidebar({
                   minHeight: 36,
                   borderRadius: radius.sm,
                   borderColor: colors.border,
+                  background: colors.surface,
                   fontSize: '0.85rem',
                 }),
+                input: (base) => ({ ...base, color: colors.textPrimary }),
+                placeholder: (base) => ({ ...base, color: colors.textTertiary }),
                 multiValue: (base) => ({
                   ...base,
                   background: colors.borderSubtle,
@@ -281,6 +284,7 @@ export default function AppSidebar({
                 }),
                 multiValueLabel: (base) => ({
                   ...base,
+                  color: colors.textPrimary,
                   fontSize: '0.78rem',
                 }),
                 option: (base, state) => ({
@@ -290,7 +294,7 @@ export default function AppSidebar({
                   color: colors.textPrimary,
                   cursor: 'pointer',
                 }),
-                menu: (base) => ({ ...base, zIndex: 30 }),
+                menu: (base) => ({ ...base, zIndex: 30, background: colors.surface }),
               }}
             />
           </div>

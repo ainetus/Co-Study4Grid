@@ -13,9 +13,62 @@ This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface t
     width: 100%;
     height: 100%;
     overflow: hidden;
+    /* The pypowsybl SVG is transparent, so the container provides the
+       diagram backdrop. Tokenised so dark mode flips it to near-black. */
+    background: var(--color-diagram-surface);
     /* CSS containment: tells the browser this subtree's layout/paint is
        independent of the rest of the page, reducing work during viewBox changes */
     contain: layout style paint;
+}
+
+/* ===== Dark-mode diagram legibility =====
+   pypowsybl bakes voltage-coded line colours into the SVG via an inline
+   <style> block; those read fine on the near-black backdrop. The text
+   does NOT. Two distinct cases:
+     - edge-info flow values are SVG <text> (dark fill) → recolour light.
+     - VL labels are HTML <div>s inside <foreignObject> (dark text, no
+       backing) → give them a light text + dark chip.
+   We deliberately do NOT blanket-recolour every <text> in the SVG: the
+   action-overview pin labels are <text> with their own fills (dark text
+   on a white pin glyph) and must stay dark. So edge-info is targeted by
+   class. `!important` beats pypowsybl's appended inline <style>. */
+[data-theme="dark"] .svg-container .nad-edge-infos text {
+    fill: var(--color-text-primary) !important;
+    /* pypowsybl paints a white stroke "halo" under each flow value so it
+       reads over the coloured line. On the near-black backdrop that white
+       halo turns the light text fuzzy — repaint the halo in the backdrop
+       colour (still legible over lines, no white fringe). */
+    stroke: var(--color-diagram-surface) !important;
+    paint-order: stroke fill !important;
+}
+
+[data-theme="dark"] .svg-container foreignObject.nad-text-nodes div,
+[data-theme="dark"] .svg-container .nad-vl-nodes foreignObject div,
+[data-theme="dark"] .svg-container .nad-label-nodes foreignObject div,
+[data-theme="dark"] .svg-container .nad-label-box {
+    color: var(--color-text-primary) !important;
+    background-color: rgba(27, 31, 36, 0.85) !important;
+    border-color: var(--color-border) !important;
+}
+
+/* Action-overview "dim the network" rect — set to fill='white' inline
+   for light mode. Drive its colour from the diagram-surface token (a
+   CSS `fill` property beats the inline presentation attribute), so in
+   dark mode it dims toward near-black instead of leaving a grey square
+   over the dark backdrop. */
+.svg-container .nad-overview-dim-rect {
+    fill: var(--color-diagram-surface);
+}
+
+/* ===== Dark-mode SLD legibility =====
+   The Single-Line-Diagram overlay injects pypowsybl `sld-*` markup onto
+   a dark panel. Feeder / power-value labels (`.sld-label`) and graph
+   labels are dark <text> → recolour them to light. We exclude the
+   flow-delta text classes (`sld-delta-text-*`) because those carry a
+   meaningful positive / negative / neutral colour applied by
+   SldOverlay. Scoped to the overlay root so nothing else is touched. */
+[data-theme="dark"] [data-testid="sld-overlay"] text:not([class*="sld-delta-text"]) {
+    fill: var(--color-text-primary) !important;
 }
 
 .svg-container svg {
@@ -453,7 +506,7 @@ circle.nad-highlight {
     right: 0;
     bottom: 0;
     width: 62px;
-    background: rgba(244, 244, 244, 0.92);
+    background: var(--color-surface-muted);
     border-left: 1px solid var(--color-border);
     display: flex;
     flex-direction: column;
@@ -581,7 +634,7 @@ input[data-testid="sidebar-filter-threshold-input"]::-webkit-outer-spin-button {
     right: 0;
     bottom: 0;
     width: 24px;
-    background: rgba(244, 244, 244, 0.85);
+    background: var(--color-surface-muted);
     border: none;
     border-left: 1px solid var(--color-border);
     cursor: pointer;
@@ -595,7 +648,7 @@ input[data-testid="sidebar-filter-threshold-input"]::-webkit-outer-spin-button {
 }
 
 .voltage-sidebar-toggle:hover {
-    background: rgba(220, 220, 220, 0.95);
+    background: var(--color-surface-raised);
     color: var(--color-text-primary);
 }
 /* ============================================================

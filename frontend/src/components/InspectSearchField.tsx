@@ -72,7 +72,8 @@ const InspectSearchField: React.FC<{
                     fontSize: '12px',
                     width: '180px',
                     boxShadow: '0 2px 5px rgba(0,0,0,0.15)',
-                    background: 'white',
+                    background: colors.surface,
+                    color: colors.textPrimary,
                 }}
             />
             {showDropdown && (
@@ -85,7 +86,8 @@ const InspectSearchField: React.FC<{
                         width: '220px',
                         maxHeight: '220px',
                         overflowY: 'auto',
-                        background: 'white',
+                        background: colors.surface,
+                        color: colors.textPrimary,
                         border: `1px solid ${colors.brand}`,
                         borderRadius: '4px',
                         boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
@@ -113,7 +115,7 @@ const InspectSearchField: React.FC<{
                                 textOverflow: 'ellipsis',
                             }}
                             onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = colors.brandSoft; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'white'; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = colors.surface; }}
                         >
                             {item}
                         </div>
