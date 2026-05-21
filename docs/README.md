@@ -41,6 +41,7 @@ docs/
 | [`actions-topology.md`](features/actions-topology.md) | Action formats + topology algorithms (switch → set_bus, Union-Find cache). |
 | [`curtailment-loadshedding-pst-actions.md`](features/curtailment-loadshedding-pst-actions.md) | Renewable curtailment, load shedding, PST tap actions. |
 | [`frontend-ui-improvements.md`](features/frontend-ui-improvements.md) | Voltage filter, run-button placement, color codes, always-visible tabs. |
+| [`dark-mode.md`](features/dark-mode.md) | Light/dark theme: design-token source of truth, `useTheme` hook + pre-mount script, the "soft-background" trap, NAD/SLD diagram + overflow-viewer theming, tests. |
 
 ## Performance (`performance/`)
 
