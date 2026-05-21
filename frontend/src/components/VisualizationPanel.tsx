@@ -560,8 +560,8 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                                         aria-pressed={showVoltageLevelNames}
                                         data-testid="toggle-vl-names"
                                         style={{
-                                            background: showVoltageLevelNames ? colors.brandSoft : colors.surface,
-                                            color: showVoltageLevelNames ? colors.brand : colors.textSecondary,
+                                            background: showVoltageLevelNames ? colors.brand : colors.surface,
+                                            color: showVoltageLevelNames ? colors.textOnBrand : colors.textSecondary,
                                             border: `1px solid ${showVoltageLevelNames ? colors.brand : colors.border}`,
                                             borderRadius: '4px',
                                             padding: '4px 8px',
@@ -644,8 +644,8 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                 )}
                 {(
                     [
-                        { id: 'n' as TabId, label: 'Network (N)' as React.ReactNode, available: !!nDiagram?.svg, accentColor: colors.brand, dimColor: colors.textTertiary, placeholder: 'Configure a network path in Settings to load the base-case diagram.' },
-                        { id: 'contingency' as TabId, label: contingencyTabLabel as React.ReactNode, available: !!n1Diagram?.svg, accentColor: colors.danger, dimColor: colors.textTertiary, placeholder: 'Trigger a contingency from the dropdown to view the post-contingency state.' },
+                        { id: 'n' as TabId, label: 'Network (N)' as React.ReactNode, available: !!nDiagram?.svg, accentColor: colors.brand, dimColor: colors.textSecondary, placeholder: 'Configure a network path in Settings to load the base-case diagram.' },
+                        { id: 'contingency' as TabId, label: contingencyTabLabel as React.ReactNode, available: !!n1Diagram?.svg, accentColor: colors.danger, dimColor: colors.textSecondary, placeholder: 'Trigger a contingency from the dropdown to view the post-contingency state.' },
                         // When no card is selected, the Remedial Action tab hosts the
                         // action-overview view (pins over the N-1 network). It is considered
                         // "available" as soon as the N-1 diagram has loaded, so the tab is no
@@ -743,10 +743,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                             ) as React.ReactNode : 'Remedial action: overview' as React.ReactNode,
                             available: !!actionDiagram?.svg || !!n1Diagram?.svg,
                             accentColor: 'var(--signal-action-target)',
-                            dimColor: colors.textTertiary,
+                            dimColor: colors.textSecondary,
                             placeholder: 'Select a contingency and run the analysis to see remedial actions.',
                         },
-                        { id: 'overflow' as TabId, label: 'Overflow Analysis' as React.ReactNode, available: !!result?.pdf_url, accentColor: colors.success, dimColor: colors.textTertiary, placeholder: 'Run \u201cAnalyze & Suggest\u201d to see the overflow graph.' },
+                        { id: 'overflow' as TabId, label: 'Overflow Analysis' as React.ReactNode, available: !!result?.pdf_url, accentColor: colors.success, dimColor: colors.textSecondary, placeholder: 'Run \u201cAnalyze & Suggest\u201d to see the overflow graph.' },
                     ] as const
                 ).map(tab => {
                     const isActive = activeTab === tab.id;
