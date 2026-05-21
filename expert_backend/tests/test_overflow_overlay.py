@@ -51,6 +51,61 @@ class TestInjectOverlay:
         assert "cs4g:pin-clicked" in out
         assert "cs4g:overlay-ready" in out
 
+
+class TestDarkTheme:
+    """The overlay carries the dark-theme contract: a ``cs4g:theme``
+    message handler that flips ``<html data-cs4g-theme>`` plus the CSS
+    that keys off it (chrome surfaces + graphviz edge legibility)."""
+
+    def test_theme_message_handler_sets_data_attribute(self) -> None:
+        out = inject_overlay(_BASE_HTML)
+        assert "cs4g:theme" in out
+        # The handler must set the data attribute the dark CSS keys off.
+        assert "data-cs4g-theme" in out
+        assert "setAttribute('data-cs4g-theme'" in out
+
+    def test_dark_chrome_surfaces_are_styled(self) -> None:
+        out = inject_overlay(_BASE_HTML)
+        # Body / sidebar / stage all get a dark surface under the theme.
+        assert 'html[data-cs4g-theme="dark"] body' in out
+        assert 'html[data-cs4g-theme="dark"] #sidebar' in out
+        assert 'html[data-cs4g-theme="dark"] #stage' in out
+
+    def test_white_graphviz_canvas_polygon_is_repainted_dark(self) -> None:
+        out = inject_overlay(_BASE_HTML)
+        assert 'polygon[fill="white"]' in out
+        assert 'polygon[fill="#ffffff"]' in out
+
+    def test_edge_flow_value_labels_are_lightened(self) -> None:
+        out = inject_overlay(_BASE_HTML)
+        assert 'html[data-cs4g-theme="dark"] #stage svg g.edge text' in out
+
+    def test_grey_null_edges_are_lightened(self) -> None:
+        out = inject_overlay(_BASE_HTML)
+        # Both the line stroke and the arrowhead fill are retargeted.
+        assert 'g.edge path[stroke="grey"]' in out
+        assert 'g.edge polygon[fill="grey"]' in out
+
+    def test_black_overload_edges_become_red(self) -> None:
+        out = inject_overlay(_BASE_HTML)
+        assert 'g.edge path[stroke="black"]' in out
+        assert 'g.edge path[stroke="#000000"]' in out
+        # The retarget colour is the danger red.
+        assert "#ef4444" in out
+
+    def test_edge_rules_are_scoped_to_edges_not_nodes(self) -> None:
+        """Node ellipses must keep their authored colours — every edge
+        recolour rule must be qualified by ``g.edge`` so a black node
+        border or a white node fill is never caught."""
+        out = inject_overlay(_BASE_HTML)
+        for needle in ('path[stroke="black"]', 'polygon[fill="grey"]',
+                       'g.edge text'):
+            idx = out.find(needle)
+            assert idx != -1
+            # The selector segment leading up to the needle includes g.edge.
+            seg_start = out.rfind('html[data-cs4g-theme="dark"]', 0, idx)
+            assert 'g.edge' in out[seg_start:idx + len(needle)]
+
     def test_single_click_is_debounced_against_double_click(self) -> None:
         """The pin's click handler must defer firing
         ``cs4g:pin-clicked`` via a setTimeout so that a follow-up

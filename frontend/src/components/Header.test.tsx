@@ -120,4 +120,40 @@ describe('Header', () => {
         fireEvent.blur(input);
         expect(onCommitNetworkPath).toHaveBeenCalledWith('/new/path.xiidm');
     });
+
+    describe('dark-mode toggle', () => {
+        beforeEach(() => {
+            localStorage.clear();
+            document.documentElement.removeAttribute('data-theme');
+            document.documentElement.style.colorScheme = '';
+            window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+                matches: false, media: query, onchange: null,
+                addEventListener: vi.fn(), removeEventListener: vi.fn(),
+                addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
+            }));
+        });
+
+        it('renders a theme toggle that shows the moon glyph in light mode', () => {
+            render(<Header {...defaultProps} />);
+            const toggle = screen.getByTestId('header-theme-toggle');
+            expect(toggle).toHaveTextContent('☾');
+            expect(toggle).toHaveAttribute('aria-label', 'Switch to dark mode');
+        });
+
+        it('flips the document theme and glyph when clicked', () => {
+            render(<Header {...defaultProps} />);
+            const toggle = screen.getByTestId('header-theme-toggle');
+
+            fireEvent.click(toggle);
+
+            expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+            expect(toggle).toHaveTextContent('☀');
+            expect(toggle).toHaveAttribute('aria-label', 'Switch to light mode');
+
+            fireEvent.click(toggle);
+
+            expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+            expect(toggle).toHaveTextContent('☾');
+        });
+    });
 });
