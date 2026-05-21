@@ -353,10 +353,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
         <div style={{
             position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
             zIndex: 400, display: 'flex', alignItems: 'center', gap: '8px',
-            padding: '4px 10px', background: 'rgba(255,255,255,0.95)',
+            padding: '4px 10px', background: colors.surface,
             border: `1px solid ${accentColor}`, borderRadius: '14px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.15)', fontSize: '12px', fontWeight: 600,
-            color: colors.chrome, pointerEvents: 'auto',
+            color: colors.textPrimary, pointerEvents: 'auto',
         }}>
             <span style={{ color: accentColor }}>●</span>
             <span>{label}</span>
@@ -382,7 +382,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                 onClick={() => reattachTabCb(tabId)}
                 title="Reattach this tab to the main window"
                 style={{
-                    border: `1px solid ${accentColor}`, background: 'white',
+                    border: `1px solid ${accentColor}`, background: colors.surface,
                     color: accentColor, borderRadius: '10px',
                     padding: '2px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
                 }}
@@ -507,7 +507,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                             <button
                                 onClick={() => onZoomIn(tabId)}
                                 style={{
-                                    background: 'white', color: colors.textPrimary,
+                                    background: colors.surface, color: colors.textPrimary,
                                     border: `1px solid ${colors.border}`, borderRadius: '4px',
                                     padding: '5px 12px', cursor: 'pointer',
                                     fontSize: '14px', fontWeight: 600,
@@ -520,7 +520,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                             <button
                                 onClick={() => onResetView(tabId)}
                                 style={{
-                                    background: 'white', color: colors.textPrimary,
+                                    background: colors.surface, color: colors.textPrimary,
                                     border: `1px solid ${colors.border}`, borderRadius: '4px',
                                     padding: '5px 14px', cursor: 'pointer',
                                     fontSize: '12px', fontWeight: 600,
@@ -532,7 +532,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                             <button
                                 onClick={() => onZoomOut(tabId)}
                                 style={{
-                                    background: 'white', color: colors.textPrimary,
+                                    background: colors.surface, color: colors.textPrimary,
                                     border: `1px solid ${colors.border}`, borderRadius: '4px',
                                     padding: '5px 12px', cursor: 'pointer',
                                     fontSize: '14px', fontWeight: 600,
@@ -756,7 +756,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                             key={tab.id}
                             style={{
                                 flex: 1, display: 'flex', alignItems: 'stretch',
-                                background: isActive && !isDetached ? 'white' : colors.surfaceMuted,
+                                background: isActive && !isDetached ? colors.surfaceRaised : colors.surfaceMuted,
                                 borderBottom: isActive && tab.available && !isDetached ? `3px solid ${tab.accentColor}` : 'none',
                                 minWidth: 0,
                             }}
@@ -1068,12 +1068,12 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         {/* Always mounted — see comment on N-1 container below. */}
                         <MemoizedSvgContainer svg={nDiagram?.svg || ''} containerRef={nSvgContainerRef} display="block" tabId="n" hideVlLabels={!showVoltageLevelNames} />
                         {configLoading && (
-                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textTertiary, background: 'rgba(255,255,255,0.85)', zIndex: 20 }}>
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textTertiary, background: colors.diagramVeil, zIndex: 20 }}>
                                 Loading configuration...
                             </div>
                         )}
                         {!configLoading && !nDiagram?.svg && (
-                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textTertiary, background: 'white' }}>
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textTertiary, background: colors.diagramSurface }}>
                                 Load configuration to see diagram
                             </div>
                         )}
@@ -1121,12 +1121,12 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                             viewBox that was applied between the two invocations. */}
                         <MemoizedSvgContainer svg={n1Diagram?.svg || ''} containerRef={n1SvgContainerRef} display="block" tabId="contingency" hideVlLabels={!showVoltageLevelNames} />
                         {n1Loading && (
-                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textTertiary, background: 'rgba(255,255,255,0.85)', zIndex: 20 }}>
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textTertiary, background: colors.diagramVeil, zIndex: 20 }}>
                                 Generating N-1 Diagram...
                             </div>
                         )}
                         {!n1Loading && !n1Diagram?.svg && (
-                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textTertiary, fontStyle: 'italic', textAlign: 'center', padding: '40px', background: 'white' }}>
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textTertiary, fontStyle: 'italic', textAlign: 'center', padding: '40px', background: colors.diagramSurface }}>
                                 Select a contingency element from the dropdown to view the N-1 state.
                             </div>
                         )}
@@ -1209,12 +1209,12 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                             onSimulateUnsimulatedAction={onSimulateUnsimulatedAction}
                         />
                         {actionDiagramLoading && (
-                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textTertiary, background: 'rgba(255,255,255,0.85)', zIndex: 20 }}>
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textTertiary, background: colors.diagramVeil, zIndex: 20 }}>
                                 Generating Action Variant Diagram...
                             </div>
                         )}
                         {!actionDiagramLoading && !actionDiagram?.svg && selectedActionId && (
-                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textTertiary, background: 'white' }}>
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textTertiary, background: colors.diagramSurface }}>
                                 Failed to load diagram for action {selectedActionId}
                             </div>
                         )}

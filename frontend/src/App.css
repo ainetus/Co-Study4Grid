@@ -13,9 +13,37 @@ This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface t
     width: 100%;
     height: 100%;
     overflow: hidden;
+    /* The pypowsybl SVG is transparent, so the container provides the
+       diagram backdrop. Tokenised so dark mode flips it to near-black. */
+    background: var(--color-diagram-surface);
     /* CSS containment: tells the browser this subtree's layout/paint is
        independent of the rest of the page, reducing work during viewBox changes */
     contain: layout style paint;
+}
+
+/* ===== Dark-mode diagram legibility =====
+   pypowsybl bakes voltage-coded line colours into the SVG via an inline
+   <style> block; those read fine on the near-black backdrop. The text
+   does NOT: VL label boxes and edge-info flow values are emitted as
+   dark text on (assumed) white. On the dark backdrop they vanish, so we
+   recolour them to a light ink. `!important` beats pypowsybl's appended
+   inline <style>. Scoped to [data-theme="dark"] so light mode is
+   untouched. */
+[data-theme="dark"] .svg-container .nad-edge-infos text,
+[data-theme="dark"] .svg-container .nad-vl-nodes text,
+[data-theme="dark"] .svg-container .nad-label-nodes text,
+[data-theme="dark"] .svg-container .nad-branch-edges text,
+[data-theme="dark"] .svg-container .nad-3wt-edges text {
+    fill: var(--color-text-primary) !important;
+}
+
+/* VL label boxes are HTML inside <foreignObject>. Give them a dark,
+   semi-opaque chip so the (light, recoloured) label text sits on a
+   readable backing instead of floating on the dark canvas. */
+[data-theme="dark"] .svg-container .nad-label-box,
+[data-theme="dark"] .svg-container foreignObject.nad-text-nodes div {
+    color: var(--color-text-primary) !important;
+    background: rgba(27, 31, 36, 0.82) !important;
 }
 
 .svg-container svg {
@@ -453,7 +481,7 @@ circle.nad-highlight {
     right: 0;
     bottom: 0;
     width: 62px;
-    background: rgba(244, 244, 244, 0.92);
+    background: var(--color-surface-muted);
     border-left: 1px solid var(--color-border);
     display: flex;
     flex-direction: column;
@@ -581,7 +609,7 @@ input[data-testid="sidebar-filter-threshold-input"]::-webkit-outer-spin-button {
     right: 0;
     bottom: 0;
     width: 24px;
-    background: rgba(244, 244, 244, 0.85);
+    background: var(--color-surface-muted);
     border: none;
     border-left: 1px solid var(--color-border);
     cursor: pointer;
@@ -595,7 +623,7 @@ input[data-testid="sidebar-filter-threshold-input"]::-webkit-outer-spin-button {
 }
 
 .voltage-sidebar-toggle:hover {
-    background: rgba(220, 220, 220, 0.95);
+    background: var(--color-surface-raised);
     color: var(--color-text-primary);
 }
 /* ============================================================

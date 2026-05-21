@@ -18,6 +18,8 @@ export const colors = {
   surface: 'var(--color-surface)',
   surfaceMuted: 'var(--color-surface-muted)',
   surfaceRaised: 'var(--color-surface-raised)',
+  diagramSurface: 'var(--color-diagram-surface)',
+  diagramVeil: 'var(--color-diagram-veil)',
 
   border: 'var(--color-border)',
   borderSubtle: 'var(--color-border-subtle)',

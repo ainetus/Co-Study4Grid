@@ -29,6 +29,14 @@ remaining hex-literal count after each migration.
   --color-surface-muted: #f8f9fa;
   --color-surface-raised: #fcfcfc;
 
+  /* Backdrop behind the pypowsybl NAD/SLD diagram. White in light
+     mode; flipped dark by [data-theme="dark"] below. The diagram SVG
+     itself is transparent, so this token IS the diagram background. */
+  --color-diagram-surface: #ffffff;
+  /* Semi-opaque veil painted over the diagram while a new one loads
+     (dims the stale diagram). Translucent so the old SVG shows through. */
+  --color-diagram-veil: rgba(255, 255, 255, 0.85);
+
   /* ----- Color: borders ----- */
   --color-border: #cccccc;
   --color-border-subtle: #eeeeee;
@@ -165,10 +173,13 @@ remaining hex-literal count after each migration.
    keeps `colors.surface` here = light grey-blue so flow arrows /
    delta colors keep their meaning. */
 [data-theme="dark"] {
-  /* Surfaces — diagram canvases stay near-white, app shell is dark. */
+  /* Surfaces — app shell is dark; the diagram backdrop goes near-black
+     (see --color-diagram-surface) so voltage-coded lines pop. */
   --color-surface: #1b1f24;            /* base app background */
   --color-surface-muted: #232830;      /* sidebar / cards */
   --color-surface-raised: #2a3038;     /* hover / raised tiles */
+  --color-diagram-surface: #0c0f13;    /* near-black diagram backdrop */
+  --color-diagram-veil: rgba(12, 15, 19, 0.78);
 
   /* Borders */
   --color-border: #3a4049;
