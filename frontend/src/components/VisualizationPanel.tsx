@@ -445,7 +445,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                                 style={{
                                     padding: '4px 12px', border: 'none', cursor: 'pointer',
                                     backgroundColor: tabViewMode === 'network' ? colors.brand : colors.surface,
-                                    color: tabViewMode === 'network' ? colors.surface : colors.textSecondary,
+                                    color: tabViewMode === 'network' ? colors.textOnBrand : colors.textSecondary,
                                     transition: 'all 0.15s ease'
                                 }}
                             >
@@ -456,7 +456,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                                 style={{
                                     padding: '4px 12px', border: 'none', borderLeft: `1px solid ${colors.border}`, cursor: 'pointer',
                                     backgroundColor: tabViewMode === 'delta' ? colors.brand : colors.surface,
-                                    color: tabViewMode === 'delta' ? colors.surface : colors.textSecondary,
+                                    color: tabViewMode === 'delta' ? colors.textOnBrand : colors.textSecondary,
                                     transition: 'all 0.15s ease'
                                 }}
                             >
@@ -644,8 +644,8 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                 )}
                 {(
                     [
-                        { id: 'n' as TabId, label: 'Network (N)' as React.ReactNode, available: !!nDiagram?.svg, accentColor: colors.brand, dimColor: colors.chromeSoft, placeholder: 'Configure a network path in Settings to load the base-case diagram.' },
-                        { id: 'contingency' as TabId, label: contingencyTabLabel as React.ReactNode, available: !!n1Diagram?.svg, accentColor: colors.danger, dimColor: colors.borderStrong, placeholder: 'Trigger a contingency from the dropdown to view the post-contingency state.' },
+                        { id: 'n' as TabId, label: 'Network (N)' as React.ReactNode, available: !!nDiagram?.svg, accentColor: colors.brand, dimColor: colors.textTertiary, placeholder: 'Configure a network path in Settings to load the base-case diagram.' },
+                        { id: 'contingency' as TabId, label: contingencyTabLabel as React.ReactNode, available: !!n1Diagram?.svg, accentColor: colors.danger, dimColor: colors.textTertiary, placeholder: 'Trigger a contingency from the dropdown to view the post-contingency state.' },
                         // When no card is selected, the Remedial Action tab hosts the
                         // action-overview view (pins over the N-1 network). It is considered
                         // "available" as soon as the N-1 diagram has loaded, so the tab is no
@@ -743,10 +743,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                             ) as React.ReactNode : 'Remedial action: overview' as React.ReactNode,
                             available: !!actionDiagram?.svg || !!n1Diagram?.svg,
                             accentColor: 'var(--signal-action-target)',
-                            dimColor: colors.borderStrong,
+                            dimColor: colors.textTertiary,
                             placeholder: 'Select a contingency and run the analysis to see remedial actions.',
                         },
-                        { id: 'overflow' as TabId, label: 'Overflow Analysis' as React.ReactNode, available: !!result?.pdf_url, accentColor: colors.success, dimColor: colors.borderStrong, placeholder: 'Run \u201cAnalyze & Suggest\u201d to see the overflow graph.' },
+                        { id: 'overflow' as TabId, label: 'Overflow Analysis' as React.ReactNode, available: !!result?.pdf_url, accentColor: colors.success, dimColor: colors.textTertiary, placeholder: 'Run \u201cAnalyze & Suggest\u201d to see the overflow graph.' },
                     ] as const
                 ).map(tab => {
                     const isActive = activeTab === tab.id;
@@ -778,7 +778,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                                     fontWeight: isActive && tab.available && !isDetached ? 'bold' : 400,
                                     fontStyle: !tab.available || isDetached ? 'italic' : 'normal',
                                     background: 'transparent',
-                                    color: isDetached ? colors.textTertiary : (tab.available ? (isActive ? colors.chrome : tab.dimColor) : colors.borderStrong),
+                                    color: isDetached ? colors.textTertiary : (tab.available ? (isActive ? colors.textPrimary : tab.dimColor) : colors.borderStrong),
                                     fontSize: tab.id === 'action' && selectedActionId ? '0.75rem' : '0.85rem',
                                     // The action tab with a selected card carries its
                                     // own flex label with internal ellipsis on the chip.

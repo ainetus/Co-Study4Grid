@@ -387,7 +387,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
                                             if (!isNaN(mwVal) && mwVal >= 0) onResimulate(id, mwVal);
                                         }}
                                         disabled={resimulating === id}
-                                        style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.warningStrong}`, background: colors.warning, color: colors.warningText, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+                                        style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.warningStrong}`, background: colors.warning, color: colors.textOnBright, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
                                     >
                                         {resimulating === id ? 'Simulating...' : 'Re-simulate'}
                                     </button>

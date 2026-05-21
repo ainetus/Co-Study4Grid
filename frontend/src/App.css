@@ -24,26 +24,34 @@ This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface t
 /* ===== Dark-mode diagram legibility =====
    pypowsybl bakes voltage-coded line colours into the SVG via an inline
    <style> block; those read fine on the near-black backdrop. The text
-   does NOT: VL label boxes and edge-info flow values are emitted as
-   dark text on (assumed) white. On the dark backdrop they vanish, so we
-   recolour them to a light ink. `!important` beats pypowsybl's appended
-   inline <style>. Scoped to [data-theme="dark"] so light mode is
-   untouched. */
-[data-theme="dark"] .svg-container .nad-edge-infos text,
-[data-theme="dark"] .svg-container .nad-vl-nodes text,
-[data-theme="dark"] .svg-container .nad-label-nodes text,
-[data-theme="dark"] .svg-container .nad-branch-edges text,
-[data-theme="dark"] .svg-container .nad-3wt-edges text {
+   does NOT. Two distinct cases:
+     - edge-info flow values are SVG <text> (dark fill) → recolour light.
+     - VL labels are HTML <div>s inside <foreignObject> (dark text, no
+       backing) → give them a light text + dark chip.
+   We deliberately do NOT blanket-recolour every <text> in the SVG: the
+   action-overview pin labels are <text> with their own fills (dark text
+   on a white pin glyph) and must stay dark. So edge-info is targeted by
+   class. `!important` beats pypowsybl's appended inline <style>. */
+[data-theme="dark"] .svg-container .nad-edge-infos text {
     fill: var(--color-text-primary) !important;
 }
 
-/* VL label boxes are HTML inside <foreignObject>. Give them a dark,
-   semi-opaque chip so the (light, recoloured) label text sits on a
-   readable backing instead of floating on the dark canvas. */
-[data-theme="dark"] .svg-container .nad-label-box,
-[data-theme="dark"] .svg-container foreignObject.nad-text-nodes div {
+[data-theme="dark"] .svg-container foreignObject.nad-text-nodes div,
+[data-theme="dark"] .svg-container .nad-vl-nodes foreignObject div,
+[data-theme="dark"] .svg-container .nad-label-nodes foreignObject div,
+[data-theme="dark"] .svg-container .nad-label-box {
     color: var(--color-text-primary) !important;
-    background: rgba(27, 31, 36, 0.82) !important;
+    background-color: rgba(27, 31, 36, 0.85) !important;
+    border-color: var(--color-border) !important;
+}
+
+/* Action-overview "dim the network" rect — set to fill='white' inline
+   for light mode. Drive its colour from the diagram-surface token (a
+   CSS `fill` property beats the inline presentation attribute), so in
+   dark mode it dims toward near-black instead of leaving a grey square
+   over the dark backdrop. */
+.svg-container .nad-overview-dim-rect {
+    fill: var(--color-diagram-surface);
 }
 
 .svg-container svg {

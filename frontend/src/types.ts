@@ -677,4 +677,11 @@ export type ParentToIframeMessage =
         // can see how long the graph took to produce.
         type: 'cs4g:overflow-meta';
         overflowGraphTime: number | null;
+    }
+    | {
+        // Light/dark theme of the host app. Posted on overlay-ready and
+        // whenever the parent's `<html data-theme>` flips, so the
+        // embedded overflow viewer can match the surrounding chrome.
+        type: 'cs4g:theme';
+        theme: 'light' | 'dark';
     };

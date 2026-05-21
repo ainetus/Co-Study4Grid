@@ -160,7 +160,7 @@ export default function NoticesPanel({ notices }: NoticesPanelProps) {
             height: '18px',
             padding: `0 ${space[1]}`,
             background: colors.warning,
-            color: colors.textPrimary,
+            color: colors.textOnBright,
             borderRadius: '999px',
             fontSize: text.xs,
             fontWeight: 700,

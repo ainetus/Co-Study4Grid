@@ -47,6 +47,11 @@ remaining hex-literal count after each migration.
   --color-text-secondary: #555555;
   --color-text-tertiary: #888888;
   --color-text-on-brand: #ffffff;
+  /* Dark ink for text sitting on a bright, solid fill (warning yellow,
+     notice badge, etc.). Stays dark in BOTH themes because those fills
+     are bright in both — unlike the *-text tokens which are tuned for
+     the matching *-soft background and flip light in dark mode. */
+  --color-text-on-bright: #1f2937;
 
   /* ----- Color: brand (Tailwind blue ramp) ----- */
   --color-brand: #1e40af;          /* blue-800 — primary links + active CTAs */

@@ -153,6 +153,51 @@ def _build_overlay_block() -> str:
     font-style: normal; font-weight: 600;
     color: #111;
   }}
+
+  /* ===== Dark theme =====
+     Engaged when the React parent posts a ``cs4g:theme`` message and
+     the overlay script sets ``<html data-cs4g-theme="dark">``. The
+     upstream alphaDeesp viewer drives its palette through CSS custom
+     properties (``--border`` / ``--muted`` / …) with light fallbacks,
+     so we mostly redefine those + flip the structural surfaces. The
+     graphviz canvas is a white background <polygon> — repaint it dark
+     so the colour-coded nodes / edges pop. Node/edge label text stays
+     as-authored (it sits on light node fills). */
+  html[data-cs4g-theme="dark"] {{
+    --bg: #0c0f13; --panel: #1b1f24; --border: #3a4049;
+    --muted: #9aa1ab; --text: #e6e8eb;
+    background: #0c0f13;
+    color-scheme: dark;
+  }}
+  html[data-cs4g-theme="dark"] body {{
+    background: #0c0f13 !important;
+    color: #e6e8eb !important;
+  }}
+  html[data-cs4g-theme="dark"] #sidebar {{
+    background: #1b1f24 !important;
+    color: #e6e8eb !important;
+    border-color: #3a4049 !important;
+  }}
+  html[data-cs4g-theme="dark"] #stage {{
+    background: #0c0f13 !important;
+  }}
+  /* Graphviz emits the canvas as a white background polygon — recolour
+     just that one (transparent-stroked, white-filled) shape. */
+  html[data-cs4g-theme="dark"] #stage svg > g > polygon:first-of-type,
+  html[data-cs4g-theme="dark"] #stage svg polygon[fill="#ffffff"],
+  html[data-cs4g-theme="dark"] #stage svg polygon[fill="white"] {{
+    fill: #0c0f13 !important;
+  }}
+  html[data-cs4g-theme="dark"] a {{ color: #60a5fa !important; }}
+  html[data-cs4g-theme="dark"] input,
+  html[data-cs4g-theme="dark"] select {{
+    background: #232830 !important; color: #e6e8eb !important;
+    border-color: #3a4049 !important;
+  }}
+  html[data-cs4g-theme="dark"] #cs4g-filters .filters-counter,
+  html[data-cs4g-theme="dark"] #cs4g-overflow-meta strong {{
+    color: #e6e8eb !important;
+  }}
 </style>
 <script id="cs4g-overlay-script">
 (function() {{
@@ -869,6 +914,13 @@ def _build_overlay_block() -> str:
     }}
     if (msg.type === 'cs4g:overflow-meta') {{
       renderOverflowMeta(msg.overflowGraphTime);
+      return;
+    }}
+    if (msg.type === 'cs4g:theme') {{
+      // Parent broadcasts its light/dark theme. Flip a data attribute
+      // on <html>; the dark CSS in the injected <style> keys off it.
+      const t = msg.theme === 'dark' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-cs4g-theme', t);
       return;
     }}
     if (msg.type !== 'cs4g:pins') return;

@@ -829,7 +829,7 @@ const ActionOverviewDiagram: React.FC<ActionOverviewDiagramProps> = ({
                 inset: 0,
                 display: visible ? 'flex' : 'none',
                 flexDirection: 'column',
-                background: 'white',
+                background: colors.diagramSurface,
                 // Sit above the hidden MemoizedSvgContainer for
                 // actionDiagram (which stays mounted to preserve
                 // zoom state) so clicks land on the overview.
@@ -1004,7 +1004,8 @@ const ActionOverviewDiagram: React.FC<ActionOverviewDiagramProps> = ({
                                     fontSize: 12,
                                     width: 180,
                                     boxShadow: '0 2px 5px rgba(0,0,0,0.15)',
-                                    background: 'white',
+                                    background: colors.surface,
+                                    color: colors.textPrimary,
                                 }}
                             />
                             {showInspectDropdown && (
@@ -1017,7 +1018,8 @@ const ActionOverviewDiagram: React.FC<ActionOverviewDiagramProps> = ({
                                         width: 220,
                                         maxHeight: 220,
                                         overflowY: 'auto',
-                                        background: 'white',
+                                        background: colors.surface,
+                                        color: colors.textPrimary,
                                         border: `1px solid ${colors.brand}`,
                                         borderRadius: 4,
                                         boxShadow: '0 4px 12px rgba(0,0,0,0.18)',

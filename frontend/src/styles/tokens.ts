@@ -29,6 +29,7 @@ export const colors = {
   textSecondary: 'var(--color-text-secondary)',
   textTertiary: 'var(--color-text-tertiary)',
   textOnBrand: 'var(--color-text-on-brand)',
+  textOnBright: 'var(--color-text-on-bright)',
 
   brand: 'var(--color-brand)',
   brandStrong: 'var(--color-brand-strong)',
