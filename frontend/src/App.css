@@ -54,6 +54,17 @@ This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface t
     fill: var(--color-diagram-surface);
 }
 
+/* ===== Dark-mode SLD legibility =====
+   The Single-Line-Diagram overlay injects pypowsybl `sld-*` markup onto
+   a dark panel. Feeder / power-value labels (`.sld-label`) and graph
+   labels are dark <text> → recolour them to light. We exclude the
+   flow-delta text classes (`sld-delta-text-*`) because those carry a
+   meaningful positive / negative / neutral colour applied by
+   SldOverlay. Scoped to the overlay root so nothing else is touched. */
+[data-theme="dark"] [data-testid="sld-overlay"] text:not([class*="sld-delta-text"]) {
+    fill: var(--color-text-primary) !important;
+}
+
 .svg-container svg {
     width: 100%;
     height: 100%;
