@@ -181,16 +181,36 @@ def _build_overlay_block() -> str:
   html[data-cs4g-theme="dark"] #stage {{
     background: #0c0f13 !important;
   }}
-  /* Graphviz emits the canvas as a white background polygon — recolour
-     just that one (transparent-stroked, white-filled) shape. */
+  /* Graphviz emits the canvas (and edge-label backgrounds, e.g. a flow
+     "%…" chip) as white-filled shapes. Repaint them dark. Attribute
+     matching is case-insensitive (`i`) because graphviz may emit
+     `#FFFFFF` / `WHITE` / `#fff`, and covers both <polygon> and <rect>. */
   html[data-cs4g-theme="dark"] #stage svg > g > polygon:first-of-type,
-  html[data-cs4g-theme="dark"] #stage svg polygon[fill="#ffffff"],
-  html[data-cs4g-theme="dark"] #stage svg polygon[fill="white"] {{
+  html[data-cs4g-theme="dark"] #stage svg polygon[fill="#ffffff" i],
+  html[data-cs4g-theme="dark"] #stage svg polygon[fill="#fff" i],
+  html[data-cs4g-theme="dark"] #stage svg polygon[fill="white" i],
+  html[data-cs4g-theme="dark"] #stage svg rect[fill="#ffffff" i],
+  html[data-cs4g-theme="dark"] #stage svg rect[fill="#fff" i],
+  html[data-cs4g-theme="dark"] #stage svg rect[fill="white" i] {{
     fill: #0c0f13 !important;
   }}
   html[data-cs4g-theme="dark"] a {{ color: #60a5fa !important; }}
   html[data-cs4g-theme="dark"] input,
-  html[data-cs4g-theme="dark"] select {{
+  html[data-cs4g-theme="dark"] select,
+  html[data-cs4g-theme="dark"] textarea {{
+    background: #232830 !important; color: #e6e8eb !important;
+    border-color: #3a4049 !important;
+  }}
+  /* The sidebar "SELECTION" info box (and any similar white panel)
+     renders on a hard white background that flashes on the dark UI.
+     Darken it. Best-effort selectors — the upstream viewer's exact id
+     varies, so we cover the common shapes (pre/textarea + any element
+     whose id/class mentions "selection"/"info"). */
+  html[data-cs4g-theme="dark"] #sidebar pre,
+  html[data-cs4g-theme="dark"] #sidebar [id*="selection" i],
+  html[data-cs4g-theme="dark"] #sidebar [class*="selection" i],
+  html[data-cs4g-theme="dark"] #sidebar [id*="info" i],
+  html[data-cs4g-theme="dark"] #sidebar [class*="info" i] {{
     background: #232830 !important; color: #e6e8eb !important;
     border-color: #3a4049 !important;
   }}

@@ -73,8 +73,17 @@ class TestDarkTheme:
 
     def test_white_graphviz_canvas_polygon_is_repainted_dark(self) -> None:
         out = inject_overlay(_BASE_HTML)
-        assert 'polygon[fill="white"]' in out
-        assert 'polygon[fill="#ffffff"]' in out
+        assert 'polygon[fill="white" i]' in out
+        assert 'polygon[fill="#ffffff" i]' in out
+        # Case-insensitive + <rect> coverage so #FFFFFF / WHITE / a flow
+        # "%…" label chip drawn as a <rect> are caught too.
+        assert 'rect[fill="white" i]' in out
+
+    def test_sidebar_selection_box_is_darkened(self) -> None:
+        out = inject_overlay(_BASE_HTML)
+        # The white "SELECTION" info panel must be retargeted dark.
+        assert 'html[data-cs4g-theme="dark"] #sidebar [id*="selection" i]' in out
+        assert 'html[data-cs4g-theme="dark"] #sidebar pre' in out
 
     def test_edge_flow_value_labels_are_lightened(self) -> None:
         out = inject_overlay(_BASE_HTML)
