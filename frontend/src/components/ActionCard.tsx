@@ -257,51 +257,67 @@ const ActionCard: React.FC<ActionCardProps> = ({
                 position: 'relative',
             }} onClick={() => onActionSelect(id)}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
-                <h4 style={{
-                    margin: 0,
-                    fontSize: '12px',
-                    color: isViewing ? colors.brandStrong : undefined,
-                    flex: 1,
-                    minWidth: 0,
-                    overflowWrap: 'anywhere',
-                    fontWeight: 700,
-                    lineHeight: 1.35,
-                }}>
-                    #{index + 1} {'—'} {id}
-                </h4>
-                {/* Icon-only severity pictogram — the label text was
-                    redundant with the colour and ate horizontal space the
-                    action-id title needs. The full wording is reachable on
-                    hover (native title tooltip) and to assistive tech. */}
-                <span
-                    data-testid={`action-card-${id}-severity`}
-                    title={sc.label}
-                    aria-label={sc.label}
-                    role="img"
-                    style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '3px',
-                        borderRadius: '50%',
-                        background: sc.badgeBg,
-                        color: sc.badgeText,
-                        flexShrink: 0,
-                        lineHeight: 0,
-                    }}
-                >
-                    <SeverityIcon kind={sc.kind} />
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flex: 1, minWidth: 0 }}>
+                    {/* Severity pictogram — placed before the title so the
+                        operator immediately reads the outcome colour. */}
+                    <span
+                        data-testid={`action-card-${id}-severity`}
+                        title={sc.label}
+                        aria-label={sc.label}
+                        role="img"
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '3px',
+                            borderRadius: '50%',
+                            background: sc.badgeBg,
+                            color: sc.badgeText,
+                            flexShrink: 0,
+                            lineHeight: 0,
+                        }}
+                    >
+                        <SeverityIcon kind={sc.kind} />
+                    </span>
+                    <h4 style={{
+                        margin: 0,
+                        fontSize: '12px',
+                        color: isViewing ? colors.brandStrong : undefined,
+                        flex: 1,
+                        minWidth: 0,
+                        overflowWrap: 'anywhere',
+                        fontWeight: 700,
+                        lineHeight: 1.35,
+                    }}>
+                        #{index + 1} {'—'} {id}
+                    </h4>
+                </div>
+                {/* Star / reject rail — top-right, revealed on hover via
+                    CSS (.action-card-rail opacity transition). */}
+                <div className="action-card-rail" style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
+                    {!isSelected && (
+                        <button
+                            data-testid={`favorite-${id}`}
+                            onClick={(e) => { e.stopPropagation(); onActionFavorite(id); }}
+                            style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '4px', cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            title="Select this action"
+                        ><span style={{ fontSize: '15px', lineHeight: 1 }}>⭐</span></button>
+                    )}
+                    {!isRejected && (
+                        <button
+                            data-testid={`reject-${id}`}
+                            onClick={(e) => { e.stopPropagation(); onActionReject(id); }}
+                            style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '4px', cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            title={isSelected ? "Remove from selected" : "Reject this action"}
+                        ><span style={{ fontSize: '15px', lineHeight: 1 }}>❌</span></button>
+                    )}
+                </div>
             </div>
 
             {/* Compact at-rest body: max loading + target badges. The
-                rail (⭐ / ❌) sits to the right and fades in on
-                hover or when this card is being viewed. The row wraps
-                so multi-VL badge stacks flow to a second line when
-                the title is long or the badges don't fit alongside
-                the loading metric — without that, ``flexShrink:0`` on
-                the badges + rail forces the loading text to collapse
-                into a one-word-per-line vertical strip. */}
+                row wraps so multi-VL badge stacks flow to a second
+                line when the title is long or the badges don't fit
+                alongside the loading metric. */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', rowGap: '6px', gap: '8px', marginTop: '6px' }}>
                 <div style={{ flex: '1 1 160px', fontSize: '12px', minWidth: 'min-content' }}>
                     {maxRhoPct != null ? (
@@ -320,24 +336,6 @@ const ActionCard: React.FC<ActionCardProps> = ({
                     )}
                 </div>
                 {renderBadges()}
-                <div className="action-card-rail" style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                    {!isSelected && (
-                        <button
-                            data-testid={`favorite-${id}`}
-                            onClick={(e) => { e.stopPropagation(); onActionFavorite(id); }}
-                            style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '4px', cursor: 'pointer', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            title="Select this action"
-                        ><span style={{ fontSize: '14px' }}>⭐</span></button>
-                    )}
-                    {!isRejected && (
-                        <button
-                            data-testid={`reject-${id}`}
-                            onClick={(e) => { e.stopPropagation(); onActionReject(id); }}
-                            style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '4px', cursor: 'pointer', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            title={isSelected ? "Remove from selected" : "Reject this action"}
-                        ><span style={{ fontSize: '14px' }}>❌</span></button>
-                    )}
-                </div>
             </div>
 
             {/* Fault states (divergent / islanded) are primary signals

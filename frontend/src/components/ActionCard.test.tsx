@@ -145,6 +145,31 @@ describe('ActionCard', () => {
         expect(screen.getByTitle('Reject this action')).toBeInTheDocument();
     });
 
+    it('places severity icon before the title and star/reject rail in the header row', () => {
+        // Structural spec: the header row contains (left to right)
+        // the severity pictogram, then the title, then the hover-
+        // revealed star/reject rail in the top-right corner.
+        const { container } = render(<ActionCard {...defaultProps} />);
+        // The first child of the card is the header flex row
+        const card = container.querySelector('[data-testid="action-card-act_1"]')!;
+        const headerRow = card.children[0] as HTMLElement;
+
+        // Left group: severity icon + title
+        const leftGroup = headerRow.children[0] as HTMLElement;
+        const severity = leftGroup.querySelector('[data-testid="action-card-act_1-severity"]');
+        const title = leftGroup.querySelector('h4');
+        expect(severity).not.toBeNull();
+        expect(title).not.toBeNull();
+        // Severity comes before title in DOM order
+        const children = Array.from(leftGroup.children);
+        expect(children.indexOf(severity!)).toBeLessThan(children.indexOf(title!));
+
+        // Right group: the rail sits as the second child of the header row
+        const rail = headerRow.querySelector('.action-card-rail');
+        expect(rail).not.toBeNull();
+        expect(headerRow.children[1]).toBe(rail);
+    });
+
     it('calls onActionSelect when card is clicked', () => {
         const onActionSelect = vi.fn();
         render(<ActionCard {...defaultProps} onActionSelect={onActionSelect} />);
