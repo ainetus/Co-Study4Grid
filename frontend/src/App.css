@@ -601,11 +601,12 @@ input[data-testid="sidebar-filter-threshold-input"]::-webkit-outer-spin-button {
 /* ============================================================
    ActionCard progressive disclosure
    ============================================================
-   The star (⭐) and reject (✕) controls live in a "rail" that
-   fades in on hover, on focus, and whenever the card is the
-   currently-viewed action. This trims the at-rest visual load
-   to five fields (rank, ID, severity, max ρ, primary target)
-   while keeping the controls a single mouse-move away.
+   The star (⭐) and reject (✕) controls live in a "rail" in
+   the top-right of the card header (next to the severity icon
+   + title row). The rail fades in on hover, on focus, and
+   whenever the card is the currently-viewed action. This trims
+   the at-rest visual load while keeping the controls a single
+   mouse-move away.
 
    Implemented in CSS (not React state) so hover doesn't trigger
    a re-render on every card. */
