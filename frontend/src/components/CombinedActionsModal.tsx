@@ -157,20 +157,6 @@ const CombinedActionsModal: React.FC<Props> = ({
         const allPairs = [
             ...combinedEntries.map(([id, ca]) => {
                 const cId = canonicalizeId(id);
-                // ToOp candidate topologies arrive already really-simulated
-                // (the step-2 assessment simulated the whole combination), so
-                // seed simData from the carried rho rather than looking for a
-                // separate pair simulation. A later manual Re-Simulate still
-                // overrides via sessionSimResults below.
-                if (ca.is_toop_topology) {
-                    const sessionResult = sessionSimResults[id] || sessionSimResults[cId];
-                    const simData: SimulationFeedback = sessionResult || {
-                        max_rho: ca.simulated_max_rho ?? ca.max_rho ?? null,
-                        max_rho_line: ca.simulated_max_rho_line ?? ca.max_rho_line ?? '',
-                        is_rho_reduction: !!ca.is_rho_reduction,
-                    };
-                    return { id, data: ca, simData };
-                }
                 const sessionResult = sessionSimResults[id] || sessionSimResults[cId];
                 const parentSimData = simulatedActions[id] || simulatedActions[cId];
                 const analysisSimData = analysisResult?.actions?.[id] || analysisResult?.actions?.[cId];
@@ -208,9 +194,7 @@ const CombinedActionsModal: React.FC<Props> = ({
                     isSimulated,
                     simulated_max_rho: simMaxRho,
                     simulated_max_rho_line: simMaxRhoLine,
-                    simData: simData,
-                    is_toop_topology: !!data.is_toop_topology,
-                    constituent_ids: data.constituent_ids,
+                    simData: simData
                 };
             });
     }, [analysisResult, simulatedActions, sessionSimResults]);
@@ -221,12 +205,7 @@ const CombinedActionsModal: React.FC<Props> = ({
     // estimated value.
     const filteredComputedPairsList = useMemo(() => {
         return computedPairsList.filter(p => {
-            // ToOp candidate topologies are a category of their own (an N-way
-            // optimised combination), so the per-constituent action-type ring
-            // doesn't apply — they bypass it and are governed by severity /
-            // max-loading only.
-            const typeOk = p.is_toop_topology
-                || filters.actionType === 'all'
+            const typeOk = filters.actionType === 'all'
                 || matchesActionTypeFilter(filters.actionType, p.action1, null, scoreTypeByActionId.get(p.action1) ?? null)
                 || matchesActionTypeFilter(filters.actionType, p.action2, null, scoreTypeByActionId.get(p.action2) ?? null);
             if (!typeOk) return false;
