@@ -1,11 +1,9 @@
 # Co-Study4Grid
 
-**Co-Study4Grid** is a full-stack web application for **power grid contingency analysis and N-1 planning**. It provides an interactive interface on top of the [`expert_op4grid_recommender`](https://github.com/marota/Expert_op4grid_recommender) library, letting grid operators simulate element disconnections, visualize network overflows, and explore prioritized remedial actions — topology changes, PST tap adjustments, renewable curtailment, and load shedding — individually or combined.
+**Co-Study4Grid** is a full-stack web application for **power grid contingency analysis and remedial action search**. It provides an interactive interface on top of the [`expert_op4grid_recommender`](https://github.com/marota/Expert_op4grid_recommender) library, letting grid operators simulate element disconnections, visualize and analyze network overflows, and explore prioritized remedial actions — topology changes, PST tap adjustments, renewable curtailment, and load shedding — individually or combined.It adopts the supportive framework mindset from AI4RealNet European project, empowering and supporting the user in developping its expertise rather than automating it.
 
-> Formerly known as **ExpertAssist**. Rebranded to Co-Study4Grid in release 0.4 (PR #65).
-
-The recommender is **pluggable**: pick the expert rule-based system, a random
-baseline, or any third-party model — from the **Settings → Recommender** tab
+The remedial action recommender is **pluggable**: pick the expert rule-based system, a random
+baseline, or any third-party model like a learnt model — from the **Settings → Recommender** tab
 or the model dropdown right above the **Analyze & Suggest** button. Swapping
 the model takes effect on the next run with no study reload, and a **Clear**
 button lets the operator wipe un-triaged suggestions and re-run with a
@@ -647,9 +645,8 @@ Open the Vite dev-server URL shown in the terminal (typically `http://localhost:
 
 ### Backend
 - **FastAPI** + **Uvicorn** — web framework and ASGI server
-- **pypowsybl** — network loading, load flow, and diagram generation
-- **expert_op4grid_recommender** — domain-specific grid optimization
-- **grid2op**, **pandapower**, **lightsim2grid** — simulation backends
+- **pypowsybl** — network loading, load flow simulation, and diagram generation
+- **expert_op4grid_recommender** — domain-specific grid action recommender system
 - **NumPy**, **pandas**, **lxml** — vectorized pipeline and SVG post-processing
 
 ### Frontend
