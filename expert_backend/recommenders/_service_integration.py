@@ -279,6 +279,35 @@ def _run_analysis_step2_with_model(
         action_scores = self._compute_mw_start_for_scores(
             results.get("action_scores", {})
         )
+
+        # ToOp: each candidate topology is a single prioritized action
+        # (one merged grid2op action object) that the assessment phase
+        # already REALLY simulated, so ``enriched_actions[topology_id]``
+        # carries the true combined max_rho. Leave the entries in the
+        # main Suggested-Actions feed and decorate them in place with
+        # N-way metadata so the frontend ActionCard can render the
+        # constituent moves. Also inject the synthesised contents into
+        # ``_dict_action`` so the card stays re-simulatable /
+        # session-saveable.
+        topo_groups = getattr(recommender, "_last_topology_groups", None)
+        if topo_groups:
+            topo_entries = getattr(recommender, "_last_topology_dict_entries", {}) or {}
+            if self._dict_action is None:
+                self._dict_action = {}
+            self._dict_action.update(topo_entries)
+            for grp in topo_groups:
+                tid = grp["topology_id"]
+                entry = enriched_actions.get(tid)
+                if entry is None:
+                    continue
+                constituents = grp.get("constituents", []) or []
+                entry["is_toop_topology"] = True
+                entry["constituent_ids"] = constituents
+                entry["constituent_count"] = len(constituents)
+                entry["rank"] = grp.get("rank")
+                if not entry.get("description_unitaire"):
+                    entry["description_unitaire"] = "ToOp: " + ", ".join(constituents)
+
         enrichment_time = time.time() - _t_enrich
 
         logger.info(

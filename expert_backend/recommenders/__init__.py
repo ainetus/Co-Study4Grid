@@ -32,6 +32,7 @@ from expert_backend.recommenders.registry import (
     register,
     unregister,
 )
+from expert_backend.recommenders.toop import ToOpRecommender
 
 # Register the default (expert) and canonical random examples.
 # This module is imported by the FastAPI startup path so every server
@@ -39,6 +40,12 @@ from expert_backend.recommenders.registry import (
 register(ExpertRecommender)
 register(RandomRecommender)
 register(RandomOverflowRecommender)
+# ToOp is an OPTIONAL install (Python 3.11 + heavy GPU deps). The
+# class itself only lazy-imports toop_engine_topology_optimizer inside
+# `recommend()`, so registering it here costs nothing when ToOp isn't
+# installed — the model just produces an empty recommendation with a
+# clear log line.
+register(ToOpRecommender)
 
 # Side-effect: patches RecommenderService to consume the registry
 # (state + getters + update_config wrap + reset wrap + model-aware

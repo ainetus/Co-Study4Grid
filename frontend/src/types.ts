@@ -111,6 +111,15 @@ export interface ActionDetail {
      * reload (see `useSession.handleRestoreSession`).
      */
     origin?: string;
+    // ToOp recommender N-way candidate topology. When `is_toop_topology` is
+    // set, this action card represents a whole optimised topology (multiple
+    // line toggles and/or busbar splits bundled into one merged action that
+    // was REALLY simulated). `constituent_ids` lists the elementary moves
+    // for display as chips on the card; `rank` is ToOp's order (0 = best).
+    is_toop_topology?: boolean;
+    constituent_ids?: string[];
+    constituent_count?: number;
+    rank?: number;
 }
 
 export interface CombinedAction {

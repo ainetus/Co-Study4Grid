@@ -314,6 +314,31 @@ const ActionCard: React.FC<ActionCardProps> = ({
                 </div>
             </div>
 
+            {details.is_toop_topology && (details.constituent_ids?.length ?? 0) > 0 && (
+                <div
+                    data-testid={`action-card-${id}-constituents`}
+                    style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '4px',
+                        marginTop: '6px',
+                    }}
+                    title={`ToOp candidate topology (${details.constituent_count} moves) — really simulated as one combined action`}
+                >
+                    {(details.constituent_ids ?? []).map((c, i) => (
+                        <span key={i} style={{
+                            fontSize: '10px',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            background: colors.surfaceMuted,
+                            color: colors.textSecondary,
+                            border: `1px solid ${colors.borderSubtle}`,
+                            whiteSpace: 'nowrap',
+                        }}>{c}</span>
+                    ))}
+                </div>
+            )}
+
             {/* Compact at-rest body: max loading + target badges. The
                 row wraps so multi-VL badge stacks flow to a second
                 line when the title is long or the badges don't fit

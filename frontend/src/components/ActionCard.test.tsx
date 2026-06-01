@@ -497,4 +497,37 @@ describe('ActionCard', () => {
             expect(screen.queryByTestId('action-card-act_1-origin')).not.toBeInTheDocument();
         });
     });
+
+    describe('ToOp candidate topology constituents', () => {
+        const topologyDetails: ActionDetail = {
+            ...baseDetails,
+            is_toop_topology: true,
+            constituent_ids: ['split GROSNP7', 'split VIELMP6', 'open GROSNL71SSV.O'],
+            constituent_count: 3,
+        };
+
+        it('renders one chip per constituent move when the card is a ToOp topology', () => {
+            render(<ActionCard {...defaultProps} id="toop_topology_1" details={topologyDetails} />);
+            const strip = screen.getByTestId('action-card-toop_topology_1-constituents');
+            expect(strip).toBeInTheDocument();
+            expect(strip).toHaveTextContent('split GROSNP7');
+            expect(strip).toHaveTextContent('split VIELMP6');
+            expect(strip).toHaveTextContent('open GROSNL71SSV.O');
+        });
+
+        it('does not render the constituent strip on non-ToOp action cards', () => {
+            render(<ActionCard {...defaultProps} />);
+            expect(screen.queryByTestId('action-card-act_1-constituents')).not.toBeInTheDocument();
+        });
+
+        it('does not render the strip when is_toop_topology is set but constituents are missing', () => {
+            const detailsNoConstituents: ActionDetail = {
+                ...baseDetails,
+                is_toop_topology: true,
+                constituent_ids: [],
+            };
+            render(<ActionCard {...defaultProps} id="toop_topology_2" details={detailsNoConstituents} />);
+            expect(screen.queryByTestId('action-card-toop_topology_2-constituents')).not.toBeInTheDocument();
+        });
+    });
 });
