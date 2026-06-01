@@ -15,6 +15,22 @@ to extend it.
 
 ---
 
+## Table of Contents
+
+- [Key Features](#key-features)
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+- [European-Wide Studies in Practice](#european-wide-studies-in-practice)
+- [Performance Highlights](#performance-highlights)
+- [Plug Your Own Recommendation Model](#plug-your-own-recommendation-model)
+- [API Reference](#api-reference)
+- [Project Resources](#project-resources)
+- [Changelog](#changelog)
+- [License](#license)
+
+---
+
 ## Key Features
 
 ### Contingency analysis & remediation
@@ -111,6 +127,168 @@ Co-Study4Grid is built around the operator's ability to triage hundreds of remed
 - **React ErrorBoundary** wrapping the app root (PR #82) to contain crashes.
 - **Vitest + React Testing Library** unit tests co-located as `*.test.tsx` — ~1000 specs.
 - **Auto-generated single-file UI** (`frontend/dist-standalone/standalone.html` via `npm run build:standalone`, PR #101) mirroring every feature of the React app, for zero-install demos. The legacy hand-maintained `standalone_interface.html` has been decommissioned.
+
+---
+
+## Architecture
+
+Co-Study4Grid is a monorepo with a **Python FastAPI backend** and a **React + TypeScript frontend**.
+
+```
+Co-Study4Grid/
+├── expert_backend/              # FastAPI backend (Python)
+│   ├── main.py                  # API endpoints and app configuration
+│   ├── recommenders/            # Pluggable model registry + canonical examples
+│   │   ├── registry.py              # register / build / list_models
+│   │   ├── random_basic.py          # RandomRecommender
+│   │   ├── random_overflow.py       # RandomOverflowRecommender
+│   │   ├── overflow_path_filter.py  # Layer 2 of the sampling filter chain
+│   │   ├── network_existence.py     # Layer 3 of the sampling filter chain
+│   │   └── _service_integration.py  # Patches RecommenderService
+│   │                                # (model selection + dispatch)
+│   └── services/
+│       ├── network_service.py       # Network loading and queries (pypowsybl)
+│       ├── recommender_service.py   # Analysis orchestration, PDF/SVG generation
+│       ├── diagram_mixin.py  +  diagram/    # NAD/SLD orchestrator + 7 helpers
+│       ├── analysis_mixin.py +  analysis/   # Two-step analysis + 5 helpers
+│       │                                    # (incl. overflow_geo_transform — 0.7.0)
+│       ├── simulation_mixin.py + simulation_helpers.py  # Manual + combined actions
+│       ├── overflow_overlay.py      # Interactive overflow viewer overlay (0.7.0)
+│       └── sanitize.py              # NumPy → native-Python JSON coercion
+├── frontend/                    # React + TypeScript + Vite frontend
+│   ├── dist-standalone/             # Auto-generated single-file UI bundle
+│   │                                # (npm run build:standalone)
+│   └── src/
+│       ├── App.tsx                  # State orchestration hub (~1400 lines)
+│       ├── api.ts                   # Axios HTTP client
+│       ├── types.ts                 # Shared TypeScript interfaces
+│       ├── styles/                  # Design-token palette: tokens.{css,ts}
+│       │                            # (single source of truth, gate-enforced)
+│       ├── hooks/                   # useSettings / useAnalysis / useDiagrams /
+│       │                            # useContingencyFetch / useDiagramHighlights /
+│       │                            # useOverflowIframe / …
+│       ├── utils/                   # svgUtils (barrel) + svg/* submodules,
+│       │                            # svgPatch, actionTypes, sessionUtils,
+│       │                            # interactionLogger, mergeAnalysisResult, …
+│       └── components/              # Header, ActionFeed, VisualizationPanel,
+│                                    # OverloadPanel, CombinedActionsModal,
+│                                    # AppSidebar, SidebarSummary, StatusToasts,
+│                                    # NoticesPanel, DiagramLegend,
+│                                    # ActionTypeFilterChips, modals/, …
+├── standalone_interface_legacy.html # DECOMMISSIONED frozen snapshot (do not edit)
+├── docs/                        # features/, performance/, architecture/,
+│                                # proposals/, data/  +  backend/ (README.md,
+│                                # recommender_models.md)
+├── benchmarks/                  # Offline micro-benches (warm / cold timings)
+├── scripts/                     # Parity + quality gates + PyPSA-EUR pipeline
+└── Overflow_Graph/              # Generated PDF output directory (created at runtime)
+```
+
+See [`CLAUDE.md`](CLAUDE.md) for a deep dive into the architecture and conventions.
+
+---
+
+## Prerequisites
+
+- **Python 3.10+**
+- **Node.js 18+** and **npm**
+- **Graphviz** (`dot` binary on `PATH`) — required by the overflow-graph
+  rendering pipeline (pydot → `dot`). See step 1 below.
+
+All Python dependencies (`pypowsybl`, `expert_op4grid_recommender`,
+`grid2op`, `pandapower`, `lightsim2grid`, `fastapi`, `uvicorn`, `pydot`,
+…) are pulled in automatically by `pip install .` in step 2.
+
+## Getting Started
+
+### 1. Install Graphviz (system dependency)
+
+Graphviz ships the `dot` binary that renders the overflow graph. It is
+a system-level package and **cannot** be installed by `pip` — install it
+first via your platform's package manager:
+
+| Platform              | Command                                |
+|-----------------------|----------------------------------------|
+| Debian / Ubuntu       | `sudo apt-get install -y graphviz`     |
+| RHEL / Fedora         | `sudo dnf install -y graphviz`         |
+| Arch                  | `sudo pacman -S graphviz`              |
+| Alpine                | `sudo apk add graphviz`                |
+| macOS (Homebrew)      | `brew install graphviz`                |
+| macOS (MacPorts)      | `sudo port install graphviz`           |
+| Windows (Chocolatey)  | `choco install graphviz`               |
+| Windows (winget)      | `winget install Graphviz.Graphviz`     |
+| Windows (Scoop)       | `scoop install graphviz`               |
+
+Verify with:
+
+```bash
+dot -V
+```
+
+> `pip install .` (step 2) also runs a best-effort cross-platform
+> auto-installer (see [`expert_backend/install_graphviz.py`](expert_backend/install_graphviz.py)),
+> but it requires a working package manager and `sudo`. If you skip the
+> manual step and `dot -V` still fails after `pip install`, run the
+> bundled console script:
+>
+> ```bash
+> costudy4grid-install-graphviz
+> ```
+>
+> Set `COSTUDY4GRID_SKIP_GRAPHVIZ_INSTALL=1` to opt out of the
+> auto-install entirely.
+
+### 2. Install backend dependencies
+
+From the project root:
+
+```bash
+python -m pip install --upgrade pip
+pip install .
+pip install --no-deps expert_op4grid_recommender
+```
+
+This pulls in every Python dependency listed in
+[`pyproject.toml`](pyproject.toml) (FastAPI, Uvicorn, pypowsybl,
+pydot, grid2op, pandapower, lightsim2grid, …).
+
+> Add the `[test]` extra (`pip install ".[test]"`) if you intend to run
+> the backend test suite.
+
+### 3. Start the backend
+
+```bash
+python -m expert_backend.main
+# or
+uvicorn expert_backend.main:app --host 0.0.0.0 --port 8000
+```
+
+The API server starts on `http://localhost:8000`.
+
+### 4. Install and start the frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open the Vite dev-server URL shown in the terminal (typically `http://localhost:5173`).
+
+### 5. Use the application
+
+1. Open **Settings → Paths** and set the network directory (containing `.xiidm` files), the action definition JSON, and optionally an output folder for saved sessions.
+2. Open **Settings → Recommender** and pick which recommendation model to run
+   (Expert by default). The parameter inputs below the dropdown render
+   dynamically from the active model's `params_spec()`. The model can also be
+   swapped later from the selector above the Analyze & Suggest button.
+3. Click **Load Study** to load the network.
+4. Pick a disconnectable element (line or transformer) from the searchable dropdown — the N-1 diagram is fetched with overloads highlighted automatically.
+5. Click **Analyze & Suggest** (two-step flow): select which overloads to resolve, then watch the action feed stream in.
+6. Inspect prioritized actions, simulate manual ones, or open the **Combine** modal to explore action pairs.
+7. To try a different recommender, hit **Clear** under the Suggested Actions tab header (keeps your starred / rejected / manually-added actions), pick a model in the dropdown above Analyze & Suggest, and re-run.
+8. Detach any visualization tab (`⧉`) onto a second screen for dual-monitor studies.
+9. Hit **Save Results** to export the full session (including the active recommender model under `analysis.active_model`); **Reload Session** restores it exactly, without re-simulating anything.
 
 ---
 
@@ -471,120 +649,6 @@ The frontend picks up your model automatically:
 
 ---
 
-## Architecture
-
-Co-Study4Grid is a monorepo with a **Python FastAPI backend** and a **React + TypeScript frontend**.
-
-```
-Co-Study4Grid/
-├── expert_backend/              # FastAPI backend (Python)
-│   ├── main.py                  # API endpoints and app configuration
-│   ├── recommenders/            # Pluggable model registry + canonical examples
-│   │   ├── registry.py              # register / build / list_models
-│   │   ├── random_basic.py          # RandomRecommender
-│   │   ├── random_overflow.py       # RandomOverflowRecommender
-│   │   ├── overflow_path_filter.py  # Layer 2 of the sampling filter chain
-│   │   ├── network_existence.py     # Layer 3 of the sampling filter chain
-│   │   └── _service_integration.py  # Patches RecommenderService
-│   │                                # (model selection + dispatch)
-│   └── services/
-│       ├── network_service.py       # Network loading and queries (pypowsybl)
-│       ├── recommender_service.py   # Analysis orchestration, PDF/SVG generation
-│       ├── diagram_mixin.py  +  diagram/    # NAD/SLD orchestrator + 7 helpers
-│       ├── analysis_mixin.py +  analysis/   # Two-step analysis + 5 helpers
-│       │                                    # (incl. overflow_geo_transform — 0.7.0)
-│       ├── simulation_mixin.py + simulation_helpers.py  # Manual + combined actions
-│       ├── overflow_overlay.py      # Interactive overflow viewer overlay (0.7.0)
-│       └── sanitize.py              # NumPy → native-Python JSON coercion
-├── frontend/                    # React + TypeScript + Vite frontend
-│   ├── dist-standalone/             # Auto-generated single-file UI bundle
-│   │                                # (npm run build:standalone)
-│   └── src/
-│       ├── App.tsx                  # State orchestration hub (~1400 lines)
-│       ├── api.ts                   # Axios HTTP client
-│       ├── types.ts                 # Shared TypeScript interfaces
-│       ├── styles/                  # Design-token palette: tokens.{css,ts}
-│       │                            # (single source of truth, gate-enforced)
-│       ├── hooks/                   # useSettings / useAnalysis / useDiagrams /
-│       │                            # useContingencyFetch / useDiagramHighlights /
-│       │                            # useOverflowIframe / …
-│       ├── utils/                   # svgUtils (barrel) + svg/* submodules,
-│       │                            # svgPatch, actionTypes, sessionUtils,
-│       │                            # interactionLogger, mergeAnalysisResult, …
-│       └── components/              # Header, ActionFeed, VisualizationPanel,
-│                                    # OverloadPanel, CombinedActionsModal,
-│                                    # AppSidebar, SidebarSummary, StatusToasts,
-│                                    # NoticesPanel, DiagramLegend,
-│                                    # ActionTypeFilterChips, modals/, …
-├── standalone_interface_legacy.html # DECOMMISSIONED frozen snapshot (do not edit)
-├── docs/                        # features/, performance/, architecture/,
-│                                # proposals/, data/  +  backend/ (README.md,
-│                                # recommender_models.md)
-├── benchmarks/                  # Offline micro-benches (warm / cold timings)
-├── scripts/                     # Parity + quality gates + PyPSA-EUR pipeline
-└── Overflow_Graph/              # Generated PDF output directory (created at runtime)
-```
-
-See [`CLAUDE.md`](CLAUDE.md) for a deep dive into the architecture and conventions.
-
----
-
-## Prerequisites
-
-- **Python 3.10+** with:
-  - [`pypowsybl`](https://pypowsybl.readthedocs.io/)
-  - [`expert_op4grid_recommender`](https://github.com/marota/Expert_op4grid_recommender)
-  - [`grid2op`](https://grid2op.readthedocs.io/), [`pandapower`](https://pandapower.readthedocs.io/), [`lightsim2grid`](https://lightsim2grid.readthedocs.io/)
-- **Node.js 18+** and npm
-
-## Getting Started
-
-### 1. Install backend dependencies
-
-```bash
-pip install -r expert_backend/requirements.txt
-pip install -r overrides.txt
-```
-
-> `pypowsybl` and `expert_op4grid_recommender` must already be installed in your Python environment.
-
-### 2. Start the backend
-
-```bash
-python -m expert_backend.main
-# or
-uvicorn expert_backend.main:app --host 0.0.0.0 --port 8000
-```
-
-The API server starts on `http://localhost:8000`.
-
-### 3. Install and start the frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Open the Vite dev-server URL shown in the terminal (typically `http://localhost:5173`).
-
-### 4. Use the application
-
-1. Open **Settings → Paths** and set the network directory (containing `.xiidm` files), the action definition JSON, and optionally an output folder for saved sessions.
-2. Open **Settings → Recommender** and pick which recommendation model to run
-   (Expert by default). The parameter inputs below the dropdown render
-   dynamically from the active model's `params_spec()`. The model can also be
-   swapped later from the selector above the Analyze & Suggest button.
-3. Click **Load Study** to load the network.
-4. Pick a disconnectable element (line or transformer) from the searchable dropdown — the N-1 diagram is fetched with overloads highlighted automatically.
-5. Click **Analyze & Suggest** (two-step flow): select which overloads to resolve, then watch the action feed stream in.
-6. Inspect prioritized actions, simulate manual ones, or open the **Combine** modal to explore action pairs.
-7. To try a different recommender, hit **Clear** under the Suggested Actions tab header (keeps your starred / rejected / manually-added actions), pick a model in the dropdown above Analyze & Suggest, and re-run.
-8. Detach any visualization tab (`⧉`) onto a second screen for dual-monitor studies.
-9. Hit **Save Results** to export the full session (including the active recommender model under `analysis.active_model`); **Reload Session** restores it exactly, without re-simulating anything.
-
----
-
 ## API Reference
 
 ### Configuration & session
@@ -641,15 +705,22 @@ Open the Vite dev-server URL shown in the terminal (typically `http://localhost:
 
 ---
 
-## Tech Stack
+## Project Resources
 
-### Backend
+Reference material for developers, integrators, and operators —
+covers the underlying tech stack, day-to-day development commands,
+the auto-generated standalone UI, and the on-disk data formats
+Co-Study4Grid consumes and produces.
+
+### Tech Stack
+
+#### Backend
 - **FastAPI** + **Uvicorn** — web framework and ASGI server
 - **pypowsybl** — network loading, load flow simulation, and diagram generation
 - **expert_op4grid_recommender** — domain-specific grid action recommender system
 - **NumPy**, **pandas**, **lxml** — vectorized pipeline and SVG post-processing
 
-### Frontend
+#### Frontend
 - **React 19** with **TypeScript 5.9**
 - **Vite 7** — build tool and dev server
 - **axios** — HTTP client
@@ -658,11 +729,9 @@ Open the Vite dev-server URL shown in the terminal (typically `http://localhost:
 - **vite-plugin-singlefile** — auto-generated single-file standalone bundle
 - **Vitest** + **React Testing Library** — unit tests (~1000 specs)
 
----
+### Development
 
-## Development
-
-### Build & lint
+#### Build & lint
 
 ```bash
 cd frontend
@@ -671,7 +740,7 @@ npm run lint       # ESLint v9+ flat config
 npm run preview    # Preview production build
 ```
 
-### Tests
+#### Tests
 
 Backend unit tests (pytest, runs without `pypowsybl` /
 `expert_op4grid_recommender` thanks to the `conftest.py` mock
@@ -706,9 +775,7 @@ python scripts/pypsa_eur/test_pipeline.py            # PyPSA-EUR end-to-end smok
 pytest scripts/pypsa_eur                             # PyPSA-EUR pipeline unit tests
 ```
 
----
-
-## Standalone Interface
+### Standalone Interface
 
 The single-file standalone UI is **auto-generated** from the React
 source tree (PR #101). Build it with:
@@ -737,9 +804,7 @@ layers of automated checks (`scripts/check_standalone_parity.py`,
 `scripts/check_gesture_sequence.py`, `scripts/check_invariants.py`)
 — see [`frontend/PARITY_AUDIT.md`](frontend/PARITY_AUDIT.md).
 
----
-
-## Data Formats
+### Data Formats
 
 - **Network files**: `.xiidm` (loaded by pypowsybl)
 - **Action definitions**: `.json` mapping action IDs to descriptions, supporting topology, PST, `set_load_p`, and `set_gen_p` formats
