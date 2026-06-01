@@ -217,8 +217,13 @@ const ActionCard: React.FC<ActionCardProps> = ({
             });
         }
 
+        if (badges.length === 0) return null;
+        // Full-width wrapping row of its own so a long target list flows
+        // onto multiple lines INSIDE the card instead of overflowing the
+        // metric row and getting clipped (ToOp topologies can target many
+        // voltage levels + branches at once).
         return (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', flexShrink: 0, justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px', width: '100%' }}>
                 {badges}
             </div>
         );
@@ -344,7 +349,6 @@ const ActionCard: React.FC<ActionCardProps> = ({
                         <div style={{ color: colors.textTertiary }}>No loading metric</div>
                     )}
                 </div>
-                {renderBadges()}
                 <div className="action-card-rail" style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                     {!isSelected && (
                         <button
@@ -364,6 +368,10 @@ const ActionCard: React.FC<ActionCardProps> = ({
                     )}
                 </div>
             </div>
+
+            {/* Clickable target badges (VLs + branches) on their own
+                full-width row so long lists wrap inside the card. */}
+            {renderBadges()}
 
             {/* Fault states (divergent / islanded) are primary signals
                 and stay visible regardless of the viewing-state — they

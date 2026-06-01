@@ -471,7 +471,7 @@ describe('VisualizationPanel', () => {
         expect(screen.getAllByText('LINE_B').length).toBeGreaterThan(0);
     });
 
-    it('shows analysis loading text in overflow tab with yellow theme', () => {
+    it('shows analysis loading text in overflow tab on a neutral (non-yellow) background', () => {
         render(<VisualizationPanel {...createDefaultProps({
             activeTab: 'overflow',
             analysisLoading: true,
@@ -479,11 +479,12 @@ describe('VisualizationPanel', () => {
         expect(screen.getByText('Processing Analysis...')).toBeInTheDocument();
         const placeholder = screen.getByText('Processing Analysis...').parentElement;
         if (placeholder) {
-            // jsdom doesn't expand the `background:` shorthand into
-            // `backgroundColor` longhand for var(--…) values, so read
-            // the shorthand directly.
-            expect(placeholder.style.background).toContain('var(--color-warning-soft)');
-            expect(placeholder.style.color).toContain('var(--color-warning-text)');
+            // The diagram window stays neutral while the recommender runs —
+            // no full-window yellow flood. The spinner + text carry the
+            // busy signal instead.
+            expect(placeholder.style.background).toBe('white');
+            expect(placeholder.style.background).not.toContain('var(--color-warning-soft)');
+            expect(placeholder.style.color).not.toContain('var(--color-warning-text)');
         }
     });
 

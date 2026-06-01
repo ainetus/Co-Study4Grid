@@ -543,6 +543,45 @@ describe('getActionTargetVoltageLevels', () => {
         expect(result).toEqual(['VL1']);
     });
 
+    it('extracts VL splits from ToOp topology constituent_ids', () => {
+        // ToOp candidate topology with an opaque id + no description, but
+        // its elementary moves name the busbar-split voltage levels.
+        const detail: ActionDetail = {
+            description_unitaire: 'No description available',
+            rho_before: null,
+            rho_after: null,
+            max_rho: null,
+            max_rho_line: '',
+            is_rho_reduction: false,
+            is_toop_topology: true,
+            constituent_ids: ['split GROSNP6', 'merge VIELMP6', 'open CHALOL61GROSN'],
+        };
+
+        const result = getActionTargetVoltageLevels(
+            detail, 'toop_topology_2', makeNodeMap('GROSNP6', 'VIELMP6'),
+        );
+        // Both VL splits surface; the "open …" branch toggle is ignored
+        // (it belongs to getActionTargetLines), and only VLs that exist
+        // in the diagram metadata are kept.
+        expect(result.sort()).toEqual(['GROSNP6', 'VIELMP6']);
+    });
+
+    it('ignores constituent VL splits absent from the diagram metadata', () => {
+        const detail: ActionDetail = {
+            description_unitaire: 'No description available',
+            rho_before: null,
+            rho_after: null,
+            max_rho: null,
+            max_rho_line: '',
+            is_rho_reduction: false,
+            is_toop_topology: true,
+            constituent_ids: ['split GHOST_VL'],
+        };
+
+        const result = getActionTargetVoltageLevels(detail, 'toop_topology_1', makeNodeMap('GROSNP6'));
+        expect(result).toEqual([]);
+    });
+
     it('returns empty array when no match found', () => {
         const detail: ActionDetail = {
             description_unitaire: 'Some generic action',

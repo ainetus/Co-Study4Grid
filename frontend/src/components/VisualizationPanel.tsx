@@ -998,8 +998,11 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         {!result?.pdf_url && (
                             <div style={{
                                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%',
-                                color: analysisLoading ? colors.warningText : colors.textTertiary,
-                                background: analysisLoading ? colors.warningSoft : 'white',
+                                // Keep the diagram window neutral while the recommender
+                                // runs — a full-window yellow flood was distracting. The
+                                // spinning gear + text already signal the busy state.
+                                color: analysisLoading ? colors.textSecondary : colors.textTertiary,
+                                background: 'white',
                                 fontWeight: analysisLoading ? 600 : 'normal',
                                 gap: '10px'
                             }}>

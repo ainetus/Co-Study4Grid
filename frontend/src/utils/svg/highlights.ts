@@ -214,6 +214,18 @@ export const getActionTargetVoltageLevels = (
     if (topo?.voltage_level_id && nodesByEquipmentId.has(topo.voltage_level_id)) {
         targets.add(topo.voltage_level_id);
     }
+
+    // ToOp candidate topologies expose their elementary moves as
+    // ``constituent_ids`` labels such as "split GROSNP6" / "merge VIELMP6".
+    // Surface the busbar-split voltage levels so they become clickable
+    // card badges AND get highlighted on the diagram (this helper feeds
+    // both). Branch toggles like "open …"/"close …" are intentionally
+    // left to getActionTargetLines.
+    actionDetail?.constituent_ids?.forEach(c => {
+        const m = /^\s*(?:split|merge)\s+(.+?)\s*$/i.exec(c);
+        if (m && nodesByEquipmentId.has(m[1])) targets.add(m[1]);
+    });
+
     if (desc && desc !== 'No description available') {
         // Try all quoted strings — any might be the VL name
         const quotedMatches = desc.match(/'([^']+)'/g);
