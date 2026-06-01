@@ -46,7 +46,16 @@ class TestRegistryWiring:
             "include_busbar_splits",
             "runtime_seconds",
             "n_worst_contingencies",
+            "optimize_current_state_only",
         } <= names
+
+    def test_optimize_current_state_only_defaults_true(self):
+        descriptor = next(m for m in list_models() if m["name"] == "toop")
+        spec = next(
+            p for p in descriptor["params"] if p["name"] == "optimize_current_state_only"
+        )
+        assert spec["kind"] == "bool"
+        assert spec["default"] is True
 
 
 # ---------------------------------------------------------------------
@@ -191,8 +200,12 @@ class TestMergeTopologyContent:
         # Line toggle applied last → -1 overrides the split's bus 2.
         assert merged["set_bus"]["lines_or_id"]["SHARED_LINE"] == -1
 
-    def test_returns_none_when_nothing_simulable(self):
-        # enrich fails for the only VL and there are no line toggles.
+    def test_falls_back_to_raw_switches_when_enrich_fails(self):
+        # enrich fails to resolve content for the only VL and there are no
+        # line toggles. The split must NOT be dropped: we fall back to the
+        # raw switch flips ToOp produced so the topology stays simulable
+        # (otherwise every-VL-fails yields a 0-action result — see the
+        # "could not enrich VL …" regression).
         def enrich_empty(raw, _network):
             return {aid: {**e, "content": None} for aid, e in raw.items()}
 
@@ -202,18 +215,236 @@ class TestMergeTopologyContent:
             enrich=enrich_empty,
             network=MagicMock(),
         )
+        assert merged is not None
+        assert merged["switches"] == {"VL_A_sw1": True}
+        assert constituents == ["split VL_A"]
+
+    def test_returns_none_when_truly_empty(self):
+        # No line toggles and no VL switches → genuinely nothing simulable.
+        merged, constituents = ToOpRecommender()._merge_topology_content(
+            line_toggles={},
+            vl_switches={},
+            enrich=None,
+            network=MagicMock(),
+        )
         assert merged is None
         assert constituents == []
 
-    def test_enrich_unavailable_keeps_line_toggles(self):
+    def test_enrich_unavailable_synthesises_splits_from_raw_switches(self):
+        # With no enricher available, busbar splits are synthesised
+        # directly from the raw switch flips (matches the pre-rewrite
+        # behaviour) instead of being silently omitted.
         merged, constituents = ToOpRecommender()._merge_topology_content(
             line_toggles={"LINE_A": -1},
-            vl_switches={"VL_A": {"VL_A_sw1": True}},  # dropped (no enrich)
+            vl_switches={"VL_A": {"VL_A_sw1": True}},
             enrich=None,
             network=MagicMock(),
         )
         assert merged["set_bus"]["lines_or_id"] == {"LINE_A": -1}
-        assert constituents == ["open LINE_A"]
+        assert merged["switches"] == {"VL_A_sw1": True}
+        assert set(constituents) == {"split VL_A", "open LINE_A"}
+
+
+# ---------------------------------------------------------------------
+# _nest_scores (category-keyed action_scores contract)
+# ---------------------------------------------------------------------
+class TestNestScores:
+    def test_wraps_flat_scores_in_category_bucket(self):
+        nested = ToOpRecommender._nest_scores(
+            {"toop_topology_1": 0.0, "toop_topology_2": -1.0}
+        )
+        # Shape the reassessment pipeline depends on:
+        # {category: {"scores": {...}, "params": {}}}.
+        assert set(nested) == {"toop_topology"}
+        bucket = nested["toop_topology"]
+        assert bucket["scores"] == {"toop_topology_1": 0.0, "toop_topology_2": -1.0}
+        assert bucket["params"] == {}
+        # Every bucket value must be a dict exposing .get("scores") — this is
+        # exactly what propagate_non_convergence_to_scores calls.
+        for category in nested:
+            assert nested[category].get("scores", {}) is not None
+
+    def test_empty_scores_stay_empty(self):
+        assert ToOpRecommender._nest_scores({}) == {}
+
+
+# ---------------------------------------------------------------------
+# _apply_contingency_state (post-contingency export — uses conftest mock)
+# ---------------------------------------------------------------------
+class TestApplyContingencyState:
+    @staticmethod
+    def _net(line_ids, twt_ids, recorder):
+        net = MagicMock()
+        net.get_lines.return_value = pd.DataFrame(index=list(line_ids))
+        net.get_2_windings_transformers.return_value = pd.DataFrame(index=list(twt_ids))
+        net.update_lines.side_effect = lambda **kw: recorder["lines"].append(kw)
+        net.update_2_windings_transformers.side_effect = (
+            lambda **kw: recorder["twt"].append(kw)
+        )
+        net.save.side_effect = lambda p, format=None: recorder["save"].append(str(p))
+        return net
+
+    def test_disconnects_lines_and_transformers(self, tmp_path):
+        import pypowsybl.network as pn_mod
+
+        rec = {"lines": [], "twt": [], "save": []}
+        net = self._net(["P.SAOL31RONCI", "OTHER"], ["TWT_1"], rec)
+        grid = tmp_path / "grid.xiidm"
+        grid.write_text("")
+        with patch.object(pn_mod, "load", lambda p: net):
+            ToOpRecommender()._apply_contingency_state(
+                grid, ["P.SAOL31RONCI", "TWT_1"],
+            )
+        assert rec["lines"] == [
+            {"id": "P.SAOL31RONCI", "connected1": False, "connected2": False}
+        ]
+        assert rec["twt"] == [
+            {"id": "TWT_1", "connected1": False, "connected2": False}
+        ]
+        assert len(rec["save"]) == 1  # saved once because elements were applied
+
+    def test_unknown_ids_are_skipped_without_saving(self, tmp_path):
+        import pypowsybl.network as pn_mod
+
+        rec = {"lines": [], "twt": [], "save": []}
+        net = self._net(["KNOWN"], [], rec)
+        grid = tmp_path / "grid.xiidm"
+        grid.write_text("")
+        with patch.object(pn_mod, "load", lambda p: net):
+            ToOpRecommender()._apply_contingency_state(grid, ["GHOST"])
+        # Nothing resolved → no update, no save (grid left as base export).
+        assert rec["lines"] == []
+        assert rec["save"] == []
+
+
+# ---------------------------------------------------------------------
+# _run_toop pipeline config (ToOp engine mocked into sys.modules)
+# ---------------------------------------------------------------------
+class TestRunToopConfig:
+    @staticmethod
+    def _install_fake_engine(tmp_path, grid_file):
+        """Inject a fake toop_engine_topology_optimizer.benchmark.benchmark_utils."""
+        import sys as _sys
+
+        bu = MagicMock()
+
+        class PipelineConfig:
+            static_info_relpath = "static_information.hdf5"
+
+            def __init__(self, **kw):
+                self.__dict__.update(kw)
+
+        bu.PipelineConfig = PipelineConfig
+        bu.PreprocessParameters = lambda **kw: MagicMock()
+        bu.get_paths = lambda cfg: (tmp_path, grid_file, tmp_path, tmp_path)
+        bu.prepare_importer_parameters = lambda fp, df: MagicMock()
+        mods = {
+            "toop_engine_topology_optimizer": MagicMock(),
+            "toop_engine_topology_optimizer.benchmark": MagicMock(),
+            "toop_engine_topology_optimizer.benchmark.benchmark_utils": bu,
+        }
+        return patch.dict(_sys.modules, mods)
+
+    def _run(self, tmp_path, current_state_only):
+        grid_file = tmp_path / "grid.xiidm"
+        grid_file.write_text("")
+        captured = {}
+
+        def fake_run_pipeline(**kw):
+            captured.update(kw)
+            return "pareto"
+
+        with self._install_fake_engine(tmp_path, grid_file):
+            ToOpRecommender()._run_toop(
+                run_pipeline=fake_run_pipeline,
+                DictConfig=lambda d: d,  # identity so we can inspect the dict
+                grid_file=grid_file,
+                work_dir=tmp_path,
+                runtime_seconds=15,
+                n_worst_contingencies=2,
+                current_state_only=current_state_only,
+            )
+        return captured["dc_optim_config"]
+
+    def test_line_switching_is_enabled(self, tmp_path):
+        # max_num_disconnections must be > 0 or ToOp produces only busbar
+        # splits (it defaults to 0, disabling line-switching entirely).
+        cfg = self._run(tmp_path, current_state_only=True)
+        assert cfg["lf_config"]["max_num_disconnections"] == 4
+
+    def test_targets_n0_when_current_state_only(self, tmp_path):
+        cfg = self._run(tmp_path, current_state_only=True)
+        ga = cfg["ga_config"]
+        assert ga["target_metrics"] == [["overload_energy_n_0", 1.0]]
+        assert ga["observed_metrics"] == ["overload_energy_n_0", "disconnected_branches"]
+        assert ga["n_worst_contingencies"] == 1
+
+    def test_targets_n1_when_not_current_state_only(self, tmp_path):
+        cfg = self._run(tmp_path, current_state_only=False)
+        ga = cfg["ga_config"]
+        assert ga["target_metrics"] == [["overload_energy_n_1", 1.0]]
+        assert ga["observed_metrics"] == ["overload_energy_n_1", "disconnected_branches"]
+        assert ga["n_worst_contingencies"] == 2  # passes through unchanged
+
+
+# ---------------------------------------------------------------------
+# _deflate_thermal_limits (aligns ToOp threshold with monitoring factor)
+# ---------------------------------------------------------------------
+class TestDeflateThermalLimits:
+    @staticmethod
+    def _net_with_limits(recorder):
+        net = MagicMock()
+        limits = pd.DataFrame(
+            {
+                "element_id": ["LINE_A", "LINE_A", "LINE_B"],
+                "side": ["ONE", "ONE", "TWO"],
+                "type": ["CURRENT", "ACTIVE_POWER", "CURRENT"],
+                "acceptable_duration": [-1, -1, 600],
+                "group_name": ["DEFAULT", "DEFAULT", "DEFAULT"],
+                "value": [1000.0, 50.0, 800.0],
+            }
+        )
+        # get_operational_limits().reset_index() is what the code calls;
+        # our frame already has the columns, so reset_index is a no-op-ish.
+        net.get_operational_limits.return_value = limits
+        net.update_operational_limits.side_effect = (
+            lambda **kw: recorder.update({"update": kw})
+        )
+        net.save.side_effect = lambda p, format=None: recorder.setdefault(
+            "saves", []
+        ).append(str(p))
+        return net
+
+    def test_deflates_only_current_limits_by_factor(self, tmp_path):
+        import pypowsybl.network as pn_mod
+
+        rec: dict = {}
+        net = self._net_with_limits(rec)
+        grid = tmp_path / "grid.xiidm"
+        grid.write_text("")
+        # conftest sets MONITORING_FACTOR_THERMAL_LIMITS = 0.95.
+        with patch.object(pn_mod, "load", lambda p: net):
+            ToOpRecommender()._deflate_thermal_limits(grid)
+
+        # Only the two CURRENT limits are deflated (ACTIVE_POWER untouched).
+        assert rec["update"]["value"] == [1000.0 * 0.95, 800.0 * 0.95]
+        assert rec["update"]["element_id"] == ["LINE_A", "LINE_B"]
+        assert rec["saves"] == [str(grid)]
+
+    def test_noop_when_factor_at_least_one(self, tmp_path):
+        import pypowsybl.network as pn_mod
+        from expert_op4grid_recommender import config as _config
+
+        rec: dict = {}
+        net = self._net_with_limits(rec)
+        grid = tmp_path / "grid.xiidm"
+        grid.write_text("")
+        _config.MONITORING_FACTOR_THERMAL_LIMITS = 1.0  # restored by reset_config fixture
+        with patch.object(pn_mod, "load", lambda p: net):
+            ToOpRecommender()._deflate_thermal_limits(grid)
+        # No deflation, no save when the factor disables deflation.
+        assert "update" not in rec
+        assert "saves" not in rec
 
 
 # ---------------------------------------------------------------------

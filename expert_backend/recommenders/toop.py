@@ -169,7 +169,21 @@ class ToOpRecommender(RecommenderModel):
                 max=20,
                 description=(
                     "Number of worst-N-1 contingencies ToOp evaluates "
-                    "when scoring each topology candidate."
+                    "when scoring each topology candidate. Ignored when "
+                    "`optimize_current_state_only` is enabled."
+                ),
+            ),
+            ParamSpec(
+                "optimize_current_state_only",
+                "Optimize Current State Only",
+                "bool",
+                default=True,
+                description=(
+                    "Score topologies on the operator-selected contingency "
+                    "state only (ToOp's N-0). Ignore the secondary N-1 "
+                    "outages ToOp would otherwise explore from that state "
+                    "— those are N-2 cases from the operator's viewpoint. "
+                    "Disable to also weigh subsequent contingencies."
                 ),
             ),
         ]
@@ -207,6 +221,7 @@ class ToOpRecommender(RecommenderModel):
         runtime_seconds = int(params.get("runtime_seconds", 15))
         n_worst = int(params.get("n_worst_contingencies", 2))
         include_busbar_splits = bool(params.get("include_busbar_splits", True))
+        current_state_only = bool(params.get("optimize_current_state_only", True))
 
         env = inputs.env
         if env is None:
@@ -221,15 +236,29 @@ class ToOpRecommender(RecommenderModel):
                 "ToOpRecommender: exporting pypowsybl network to XIIDM under %s",
                 iteration_dir,
             )
-            grid_file = self._export_network(inputs.network, iteration_dir)
+            # Export the POST-CONTINGENCY state, not the healthy N state.
+            # ``inputs.network_defaut`` is documented as the same network
+            # with the contingency variant active; we prefer it and then
+            # explicitly re-assert the contingency by disconnecting
+            # ``inputs.lines_defaut`` on the exported copy. This guarantees
+            # ToOp's N-0 == the operator-selected N-1 even if the working
+            # variant wasn't positioned — otherwise overload_energy_n_0 is
+            # 0.0 (no overload to optimise) and the GA returns 0 topologies.
+            export_source = inputs.network_defaut
+            if export_source is None:
+                export_source = inputs.network
+            contingency_lines = list(inputs.lines_defaut or [])
+            grid_file = self._export_network(
+                export_source, iteration_dir, contingency_lines=contingency_lines
+            )
             if grid_file is None:
                 logger.warning("ToOpRecommender: network export returned None — aborting.")
                 return RecommenderOutput(prioritized_actions={}, action_scores={})
 
             logger.warning(
                 "ToOpRecommender: calling run_pipeline (runtime_seconds=%d, "
-                "n_worst_contingencies=%d) on %s",
-                runtime_seconds, n_worst, grid_file,
+                "n_worst_contingencies=%d, current_state_only=%s) on %s",
+                runtime_seconds, n_worst, current_state_only, grid_file,
             )
             try:
                 pareto = self._run_toop(
@@ -239,6 +268,7 @@ class ToOpRecommender(RecommenderModel):
                     work_dir=tmp_path,
                     runtime_seconds=runtime_seconds,
                     n_worst_contingencies=n_worst,
+                    current_state_only=current_state_only,
                 )
             except Exception:
                 logger.exception("ToOpRecommender: run_pipeline failed; returning {}.")
@@ -276,21 +306,63 @@ class ToOpRecommender(RecommenderModel):
             "ToOpRecommender: returning %d topology action(s): %s",
             len(prioritized), list(prioritized.keys()),
         )
+        # The library's reassessment (``propagate_non_convergence_to_scores``)
+        # and the service's ``_compute_mw_start_for_scores`` both expect the
+        # category-keyed score shape
+        # ``{category: {"scores": {action_id: float}, "params": {}}}`` — the
+        # same shape the Expert model returns. ``_build_topology_actions``
+        # yields a flat ``{topology_id: float}``; wrap it in a single
+        # "toop_topology" bucket so the downstream pipeline stops treating a
+        # bare float as a dict (``AttributeError: 'float' object has no
+        # attribute 'get'``). The "toop_topology" tag classifies as "other",
+        # so MW-at-start is left undefined (None) rather than mis-computed.
         return RecommenderOutput(
             prioritized_actions=prioritized,
-            action_scores=scores,
+            action_scores=self._nest_scores(scores),
         )
+
+    @staticmethod
+    def _nest_scores(flat_scores: Dict[str, float]) -> Dict[str, Dict[str, Any]]:
+        """Wrap a flat ``{action_id: score}`` map in the category-keyed shape.
+
+        The reassessment pipeline and ``_compute_mw_start_for_scores`` both
+        require ``{category: {"scores": {action_id: float}, "params": {}}}``
+        (the Expert-model contract). Topology actions all live in a single
+        "toop_topology" bucket. Returns ``{}`` for an empty input so the
+        degraded path stays empty rather than carrying an empty bucket.
+        """
+        if not flat_scores:
+            return {}
+        return {"toop_topology": {"scores": dict(flat_scores), "params": {}}}
 
     # ------------------------------------------------------------------
     # Network export + ToOp invocation
     # ------------------------------------------------------------------
-    def _export_network(self, network: Any, iteration_dir: Path) -> Optional[Path]:
+    def _export_network(
+        self,
+        network: Any,
+        iteration_dir: Path,
+        contingency_lines: Optional[List[str]] = None,
+    ) -> Optional[Path]:
         """Save the live pypowsybl Network as XIIDM under ``iteration_dir``.
 
         ToOp's example notebooks consume XIIDM directly (``grid.xiidm``);
         no CGMES round-trip is necessary. Returns the absolute path of
         the saved file, or ``None`` on failure. The directory is
         already created by the caller.
+
+        When ``contingency_lines`` is supplied, those branches are
+        disconnected on the exported copy so the grid handed to ToOp is
+        the operator-selected N-K state (ToOp's N-0). This is idempotent:
+        if the exported network was already post-contingency the flips
+        are no-ops.
+
+        After saving, the file's CURRENT thermal limits are deflated by
+        Co-Study4Grid's ``MONITORING_FACTOR_THERMAL_LIMITS`` so ToOp's
+        overload-detection threshold (raw ρ ≥ 1.0) lines up with the
+        operator's effective threshold (ρ ≥ monitoring_factor). The
+        deflation is applied to a re-loaded copy — the live network the
+        rest of the backend uses is left untouched.
         """
         if network is None:
             logger.warning("ToOpRecommender: inputs.network is None — cannot export.")
@@ -315,13 +387,171 @@ class ToOpRecommender(RecommenderModel):
             for ext in (".xiidm", ".iidm", ".xml"):
                 hits = list(iteration_dir.glob(f"*{ext}"))
                 if hits:
-                    return hits[0]
-            logger.warning(
-                "ToOpRecommender: XIIDM export produced no file under %s",
-                iteration_dir,
-            )
-            return None
+                    out = hits[0]
+                    break
+            else:
+                logger.warning(
+                    "ToOpRecommender: XIIDM export produced no file under %s",
+                    iteration_dir,
+                )
+                return None
+
+        if contingency_lines:
+            self._apply_contingency_state(out, contingency_lines)
+        self._deflate_thermal_limits(out)
         return out
+
+    def _apply_contingency_state(self, grid_file: Path, lines: List[str]) -> None:
+        """Disconnect ``lines`` in ``grid_file`` to bake in the N-K state.
+
+        Re-opens the exported XIIDM and disconnects both terminals of
+        each contingency element so ToOp's base case (its N-0) matches
+        the operator-selected contingency. Handles lines and 2-winding
+        transformers; ids it cannot resolve are logged and skipped so a
+        single stale name doesn't abort the whole export. Operates on the
+        on-disk copy only — the live backend network is never mutated.
+        """
+        try:
+            import pypowsybl.network as _pn
+        except Exception:
+            logger.exception(
+                "ToOpRecommender: pypowsybl import failed; cannot apply contingency "
+                "state — ToOp will run against the base (N) grid."
+            )
+            return
+
+        try:
+            net = _pn.load(str(grid_file))
+        except Exception:
+            logger.exception(
+                "ToOpRecommender: failed to reload %s to apply contingency state.",
+                grid_file,
+            )
+            return
+
+        try:
+            line_ids = set(net.get_lines().index)
+        except Exception:
+            line_ids = set()
+        try:
+            twt_ids = set(net.get_2_windings_transformers().index)
+        except Exception:
+            twt_ids = set()
+
+        applied = 0
+        missing: List[str] = []
+        for elem in lines:
+            try:
+                if elem in line_ids:
+                    net.update_lines(id=elem, connected1=False, connected2=False)
+                    applied += 1
+                elif elem in twt_ids:
+                    net.update_2_windings_transformers(
+                        id=elem, connected1=False, connected2=False
+                    )
+                    applied += 1
+                else:
+                    missing.append(elem)
+            except Exception:
+                logger.exception(
+                    "ToOpRecommender: failed to disconnect contingency element %s.",
+                    elem,
+                )
+                missing.append(elem)
+
+        if missing:
+            logger.warning(
+                "ToOpRecommender: could not resolve %d contingency element(s) in the "
+                "exported grid: %s", len(missing), missing,
+            )
+        if applied:
+            try:
+                net.save(str(grid_file), format="XIIDM")
+            except Exception:
+                logger.exception(
+                    "ToOpRecommender: failed to save contingency state to %s.",
+                    grid_file,
+                )
+                return
+            logger.warning(
+                "ToOpRecommender: applied operator contingency (%d element(s)) to the "
+                "exported grid so ToOp optimises the N-K state.", applied,
+            )
+
+    def _deflate_thermal_limits(self, grid_file: Path) -> None:
+        """Multiply CURRENT thermal limits in ``grid_file`` by the monitoring factor.
+
+        Aligns ToOp's overload threshold with Co-Study4Grid's effective
+        one: a line at ρ_raw = 0.97 with `monitoring_factor=0.95` becomes
+        ρ_toop = 0.97 / 0.95 ≈ 1.02 in the exported grid, so ToOp's GA
+        treats it as overloaded just like the operator's overload panel
+        does. Skips work when the factor is ≥ 1.0 (no deflation needed),
+        when the upstream library isn't importable, or when the network
+        has no operational limits.
+        """
+        try:
+            from expert_op4grid_recommender import config as _config
+        except Exception as exc:
+            logger.debug(
+                "ToOpRecommender: expert_op4grid_recommender.config not importable "
+                "(%s: %s); skipping thermal-limit deflation.",
+                type(exc).__name__, exc,
+            )
+            return
+
+        factor = float(getattr(_config, "MONITORING_FACTOR_THERMAL_LIMITS", 1.0) or 1.0)
+        if factor >= 1.0 or factor <= 0.0:
+            return
+
+        try:
+            import pypowsybl.network as _pn
+        except Exception:
+            logger.exception("ToOpRecommender: pypowsybl import failed; skipping deflation.")
+            return
+
+        try:
+            net = _pn.load(str(grid_file))
+            limits = net.get_operational_limits().reset_index()
+        except Exception:
+            logger.exception(
+                "ToOpRecommender: failed to read operational limits from %s — "
+                "ToOp will run against raw thermal limits.",
+                grid_file,
+            )
+            return
+
+        current_limits = limits[limits["type"] == "CURRENT"]
+        if current_limits.empty:
+            return
+
+        # pypowsybl's update_operational_limits is strict about the
+        # element_id / side / type / group_name columns being plain
+        # strings — after reset_index() they come back as ``object``
+        # dtype and `create_dataframe` rejects them. Pass via kwargs
+        # with explicit list[str] coercion to bypass the dtype check.
+        try:
+            net.update_operational_limits(
+                element_id=[str(v) for v in current_limits["element_id"]],
+                side=[str(v) for v in current_limits["side"]],
+                type=[str(v) for v in current_limits["type"]],
+                acceptable_duration=[int(v) for v in current_limits["acceptable_duration"]],
+                group_name=[str(v) for v in current_limits["group_name"]],
+                value=[float(v) * factor for v in current_limits["value"]],
+            )
+            net.save(str(grid_file), format="XIIDM")
+        except Exception:
+            logger.exception(
+                "ToOpRecommender: failed to deflate thermal limits in %s; "
+                "ToOp will run against raw limits.",
+                grid_file,
+            )
+            return
+
+        logger.warning(
+            "ToOpRecommender: deflated %d CURRENT thermal limits by factor %.3f "
+            "to align ToOp's overload detection with Co-Study4Grid's monitoring factor.",
+            len(current_limits), factor,
+        )
 
     def _run_toop(
         self,
@@ -331,6 +561,7 @@ class ToOpRecommender(RecommenderModel):
         work_dir: Path,
         runtime_seconds: int,
         n_worst_contingencies: int,
+        current_state_only: bool = True,
     ) -> Any:
         """Invoke ToOp's ``run_pipeline`` against an XIIDM grid file.
 
@@ -383,7 +614,13 @@ class ToOpRecommender(RecommenderModel):
             "omp_num_threads": 1,
             "xla_force_host_platform_device_count": None,
             "output_json": str(results_dir / "output.json"),
-            "lf_config": {"distributed": False},
+            # `max_num_disconnections` defaults to 0 in ToOp's
+            # LoadflowSolverParameters, which disables the line-switching
+            # search entirely — without this override every solution is
+            # forced to be a busbar split (out of MVP scope). Allow up
+            # to 4 simultaneous disconnections so `best_topos[i].disconnections`
+            # is populated for the parser below to consume.
+            "lf_config": {"distributed": False, "max_num_disconnections": 4},
             "ga_config": {
                 "runtime_seconds": runtime_seconds,
                 # `disconnected_branches` is ToOp's accepted metric name
@@ -391,8 +628,25 @@ class ToOpRecommender(RecommenderModel):
                 # is pinned in BatchedMEParameters; a wrong name fails with
                 # a pydantic ValidationError).
                 "me_descriptors": [{"metric": "disconnected_branches", "num_cells": 4}],
-                "observed_metrics": ["overload_energy_n_1", "disconnected_branches"],
-                "n_worst_contingencies": n_worst_contingencies,
+                # The grid we hand ToOp is already the operator-selected
+                # contingency state — ToOp's N-0. When the operator wants
+                # to optimise that state only (no further N-1 from it,
+                # which would be N-2 from their viewpoint), target the
+                # n_0 overload metric and clamp n_worst_contingencies
+                # to the BatchedMEParameters minimum (it stays positive
+                # but stops driving the score).
+                "target_metrics": [
+                    [
+                        "overload_energy_n_0" if current_state_only else "overload_energy_n_1",
+                        1.0,
+                    ],
+                ],
+                "observed_metrics": (
+                    ["overload_energy_n_0", "disconnected_branches"]
+                    if current_state_only
+                    else ["overload_energy_n_1", "disconnected_branches"]
+                ),
+                "n_worst_contingencies": 1 if current_state_only else n_worst_contingencies,
             },
         })
         ac_validation_cfg = DictConfig({
@@ -646,13 +900,31 @@ class ToOpRecommender(RecommenderModel):
                 entry = _resolve_lazy_entry(enriched, key)
                 content = _resolve_lazy_content(entry)
                 if not content:
-                    logger.warning(
-                        "ToOpRecommender: could not enrich VL %s split (%d switch(es); "
-                        "entry=%s, content=%s); excluded from this topology.",
-                        vl_id, len(vl_switches[vl_id]),
-                        type(entry).__name__ if entry is not None else None,
-                        type(content).__name__ if content is not None else None,
-                    )
+                    # enrich_actions_lazy could not resolve this VL's
+                    # switch set into per-connectable set_bus assignments
+                    # (e.g. the live network lacks the node-breaker detail
+                    # the resolver needs). Rather than drop the split —
+                    # which silently shrinks the topology and, when every
+                    # VL fails, yields a 0-action result — fall back to the
+                    # raw switch flips ToOp itself produced. They are still
+                    # simulable: the action toggles the named switches even
+                    # without the resolved bus assignments.
+                    raw_switches = vl_switches[vl_id]
+                    if raw_switches:
+                        merged["switches"].update(raw_switches)
+                        constituents.append(f"split {vl_id}")
+                        logger.warning(
+                            "ToOpRecommender: could not enrich VL %s split (%d switch(es); "
+                            "entry=%s, content=%s); falling back to raw switch flips.",
+                            vl_id, len(raw_switches),
+                            type(entry).__name__ if entry is not None else None,
+                            type(content).__name__ if content is not None else None,
+                        )
+                    else:
+                        logger.warning(
+                            "ToOpRecommender: VL %s split has no switches to "
+                            "synthesise; excluded from this topology.", vl_id,
+                        )
                     continue
                 set_bus = content.get("set_bus", {}) if isinstance(content, dict) else {}
                 for sub_key in ("lines_or_id", "lines_ex_id", "loads_id",
@@ -665,10 +937,17 @@ class ToOpRecommender(RecommenderModel):
                     merged["switches"].update(sw)
                 constituents.append(f"split {vl_id}")
         elif vl_switches and enrich is None:
+            # No enricher available — synthesise directly from the raw
+            # switch flips so the busbar splits still surface (matches the
+            # pre-rewrite behaviour) instead of being silently omitted.
             logger.warning(
-                "ToOpRecommender: enrich unavailable — %d busbar split(s) omitted "
-                "from this topology.", len(vl_switches),
+                "ToOpRecommender: enrich unavailable — synthesising %d busbar "
+                "split(s) from raw switch flips.", len(vl_switches),
             )
+            for vl_id, switches in vl_switches.items():
+                if switches:
+                    merged["switches"].update(switches)
+                    constituents.append(f"split {vl_id}")
 
         for line_id, status in line_toggles.items():
             merged["set_bus"]["lines_or_id"][line_id] = status
