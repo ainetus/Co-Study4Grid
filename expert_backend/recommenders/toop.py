@@ -5,51 +5,51 @@
 # SPDX-License-Identifier: MPL-2.0
 """Elia Group `ToOp <https://github.com/eliagroup/ToOp>`_ topology optimizer.
 
-MVP scope — **line switching only**. ToOp's broader output set
-(busbar splits, busbar reassignments) is not yet translated into
-remedial actions; that extension lives downstream once the line-switch
-path is exercised on real grids.
+ToOp is a Map-Elites topology optimiser: it searches for *whole network
+topologies* (combinations of line switching + busbar splits across many
+substations) that relieve N-1 congestion. The elementary moves are only
+meaningful together — a single split that looks neutral in isolation can
+be decisive inside the combined topology ToOp actually optimised.
 
-ToOp is treated as an **optional install**. The Python package
-``toop_engine_topology_optimizer`` pins Python 3.11 and pulls in heavy
-GPU dependencies (JAX, qdax, Ray, …), so we never import it at module
-load time — the import happens lazily inside :meth:`recommend` and a
-missing install is reported as an empty recommendation with a clear
-log line rather than a server crash.
+This integration therefore treats **each ToOp candidate topology as one
+combined action**, not as a bag of independent suggestions:
 
-Integration outline (see comments in ``recommend`` for details):
+1. Export the live pypowsybl Network to XIIDM (ToOp ingests it directly).
+2. Run ToOp's ``run_pipeline`` (preprocessing → DC Map-Elites → AC
+   validation). It returns a list of *topology directories*, each with a
+   ``modified_network.xiidm`` — the full target network state, best-first.
+3. For each topology, diff ``modified_network.xiidm`` against the input
+   grid along two axes — line connection flags and per-VL internal switch
+   states — and fold **every** change into ONE merged action content
+   (``set_bus`` assignments + ``switches`` dict, the same format the
+   operator's curated coupling actions use; see
+   ``data/action_space/reduced_model_actions_test.json``).
+4. Return one merged grid2op action per topology under a clean id
+   (``toop_topology_<rank>``). The step-2 assessment phase REALLY
+   simulates each, so the resulting ``max_rho`` is the true combined
+   loading of the whole topology.
+5. ``_service_integration`` then reformats each simulated topology into a
+   single combined-action card (the ``combined_actions`` channel) and
+   injects the merged contents into the service ``_dict_action`` so the
+   card stays re-simulatable / session-saveable.
 
-1. Export ``inputs.network`` (pypowsybl Network) to a temporary
-   CGMES bundle — ToOp's importer pipeline ingests CGMES / UCT, not
-   XIIDM.
-2. Build the ``DictConfig`` quadruple ToOp's ``run_pipeline`` expects
-   (DC optimization + AC validation + importer + preprocessing),
-   constrained to line-status edits.
-3. Run ``run_pipeline`` synchronously inside the streaming step-2
-   endpoint, bounded by ``runtime_seconds``.
-4. Parse the Pareto front for line-switching decisions and translate
-   each to the Co-Study4Grid action format
-   (``{"set_bus": {"lines_or_id": {line: ±1}, "lines_ex_id": {line: ±1}}}``)
-   via ``env.action_space``.
-5. Rank by ToOp's congestion metric (``overload_energy_n_1``); surface
-   the top-N as ``prioritized_actions`` with ``action_scores``.
+ToOp is an **optional install** (Python 3.11 + heavy GPU deps). The
+class only lazy-imports ``toop_engine_topology_optimizer`` inside
+``recommend()``; a missing install yields an empty recommendation with a
+clear log line instead of crashing the step-2 NDJSON stream.
 """
 from __future__ import annotations
 
 import logging
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from expert_op4grid_recommender.models.base import (
     ParamSpec,
     RecommenderInputs,
     RecommenderModel,
     RecommenderOutput,
-)
-
-from expert_backend.recommenders.network_existence import (
-    filter_to_existing_network_elements,
 )
 
 logger = logging.getLogger(__name__)
@@ -93,8 +93,22 @@ def _import_dictconfig() -> Optional[Any]:
     return DictConfig
 
 
+def _import_enrich() -> Optional[Any]:
+    """Lazy importer for ``enrich_actions_lazy`` (populates switch-action content)."""
+    try:
+        from expert_op4grid_recommender.data_loader import enrich_actions_lazy
+    except Exception as exc:
+        logger.warning(
+            "ToOpRecommender: enrich_actions_lazy not importable (%s: %s); "
+            "cannot materialise busbar-split content.",
+            type(exc).__name__, exc,
+        )
+        return None
+    return enrich_actions_lazy
+
+
 class ToOpRecommender(RecommenderModel):
-    """Topology optimizer wrapper. MVP surfaces line-switching only.
+    """Topology optimizer wrapper — one combined action per candidate topology.
 
     The model does NOT consume the overflow graph — ToOp does its own
     DC contingency analysis internally, so we set
@@ -112,15 +126,14 @@ class ToOpRecommender(RecommenderModel):
         return [
             ParamSpec(
                 "n_prioritized_actions",
-                "N Prioritized Actions",
+                "N Candidate Topologies",
                 "int",
                 default=5,
                 min=1,
                 max=50,
                 description=(
-                    "Maximum number of suggestions surfaced — covers "
-                    "both line switches and busbar splits, ranked by "
-                    "ToOp's congestion-reduction order."
+                    "Maximum number of ToOp candidate topologies surfaced "
+                    "as combined-action cards (best-first by ToOp's rank)."
                 ),
             ),
             ParamSpec(
@@ -129,9 +142,9 @@ class ToOpRecommender(RecommenderModel):
                 "bool",
                 default=True,
                 description=(
-                    "Surface dict_action entries whose VoltageLevelId "
-                    "matches a substation ToOp split. Disable to "
-                    "restrict suggestions to line switches only."
+                    "Fold ToOp's internal substation switch changes into "
+                    "each topology. Disable to keep only line-switching "
+                    "changes in the combined action."
                 ),
             ),
             ParamSpec(
@@ -143,7 +156,7 @@ class ToOpRecommender(RecommenderModel):
                 max=120,
                 description=(
                     "Wall-clock budget passed to ToOp's DC optimization "
-                    "stage. Higher = better Pareto coverage but blocks "
+                    "stage. Higher = better topology coverage but blocks "
                     "the step-2 stream that long."
                 ),
             ),
@@ -165,6 +178,11 @@ class ToOpRecommender(RecommenderModel):
     # Public entry point
     # ------------------------------------------------------------------
     def recommend(self, inputs: RecommenderInputs, params: dict) -> RecommenderOutput:
+        # Cleared up-front so a degraded return never leaves a stale
+        # grouping behind for the service integration to consume.
+        self._last_topology_groups: List[dict] = []
+        self._last_topology_dict_entries: Dict[str, Any] = {}
+
         logger.warning(
             "ToOpRecommender: recommend() entry — params=%s, env=%s, network=%s, "
             "dict_action_size=%s",
@@ -228,83 +246,34 @@ class ToOpRecommender(RecommenderModel):
 
             # `run_pipeline` returns ``topology_paths`` — a list of
             # *directories* (``<snapshot_dir>/run_*/topology_*``), each
-            # containing a ``modified_network.xiidm`` ToOp wrote during
-            # AC validation. The primary extraction path is therefore
-            # to load that modified network back through pypowsybl and
-            # diff its line statuses against the original grid we
-            # exported a few lines above — no need to reverse-engineer
-            # ToOp's internal Pareto-front schema. The richer
-            # ``optimizer_snapshot/run_0/res.json`` exists too but its
-            # genome encoding is undocumented; the network-diff path
-            # is the robust choice for the line-switching MVP.
+            # holding the full target ``modified_network.xiidm``, best-first.
             topology_list = pareto if isinstance(pareto, (list, tuple)) else []
             logger.warning(
                 "ToOpRecommender: run_pipeline returned %d topology path(s); "
-                "diffing modified_network.xiidm against the input grid.",
+                "building one combined action per topology.",
                 len(topology_list),
             )
-            # 1. Line switches (lines whose end-connection flags changed).
-            switches = self._extract_switches_from_topology_paths(
+            # Built inside the tempdir so the modified_network.xiidm files
+            # are still on disk while we diff them.
+            prioritized, scores, groups, dict_entries = self._build_topology_actions(
                 topology_paths=topology_list,
                 original_grid_file=grid_file,
+                env=env,
+                network=inputs.network,
+                include_busbar_splits=include_busbar_splits,
                 n=n,
             )
-            # 2. Busbar splits (voltage levels whose internal switches
-            #    changed without any line being toggled). Detected
-            #    inside the tempdir so the modified_network.xiidm files
-            #    are still on disk.
-            if include_busbar_splits:
-                splits = self._extract_busbar_splits_from_topology_paths(
-                    topology_paths=topology_list,
-                    original_grid_file=grid_file,
-                )
-            else:
-                splits = []
+
+        # Stash the topology groupings + synthesised dict_action entries so
+        # the model-aware step-2 integration can (a) inject the combined
+        # contents into the service's _dict_action for re-simulation /
+        # session save, and (b) reformat each topology into a single
+        # combined-action card after the assessment phase has simulated it.
+        self._last_topology_groups = groups
+        self._last_topology_dict_entries = dict_entries
 
         logger.warning(
-            "ToOpRecommender: extracted %d line-switch suggestion(s), "
-            "%d busbar-split voltage level(s)",
-            len(switches), len(splits),
-        )
-
-        prioritized: Dict[str, Any] = {}
-        scores: Dict[str, float] = {}
-
-        if switches:
-            ls_prioritized, ls_scores = self._materialise_actions(
-                switches=switches,
-                env=env,
-                dict_action=inputs.dict_action,
-                non_connected_reconnectable_lines=inputs.non_connected_reconnectable_lines,
-                network=inputs.network,
-            )
-            prioritized.update(ls_prioritized)
-            scores.update(ls_scores)
-
-        if splits:
-            bs_prioritized, bs_scores = self._materialise_busbar_actions(
-                splits=splits,
-                env=env,
-                network=inputs.network,
-            )
-            # Line-switch matches win on key collisions — they're the
-            # more specific surface form. In practice the two namespaces
-            # don't overlap (line ids vs node-action ids), but be safe.
-            for aid, action in bs_prioritized.items():
-                if aid not in prioritized:
-                    prioritized[aid] = action
-                    scores[aid] = bs_scores[aid]
-
-        # Cap the merged surfaced list at the requested top-N to keep
-        # the UI feed manageable. Stable sort by score ascending (better
-        # ToOp ranks first, since we negate the score before exposing).
-        if len(prioritized) > n:
-            ranked = sorted(prioritized.keys(), key=lambda a: -scores.get(a, 0.0))[:n]
-            prioritized = {a: prioritized[a] for a in ranked}
-            scores = {a: scores[a] for a in ranked}
-
-        logger.warning(
-            "ToOpRecommender: returning %d prioritized action(s): %s",
+            "ToOpRecommender: returning %d topology action(s): %s",
             len(prioritized), list(prioritized.keys()),
         )
         return RecommenderOutput(
@@ -313,7 +282,7 @@ class ToOpRecommender(RecommenderModel):
         )
 
     # ------------------------------------------------------------------
-    # Internals (kept as methods so tests can patch them individually)
+    # Network export + ToOp invocation
     # ------------------------------------------------------------------
     def _export_network(self, network: Any, iteration_dir: Path) -> Optional[Path]:
         """Save the live pypowsybl Network as XIIDM under ``iteration_dir``.
@@ -365,11 +334,11 @@ class ToOpRecommender(RecommenderModel):
     ) -> Any:
         """Invoke ToOp's ``run_pipeline`` against an XIIDM grid file.
 
-        Mirrors the structure of ``notebooks/example2_small_grid_toop.ipynb``
-        but constrains the Map Elites search to a single
-        ``branch_switches`` descriptor so the optimiser prioritises the
-        line-switching axis (busbar splits are out of scope for this
-        MVP).
+        Mirrors the structure of ``notebooks/example2_small_grid_toop.ipynb``.
+        The Map Elites diversity axis is ``disconnected_branches`` so the
+        search spreads candidates over the number of branches each
+        topology opens; busbar splits emerge from the same search and are
+        folded into the per-topology action downstream.
         """
         # Lazy imports — these symbols only exist when ToOp is installed.
         from toop_engine_topology_optimizer.benchmark.benchmark_utils import (
@@ -417,12 +386,10 @@ class ToOpRecommender(RecommenderModel):
             "lf_config": {"distributed": False},
             "ga_config": {
                 "runtime_seconds": runtime_seconds,
-                # `disconnected_branches` is ToOp's metric for the count
-                # of opened branches in a topology — the right axis for
-                # a line-switching-only Map Elites search. ToOp's
-                # accepted metric names are pinned in
-                # BatchedMEParameters; if it doesn't match the enum,
-                # the optimiser fails with a pydantic ValidationError.
+                # `disconnected_branches` is ToOp's accepted metric name
+                # for the count of opened branches in a topology (the enum
+                # is pinned in BatchedMEParameters; a wrong name fails with
+                # a pydantic ValidationError).
                 "me_descriptors": [{"metric": "disconnected_branches", "num_cells": 4}],
                 "observed_metrics": ["overload_energy_n_1", "disconnected_branches"],
                 "n_worst_contingencies": n_worst_contingencies,
@@ -446,485 +413,266 @@ class ToOpRecommender(RecommenderModel):
             preprocessing_parameters=preprocessing_parameters,
         )
 
-    def _load_output_json(self, path: Path) -> Any:
-        """Read ToOp's DC-optimisation output JSON and return its content.
-
-        Format is currently treated as opaque: the parser downstream
-        (:meth:`_extract_line_switches`) consumes several plausible
-        shapes, so we just hand the decoded payload over and log a
-        sample of the top-level keys for forensic purposes.
-        """
-        import json
-
-        with path.open("r", encoding="utf-8") as fh:
-            data = json.load(fh)
-        if isinstance(data, dict):
-            logger.warning(
-                "ToOpRecommender: output.json top-level keys: %s",
-                sorted(data.keys())[:20],
-            )
-        elif isinstance(data, list):
-            logger.warning(
-                "ToOpRecommender: output.json is a list of %d entries; "
-                "first entry keys: %s",
-                len(data),
-                sorted(data[0].keys())[:20] if data and isinstance(data[0], dict) else None,
-            )
-        return data
-
-    def _extract_busbar_splits_from_topology_paths(
+    # ------------------------------------------------------------------
+    # Per-topology combined-action construction
+    # ------------------------------------------------------------------
+    def _build_topology_actions(
         self,
-        topology_paths: Iterable[Any],
+        topology_paths: List[Any],
         original_grid_file: Path,
-    ) -> List[Tuple[str, Dict[str, bool], float]]:
-        """Return ``[(vl_id, {switch_id: new_open}, rank_score)]`` triples.
+        env: Any,
+        network: Any,
+        include_busbar_splits: bool,
+        n: int,
+    ) -> Tuple[Dict[str, Any], Dict[str, float], List[dict], Dict[str, Any]]:
+        """Build one combined grid2op action per ToOp topology.
 
-        Diffs each topology's switch states (via
-        ``Network.get_switches()``) against the original grid. A
-        voltage level whose internal switches changed open/closed
-        state — but whose line terminal connections did NOT, so
-        line-switch extraction missed it — is a *busbar split*: ToOp
-        reconfigured the node-breaker topology inside a substation.
+        Each topology directory holds a ``modified_network.xiidm`` — the
+        full target state. We diff it against the input grid along two
+        axes (line connection flags + per-VL internal switch states) and
+        fold every change into ONE merged action content + one grid2op
+        action object. Simulated as a whole by the assessment phase, that
+        single object yields the *true* combined ``max_rho`` ToOp
+        optimised — not the misleading effect of its parts in isolation.
 
-        Returns one triple per affected VL, sorted best-first (rank 0
-        = ``topology_0``). The switch dict captures *which* switches
-        flipped and to *which* state — the payload `_materialise_busbar_actions`
-        needs to synthesise a switch-based action in the exact shape
-        the pypowsybl backend (and operator-curated coupling actions)
-        consume. De-duplicated by VL keeping the best-rank topology's
-        switch set.
+        Returns ``(prioritized, scores, groups, dict_entries)``:
+
+        - ``prioritized``  ``{topology_id: action_object}``
+        - ``scores``       ``{topology_id: -rank}`` (UI sorts higher-first)
+        - ``groups``       ``[{topology_id, constituents, rank,
+          line_count, switch_vls}]`` — consumed by the service
+          integration to build the combined-action card.
+        - ``dict_entries`` ``{topology_id: {content, switches, …}}`` —
+          injected into the service ``_dict_action`` for re-simulation.
         """
         import pypowsybl.network as pn
 
         try:
             original = pn.load(str(original_grid_file))
+            orig_lines = original.get_lines()
             orig_switches = original.get_switches()
         except Exception:
             logger.exception(
-                "ToOpRecommender: cannot read switches from original grid %s",
+                "ToOpRecommender: cannot reload original grid %s for diff.",
                 original_grid_file,
             )
-            return []
+            return {}, {}, [], {}
 
-        if "open" not in orig_switches.columns or "voltage_level_id" not in orig_switches.columns:
-            logger.warning(
-                "ToOpRecommender: pypowsybl get_switches() lacks expected "
-                "columns (have %s); skipping busbar-split detection.",
-                list(orig_switches.columns),
-            )
-            return []
-
-        orig_open: Dict[str, bool] = {}
-        orig_vl: Dict[str, str] = {}
-        for sid in orig_switches.index:
-            try:
-                orig_open[sid] = bool(orig_switches.at[sid, "open"])
-                orig_vl[sid] = str(orig_switches.at[sid, "voltage_level_id"])
-            except Exception:
-                continue
-
-        # vl_id -> (best_rank_so_far, {switch_id: new_open_state})
-        best: Dict[str, Tuple[float, Dict[str, bool]]] = {}
-        for rank, topo in enumerate(topology_paths or []):
-            topo_dir = Path(topo) if not isinstance(topo, Path) else topo
-            modified = topo_dir / "modified_network.xiidm"
-            if not modified.exists():
-                continue
-            try:
-                mod_net = pn.load(str(modified))
-                mod_switches = mod_net.get_switches()
-            except Exception:
-                logger.exception(
-                    "ToOpRecommender: cannot read switches from %s",
-                    modified,
-                )
-                continue
-
-            per_vl: Dict[str, Dict[str, bool]] = {}
-            for sid in mod_switches.index:
-                if sid not in orig_open:
-                    continue
+        orig_line_open = {lid: _is_line_open(orig_lines, lid) for lid in orig_lines.index}
+        has_switch_cols = (
+            "open" in orig_switches.columns and "voltage_level_id" in orig_switches.columns
+        )
+        orig_sw_open: Dict[str, bool] = {}
+        orig_sw_vl: Dict[str, str] = {}
+        if has_switch_cols:
+            for sid in orig_switches.index:
                 try:
-                    new_open = bool(mod_switches.at[sid, "open"])
+                    orig_sw_open[sid] = bool(orig_switches.at[sid, "open"])
+                    orig_sw_vl[sid] = str(orig_switches.at[sid, "voltage_level_id"])
                 except Exception:
                     continue
-                if new_open == orig_open[sid]:
-                    continue
-                vl = orig_vl.get(sid)
-                if not vl:
-                    continue
-                per_vl.setdefault(vl, {})[sid] = new_open
-
-            for vl, switches in per_vl.items():
-                cur = best.get(vl)
-                if cur is None or rank < cur[0]:
-                    best[vl] = (float(rank), switches)
-
-        return sorted(
-            [(vl, switches, rank) for vl, (rank, switches) in best.items()],
-            key=lambda triple: triple[2],
-        )
-
-    def _materialise_busbar_actions(
-        self,
-        splits: List[Tuple[str, Dict[str, bool], float]],
-        env: Any,
-        network: Any,
-    ) -> Tuple[Dict[str, Any], Dict[str, float]]:
-        """Synthesize switch-based actions from ToOp's split decisions.
-
-        The pypowsybl backend in ``expert_op4grid_recommender`` accepts
-        the same switch-action format the operator's curated coupling
-        actions use: top-level ``VoltageLevelId`` + ``switches`` dict
-        mapping ``<vl_id>_<switch_id>`` → ``true`` (open) / ``false``
-        (closed). The ``content`` field can be left ``None`` and is
-        populated by ``enrich_actions_lazy``, which reads the live
-        network to compute the resulting per-connectable bus
-        assignments.
-
-        We build one synthetic action per VL ToOp split (grouping all
-        switches it flipped in that VL), enrich, and hand the
-        materialised content to ``env.action_space``. Score is ToOp's
-        topology rank, negated so "higher is better" matches the UI's
-        sort convention.
-        """
-        if not splits:
-            return {}, {}
-
-        try:
-            from expert_op4grid_recommender.data_loader import enrich_actions_lazy
-        except Exception as exc:
+        elif include_busbar_splits:
             logger.warning(
-                "ToOpRecommender: enrich_actions_lazy not importable (%s: %s); "
-                "cannot synthesize busbar-split actions.",
-                type(exc).__name__, exc,
+                "ToOpRecommender: get_switches() lacks open/voltage_level_id "
+                "columns (have %s); busbar splits will be omitted.",
+                list(orig_switches.columns),
             )
-            return {}, {}
 
-        # Build a raw dict_action containing only our synthesised entries.
-        raw: Dict[str, Dict[str, Any]] = {}
-        pending: List[Tuple[str, str, float]] = []
-        for vl_id, switches, rank in splits:
-            if not switches:
-                continue
-            prefixed = {
-                (sid if sid.startswith(f"{vl_id}_") else f"{vl_id}_{sid}"): bool(new_open)
-                for sid, new_open in switches.items()
-            }
-            action_id = f"toop_split_{vl_id}"
-            sample = ", ".join(sorted(prefixed.keys())[:3])
-            raw[action_id] = {
-                "description": (
-                    f"ToOp: substation reconfiguration at '{vl_id}' "
-                    f"({len(prefixed)} switch operation(s): {sample}"
-                    f"{'…' if len(prefixed) > 3 else ''})"
-                ),
-                "description_unitaire": f"ToOp: split at {vl_id}",
-                "VoltageLevelId": vl_id,
-                "switches": prefixed,
-                # content=None → enrich_actions_lazy computes it on demand.
-                "content": None,
-            }
-            pending.append((action_id, vl_id, rank))
-
-        if not raw:
-            return {}, {}
-
-        try:
-            enriched = enrich_actions_lazy(raw, network)
-        except Exception:
-            logger.exception(
-                "ToOpRecommender: enrich_actions_lazy failed; "
-                "cannot synthesize busbar-split actions."
-            )
-            return {}, {}
+        enrich = _import_enrich()
 
         prioritized: Dict[str, Any] = {}
         scores: Dict[str, float] = {}
-        for action_id, vl_id, rank in pending:
-            entry = enriched.get(action_id) if hasattr(enriched, "get") else None
-            if not isinstance(entry, dict):
-                # LazyActionDict supports mapping access but not
-                # always .get(); fall back to direct indexing.
-                try:
-                    entry = enriched[action_id]
-                except Exception:
-                    logger.warning(
-                        "ToOpRecommender: enriched dict lacks %s — skipping.",
-                        action_id,
-                    )
-                    continue
-            try:
-                content = entry.get("content") if isinstance(entry, dict) else None
-            except Exception:
-                logger.exception(
-                    "ToOpRecommender: content compute failed for %s (VL %s).",
-                    action_id, vl_id,
-                )
-                continue
-            if content is None:
-                logger.warning(
-                    "ToOpRecommender: enrich_actions_lazy did not populate "
-                    "content for %s (VL %s) — backend cannot apply this split.",
-                    action_id, vl_id,
-                )
-                continue
-            try:
-                prioritized[action_id] = env.action_space(content)
-            except Exception as e:
-                logger.debug(
-                    "ToOpRecommender: env.action_space() rejected %s (VL %s): %s",
-                    action_id, vl_id, e,
-                )
-                continue
-            scores[action_id] = -float(rank)
-            logger.warning(
-                "ToOpRecommender: synthesized busbar action %s for VL %s "
-                "with %d switch operation(s).",
-                action_id, vl_id, len(raw[action_id]["switches"]),
-            )
+        groups: List[dict] = []
+        dict_entries: Dict[str, Any] = {}
 
-        return prioritized, scores
-
-    def _extract_switches_from_topology_paths(
-        self,
-        topology_paths: Iterable[Any],
-        original_grid_file: Path,
-        n: int,
-    ) -> List[Tuple[str, int, float]]:
-        """Diff each topology's ``modified_network.xiidm`` against the input grid.
-
-        For every topology directory ToOp surfaces, load
-        ``modified_network.xiidm`` and compare per-line ``connected1`` /
-        ``connected2`` flags against the original exported grid. Lines
-        that flipped are returned as ``(line_id, target_status, score)``
-        tuples where ``target_status`` is ``-1`` (opened) or ``+1``
-        (closed). Score is the topology's rank in ``topology_paths``
-        (ToOp returns them best-first), so the surfaced list mirrors
-        ToOp's own ordering. Duplicate (line, status) pairs across
-        topologies keep the best (lowest-rank) score.
-        """
-        import pypowsybl.network as pn  # lazy: only loaded when ToOp ran
-
-        try:
-            original = pn.load(str(original_grid_file))
-            original_lines = original.get_lines()
-        except Exception:
-            logger.exception(
-                "ToOpRecommender: cannot reload original grid file %s for diff.",
-                original_grid_file,
-            )
-            return []
-
-        original_open: Dict[str, bool] = {}
-        for line_id in original_lines.index:
-            original_open[line_id] = _is_line_open(original_lines, line_id)
-
-        best: Dict[Tuple[str, int], float] = {}
         for rank, topo in enumerate(topology_paths or []):
+            if len(prioritized) >= n:
+                break
             topo_dir = Path(topo) if not isinstance(topo, Path) else topo
             modified = topo_dir / "modified_network.xiidm"
             if not modified.exists():
-                logger.warning(
-                    "ToOpRecommender: no modified_network.xiidm under %s",
-                    topo_dir,
-                )
+                logger.warning("ToOpRecommender: no modified_network.xiidm under %s", topo_dir)
                 continue
             try:
                 mod_net = pn.load(str(modified))
                 mod_lines = mod_net.get_lines()
+                mod_switches = mod_net.get_switches() if has_switch_cols else None
             except Exception:
-                logger.exception(
-                    "ToOpRecommender: cannot load %s for diff.", modified,
+                logger.exception("ToOpRecommender: cannot load %s for diff.", modified)
+                continue
+
+            # --- line toggles ---
+            line_toggles: Dict[str, int] = {}
+            for lid in mod_lines.index:
+                if lid not in orig_line_open:
+                    continue
+                new_open = _is_line_open(mod_lines, lid)
+                if new_open != orig_line_open[lid]:
+                    line_toggles[lid] = -1 if new_open else 1
+
+            # --- switch toggles grouped by VL (busbar splits) ---
+            vl_switches: Dict[str, Dict[str, bool]] = {}
+            if include_busbar_splits and mod_switches is not None:
+                for sid in mod_switches.index:
+                    if sid not in orig_sw_open:
+                        continue
+                    try:
+                        new_open = bool(mod_switches.at[sid, "open"])
+                    except Exception:
+                        continue
+                    if new_open == orig_sw_open[sid]:
+                        continue
+                    vl = orig_sw_vl.get(sid)
+                    if not vl:
+                        continue
+                    key = sid if sid.startswith(f"{vl}_") else f"{vl}_{sid}"
+                    vl_switches.setdefault(vl, {})[key] = new_open
+
+            if not line_toggles and not vl_switches:
+                logger.warning(
+                    "ToOpRecommender: topology #%d (%s) differs by 0 lines / "
+                    "0 switches; skipping.",
+                    rank + 1, topo_dir.name,
                 )
                 continue
-            for line_id in mod_lines.index:
-                if line_id not in original_open:
-                    continue
-                new_open = _is_line_open(mod_lines, line_id)
-                if new_open == original_open[line_id]:
-                    continue
-                target_status = -1 if new_open else 1
-                key = (line_id, target_status)
-                score = float(rank)
-                if key not in best or score < best[key]:
-                    best[key] = score
 
-        ranked = sorted(best.items(), key=lambda kv: kv[1])
-        return [(lid, st, sc) for ((lid, st), sc) in ranked[:n]]
-
-    def _extract_line_switches(
-        self,
-        pareto: Any,
-        n: int,
-    ) -> List[Tuple[str, int, float]]:
-        """Pull line-switching decisions out of a ToOp result.
-
-        Returns a list of ``(line_id, target_status, score)`` tuples
-        sorted by ``score`` (lower congestion = better, surfaced first).
-        ``target_status`` is +1 (close) or -1 (open).
-
-        The exact return shape of ``run_pipeline`` is not nailed down
-        by the upstream docs (the example notebooks write results to
-        disk via ``topo_path``), so this parser accepts several
-        plausible shapes:
-
-        - An iterable of dicts each carrying ``line_switches`` (list of
-          ``{"line_id", "status"}`` or ``{"line_id", "open"}``) and a
-          numeric score (``overload_energy_n_1`` / ``score`` / ``cost``).
-        - An object with a ``.solutions`` attribute holding the same.
-
-        When the shape is unrecognised we log once and return an empty
-        list. The frontend then shows an empty action feed and the
-        operator can pick a different model — far less disruptive than
-        raising mid-stream.
-        """
-        candidates: Iterable[Any]
-        if pareto is None:
-            return []
-        if hasattr(pareto, "solutions"):
-            candidates = pareto.solutions
-        elif isinstance(pareto, (list, tuple)):
-            candidates = pareto
-        elif hasattr(pareto, "__iter__"):
-            candidates = pareto
-        else:
-            logger.warning(
-                "ToOpRecommender: unrecognised result shape %r; "
-                "extend _extract_line_switches when ToOp's output is finalised.",
-                type(pareto).__name__,
+            merged, constituents = self._merge_topology_content(
+                line_toggles=line_toggles,
+                vl_switches=vl_switches,
+                enrich=enrich,
+                network=network,
             )
-            return []
-
-        # Flatten (solution, switch) into a single ranked list so the
-        # top-N surfacing is per-switch, not per-solution. Two
-        # solutions that both open the same line are deduplicated
-        # keeping the better score.
-        best_by_key: Dict[Tuple[str, int], float] = {}
-        for sol in candidates:
-            score = _coerce_score(sol)
-            for line_id, target_status in _iter_switches(sol):
-                key = (line_id, target_status)
-                if key not in best_by_key or score < best_by_key[key]:
-                    best_by_key[key] = score
-
-        ranked = sorted(best_by_key.items(), key=lambda kv: kv[1])
-        return [(line_id, status, score) for ((line_id, status), score) in ranked[:n]]
-
-    def _materialise_actions(
-        self,
-        switches: List[Tuple[str, int, float]],
-        env: Any,
-        dict_action: Optional[Dict[str, Any]],
-        non_connected_reconnectable_lines: Optional[Iterable[str]],
-        network: Any,
-    ) -> Tuple[Dict[str, Any], Dict[str, float]]:
-        """Translate ToOp line-switches into ``env.action_space`` actions.
-
-        Prefers an existing ``disco_<line>`` / reconnection entry in the
-        operator's action dictionary when one exists (so suggestions
-        match the vocabulary the user is already familiar with);
-        otherwise synthesises a ``toop_disco_<line>`` /
-        ``toop_reco_<line>`` entry on the fly. Actions whose target
-        line isn't on the loaded network are filtered out via the same
-        defensive guard used by the random recommenders.
-        """
-        # Network existence filter on the raw line IDs first.
-        line_ids = [line_id for (line_id, _, _) in switches]
-        synthetic_entries = {
-            f"_existence_check_{line_id}": {
-                "content": {
-                    "set_bus": {
-                        "lines_or_id": {line_id: 1},
-                        "lines_ex_id": {line_id: 1},
-                    }
-                }
-            }
-            for line_id in line_ids
-        }
-        kept = set(
-            filter_to_existing_network_elements(
-                list(synthetic_entries.keys()),
-                synthetic_entries,
-                network,
-            )
-        )
-        # Map back from check-id to line_id.
-        kept_lines = {sid.replace("_existence_check_", "", 1) for sid in kept}
-
-        reconnectable = set(non_connected_reconnectable_lines or [])
-        prioritized: Dict[str, Any] = {}
-        scores: Dict[str, float] = {}
-
-        for line_id, target_status, score in switches:
-            if line_id not in kept_lines:
+            if merged is None:
+                logger.warning(
+                    "ToOpRecommender: topology #%d produced no simulable content; skipping.",
+                    rank + 1,
+                )
                 continue
-
-            action_id, content = self._pick_action_for_switch(
-                line_id=line_id,
-                target_status=target_status,
-                dict_action=dict_action,
-                reconnectable=reconnectable,
-            )
             try:
-                prioritized[action_id] = env.action_space(content)
+                action_obj = env.action_space(merged)
             except Exception as e:
-                logger.debug("ToOpRecommender: action %s rejected by env: %s", action_id, e)
+                logger.warning(
+                    "ToOpRecommender: topology #%d rejected by env.action_space: %s",
+                    rank + 1, e,
+                )
                 continue
-            # Lower congestion = better in ToOp's metric; surface the
-            # negated score so the UI's "higher is better" sort agrees.
-            scores[action_id] = -float(score)
 
-        return prioritized, scores
-
-    @staticmethod
-    def _pick_action_for_switch(
-        line_id: str,
-        target_status: int,
-        dict_action: Optional[Dict[str, Any]],
-        reconnectable: set,
-    ) -> Tuple[str, Dict[str, Any]]:
-        """Return ``(action_id, content)`` for a single line-switch decision."""
-        if target_status == -1:
-            preferred_id = f"disco_{line_id}"
-            if isinstance(dict_action, dict) and preferred_id in dict_action:
-                content = (dict_action[preferred_id] or {}).get("content")
-                if content is not None:
-                    return preferred_id, content
-            # Fallback: synthesise the open-line content.
-            return (
-                f"toop_disco_{line_id}",
-                {
-                    "set_bus": {
-                        "lines_or_id": {line_id: -1},
-                        "lines_ex_id": {line_id: -1},
-                    }
-                },
+            topology_id = f"toop_topology_{rank + 1}"
+            description = f"ToOp topology #{rank + 1}: " + "; ".join(constituents)
+            prioritized[topology_id] = action_obj
+            scores[topology_id] = -float(rank)
+            groups.append({
+                "topology_id": topology_id,
+                "constituents": constituents,
+                "rank": rank,
+                "line_count": len(line_toggles),
+                "switch_vls": sorted(vl_switches.keys()),
+            })
+            # Flatten all VL switch dicts into one for the dict_action entry.
+            flat_switches = {k: v for sw in vl_switches.values() for k, v in sw.items()}
+            dict_entries[topology_id] = {
+                "description": description,
+                "description_unitaire": description,
+                "VoltageLevelId": (sorted(vl_switches.keys())[0] if vl_switches else None),
+                "switches": flat_switches,
+                "content": merged,
+            }
+            logger.warning(
+                "ToOpRecommender: topology #%d → %s (%d line toggle(s), %d VL split(s))",
+                rank + 1, topology_id, len(line_toggles), len(vl_switches),
             )
 
-        # target_status == +1 → reconnection. Only meaningful when the
-        # line is currently disconnected; if it isn't reconnectable the
-        # action will be a no-op but we still produce it (ToOp may know
-        # something we don't about the live state).
-        if line_id in reconnectable:
-            preferred_id = f"reco_{line_id}"
-            if isinstance(dict_action, dict) and preferred_id in dict_action:
-                content = (dict_action[preferred_id] or {}).get("content")
-                if content is not None:
-                    return preferred_id, content
-        return (
-            f"toop_reco_{line_id}",
-            {
-                "set_bus": {
-                    "lines_or_id": {line_id: 1},
-                    "lines_ex_id": {line_id: 1},
-                }
+        return prioritized, scores, groups, dict_entries
+
+    def _merge_topology_content(
+        self,
+        line_toggles: Dict[str, int],
+        vl_switches: Dict[str, Dict[str, bool]],
+        enrich: Optional[Any],
+        network: Any,
+    ) -> Tuple[Optional[Dict[str, Any]], List[str]]:
+        """Fold line toggles + per-VL switch flips into one action content.
+
+        The busbar splits are enriched per-VL via ``enrich_actions_lazy``
+        (which reads the live network to resolve each switch set into
+        per-connectable ``set_bus`` assignments), then unioned into one
+        merged ``set_bus`` / ``switches`` payload. Line toggles are
+        applied last so an explicit open/close wins over a split's bus
+        assignment for the same branch.
+
+        Returns ``(merged_content, constituents)``. ``merged_content`` is
+        ``None`` when nothing simulable could be built (every VL failed to
+        enrich and there were no line toggles). ``constituents`` is the
+        human-readable label list for the combined-action card.
+        """
+        merged: Dict[str, Any] = {
+            "set_bus": {
+                "lines_or_id": {}, "lines_ex_id": {},
+                "loads_id": {}, "generators_id": {}, "shunts_id": {},
             },
-        )
+            "switches": {},
+        }
+        constituents: List[str] = []
+
+        if vl_switches and enrich is not None:
+            raw = {
+                f"_toop_vl_{vl_id}": {
+                    "VoltageLevelId": vl_id,
+                    "switches": dict(switches),
+                    "content": None,
+                }
+                for vl_id, switches in vl_switches.items()
+            }
+            try:
+                enriched = enrich(raw, network)
+            except Exception:
+                logger.exception(
+                    "ToOpRecommender: enrich_actions_lazy failed during topology merge."
+                )
+                enriched = {}
+            for vl_id in vl_switches:
+                key = f"_toop_vl_{vl_id}"
+                entry = None
+                try:
+                    entry = enriched.get(key) if hasattr(enriched, "get") else enriched[key]
+                except Exception:
+                    entry = None
+                content = entry.get("content") if isinstance(entry, dict) else None
+                if not content:
+                    logger.warning(
+                        "ToOpRecommender: could not enrich VL %s split (%d switch(es)); "
+                        "excluded from this topology.",
+                        vl_id, len(vl_switches[vl_id]),
+                    )
+                    continue
+                set_bus = content.get("set_bus", {}) if isinstance(content, dict) else {}
+                for sub_key in ("lines_or_id", "lines_ex_id", "loads_id",
+                                "generators_id", "shunts_id"):
+                    sub = set_bus.get(sub_key)
+                    if isinstance(sub, dict):
+                        merged["set_bus"][sub_key].update(sub)
+                sw = content.get("switches", {}) if isinstance(content, dict) else {}
+                if isinstance(sw, dict):
+                    merged["switches"].update(sw)
+                constituents.append(f"split {vl_id}")
+        elif vl_switches and enrich is None:
+            logger.warning(
+                "ToOpRecommender: enrich unavailable — %d busbar split(s) omitted "
+                "from this topology.", len(vl_switches),
+            )
+
+        for line_id, status in line_toggles.items():
+            merged["set_bus"]["lines_or_id"][line_id] = status
+            merged["set_bus"]["lines_ex_id"][line_id] = status
+            constituents.append(("open " if status == -1 else "close ") + line_id)
+
+        if not constituents:
+            return None, []
+        return merged, constituents
 
 
 # ---------------------------------------------------------------------
-# Tolerant parsers — kept module-level so tests can swap them out.
+# Module-level helpers — kept module-level so tests can swap them out.
 # ---------------------------------------------------------------------
 def _is_line_open(lines_df: Any, line_id: str) -> bool:
     """Return True when at least one terminal of the line is disconnected.
@@ -933,9 +681,8 @@ def _is_line_open(lines_df: Any, line_id: str) -> bool:
     booleans on its lines DataFrame. A line is "open" (in operator
     terms) when *either* terminal is disconnected. Older pypowsybl
     builds used different column names — fall back conservatively to
-    ``connected`` or treat the line as closed when columns are
-    missing so a schema change doesn't silently flag every line as
-    toggled.
+    ``connected`` or treat the line as closed when columns are missing so
+    a schema change doesn't silently flag every line as toggled.
     """
     for col_pair in (("connected1", "connected2"), ("connected",)):
         if all(c in lines_df.columns for c in col_pair):
@@ -947,62 +694,3 @@ def _is_line_open(lines_df: Any, line_id: str) -> bool:
                     return False
             return False
     return False
-
-
-def _coerce_score(sol: Any) -> float:
-    """Pull a numeric congestion score off a ToOp solution-like object.
-
-    Tries the metric names visible in the example notebook
-    (``overload_energy_n_1``), then generic fallbacks. Returns
-    ``float('inf')`` when nothing recognisable is present so the
-    solution sinks to the bottom of the ranking rather than crashing
-    the sort.
-    """
-    for key in ("overload_energy_n_1", "score", "cost", "objective"):
-        if isinstance(sol, dict) and key in sol:
-            try:
-                return float(sol[key])
-            except (TypeError, ValueError):
-                continue
-        if hasattr(sol, key):
-            try:
-                return float(getattr(sol, key))
-            except (TypeError, ValueError):
-                continue
-    return float("inf")
-
-
-def _iter_switches(sol: Any) -> Iterable[Tuple[str, int]]:
-    """Yield ``(line_id, target_status)`` pairs out of a solution-like object."""
-    raw = None
-    if isinstance(sol, dict):
-        raw = sol.get("line_switches") or sol.get("branch_switches")
-    elif hasattr(sol, "line_switches"):
-        raw = sol.line_switches
-    elif hasattr(sol, "branch_switches"):
-        raw = sol.branch_switches
-    if not raw:
-        return
-    for entry in raw:
-        line_id = None
-        status: Optional[int] = None
-        if isinstance(entry, dict):
-            line_id = entry.get("line_id") or entry.get("branch_id") or entry.get("id")
-            if "status" in entry:
-                try:
-                    status = int(entry["status"])
-                except (TypeError, ValueError):
-                    status = None
-            elif "open" in entry:
-                status = -1 if entry["open"] else 1
-            elif "closed" in entry:
-                status = 1 if entry["closed"] else -1
-        elif isinstance(entry, (list, tuple)) and len(entry) == 2:
-            line_id, raw_status = entry
-            try:
-                status = int(raw_status)
-            except (TypeError, ValueError):
-                status = None
-        if not line_id or status not in (-1, 1):
-            continue
-        yield (str(line_id), status)

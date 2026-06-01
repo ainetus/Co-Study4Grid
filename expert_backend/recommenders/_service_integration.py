@@ -279,6 +279,55 @@ def _run_analysis_step2_with_model(
         action_scores = self._compute_mw_start_for_scores(
             results.get("action_scores", {})
         )
+
+        # ToOp: reformat each candidate topology into ONE combined-action
+        # card. Each topology was returned as a single merged prioritized
+        # action and REALLY simulated by the assessment phase above, so
+        # ``enriched_actions`` already carries its true combined max_rho.
+        # Move those entries out of the main feed and into
+        # ``combined_actions`` (the channel the operator selected), and
+        # inject the merged contents into ``_dict_action`` so each card
+        # stays re-simulatable / session-saveable.
+        topo_groups = getattr(recommender, "_last_topology_groups", None)
+        if topo_groups:
+            combined = results.get("combined_actions", {}) or {}
+            topo_entries = getattr(recommender, "_last_topology_dict_entries", {}) or {}
+            if self._dict_action is None:
+                self._dict_action = {}
+            self._dict_action.update(topo_entries)
+            for grp in topo_groups:
+                tid = grp["topology_id"]
+                enriched = enriched_actions.pop(tid, None)
+                if enriched is None:
+                    continue
+                constituents = grp.get("constituents", []) or []
+                combined[tid] = {
+                    # N-way combination metadata. action1_id/action2_id are
+                    # kept (first two constituents) so the legacy 2-up pairs
+                    # table still renders something before the N-way UI lands.
+                    "constituent_ids": constituents,
+                    "constituent_count": len(constituents),
+                    "action1_id": constituents[0] if constituents else "",
+                    "action2_id": constituents[1] if len(constituents) > 1 else "",
+                    "description": "ToOp: " + ", ".join(constituents),
+                    "betas": [],
+                    "is_toop_topology": True,
+                    "rank": grp.get("rank"),
+                    # Real simulation results carried from the assessment.
+                    "max_rho": enriched.get("max_rho"),
+                    "max_rho_line": enriched.get("max_rho_line"),
+                    "target_max_rho": enriched.get("max_rho"),
+                    "target_max_rho_line": enriched.get("max_rho_line"),
+                    "simulated_max_rho": enriched.get("max_rho"),
+                    "simulated_max_rho_line": enriched.get("max_rho_line"),
+                    "is_simulated": True,
+                    "is_rho_reduction": enriched.get("is_rho_reduction"),
+                    "rho_before": enriched.get("rho_before"),
+                    "rho_after": enriched.get("rho_after"),
+                    "lines_overloaded_after": enriched.get("lines_overloaded_after"),
+                }
+            results["combined_actions"] = combined
+
         enrichment_time = time.time() - _t_enrich
 
         logger.info(
