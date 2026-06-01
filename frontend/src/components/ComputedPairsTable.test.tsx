@@ -155,4 +155,45 @@ describe('ComputedPairsTable', () => {
         render(<ComputedPairsTable {...defaultProps} computedPairsList={[islandedPair]} />);
         expect(screen.getByTitle('Islanding detected')).toBeInTheDocument();
     });
+
+    describe('ToOp candidate topology row', () => {
+        const topologyRow: ComputedPairEntry = {
+            id: 'toop_topology_3',
+            action1: 'split GROSNP7',
+            action2: 'split VIELMP6',
+            is_suspect: false,
+            isSimulated: true,
+            simulated_max_rho: 0.92,
+            simulated_max_rho_line: 'BEON L31CPVAN',
+            simData: { max_rho: 0.92, max_rho_line: 'BEON L31CPVAN', is_rho_reduction: true },
+            is_toop_topology: true,
+            constituent_ids: ['split GROSNP7', 'split VIELMP6', 'open GROSNL71SSV.O'],
+        };
+
+        it('renders a friendly topology title and the constituent chips', () => {
+            render(<ComputedPairsTable {...defaultProps} computedPairsList={[topologyRow]} />);
+            expect(screen.getByText(/ToOp topology #3/)).toBeInTheDocument();
+            expect(screen.getByText('split GROSNP7')).toBeInTheDocument();
+            expect(screen.getByText('split VIELMP6')).toBeInTheDocument();
+            expect(screen.getByText('open GROSNL71SSV.O')).toBeInTheDocument();
+        });
+
+        it('shows the real simulated max-loading badge', () => {
+            render(<ComputedPairsTable {...defaultProps} computedPairsList={[topologyRow]} />);
+            expect(screen.getByText('92.0%')).toBeInTheDocument();
+        });
+
+        it('re-simulates by topology id (not a + join)', () => {
+            const onSimulate = vi.fn();
+            render(
+                <ComputedPairsTable
+                    {...defaultProps}
+                    computedPairsList={[topologyRow]}
+                    onSimulate={onSimulate}
+                />,
+            );
+            fireEvent.click(screen.getByText('Re-Simulate'));
+            expect(onSimulate).toHaveBeenCalledWith('toop_topology_3');
+        });
+    });
 });

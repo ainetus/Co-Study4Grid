@@ -131,6 +131,20 @@ export interface CombinedAction {
     target_max_rho?: number | null;
     target_max_rho_line?: string;
     error?: string;
+    // ToOp N-way candidate topology (ToOp recommender integration). When
+    // `is_toop_topology` is set this entry represents a whole optimised
+    // topology rather than a 2-action superposition pair: `constituent_ids`
+    // lists every elementary move it bundles, and the rho fields carry a
+    // REAL simulation of the full combination (`is_simulated` = true), not
+    // a superposition estimate. `action1_id` / `action2_id` are still
+    // populated with the first two constituents for legacy rendering.
+    is_toop_topology?: boolean;
+    constituent_ids?: string[];
+    constituent_count?: number;
+    is_simulated?: boolean;
+    simulated_max_rho?: number | null;
+    simulated_max_rho_line?: string;
+    rank?: number;
 }
 
 export interface AnalysisResult {

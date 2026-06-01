@@ -32,6 +32,16 @@ export interface ComputedPairEntry {
     simulated_max_rho: number | null;
     simulated_max_rho_line: string | null;
     simData: ActionDetail | SimulationFeedback | null;
+    // ToOp N-way candidate topology: render the constituent list across the
+    // pair columns instead of the 2-up Action 1 / Action 2 / Betas / Est.
+    is_toop_topology?: boolean;
+    constituent_ids?: string[];
+}
+
+/** "toop_topology_3" → "ToOp topology #3"; falls back to the raw id. */
+function topologyTitle(id: string): string {
+    const m = /^toop_topology_(\d+)$/.exec(id);
+    return m ? `ToOp topology #${m[1]}` : id;
 }
 
 interface ComputedPairsTableProps {
@@ -75,6 +85,73 @@ const ComputedPairsTable: React.FC<ComputedPairsTableProps> = ({
                         const estMaxRho = p.estimated_max_rho;
                         const isSimulated = p.isSimulated;
                         const simMaxRho = p.simulated_max_rho;
+
+                        // ToOp candidate topology: one combined card per
+                        // optimised topology. Render the constituent list
+                        // across the pair columns and the real simulated
+                        // loading on the right. Re-Simulate replays the whole
+                        // combination by its topology id.
+                        if (p.is_toop_topology) {
+                            return (
+                                <tr key={p.id}>
+                                    <td colSpan={5} style={{ fontSize: '12px' }}>
+                                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                                            🧩 {topologyTitle(p.id)}
+                                        </div>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                            {(p.constituent_ids || []).map((c, i) => (
+                                                <span key={i} style={{
+                                                    fontSize: '11px',
+                                                    padding: '2px 6px',
+                                                    borderRadius: '4px',
+                                                    background: colors.surfaceMuted,
+                                                    color: colors.textSecondary,
+                                                    border: `1px solid ${colors.borderSubtle}`,
+                                                }}>{c}</span>
+                                            ))}
+                                        </div>
+                                    </td>
+                                    <td style={{ textAlign: 'center' }}>
+                                        {simMaxRho != null ? (
+                                            <span className="metric-badge metric-rho" style={{
+                                                background: simMaxRho > monitoringFactor ? colors.dangerSoft : simMaxRho > (monitoringFactor - 0.05) ? colors.warningSoft : colors.successSoft,
+                                                color: simMaxRho > monitoringFactor ? colors.dangerText : simMaxRho > (monitoringFactor - 0.05) ? colors.warningText : colors.successStrong,
+                                            }}>
+                                                {(simMaxRho * 100).toFixed(1)}%
+                                                {(p.simData as ActionDetail | SimulationFeedback)?.is_islanded && (
+                                                    <span style={{ fontSize: '10px', marginLeft: '4px' }} title="Islanding detected">🏝️</span>
+                                                )}
+                                            </span>
+                                        ) : (
+                                            <span style={{ color: colors.textTertiary, fontSize: '11px' }}>—</span>
+                                        )}
+                                    </td>
+                                    <td style={{ fontSize: '11px', color: colors.textPrimary, fontWeight: 'bold' }}>
+                                        {p.simulated_max_rho_line ? displayName(p.simulated_max_rho_line) : '-'}
+                                    </td>
+                                    <td>
+                                        <button
+                                            onClick={() => onSimulate(p.id)}
+                                            disabled={simulating}
+                                            style={{
+                                                padding: '6px 14px',
+                                                background: colors.brand,
+                                                color: colors.textOnBrand,
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                cursor: simulating ? 'not-allowed' : 'pointer',
+                                                fontSize: '11px',
+                                                fontWeight: 'bold',
+                                                opacity: simulating ? 0.6 : 1,
+                                                minWidth: '100px',
+                                            }}
+                                        >
+                                            {simulating ? '⌛' : 'Re-Simulate'}
+                                        </button>
+                                    </td>
+                                </tr>
+                            );
+                        }
 
                         return (
                             <tr key={p.id}>
