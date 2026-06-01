@@ -615,8 +615,19 @@ class ToOpRecommender(RecommenderModel):
         constituents: List[str] = []
 
         if vl_switches and enrich is not None:
+            # Match the action-entry shape `enrich_actions_lazy` saw when the
+            # earlier per-VL synthesis worked end-to-end on the same grid:
+            # `description` + `description_unitaire` populated, and the
+            # action-id pattern uses the `toop_split_<vl>` prefix the library
+            # already recognises (a leading underscore + free-form id caused
+            # silent enrichment failure — no content was attached).
             raw = {
-                f"_toop_vl_{vl_id}": {
+                f"toop_split_{vl_id}": {
+                    "description": (
+                        f"ToOp: substation reconfiguration at '{vl_id}' "
+                        f"({len(switches)} switch operation(s))"
+                    ),
+                    "description_unitaire": f"ToOp split at {vl_id}",
                     "VoltageLevelId": vl_id,
                     "switches": dict(switches),
                     "content": None,
@@ -631,18 +642,16 @@ class ToOpRecommender(RecommenderModel):
                 )
                 enriched = {}
             for vl_id in vl_switches:
-                key = f"_toop_vl_{vl_id}"
-                entry = None
-                try:
-                    entry = enriched.get(key) if hasattr(enriched, "get") else enriched[key]
-                except Exception:
-                    entry = None
-                content = entry.get("content") if isinstance(entry, dict) else None
+                key = f"toop_split_{vl_id}"
+                entry = _resolve_lazy_entry(enriched, key)
+                content = _resolve_lazy_content(entry)
                 if not content:
                     logger.warning(
-                        "ToOpRecommender: could not enrich VL %s split (%d switch(es)); "
-                        "excluded from this topology.",
+                        "ToOpRecommender: could not enrich VL %s split (%d switch(es); "
+                        "entry=%s, content=%s); excluded from this topology.",
                         vl_id, len(vl_switches[vl_id]),
+                        type(entry).__name__ if entry is not None else None,
+                        type(content).__name__ if content is not None else None,
                     )
                     continue
                 set_bus = content.get("set_bus", {}) if isinstance(content, dict) else {}
@@ -674,6 +683,57 @@ class ToOpRecommender(RecommenderModel):
 # ---------------------------------------------------------------------
 # Module-level helpers — kept module-level so tests can swap them out.
 # ---------------------------------------------------------------------
+def _resolve_lazy_entry(enriched: Any, key: str) -> Any:
+    """Return ``enriched[key]`` regardless of whether enriched is a plain dict
+    or a ``LazyActionDict`` proxy.
+
+    ``enrich_actions_lazy`` returns a proxy in production: ``.get(key)`` may
+    return ``None`` for keys whose entries haven't been touched yet, while
+    ``proxy[key]`` triggers the lazy resolution. We try both, in that order.
+    """
+    if enriched is None:
+        return None
+    if hasattr(enriched, "get"):
+        try:
+            entry = enriched.get(key)
+            if entry is not None:
+                return entry
+        except Exception:
+            pass
+    try:
+        return enriched[key]
+    except Exception:
+        return None
+
+
+def _resolve_lazy_content(entry: Any) -> Optional[Dict[str, Any]]:
+    """Read ``entry["content"]`` regardless of whether entry is a dict or proxy.
+
+    LazyActionDict wraps its entries so ``isinstance(entry, dict)`` is False
+    even though they behave like one. We try mapping access AND attribute
+    access AND finally fall back to ``.get`` — whichever first returns a
+    populated dict-like value with the keys we need.
+    """
+    if entry is None:
+        return None
+    candidates = []
+    try:
+        candidates.append(entry["content"])
+    except Exception:
+        pass
+    if hasattr(entry, "get"):
+        try:
+            candidates.append(entry.get("content"))
+        except Exception:
+            pass
+    if hasattr(entry, "content"):
+        candidates.append(getattr(entry, "content"))
+    for c in candidates:
+        if c and (isinstance(c, dict) or hasattr(c, "get")):
+            return c if isinstance(c, dict) else None
+    return None
+
+
 def _is_line_open(lines_df: Any, line_id: str) -> bool:
     """Return True when at least one terminal of the line is disconnected.
 
