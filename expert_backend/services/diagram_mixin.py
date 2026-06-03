@@ -55,7 +55,10 @@ from expert_backend.services.diagram.overloads import (
     get_element_max_currents,
     get_overloaded_lines,
 )
-from expert_backend.services.diagram.sld_render import extract_sld_svg_and_metadata
+from expert_backend.services.diagram.sld_render import (
+    extract_sld_svg_and_metadata,
+    extract_vl_switch_states,
+)
 from expert_backend.services.sanitize import sanitize_for_json
 
 logger = logging.getLogger(__name__)
@@ -481,12 +484,14 @@ class DiagramMixin:
         try:
             sld = n.get_single_line_diagram(voltage_level_id)
             svg, sld_metadata = extract_sld_svg_and_metadata(sld)
+            switch_states = extract_vl_switch_states(n, voltage_level_id)
         finally:
             n.set_working_variant(original_variant)
         return {
             "svg": svg,
             "sld_metadata": sld_metadata,
             "voltage_level_id": voltage_level_id,
+            "switch_states": switch_states,
         }
 
     def get_contingency_sld(self, disconnected_elements, voltage_level_id: str) -> dict:
@@ -499,11 +504,13 @@ class DiagramMixin:
         try:
             sld = n.get_single_line_diagram(voltage_level_id)
             svg, sld_metadata = extract_sld_svg_and_metadata(sld)
+            switch_states = extract_vl_switch_states(n, voltage_level_id)
             result = {
                 "svg": svg,
                 "sld_metadata": sld_metadata,
                 "voltage_level_id": voltage_level_id,
                 "disconnected_elements": list(norm),
+                "switch_states": switch_states,
             }
             self._attach_flow_deltas_vs_base(result, n, voltage_level_ids=[voltage_level_id])
             return result
@@ -531,12 +538,14 @@ class DiagramMixin:
         network = nm.network
         sld = network.get_single_line_diagram(voltage_level_id)
         svg, sld_metadata = extract_sld_svg_and_metadata(sld)
+        switch_states = extract_vl_switch_states(network, voltage_level_id)
 
         result = {
             "svg": svg,
             "sld_metadata": sld_metadata,
             "action_id": action_id,
             "voltage_level_id": voltage_level_id,
+            "switch_states": switch_states,
         }
         self._attach_convergence_from_obs(result, obs)
 

@@ -26,6 +26,7 @@ from expert_op4grid_recommender.utils.superposition import (
 from expert_backend.services.sanitize import sanitize_for_json
 from expert_backend.services.simulation_helpers import (
     build_combined_description,
+    build_switch_action_description,
     canonicalize_action_id,
     classify_action_content,
     clamp_tap,
@@ -35,6 +36,7 @@ from expert_backend.services.simulation_helpers import (
     compute_target_max_rho,
     extract_action_topology,
     is_pst_action,
+    is_switch_only_content,
     normalise_non_convergence,
     parse_pst_tap_id,
     pst_fallback_line_idxs,
@@ -135,6 +137,7 @@ class SimulationMixin:
         lines_overloaded=None,
         target_mw=None,
         target_tap=None,
+        voltage_level_id=None,
     ):
         """Simulate a single or combined action and return its impact.
 
@@ -165,7 +168,9 @@ class SimulationMixin:
             self._last_result.get("prioritized_actions", {}) if self._last_result else {}
         )
 
-        self._inject_action_content_entries(action_ids, action_content, recent_actions)
+        self._inject_action_content_entries(
+            action_ids, action_content, recent_actions, voltage_level_id=voltage_level_id
+        )
 
         env = self._get_simulation_env()
         nm = env.network_manager
@@ -334,12 +339,22 @@ class SimulationMixin:
     # read/mutate self state (caches, `_dict_action`, `_last_result`).
     # ------------------------------------------------------------------
 
-    def _inject_action_content_entries(self, action_ids, action_content, recent_actions):
+    def _inject_action_content_entries(
+        self, action_ids, action_content, recent_actions, voltage_level_id=None
+    ):
         """Inject caller-provided topology dicts into `_dict_action`.
 
-        Used on session reload: actions restored from a saved JSON may
-        not be in the action dictionary, and we need their content
-        available before `env.action_space(content)` is called.
+        Used on session reload AND on user-built SLD topology edits:
+        actions whose ID was minted at the call site (e.g.
+        ``user_topo_<vl>_<ts>``) aren't in the action dictionary, and
+        their content has to be available before
+        ``env.action_space(content)`` is called.
+
+        When the content is switch-only (the SLD-edit case) and a
+        ``voltage_level_id`` is provided, the placeholder ``Restored
+        action`` description is replaced with a human-readable one so
+        the resulting card in the frontend feed reads "Manoeuvre
+        manuelle sur <vl>: …" instead of the synthetic id.
         """
         if not action_content:
             return
@@ -351,6 +366,13 @@ class SimulationMixin:
             if not topo:
                 continue
             entry = self._build_action_entry_from_topology(aid, topo)
+            content = entry.get("content") or {}
+            if is_switch_only_content(content):
+                desc = build_switch_action_description(
+                    content["switches"], voltage_level_id=voltage_level_id
+                )
+                entry["description_unitaire"] = desc
+                entry["description"] = desc
             self._dict_action[aid] = entry
             logger.info(
                 "[simulate_manual_action] Injected restored action '%s' into dict", aid

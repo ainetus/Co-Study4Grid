@@ -62,11 +62,13 @@ export function useSldOverlay(activeTab: TabId, liveSelectedActionId?: string | 
             let reactiveFlowDeltas: Record<string, FlowDelta> | undefined;
             let assetDeltas: Record<string, AssetDelta> | undefined;
             let changedSwitches: Record<string, { from_open: boolean; to_open: boolean }> | undefined;
+            let switchStates: Record<string, boolean> | undefined;
 
             if (sldTab === 'n') {
                 const res = await api.getNSld(vlName);
                 svgData = res.svg;
                 metaData = res.sld_metadata ?? null;
+                switchStates = res.switch_states;
             } else if (sldTab === 'contingency') {
                 const res = await api.getContingencySld(contingencyElements, vlName);
                 svgData = res.svg;
@@ -74,6 +76,7 @@ export function useSldOverlay(activeTab: TabId, liveSelectedActionId?: string | 
                 flowDeltas = res.flow_deltas;
                 reactiveFlowDeltas = res.reactive_flow_deltas;
                 assetDeltas = res.asset_deltas;
+                switchStates = res.switch_states;
             } else {
                 // Fallback to the live selectedActionId if the
                 // overlay was opened from a tab where no action
@@ -99,6 +102,7 @@ export function useSldOverlay(activeTab: TabId, liveSelectedActionId?: string | 
                 reactiveFlowDeltas = res.reactive_flow_deltas;
                 assetDeltas = res.asset_deltas;
                 changedSwitches = res.changed_switches;
+                switchStates = res.switch_states;
                 // Persist the resolved actionId back onto the
                 // overlay so subsequent re-renders and highlight
                 // passes can find it on `vlOverlay.actionId`.
@@ -114,6 +118,7 @@ export function useSldOverlay(activeTab: TabId, liveSelectedActionId?: string | 
                         ...prev, svg: svgData, sldMetadata: metaData, loading: false,
                         flow_deltas: flowDeltas, reactive_flow_deltas: reactiveFlowDeltas, asset_deltas: assetDeltas,
                         changed_switches: changedSwitches,
+                        switch_states: switchStates,
                     }
                     : prev
             );

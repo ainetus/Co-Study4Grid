@@ -93,6 +93,20 @@ interface VisualizationPanelProps {
     vlOverlay: VlOverlay | null;
     onOverlayClose: () => void;
     onOverlaySldTabChange: (tab: SldTab) => void;
+    /**
+     * Interactive SLD topology-edit wiring. Optional — when absent the
+     * SLD overlay renders without the Edit affordance (legacy
+     * behaviour). See ``useSldTopologyEdit`` in ``App.tsx``.
+     */
+    sldEditMode?: boolean;
+    onSldEditModeChange?: (next: boolean) => void;
+    sldEditPendingSwitches?: Record<string, boolean>;
+    sldEditPendingChanges?: import('../hooks/useSldTopologyEdit').SwitchToggleEntry[];
+    onSldSwitchClick?: (equipmentId: string) => void;
+    onSldEditSimulate?: () => void;
+    onSldEditReset?: () => void;
+    sldEditBusy?: boolean;
+    sldEditCombinedWithActionId?: string | null;
     voltageLevels: string[];
     onVlOpen: (vlName: string) => void;
     /**
@@ -234,6 +248,15 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     vlOverlay,
     onOverlayClose,
     onOverlaySldTabChange,
+    sldEditMode,
+    onSldEditModeChange,
+    sldEditPendingSwitches,
+    sldEditPendingChanges,
+    onSldSwitchClick,
+    onSldEditSimulate,
+    onSldEditReset,
+    sldEditBusy,
+    sldEditCombinedWithActionId,
     voltageLevels,
     onVlOpen,
     onOverflowPinPreview,
@@ -1334,6 +1357,15 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         selectedContingency={selectedContingency}
                         result={result}
                         monitoringFactor={monitoringFactor}
+                        editMode={sldEditMode}
+                        onEditModeChange={onSldEditModeChange}
+                        pendingSwitches={sldEditPendingSwitches}
+                        pendingChanges={sldEditPendingChanges}
+                        onSwitchClick={onSldSwitchClick}
+                        onSimulateEdit={onSldEditSimulate}
+                        onResetEdit={onSldEditReset}
+                        editSimulationBusy={sldEditBusy}
+                        editCombinedWithActionId={sldEditCombinedWithActionId}
                     />
                 )}
 

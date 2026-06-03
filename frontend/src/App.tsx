@@ -28,6 +28,7 @@ import { useDetachedTabs } from './hooks/useDetachedTabs';
 import { useTiedTabsSync, type PZInstance } from './hooks/useTiedTabsSync';
 import { useContingencyFetch } from './hooks/useContingencyFetch';
 import { useDiagramHighlights } from './hooks/useDiagramHighlights';
+import { useSldTopologyEdit } from './hooks/useSldTopologyEdit';
 import { interactionLogger } from './utils/interactionLogger';
 import { DEFAULT_ACTION_OVERVIEW_FILTERS } from './utils/actionTypes';
 import { applyVlTitles } from './utils/svgUtils';
@@ -647,6 +648,114 @@ function App() {
     },
     [selectedContingency, result?.lines_overloaded, result?.active_model, diagrams, voltageLevels.length, wrappedManualActionAdded]
   );
+
+  // Interactive SLD topology edit (useSldTopologyEdit). The baseline
+  // is the ``switch_states`` map the backend stamps on every SLD
+  // response; the hook drops stale toggles when it changes (VL switch,
+  // tab switch, action variant change).
+  const sldTopologyEdit = useSldTopologyEdit(diagrams.vlOverlay?.switch_states);
+  const [sldEditBusy, setSldEditBusy] = useState(false);
+  const sldEditBaseActionId = useMemo(() => {
+    const overlay = diagrams.vlOverlay;
+    if (!overlay) return null;
+    if (overlay.tab !== 'action') return null;
+    return overlay.actionId && overlay.actionId.length > 0 ? overlay.actionId : null;
+  }, [diagrams.vlOverlay]);
+
+  const handleSimulateSldEdit = useCallback(async () => {
+    const overlay = diagrams.vlOverlay;
+    const switches = sldTopologyEdit.changedSwitches;
+    if (!overlay || Object.keys(switches).length === 0) return;
+    if (selectedContingency.length === 0) {
+      setError('Select a contingency first.');
+      return;
+    }
+    const vlName = overlay.vlName;
+    const ts = Date.now();
+    const userPart = `user_topo_${vlName}_${ts}`;
+    const baseActionId = sldEditBaseActionId;
+    const actionId = baseActionId ? `${baseActionId}+${userPart}` : userPart;
+    interactionLogger.record('sld_topology_simulated', {
+      voltage_level_id: vlName,
+      switches,
+      combined_with: baseActionId,
+    });
+    setSldEditBusy(true);
+    try {
+      const response = await api.simulateAndVariantDiagramStream({
+        action_id: actionId,
+        disconnected_elements: selectedContingency,
+        action_content: { switches },
+        lines_overloaded: result?.lines_overloaded ?? null,
+        target_mw: null,
+        target_tap: null,
+        voltage_level_id: vlName,
+      });
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let metrics: Awaited<ReturnType<typeof api.simulateManualAction>> | null = null;
+      let streamErr: string | null = null;
+      const parseEvent = (line: string) => {
+        if (!line.trim()) return;
+        let event: Record<string, unknown>;
+        try { event = JSON.parse(line); } catch { return; }
+        if (event.type === 'metrics') {
+          const { type: _t, ...rest } = event;
+          void _t;
+          metrics = rest as Awaited<ReturnType<typeof api.simulateManualAction>>;
+        } else if (event.type === 'diagram') {
+          const { type: _t, ...rest } = event;
+          void _t;
+          diagrams.primeActionDiagram(actionId, rest as unknown as DiagramData & { svg: string }, voltageLevels.length);
+        } else if (event.type === 'error') {
+          streamErr = (event.message as string) || 'stream error';
+        }
+      };
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          if (buffer.trim()) parseEvent(buffer);
+          break;
+        }
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop()!;
+        for (const line of lines) parseEvent(line);
+      }
+      if (streamErr) throw new Error(streamErr);
+      if (!metrics) throw new Error('Stream ended without metrics event');
+      const m = metrics as Awaited<ReturnType<typeof api.simulateManualAction>>;
+      const detail: ActionDetail = {
+        description_unitaire: m.description_unitaire,
+        rho_before: m.rho_before,
+        rho_after: m.rho_after,
+        max_rho: m.max_rho,
+        max_rho_line: m.max_rho_line,
+        is_rho_reduction: m.is_rho_reduction,
+        is_islanded: m.is_islanded,
+        n_components: m.n_components,
+        disconnected_mw: m.disconnected_mw,
+        non_convergence: m.non_convergence,
+        lines_overloaded_after: m.lines_overloaded_after,
+        load_shedding_details: m.load_shedding_details,
+        curtailment_details: m.curtailment_details,
+        pst_details: m.pst_details,
+      };
+      wrappedManualActionAdded(actionId, detail, m.lines_overloaded || [], 'user');
+      sldTopologyEdit.reset();
+      sldTopologyEdit.setEditMode(false);
+    } catch (e: unknown) {
+      console.error('SLD topology edit simulation failed:', e);
+      const err = e as { response?: { data?: { detail?: string } } };
+      setError(err?.response?.data?.detail || 'Simulation failed');
+    } finally {
+      setSldEditBusy(false);
+    }
+  }, [
+    diagrams, sldTopologyEdit, selectedContingency, sldEditBaseActionId,
+    result?.lines_overloaded, voltageLevels.length, wrappedManualActionAdded,
+  ]);
 
   // Re-simulation of an already-present action (edit Target MW / tap on a
   // suggested card). Does NOT move the action into the selected bucket.
@@ -1619,6 +1728,15 @@ function App() {
             vlOverlay={vlOverlay}
             onOverlayClose={handleOverlayClose}
             onOverlaySldTabChange={handleOverlaySldTabChange}
+            sldEditMode={sldTopologyEdit.editMode}
+            onSldEditModeChange={sldTopologyEdit.setEditMode}
+            sldEditPendingSwitches={sldTopologyEdit.pendingStates}
+            sldEditPendingChanges={sldTopologyEdit.pendingChanges}
+            onSldSwitchClick={sldTopologyEdit.toggleSwitch}
+            onSldEditSimulate={handleSimulateSldEdit}
+            onSldEditReset={sldTopologyEdit.reset}
+            sldEditBusy={sldEditBusy}
+            sldEditCombinedWithActionId={sldEditBaseActionId}
             voltageLevels={voltageLevels}
             onVlOpen={handleVlOpen}
             onOverflowPinPreview={handlePinPreview}
