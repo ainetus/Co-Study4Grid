@@ -738,10 +738,23 @@ class DiagramMixin:
         subclass) so the API layer can tell this *expected* post-reload
         condition from a genuine fault — see the class docstring.
         """
+        # Preserve the "No analysis result" branch only when _last_result
+        # is genuinely uninitialised AND the action is not hand-simulated
+        # (the latter live in _dict_action with their observation). The
+        # promotion fallback below handles the manual-action case so the
+        # operator's live SLD card stays resolvable.
         if not self._last_result or not self._last_result.get("prioritized_actions"):
-            raise ActionResultUnavailableError(
-                "No analysis result available. Run analysis first."
-            )
+            dict_action = self._dict_action or {}
+            canon = canonicalize_action_id(action_id)
+            entry = dict_action.get(action_id) or dict_action.get(canon)
+            if not (isinstance(entry, dict) and entry.get("observation") is not None):
+                raise ActionResultUnavailableError(
+                    "No analysis result available. Run analysis first."
+                )
+            if self._last_result is None:
+                self._last_result = {"prioritized_actions": {}}
+            if "prioritized_actions" not in self._last_result:
+                self._last_result["prioritized_actions"] = {}
         actions = self._last_result["prioritized_actions"]
         if action_id not in actions:
             # Combined actions are stored under a CANONICAL key (the
@@ -755,9 +768,29 @@ class DiagramMixin:
             if canon != action_id and canon in actions:
                 actions[action_id] = actions[canon]
             else:
-                raise ActionResultUnavailableError(
-                    f"Action '{action_id}' not found in last analysis result."
-                )
+                # Defensive fallback: a manually-simulated action that
+                # for any reason didn't make it into
+                # ``_last_result["prioritized_actions"]`` (e.g. the
+                # exception-gate regression in ``_register_action_result``
+                # before it was relaxed, or a step2 re-run that
+                # didn't carry it over) is still merged into
+                # ``_dict_action`` with its live observation. Promote it
+                # back to the prioritized-actions dict so the SLD / NAD
+                # endpoints can resolve it instead of 400'ing with the
+                # "not found in last analysis result" the operator
+                # otherwise sees while staring at a live action card.
+                dict_action = self._dict_action or {}
+                entry = dict_action.get(action_id) or dict_action.get(canon)
+                if isinstance(entry, dict) and entry.get("observation") is not None:
+                    actions[action_id] = entry
+                    logger.info(
+                        "[_require_action] Promoted '%s' from _dict_action to "
+                        "_last_result['prioritized_actions']", action_id,
+                    )
+                else:
+                    raise ActionResultUnavailableError(
+                        f"Action '{action_id}' not found in last analysis result."
+                    )
         return actions
 
     def _lf_status_for_variant(self, network, variant_id: str, disconnected_elements):

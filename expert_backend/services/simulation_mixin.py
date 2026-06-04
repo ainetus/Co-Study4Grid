@@ -639,13 +639,30 @@ class SimulationMixin:
 
         Uses merge (not replace) on `_dict_action` so the library's
         `_identify_action_elements` can still find the original structure.
+
+        Registers in ``_last_result["prioritized_actions"]`` whenever a
+        live ``obs_simu_action`` was produced — even when
+        ``info_action["exception"]`` is set. The exception flag from
+        pypowsybl can fire on non-fatal warnings (e.g. a no-op
+        SLD-edit maneuver that doesn't actually change the variant), and
+        gating registration on its absence used to silently drop those
+        actions from the lookup the diagram / SLD endpoints rely on —
+        leaving the operator's card live in the UI but causing a 400 on
+        the next ``/api/action-variant-sld``. The ``non_convergence``
+        field already carries the warning to the frontend.
         """
-        if not info_action.get("exception") and obs_simu_action is not None:
+        if obs_simu_action is not None:
             if self._last_result is None:
                 self._last_result = {"prioritized_actions": {}}
             if "prioritized_actions" not in self._last_result:
                 self._last_result["prioritized_actions"] = {}
             self._last_result["prioritized_actions"][action_id] = action_data
+        else:
+            logger.info(
+                "[simulate_manual_action] Skipping _last_result registration for '%s' "
+                "(obs_simu_action is None, info_action.exception=%r)",
+                action_id, info_action.get("exception"),
+            )
 
         if self._dict_action is None:
             self._dict_action = {}
