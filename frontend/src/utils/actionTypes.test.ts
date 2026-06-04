@@ -212,6 +212,18 @@ describe('matchesActionTypeFilter', () => {
         expect(matchesActionTypeFilter('open', id, combinedManeuver, null)).toBe(true);
         expect(matchesActionTypeFilter('close', id, combinedManeuver, null)).toBe(true);
     });
+
+    // A single maneuver can open a coupling AND a line (comma-joined),
+    // so it must pass BOTH the open-coupling and line-disconnection
+    // filters.
+    const couplingPlusLineOpen = 'Manoeuvre manuelle sur COUCHP6: COUCHP6_COUCH6COUPL DJ_OC ouvert, COUCHP6_COUCH6CPVAN.1 DJ_OC ouvert';
+
+    it('matches a maneuver that opens both a coupling and a line on open AND disco', () => {
+        const id = 'user_topo_COUCHP6_1';
+        expect(matchesActionTypeFilter('open', id, couplingPlusLineOpen, null)).toBe(true);
+        expect(matchesActionTypeFilter('disco', id, couplingPlusLineOpen, null)).toBe(true);
+        expect(matchesActionTypeFilter('close', id, couplingPlusLineOpen, null)).toBe(false);
+    });
 });
 
 describe('classifyActionTypes (multi-bucket)', () => {

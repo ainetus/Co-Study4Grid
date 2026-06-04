@@ -202,12 +202,17 @@ export const classifyActionTypes = (
         || desc.includes('manoeuvre manuelle')
         || desc.includes('manœuvre manuelle');
     if (looksManual) {
-        for (const segment of desc.split('+')) {
-            const isCoupling = segment.includes('coupl');
+        // A single maneuver can toggle SEVERAL switches, joined by ", "
+        // ("…COUPL… ouvert, …CPVAN.1… ouvert"), and combined actions
+        // join maneuvers with " + ". Classify PER SWITCH clause —
+        // splitting on both separators — so a coupling-open in the same
+        // maneuver as a line-open doesn't mask the line as a coupling.
+        for (const clause of desc.split(/[+,]/)) {
+            const isCoupling = clause.includes('coupl');
             // `ouvert` also matches `ouverture`; `ferm` matches both
             // `fermé`/`ferme` and `fermeture`.
-            const opens = /ouvert/.test(segment);
-            const closes = /ferm[eé]/.test(segment);
+            const opens = /ouvert/.test(clause);
+            const closes = /ferm[eé]/.test(clause);
             if (opens) set.add(isCoupling ? 'open' : 'disco');
             if (closes) set.add(isCoupling ? 'close' : 'reco');
         }
