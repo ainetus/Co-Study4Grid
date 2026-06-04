@@ -8,6 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     classifyActionType,
+    classifyActionTypes,
     matchesActionTypeFilter,
     ACTION_TYPE_FILTER_TOKENS,
     ACTION_TYPE_LABELS,
@@ -188,6 +189,52 @@ describe('matchesActionTypeFilter', () => {
 
     it('specific filter does NOT match unknown bucket actions', () => {
         expect(matchesActionTypeFilter('disco', 'mystery', 'floats', null)).toBe(false);
+    });
+
+    // Manual SLD-edit maneuver cards use the past participles
+    // "ouvert"/"fermé" and may combine several switches.
+    const openManeuver = 'Manoeuvre manuelle sur COUCHP6: COUCHP6_COUCH6COUPL DJ_OC ouvert';
+    const closeManeuver = 'Manoeuvre manuelle sur PYMONP3: PYMONP3_PYMON3COUPL DJ_OC fermé';
+    const combinedManeuver = `[COMBINED] ${openManeuver} + ${closeManeuver}`;
+
+    it('matches an open-coupling maneuver on the open filter', () => {
+        expect(matchesActionTypeFilter('open', 'user_topo_COUCHP6_1', openManeuver, null)).toBe(true);
+        expect(matchesActionTypeFilter('close', 'user_topo_COUCHP6_1', openManeuver, null)).toBe(false);
+    });
+
+    it('matches a close-coupling maneuver on the close filter', () => {
+        expect(matchesActionTypeFilter('close', 'user_topo_PYMONP3_1', closeManeuver, null)).toBe(true);
+        expect(matchesActionTypeFilter('open', 'user_topo_PYMONP3_1', closeManeuver, null)).toBe(false);
+    });
+
+    it('matches a combined open+close maneuver on BOTH filters', () => {
+        const id = 'user_topo_COUCHP6_1+user_topo_PYMONP3_2';
+        expect(matchesActionTypeFilter('open', id, combinedManeuver, null)).toBe(true);
+        expect(matchesActionTypeFilter('close', id, combinedManeuver, null)).toBe(true);
+    });
+});
+
+describe('classifyActionTypes (multi-bucket)', () => {
+    it('returns a singleton for a normal recommender action', () => {
+        expect([...classifyActionTypes('disco_LINE_A', null, 'line_disconnection')]).toEqual(['disco']);
+    });
+
+    it('returns both open and close for a combined maneuver', () => {
+        const id = 'user_topo_A_1+user_topo_B_2';
+        const desc = '[COMBINED] Manoeuvre manuelle sur A: A_COUPL DJ_OC ouvert + Manoeuvre manuelle sur B: B_COUPL DJ_OC fermé';
+        const set = classifyActionTypes(id, desc, null);
+        expect(set.has('open')).toBe(true);
+        expect(set.has('close')).toBe(true);
+    });
+
+    it('buckets a non-coupling maneuver switch as disco/reco', () => {
+        const set = classifyActionTypes(
+            'user_topo_VL_1',
+            'Manoeuvre manuelle sur VL: VL_SOMELINE DJ ouvert',
+            null,
+        );
+        expect(set.has('disco')).toBe(true);
+        expect(set.has('open')).toBe(false);
     });
 });
 
