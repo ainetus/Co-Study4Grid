@@ -263,6 +263,7 @@ Both scripts run in CI (`.github/workflows/code-quality.yml` and
 | POST | `/api/n-sld` | Single Line Diagram for voltage level in N state. Response includes `switch_states` (per-switch open/closed map) used by the interactive SLD-edit feature. |
 | POST | `/api/contingency-sld` | Single Line Diagram in N-1 state (with flow deltas + `switch_states`). |
 | POST | `/api/action-variant-sld` | SLD in post-action state (with flow deltas, `changed_switches`, `switch_states`). |
+| POST | `/api/sld-topology-preview` | Target-topology preview SLD for the interactive SLD-edit feature: applies staged switch overrides on a throwaway variant and re-renders with topological colouring (no load flow; `stale_flows: true`). |
 | GET  | `/api/actions` | Return all available action IDs and descriptions |
 | POST | `/api/regenerate-overflow-graph` | Regenerate (or serve from cache) the overflow graph in hierarchical / geo layout — drives the toggle on the Overflow Analysis tab |
 | POST | `/api/simulate-manual-action` | Simulate a specific action against a contingency. Accepts an optional `voltage_level_id` field used to auto-name switch-only user actions (interactive SLD-edit feature). |

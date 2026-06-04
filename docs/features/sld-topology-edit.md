@@ -5,13 +5,31 @@
 From the SLD overlay opened on an **N-1 (contingency)** or
 **post-action** voltage-level diagram, the operator can:
 
-1. Click `Edit` to enter topology-edit mode.
-2. Click any switch on the diagram to stage a toggle. The breaker is
-   highlighted with a dashed outline:
-   - magenta = will open (`sld-user-toggle-open`)
-   - blue    = will close (`sld-user-toggle-closed`)
+1. Click `✎ Manual action` to enter edit mode.
+2. Click any switch on the diagram to stage a toggle. The diagram then
+   re-renders as a **target-topology preview** (see below): the breaker
+   is drawn in its target open/closed state and the busbar / branch
+   connectivity is re-coloured by pypowsybl's topological colouring, so
+   a node split / merge is immediately visible — same affordance as the
+   `manoeuvre_ihm` target-topology view. Flow values are greyed because
+   no load flow has been run yet.
 3. Click `Reset` to drop the staged toggles, or `Simulate action` to
-   send the user-built topology to the backend.
+   send the user-built topology to the backend for a real simulation.
+
+### Target-topology preview
+
+While toggles are staged, the frontend calls
+`POST /api/sld-topology-preview` (debounced ~280 ms, with a
+sequence guard dropping stale responses). The backend
+(`get_topology_preview_sld` in `diagram_mixin.py`) clones a throwaway
+variant from the contingency (or post-action) state, applies the
+switch overrides, and re-renders the VL SLD with
+`SldParameters(topological_coloring=True)` — **no load flow**. The
+response carries `stale_flows: True`; the frontend renders it in place
+of the baseline with the `sld-preview-stale` class greying every flow
+text / arrow. The throwaway variant is always removed and the working
+variant restored in a `finally`, so the shared Network is never left
+mutated.
 
 The result lands in the Action Feed as a manual action card. When the
 edit was done on a **post-action SLD**, the card is created with a

@@ -821,12 +821,34 @@ class ContingencySldRequest(BaseModel):
     disconnected_elements: list[str]
     voltage_level_id: str
 
+class SldTopologyPreviewRequest(BaseModel):
+    voltage_level_id: str
+    disconnected_elements: list[str]
+    switches: dict
+    base_action_id: str | None = None
+
 @app.post("/api/contingency-sld")
 def get_contingency_sld(request: ContingencySldRequest, http_request: Request) -> Response:
     try:
         diagram = recommender_service.get_contingency_sld(
             request.disconnected_elements,
             request.voltage_level_id,
+        )
+        return _maybe_gzip_json(diagram, http_request)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("API boundary error")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/sld-topology-preview")
+def sld_topology_preview(request: SldTopologyPreviewRequest, http_request: Request) -> Response:
+    try:
+        diagram = recommender_service.get_topology_preview_sld(
+            request.disconnected_elements,
+            request.voltage_level_id,
+            request.switches,
+            base_action_id=request.base_action_id,
         )
         return _maybe_gzip_json(diagram, http_request)
     except HTTPException:

@@ -52,6 +52,18 @@ export interface SldOverlayProps {
     editSimulationBusy?: boolean;
     /** Base action id when editing on a post-action SLD (combined card). */
     editCombinedWithActionId?: string | null;
+    /**
+     * Target-topology preview. When set, the overlay renders this SVG
+     * (switches drawn in their target state + topological-colouring
+     * connectivity, computed by the backend) instead of the baseline,
+     * and greys the flow values via ``sld-preview-stale`` because no
+     * load flow was run. Cleared when the operator resets / exits edit
+     * mode or commits the simulation.
+     */
+    previewSvg?: string | null;
+    previewMetadata?: string | null;
+    previewStale?: boolean;
+    previewLoading?: boolean;
 }
 
 const SldOverlay: React.FC<SldOverlayProps> = ({
@@ -69,8 +81,19 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
     onResetEdit,
     editSimulationBusy = false,
     editCombinedWithActionId = null,
+    previewSvg = null,
+    previewMetadata = null,
+    previewStale = false,
+    previewLoading = false,
 }) => {
     const overlayBodyRef = useRef<HTMLDivElement>(null);
+    // When a target-topology preview is showing, the backend already
+    // drew the switches in target state with topological colouring, so
+    // the client-side delta / highlight / toggle-paint passes (which
+    // target the baseline SVG) are suppressed.
+    const previewActive = !!previewSvg;
+    const activeSvg = previewSvg ?? vlOverlay.svg;
+    const activeMetadata = previewMetadata ?? vlOverlay.sldMetadata;
     const [overlayPos, setOverlayPos] = useState({ x: 16, y: 16 });
     const [overlayTransform, setOverlayTransform] = useState({ scale: 1, tx: 0, ty: 0 });
 
@@ -96,6 +119,10 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
     useLayoutEffect(() => {
         const container = overlayBodyRef.current;
         if (!container) return;
+        // Preview render owns the canvas — its flows are greyed and its
+        // switches are already in target state; baseline deltas must not
+        // repaint over it.
+        if (previewActive) return;
 
         const deltaSig = JSON.stringify({
             svgLen: vlOverlay.svg?.length ?? 0,
@@ -456,6 +483,7 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
     useLayoutEffect(() => {
         const container = overlayBodyRef.current;
         if (!container || !vlOverlay.svg) return;
+        if (previewActive) return;
 
         // Compute a signature that summarises what SHOULD be highlighted
         // right now. If the signature hasn't changed AND the clones are
@@ -801,6 +829,9 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
             el.classList.remove('sld-user-toggle-closed');
         });
 
+        // Preview already draws switches in target state — no need to
+        // (and we shouldn't) paint toggle outlines over it.
+        if (previewActive) return;
         if (!editMode || !pendingSwitches || !vlOverlay.switch_states) return;
         if (Object.keys(pendingSwitches).length === 0) return;
 
@@ -864,9 +895,9 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
         if (!editMode || !onSwitchClick || !vlOverlay.switch_states) return;
 
         const svgToEquip = new Map<string, string>();
-        if (vlOverlay.sldMetadata) {
+        if (activeMetadata) {
             try {
-                const meta = JSON.parse(vlOverlay.sldMetadata) as {
+                const meta = JSON.parse(activeMetadata) as {
                     nodes?: SldFeederNode[];
                     feederInfos?: SldFeederNode[];
                     feederNodes?: SldFeederNode[];
@@ -908,7 +939,7 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
         };
         container.addEventListener('click', onClick, true);
         return () => { container.removeEventListener('click', onClick, true); };
-    }, [editMode, onSwitchClick, vlOverlay.sldMetadata, vlOverlay.switch_states, vlOverlay.svg]);
+    }, [editMode, onSwitchClick, activeMetadata, vlOverlay.switch_states, activeSvg]);
 
     // Non-passive wheel zoom on overlay body
     useEffect(() => {
@@ -1030,12 +1061,12 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
                             style={{
                                 background: editMode ? colors.brand : colors.surfaceMuted,
                                 color: editMode ? colors.textOnBrand : colors.textPrimary,
-                                border: 'none', borderRadius: '4px', padding: '2px 8px',
-                                fontSize: '11px', fontWeight: editMode ? 'bold' : 'normal',
-                                cursor: 'pointer',
+                                border: 'none', borderRadius: '5px', padding: '5px 12px',
+                                fontSize: '12px', fontWeight: 600,
+                                cursor: 'pointer', whiteSpace: 'nowrap',
                             }}
-                            title={editMode ? 'Exit topology edit mode' : 'Enter topology edit mode'}
-                        >Edit</button>
+                            title={editMode ? 'Exit manual action mode' : 'Build a manual action by editing the topology'}
+                        >✎ Manual action</button>
                     )}
                     <button
                         onMouseDown={e => e.stopPropagation()}
@@ -1048,7 +1079,7 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
             {/* Body — pan/zoom canvas */}
             <div
                 ref={overlayBodyRef}
-                style={{ flex: 1, overflow: 'hidden', minHeight: 0, cursor: 'grab', userSelect: 'none' }}
+                style={{ flex: 1, overflow: 'hidden', minHeight: 0, cursor: 'grab', userSelect: 'none', position: 'relative' }}
                 onMouseDown={startOverlayPan}
             >
                 {vlOverlay.loading && (
@@ -1059,12 +1090,22 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
                 {vlOverlay.error && (
                     <div style={{ padding: '12px', color: colors.danger, fontSize: '12px' }}>{vlOverlay.error}</div>
                 )}
-                {vlOverlay.svg && (
-                    <div style={{
-                        transformOrigin: '0 0',
-                        transform: `translate(${overlayTransform.tx}px,${overlayTransform.ty}px) scale(${overlayTransform.scale})`,
-                        padding: '4px',
-                    }} dangerouslySetInnerHTML={{ __html: vlOverlay.svg }} />
+                {activeSvg && (
+                    <div
+                        key={previewActive ? 'preview' : 'baseline'}
+                        className={previewStale ? 'sld-preview-stale' : undefined}
+                        style={{
+                            transformOrigin: '0 0',
+                            transform: `translate(${overlayTransform.tx}px,${overlayTransform.ty}px) scale(${overlayTransform.scale})`,
+                            padding: '4px',
+                        }} dangerouslySetInnerHTML={{ __html: activeSvg }} />
+                )}
+                {previewLoading && (
+                    <div data-testid="sld-preview-loading" style={{
+                        position: 'absolute', top: '8px', right: '8px',
+                        background: colors.brandSoft, color: colors.brandStrong,
+                        fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '10px',
+                    }}>Preview…</div>
                 )}
             </div>
             {editMode && onEditModeChange && pendingChanges && onSimulateEdit && onResetEdit && (

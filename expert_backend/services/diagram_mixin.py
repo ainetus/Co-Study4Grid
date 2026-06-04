@@ -632,6 +632,80 @@ class DiagramMixin:
 
         return result
 
+    def _render_topological_sld(self, network, voltage_level_id):
+        """Render a VL SLD with topological (per-connected-bus) colouring.
+
+        Topological colouring is what makes a node split / merge visible:
+        opening a coupling splits the busbar into two connected
+        components, which pypowsybl then paints in distinct colours —
+        the same affordance the ``manoeuvre_ihm`` target-topology view
+        relies on. Falls back to the default parameters when the
+        installed pypowsybl predates ``SldParameters`` or rejects the
+        flag.
+        """
+        try:
+            import pypowsybl.network as pn
+            params = pn.SldParameters(use_name=True, topological_coloring=True)
+            return network.get_single_line_diagram(voltage_level_id, parameters=params)
+        except Exception as e:
+            logger.debug("Topological SLD params unavailable, using default: %s", e)
+            return network.get_single_line_diagram(voltage_level_id)
+
+    def get_topology_preview_sld(
+        self, disconnected_elements, voltage_level_id, switches, base_action_id=None
+    ) -> dict:
+        """Render a *target-topology preview* SLD.
+
+        Clones a throwaway variant from the contingency state (or the
+        post-action variant when ``base_action_id`` is given), applies
+        the user's pending switch overrides, and re-renders the VL SLD
+        with topological colouring. NO load flow is run — the flow
+        values shown are stale, so the response carries
+        ``stale_flows: True`` and the frontend greys them out until the
+        operator commits the simulation.
+
+        The throwaway variant is always removed and the working variant
+        restored in a ``finally`` so the shared Network is never left
+        mutated.
+        """
+        norm = self._normalize_contingency_elements(disconnected_elements)
+
+        if base_action_id:
+            actions = self._require_action(base_action_id)
+            obs = actions[base_action_id]["observation"]
+            nm = obs._network_manager
+            network = nm.network
+            base_variant = obs._variant_id
+        else:
+            network = self._get_base_network()
+            base_variant = self._get_contingency_variant(norm)
+
+        original_variant = network.get_working_variant_id()
+        preview_variant = f"sld_preview_{voltage_level_id}_{time.time_ns()}"
+        network.clone_variant(base_variant, preview_variant)
+        try:
+            network.set_working_variant(preview_variant)
+            if switches:
+                ids = [str(k) for k in switches.keys()]
+                opens = [bool(switches[k]) for k in switches.keys()]
+                network.update_switches(id=ids, open=opens)
+            sld = self._render_topological_sld(network, voltage_level_id)
+            svg, sld_metadata = extract_sld_svg_and_metadata(sld)
+            switch_states = extract_vl_switch_states(network, voltage_level_id)
+            return {
+                "svg": svg,
+                "sld_metadata": sld_metadata,
+                "voltage_level_id": voltage_level_id,
+                "switch_states": switch_states,
+                "stale_flows": True,
+            }
+        finally:
+            network.set_working_variant(original_variant)
+            try:
+                network.remove_variant(preview_variant)
+            except Exception as e:
+                logger.debug("Failed to remove preview variant %s: %s", preview_variant, e)
+
     def _diff_action_switches_vs_contingency(self, action_switches_snap, disconnected_elements) -> dict:
         """Diff a pre-captured action-variant switch snapshot against the
         live contingency variant.

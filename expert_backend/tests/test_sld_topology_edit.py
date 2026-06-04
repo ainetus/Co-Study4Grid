@@ -154,6 +154,69 @@ class TestSimulateManualActionSwitchOnly:
         assert "SW_A ouvert" in desc
 
 
+class TestTopologyPreviewSld:
+    """get_topology_preview_sld clones a throwaway variant, applies the
+    switch overrides, renders with topological colouring, and always
+    removes the temp variant + restores the working variant."""
+
+    def _service_with_net(self):
+        from expert_backend.services.recommender_service import RecommenderService
+
+        service = RecommenderService()
+        mock_net = MagicMock()
+        mock_net.get_working_variant_id.return_value = "ContingencyVar"
+        mock_net.get_switches.return_value = pd.DataFrame(
+            {
+                "open": [True],
+                "voltage_level_id": ["VL_X"],
+                "kind": ["BREAKER"],
+                "fictitious": [False],
+                "retained": [True],
+            },
+            index=["SW_X"],
+        )
+        mock_sld = MagicMock()
+        mock_sld._repr_svg_.return_value = "<svg/>"
+        mock_sld._metadata = "{}"
+        mock_net.get_single_line_diagram.return_value = mock_sld
+        service._get_base_network = lambda: mock_net
+        service._get_contingency_variant = lambda norm: "ContingencyVar"
+        service._normalize_contingency_elements = staticmethod(lambda e: list(e))
+        return service, mock_net
+
+    def test_applies_switches_and_marks_stale(self):
+        service, mock_net = self._service_with_net()
+        result = service.get_topology_preview_sld(
+            ["LINE_1"], "VL_X", {"SW_X": False},
+        )
+        assert result["stale_flows"] is True
+        assert result["voltage_level_id"] == "VL_X"
+        # update_switches called with the override
+        mock_net.update_switches.assert_called_once()
+        _, kwargs = mock_net.update_switches.call_args
+        assert kwargs["id"] == ["SW_X"]
+        assert kwargs["open"] == [False]
+
+    def test_clones_and_removes_temp_variant(self):
+        service, mock_net = self._service_with_net()
+        service.get_topology_preview_sld(["LINE_1"], "VL_X", {"SW_X": False})
+        mock_net.clone_variant.assert_called_once()
+        clone_args = mock_net.clone_variant.call_args[0]
+        assert clone_args[0] == "ContingencyVar"
+        preview_variant = clone_args[1]
+        mock_net.remove_variant.assert_called_once_with(preview_variant)
+        # Working variant restored to the original.
+        assert mock_net.set_working_variant.call_args_list[-1][0][0] == "ContingencyVar"
+
+    def test_removes_temp_variant_even_on_render_failure(self):
+        service, mock_net = self._service_with_net()
+        mock_net.get_single_line_diagram.side_effect = RuntimeError("render boom")
+        with pytest.raises(RuntimeError):
+            service.get_topology_preview_sld(["LINE_1"], "VL_X", {"SW_X": False})
+        mock_net.remove_variant.assert_called_once()
+        assert mock_net.set_working_variant.call_args_list[-1][0][0] == "ContingencyVar"
+
+
 class TestSldEndpointSwitchStates:
     """get_*_sld endpoints expose switch_states alongside svg + metadata."""
 

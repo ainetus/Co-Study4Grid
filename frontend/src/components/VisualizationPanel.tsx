@@ -107,6 +107,10 @@ interface VisualizationPanelProps {
     onSldEditReset?: () => void;
     sldEditBusy?: boolean;
     sldEditCombinedWithActionId?: string | null;
+    sldPreviewSvg?: string | null;
+    sldPreviewMetadata?: string | null;
+    sldPreviewStale?: boolean;
+    sldPreviewLoading?: boolean;
     voltageLevels: string[];
     onVlOpen: (vlName: string) => void;
     /**
@@ -257,6 +261,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     onSldEditReset,
     sldEditBusy,
     sldEditCombinedWithActionId,
+    sldPreviewSvg,
+    sldPreviewMetadata,
+    sldPreviewStale,
+    sldPreviewLoading,
     voltageLevels,
     onVlOpen,
     onOverflowPinPreview,
@@ -1366,6 +1374,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         onResetEdit={onSldEditReset}
                         editSimulationBusy={sldEditBusy}
                         editCombinedWithActionId={sldEditCombinedWithActionId}
+                        previewSvg={sldPreviewSvg}
+                        previewMetadata={sldPreviewMetadata}
+                        previewStale={sldPreviewStale}
+                        previewLoading={sldPreviewLoading}
                     />
                 )}
 

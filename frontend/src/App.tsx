@@ -662,6 +662,53 @@ function App() {
     return overlay.actionId && overlay.actionId.length > 0 ? overlay.actionId : null;
   }, [diagrams.vlOverlay]);
 
+  // Target-topology preview: when the operator has staged switch
+  // toggles, fetch a re-rendered SLD (target switch states +
+  // topological-colouring connectivity, no load flow) and show it in
+  // place of the baseline. Debounced so dragging through several
+  // toggles fires one request; a sequence guard drops stale responses.
+  const [sldPreview, setSldPreview] = useState<{ svg: string; metadata: string | null } | null>(null);
+  const [sldPreviewLoading, setSldPreviewLoading] = useState(false);
+  const sldPreviewSeqRef = useRef(0);
+  const changedSwitchesKey = useMemo(
+    () => JSON.stringify(sldTopologyEdit.changedSwitches),
+    [sldTopologyEdit.changedSwitches],
+  );
+  useEffect(() => {
+    const overlay = diagrams.vlOverlay;
+    const switches = sldTopologyEdit.changedSwitches;
+    const vlName = overlay?.vlName;
+    if (!overlay || !sldTopologyEdit.editMode || !vlName || Object.keys(switches).length === 0) {
+      setSldPreview(null);
+      setSldPreviewLoading(false);
+      return;
+    }
+    const seq = ++sldPreviewSeqRef.current;
+    setSldPreviewLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.getSldTopologyPreview({
+          voltageLevelId: vlName,
+          disconnectedElements: selectedContingency,
+          switches,
+          baseActionId: sldEditBaseActionId,
+        });
+        if (seq !== sldPreviewSeqRef.current) return;
+        setSldPreview({ svg: res.svg, metadata: res.sld_metadata ?? null });
+      } catch (e) {
+        if (seq !== sldPreviewSeqRef.current) return;
+        console.error('SLD topology preview failed:', e);
+        setSldPreview(null);
+      } finally {
+        if (seq === sldPreviewSeqRef.current) setSldPreviewLoading(false);
+      }
+    }, 280);
+    return () => clearTimeout(timer);
+    // changedSwitchesKey captures the switches dict by value; vlName +
+    // editMode + baseAction are the other inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [changedSwitchesKey, sldTopologyEdit.editMode, diagrams.vlOverlay?.vlName, sldEditBaseActionId, selectedContingency]);
+
   const handleSimulateSldEdit = useCallback(async () => {
     const overlay = diagrams.vlOverlay;
     const switches = sldTopologyEdit.changedSwitches;
@@ -1737,6 +1784,10 @@ function App() {
             onSldEditReset={sldTopologyEdit.reset}
             sldEditBusy={sldEditBusy}
             sldEditCombinedWithActionId={sldEditBaseActionId}
+            sldPreviewSvg={sldPreview?.svg ?? null}
+            sldPreviewMetadata={sldPreview?.metadata ?? null}
+            sldPreviewStale={!!sldPreview}
+            sldPreviewLoading={sldPreviewLoading}
             voltageLevels={voltageLevels}
             onVlOpen={handleVlOpen}
             onOverflowPinPreview={handlePinPreview}

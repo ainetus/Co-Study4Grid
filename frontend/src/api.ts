@@ -244,6 +244,28 @@ export const api = {
         );
         return response.data;
     },
+    /**
+     * Target-topology preview: re-render the VL SLD with the staged
+     * switch overrides applied (topological colouring, no load flow).
+     * `stale_flows` is always true — the caller greys the flow values.
+     */
+    getSldTopologyPreview: async (params: {
+        voltageLevelId: string;
+        disconnectedElements: string[];
+        switches: Record<string, boolean>;
+        baseActionId?: string | null;
+    }): Promise<{ svg: string; sld_metadata: string | null; voltage_level_id: string; switch_states?: Record<string, boolean>; stale_flows?: boolean }> => {
+        const response = await axios.post<{ svg: string; sld_metadata: string | null; voltage_level_id: string; switch_states?: Record<string, boolean>; stale_flows?: boolean }>(
+            `${API_BASE_URL}/api/sld-topology-preview`,
+            {
+                voltage_level_id: params.voltageLevelId,
+                disconnected_elements: params.disconnectedElements,
+                switches: params.switches,
+                base_action_id: params.baseActionId ?? null,
+            }
+        );
+        return response.data;
+    },
     getActionVariantSld: async (actionId: string, voltageLevelId: string): Promise<{ svg: string; sld_metadata: string | null; action_id: string; voltage_level_id: string; flow_deltas?: Record<string, FlowDelta>; reactive_flow_deltas?: Record<string, FlowDelta>; asset_deltas?: Record<string, AssetDelta>; changed_switches?: Record<string, { from_open: boolean; to_open: boolean }>; switch_states?: Record<string, boolean> }> => {
         const response = await axios.post<{ svg: string; sld_metadata: string | null; action_id: string; voltage_level_id: string; flow_deltas?: Record<string, FlowDelta>; reactive_flow_deltas?: Record<string, FlowDelta>; asset_deltas?: Record<string, AssetDelta>; changed_switches?: Record<string, { from_open: boolean; to_open: boolean }>; switch_states?: Record<string, boolean> }>(
             `${API_BASE_URL}/api/action-variant-sld`,
