@@ -489,6 +489,112 @@ describe('SldOverlay', () => {
             expect(container.querySelector('#cell_pst.sld-highlight-action-original')).toBeTruthy();
         });
 
+        it('highlights a coupler switch via changed_switches when action_topology is absent (interactive user_topo maneuver)', () => {
+            // Regression for the interactively-applied SLD-edit maneuver
+            // (`user_topo_*`): the manual ActionDetail carries no
+            // `action_topology`, so the breaker-highlight block — which
+            // was gated behind `if (topo)` — never ran and the toggled
+            // coupler stayed un-highlighted (unlike the equivalent
+            // suggested node_merging action). The backend-computed
+            // `changed_switches` on the SLD response must drive the
+            // highlight regardless of topology presence.
+            const svg = '<svg xmlns="http://www.w3.org/2000/svg">'
+                + '<g><rect id="cell_coupler" width="10" height="10"/></g>'
+                + '</svg>';
+            const vlOverlay: VlOverlay = {
+                vlName: 'PYMONP3',
+                actionId: 'user_topo_PYMONP3_1780561955322',
+                svg,
+                sldMetadata: JSON.stringify({
+                    nodes: [{ id: 'cell_coupler', equipmentId: 'PYMON3COUPL' }],
+                }),
+                loading: false,
+                error: null,
+                tab: 'action' as SldTab,
+                changed_switches: { PYMON3COUPL: { from_open: true, to_open: false } },
+            };
+            const detail = {
+                description_unitaire: 'Manoeuvre manuelle sur PYMONP3: PYMON3COUPL DJ_OC fermé',
+                rho_before: [0.96],
+                rho_after: [0.9],
+                max_rho: 0.9,
+                max_rho_line: 'TRI.PY761',
+                is_rho_reduction: true,
+                // No action_topology — the interactive-maneuver trigger.
+            };
+            const { container } = render(
+                <SldOverlay
+                    {...defaultProps}
+                    vlOverlay={vlOverlay}
+                    result={{
+                        actions: { 'user_topo_PYMONP3_1780561955322': detail },
+                        lines_overloaded: [],
+                        pdf_path: null,
+                        pdf_url: null,
+                        message: '',
+                        dc_fallback: false,
+                    } as unknown as AnalysisResult}
+                />,
+            );
+            // The toggled switch must be highlighted even though
+            // action_topology is absent. (isCouplingAction is mocked to
+            // false at the top of this file, so the class is the purple
+            // breaker class rather than the yellow coupling class — the
+            // regression under test is that the cell is highlighted AT
+            // ALL, which the old `if (topo)` gate prevented.)
+            expect(container.querySelector('#cell_coupler.sld-highlight-breaker-original')).toBeTruthy();
+            expect(container.querySelectorAll('.sld-highlight-clone').length).toBeGreaterThan(0);
+        });
+
+        it('highlights a toggled switch from action_topology.switches when the backend diff is empty', () => {
+            // The interactive SLD-edit flow folds the operator's toggled
+            // switch IDs into action_topology.switches (App.tsx). When the
+            // backend N-1-vs-action diff returns no changed_switches, the
+            // highlight must still fire off the topology switches (union).
+            const svg = '<svg xmlns="http://www.w3.org/2000/svg">'
+                + '<g><rect id="cell_coupler" width="10" height="10"/></g>'
+                + '</svg>';
+            const vlOverlay: VlOverlay = {
+                vlName: 'MORBRP6',
+                actionId: 'user_topo_MORBRP6_1780603014530',
+                svg,
+                sldMetadata: JSON.stringify({
+                    nodes: [{ id: 'cell_coupler', equipmentId: 'MORBR6COUPL' }],
+                }),
+                loading: false,
+                error: null,
+                tab: 'action' as SldTab,
+                // No changed_switches from the backend.
+            };
+            const detail = {
+                description_unitaire: 'Manoeuvre manuelle sur MORBRP6: MORBR6COUPL DJ_OC fermé',
+                rho_before: [0.96],
+                rho_after: [0.9],
+                max_rho: 0.9,
+                max_rho_line: 'X',
+                is_rho_reduction: true,
+                action_topology: {
+                    lines_ex_bus: {}, lines_or_bus: {}, gens_bus: {}, loads_bus: {},
+                    switches: { MORBR6COUPL: false },
+                },
+            };
+            const { container } = render(
+                <SldOverlay
+                    {...defaultProps}
+                    vlOverlay={vlOverlay}
+                    result={{
+                        actions: { 'user_topo_MORBRP6_1780603014530': detail },
+                        lines_overloaded: [],
+                        pdf_path: null,
+                        pdf_url: null,
+                        message: '',
+                        dc_fallback: false,
+                    } as unknown as AnalysisResult}
+                />,
+            );
+            expect(container.querySelector('#cell_coupler.sld-highlight-breaker-original')).toBeTruthy();
+        });
+
         it('falls back to SVG <text> search when SLD metadata equipmentId does not match load_name', () => {
             // Regression for the case observed on `bare_env_small_grid_test`:
             // the backend's LS action carries `load_name: "P.SAO3TR311"`

@@ -649,6 +649,10 @@ class AnalysisMixin:
                 action_prediction_time = total_disc_time
                 assessment_time = 0.0
 
+            # Capture manually-simulated actions BEFORE the fresh
+            # discovery result clobbers `_last_result` — see
+            # `_merge_preserved_simulated_actions`.
+            prior_actions = (self._last_result or {}).get("prioritized_actions") or {}
             self._last_result = results
 
             _t_enrich = time.time()
@@ -659,6 +663,12 @@ class AnalysisMixin:
             # Never leak combined-action ids into the main actions feed —
             # those are estimations that live in `combined_actions`.
             enriched_actions = {aid: data for aid, data in enriched_actions.items() if "+" not in aid}
+
+            # Re-attach hand-simulated actions so the diagram / SLD
+            # endpoints can still resolve them after the re-run. Done
+            # AFTER `enriched_actions` is built so preserved actions stay
+            # out of the freshly-suggested feed the frontend already has.
+            self._merge_preserved_simulated_actions(prior_actions)
 
             # Enrich each pre-computed pair with a `target_max_rho` /
             # `target_max_rho_line` scoped to the user-selected overloads
@@ -705,6 +715,37 @@ class AnalysisMixin:
         except Exception as e:
             logger.exception("Backend Error in Analysis Resolution")
             yield {"type": "error", "message": f"Backend Error in Analysis Resolution: {str(e)}"}
+
+    def _merge_preserved_simulated_actions(self, prior_actions: dict) -> None:
+        """Re-attach manually-simulated actions after a Step-2 re-run.
+
+        ``run_analysis_step2_discovery`` returns a fresh
+        ``prioritized_actions`` dict containing only the recommender's
+        suggestions, and ``self._last_result`` was just replaced with it.
+        Any action the operator simulated by hand — interactive SLD-edit
+        ``user_topo_*`` maneuvers, manually-picked actions — would
+        therefore disappear from ``_last_result``, and the diagram / SLD
+        endpoints that resolve an action through ``_require_action`` would
+        reject it with "not found in last analysis result" even though the
+        card is still live in the frontend's feed (the reported 400 on
+        ``/api/action-variant-sld``).
+
+        Carry over every prior entry that (a) is not already refreshed by
+        the new suggestions and (b) carries a live ``observation`` — i.e.
+        it was actually simulated, so its pypowsybl variant is still
+        resolvable for diagram generation. The merge mutates
+        ``_last_result`` only (not the yielded ``enriched_actions``), so
+        preserved actions stay resolvable without re-entering the
+        suggested-actions feed.
+        """
+        if not prior_actions or not isinstance(self._last_result, dict):
+            return
+        actions = self._last_result.setdefault("prioritized_actions", {})
+        for action_id, data in prior_actions.items():
+            if action_id in actions:
+                continue
+            if isinstance(data, dict) and data.get("observation") is not None:
+                actions[action_id] = data
 
     def _augment_combined_actions_with_target_max_rho(self, results: dict, context: dict) -> None:
         """Add ``target_max_rho`` / ``target_max_rho_line`` to each

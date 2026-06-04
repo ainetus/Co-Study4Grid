@@ -521,6 +521,9 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
             changedSwitches: vlOverlay.changed_switches
                 ? Object.keys(vlOverlay.changed_switches).sort()
                 : [],
+            topoSwitches: actionDetailForSig?.action_topology?.switches
+                ? Object.keys(actionDetailForSig.action_topology.switches).sort()
+                : [],
             branch: selectedContingency.join('+'),
             n1Overloads: result?.lines_overloaded ?? [],
             actionOverloads: actionDetailForSig?.lines_overloaded_after ?? [],
@@ -739,26 +742,37 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
                 }
             }
 
-            if (topo) {
-
-                // Highlight affected breakers/switches.
-                // Prefer changed_switches from SLD response (robust N-1 vs action comparison)
-                // over action_topology.switches (may be empty for grid2op actions).
+            // Highlight affected breakers/switches.
+            // Prefer changed_switches from SLD response (robust N-1 vs action comparison)
+            // over action_topology.switches (may be empty for grid2op actions).
+            // changed_switches is the authoritative backend diff and must drive
+            // the highlight even when action_topology is absent — the case for
+            // interactively-applied SLD-edit maneuvers (`user_topo_*` actions)
+            // whose ActionDetail carries no topology round-trip. Gating this
+            // block on `topo` left their coupler/breaker change un-highlighted.
+            {
                 const changedSwitches = vlOverlay.changed_switches;
-                const topoSwitches = topo.switches as Record<string, unknown> | undefined;
-                const switchSource = changedSwitches && Object.keys(changedSwitches).length > 0
-                    ? changedSwitches
-                    : topoSwitches;
+                const topoSwitches = topo?.switches as Record<string, unknown> | undefined;
+                // Highlight the UNION of the backend N-1-vs-action diff
+                // and the action's own topology switches. Neither source
+                // alone is complete: grid2op suggested actions often carry
+                // an empty `action_topology.switches` (so the diff is the
+                // only signal), while interactively-applied SLD-edit
+                // maneuvers carry the operator's toggled switch IDs in
+                // `action_topology.switches` but may produce an empty diff.
+                // Taking the union highlights the change in both flows.
+                const switchIds = new Set<string>([
+                    ...Object.keys(changedSwitches ?? {}),
+                    ...Object.keys(topoSwitches ?? {}),
+                ]);
                 // Coupling action breakers highlighted yellow (same as action targets);
                 // regular breaker/switch actions use purple.
                 const breakerClass = isCoupling ? 'sld-highlight-action' : 'sld-highlight-breaker';
-                if (switchSource) {
-                    for (const switchId of Object.keys(switchSource)) {
-                        const cell = findCellForEquipment(switchId);
-                        if (cell && !highlightedCells.has(cell)) {
-                            cloneHighlight(cell, breakerClass);
-                            highlightedCells.add(cell);
-                        }
+                for (const switchId of switchIds) {
+                    const cell = findCellForEquipment(switchId);
+                    if (cell && !highlightedCells.has(cell)) {
+                        cloneHighlight(cell, breakerClass);
+                        highlightedCells.add(cell);
                     }
                 }
             }

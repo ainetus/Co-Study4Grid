@@ -796,6 +796,19 @@ function App() {
         load_shedding_details: m.load_shedding_details,
         curtailment_details: m.curtailment_details,
         pst_details: m.pst_details,
+        // Carry the backend-computed topology so the SLD/NAD highlight
+        // pipeline treats this interactive maneuver like any suggested
+        // action (target-equipment halos, breaker highlight). The
+        // operator's toggled switch IDs come straight from the SLD's
+        // switch_states, so they always resolve back to a cell — fold
+        // them into `action_topology.switches` so the breaker highlight
+        // is guaranteed even when the backend N-1-vs-action switch diff
+        // comes back empty.
+        action_topology: {
+          lines_ex_bus: {}, lines_or_bus: {}, gens_bus: {}, loads_bus: {},
+          ...(m.action_topology ?? {}),
+          switches: { ...(m.action_topology?.switches ?? {}), ...switches },
+        },
       };
       wrappedManualActionAdded(registeredId, detail, m.lines_overloaded || [], 'user');
       sldTopologyEdit.reset();
