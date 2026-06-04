@@ -134,6 +134,14 @@ remaining hex-literal count after each migration.
   --signal-delta-negative: #2196f3;
   --signal-delta-neutral: #999999;
 
+  /* ----- SLD interactive topology-edit highlight -----
+     The interactive SLD-edit feature (useSldTopologyEdit + SldEditPanel)
+     stages switch toggles in the frontend and visually marks the
+     pending breaker. Distinct hues from action / contingency / overload
+     so a toggled switch on an overloaded line still reads as both. */
+  --signal-edit-open: #d81b60;
+  --signal-edit-closed: #1976d2;
+
   /* ----- Action-overview pin palette -----
      Severity buckets for Remedial Action overview pins
      (utils/svg/actionPin{Data,Render}.ts + ActionOverviewDiagram.tsx).

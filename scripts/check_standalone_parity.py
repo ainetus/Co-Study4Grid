@@ -215,6 +215,12 @@ SPEC_DETAILS: dict[str, dict] = {
     "sld_overlay_opened":       _spec_row({"vl_name", "action_id"}),
     "sld_overlay_tab_changed":  _spec_row({"tab", "vl_name"}),
     "sld_overlay_closed":       _spec_row(set()),
+    "sld_edit_mode_toggled":    _spec_row({"enabled"}),
+    "sld_switch_toggled":       _spec_row({"equipment_id"}),
+    "sld_maneuver_removed":     _spec_row({"equipment_ids"}),
+    "sld_maneuver_focused":     _spec_row({"equipment_id"}),
+    "sld_edit_reset":           _spec_row(set()),
+    "sld_topology_simulated":   _spec_row({"voltage_level_id", "switches"}, {"combined_with"}),
     # --- Session Management ---
     "session_saved":            _spec_row({"output_folder"}),
     "session_reload_modal_opened": _spec_row(set()),

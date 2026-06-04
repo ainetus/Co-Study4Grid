@@ -8,6 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     classifyActionType,
+    classifyActionTypes,
     matchesActionTypeFilter,
     ACTION_TYPE_FILTER_TOKENS,
     ACTION_TYPE_LABELS,
@@ -189,6 +190,64 @@ describe('matchesActionTypeFilter', () => {
     it('specific filter does NOT match unknown bucket actions', () => {
         expect(matchesActionTypeFilter('disco', 'mystery', 'floats', null)).toBe(false);
     });
+
+    // Manual SLD-edit maneuver cards use the past participles
+    // "ouvert"/"fermé" and may combine several switches.
+    const openManeuver = 'Manoeuvre manuelle sur COUCHP6: COUCHP6_COUCH6COUPL DJ_OC ouvert';
+    const closeManeuver = 'Manoeuvre manuelle sur PYMONP3: PYMONP3_PYMON3COUPL DJ_OC fermé';
+    const combinedManeuver = `[COMBINED] ${openManeuver} + ${closeManeuver}`;
+
+    it('matches an open-coupling maneuver on the open filter', () => {
+        expect(matchesActionTypeFilter('open', 'user_topo_COUCHP6_1', openManeuver, null)).toBe(true);
+        expect(matchesActionTypeFilter('close', 'user_topo_COUCHP6_1', openManeuver, null)).toBe(false);
+    });
+
+    it('matches a close-coupling maneuver on the close filter', () => {
+        expect(matchesActionTypeFilter('close', 'user_topo_PYMONP3_1', closeManeuver, null)).toBe(true);
+        expect(matchesActionTypeFilter('open', 'user_topo_PYMONP3_1', closeManeuver, null)).toBe(false);
+    });
+
+    it('matches a combined open+close maneuver on BOTH filters', () => {
+        const id = 'user_topo_COUCHP6_1+user_topo_PYMONP3_2';
+        expect(matchesActionTypeFilter('open', id, combinedManeuver, null)).toBe(true);
+        expect(matchesActionTypeFilter('close', id, combinedManeuver, null)).toBe(true);
+    });
+
+    // A single maneuver can open a coupling AND a line (comma-joined),
+    // so it must pass BOTH the open-coupling and line-disconnection
+    // filters.
+    const couplingPlusLineOpen = 'Manoeuvre manuelle sur COUCHP6: COUCHP6_COUCH6COUPL DJ_OC ouvert, COUCHP6_COUCH6CPVAN.1 DJ_OC ouvert';
+
+    it('matches a maneuver that opens both a coupling and a line on open AND disco', () => {
+        const id = 'user_topo_COUCHP6_1';
+        expect(matchesActionTypeFilter('open', id, couplingPlusLineOpen, null)).toBe(true);
+        expect(matchesActionTypeFilter('disco', id, couplingPlusLineOpen, null)).toBe(true);
+        expect(matchesActionTypeFilter('close', id, couplingPlusLineOpen, null)).toBe(false);
+    });
+});
+
+describe('classifyActionTypes (multi-bucket)', () => {
+    it('returns a singleton for a normal recommender action', () => {
+        expect([...classifyActionTypes('disco_LINE_A', null, 'line_disconnection')]).toEqual(['disco']);
+    });
+
+    it('returns both open and close for a combined maneuver', () => {
+        const id = 'user_topo_A_1+user_topo_B_2';
+        const desc = '[COMBINED] Manoeuvre manuelle sur A: A_COUPL DJ_OC ouvert + Manoeuvre manuelle sur B: B_COUPL DJ_OC fermé';
+        const set = classifyActionTypes(id, desc, null);
+        expect(set.has('open')).toBe(true);
+        expect(set.has('close')).toBe(true);
+    });
+
+    it('buckets a non-coupling maneuver switch as disco/reco', () => {
+        const set = classifyActionTypes(
+            'user_topo_VL_1',
+            'Manoeuvre manuelle sur VL: VL_SOMELINE DJ ouvert',
+            null,
+        );
+        expect(set.has('disco')).toBe(true);
+        expect(set.has('open')).toBe(false);
+    });
 });
 
 describe('ACTION_TYPE_FILTER_TOKENS', () => {
@@ -362,5 +421,101 @@ describe('rowPassesActionFilters', () => {
         expect(rowPassesActionFilters(filters, {
             actionId: 'reco_X', scoreType: 'line_reconnection',
         }, 0.95)).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------
+// Regression — manual SLD-edit maneuver cards
+// ---------------------------------------------------------------------
+//
+// Each case traces back to a real bug surfaced during the SLD-edit
+// review:
+//
+//   1. "ouvert"/"fermé" vs "ouverture"/"fermeture" (the past
+//      participle the SLD-edit description uses).
+//   2. A [COMBINED] card opens one coupling AND closes another → must
+//      pass BOTH filters.
+//   3. A single maneuver toggles SEVERAL switches separated by ", "
+//      (coupling + line opened together) → must pass coupling-open
+//      AND line-disconnection.
+//   4. Manual maneuvers on non-coupling switches (lines / equipment)
+//      still bucket as disco / reco.
+//   5. user_topo_* id alone is enough to enter the manual-maneuver
+//      parsing path even when description is missing.
+
+describe('regression — manual SLD-edit maneuver cards', () => {
+    it('past-participle "ouvert" on a coupling → open bucket', () => {
+        expect(matchesActionTypeFilter(
+            'open', 'user_topo_VL_1',
+            'Manoeuvre manuelle sur VL: VL_COUPL DJ_OC ouvert', null,
+        )).toBe(true);
+    });
+
+    it('past-participle "fermé" on a coupling → close bucket', () => {
+        expect(matchesActionTypeFilter(
+            'close', 'user_topo_VL_1',
+            'Manoeuvre manuelle sur VL: VL_COUPL DJ_OC fermé', null,
+        )).toBe(true);
+    });
+
+    it('combined open-coupling + close-coupling card passes both filters', () => {
+        const id = 'user_topo_A_1+user_topo_B_2';
+        const desc = '[COMBINED] Manoeuvre manuelle sur A: A_COUPL DJ_OC ouvert + Manoeuvre manuelle sur B: B_COUPL DJ_OC fermé';
+        expect(matchesActionTypeFilter('open', id, desc, null)).toBe(true);
+        expect(matchesActionTypeFilter('close', id, desc, null)).toBe(true);
+        expect(matchesActionTypeFilter('disco', id, desc, null)).toBe(false);
+        expect(matchesActionTypeFilter('reco', id, desc, null)).toBe(false);
+    });
+
+    it('comma-joined coupling+line open passes BOTH open and disco', () => {
+        const id = 'user_topo_COUCHP6_1';
+        const desc = 'Manoeuvre manuelle sur COUCHP6: COUCHP6_COUCH6COUPL DJ_OC ouvert, COUCHP6_COUCH6CPVAN.1 DJ_OC ouvert';
+        expect(matchesActionTypeFilter('open', id, desc, null)).toBe(true);
+        expect(matchesActionTypeFilter('disco', id, desc, null)).toBe(true);
+        expect(matchesActionTypeFilter('close', id, desc, null)).toBe(false);
+        expect(matchesActionTypeFilter('reco', id, desc, null)).toBe(false);
+    });
+
+    it('comma-joined line open + coupling close gives disco AND close', () => {
+        const id = 'user_topo_X_1';
+        const desc = 'Manoeuvre manuelle sur X: X_LINE.1 DJ_OC ouvert, X_COUPL DJ_OC fermé';
+        const set = classifyActionTypes(id, desc, null);
+        expect(set.has('disco')).toBe(true);
+        expect(set.has('close')).toBe(true);
+        expect(set.has('open')).toBe(false);
+        expect(set.has('reco')).toBe(false);
+    });
+
+    it('manual maneuver on a line (no "coupl" token) does NOT match coupling filters', () => {
+        const id = 'user_topo_VL_1';
+        const desc = 'Manoeuvre manuelle sur VL: VL_SOMELINE.1 DJ_OC ouvert';
+        expect(matchesActionTypeFilter('disco', id, desc, null)).toBe(true);
+        expect(matchesActionTypeFilter('open', id, desc, null)).toBe(false);
+    });
+
+    it('id with user_topo_ prefix + empty description still drops through cleanly', () => {
+        // No description signals → no bucket added by the multi-bucket
+        // parser. Caller should treat it as "unknown" / "all" passes.
+        const set = classifyActionTypes('user_topo_VL_1', '', null);
+        expect(set.size).toBe(0);
+        expect(matchesActionTypeFilter('all', 'user_topo_VL_1', '', null)).toBe(true);
+        expect(matchesActionTypeFilter('disco', 'user_topo_VL_1', '', null)).toBe(false);
+    });
+
+    it('also matches the alternative spelling "manœuvre" with the ligature', () => {
+        // The frontend description builder uses "manoeuvre" (no
+        // ligature), but the parser must not refuse the curly-é
+        // spelling either — both forms travel via session reload.
+        const id = 'user_topo_VL_1';
+        const desc = 'Manœuvre manuelle sur VL: VL_COUPL DJ_OC ouvert';
+        expect(matchesActionTypeFilter('open', id, desc, null)).toBe(true);
+    });
+
+    it('singular classifier still returns ONE bucket for normal cards', () => {
+        // The non-manual recommender cards keep the old fast-path; only
+        // the manual-maneuver branch widens the result.
+        expect(classifyActionType('disco_LINE_A', null, 'line_disconnection')).toBe('disco');
+        expect(classifyActionType('reco_LINE_B', null, 'line_reconnection')).toBe('reco');
+        expect(classifyActionType('open_coupling_VL_X', null, 'open_coupling')).toBe('open');
     });
 });

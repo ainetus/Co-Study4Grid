@@ -55,6 +55,40 @@ def canonicalize_action_id(action_id: str) -> str:
     return "+".join(sorted(p.strip() for p in action_id.split("+")))
 
 
+def is_switch_only_content(content: Any) -> bool:
+    """True if ``content`` carries only a non-empty ``switches`` dict.
+
+    Used by ``simulate_manual_action`` to decide whether to auto-build a
+    human-readable description for user-built SLD-edit actions, instead
+    of falling back to the raw ``action_id`` (which is just a generated
+    placeholder like ``user_topo_<vl>_<ts>``).
+    """
+    if not isinstance(content, dict):
+        return False
+    switches = content.get("switches")
+    if not isinstance(switches, dict) or not switches:
+        return False
+    other_keys = [k for k in content.keys() if k != "switches"]
+    return len(other_keys) == 0
+
+
+def build_switch_action_description(
+    switches: dict[str, bool],
+    voltage_level_id: str | None = None,
+) -> str:
+    """Return ``"Manoeuvre manuelle sur <vl>: A ouvert, B fermé"`` ."""
+    if not switches:
+        return "Manoeuvre manuelle (aucun switch)"
+    parts: list[str] = []
+    for sw_id, is_open in switches.items():
+        verb = "ouvert" if is_open else "fermé"
+        parts.append(f"{sw_id} {verb}")
+    body = ", ".join(parts)
+    if voltage_level_id:
+        return f"Manoeuvre manuelle sur {voltage_level_id}: {body}"
+    return f"Manoeuvre manuelle: {body}"
+
+
 def compute_reduction_setpoint(
     element_name: str,
     element_type: str,

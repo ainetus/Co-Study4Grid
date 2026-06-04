@@ -354,6 +354,15 @@ export interface VlOverlay {
     reactive_flow_deltas?: Record<string, FlowDelta>;
     asset_deltas?: Record<string, AssetDelta>;
     changed_switches?: Record<string, { from_open: boolean; to_open: boolean }>;
+    /**
+     * Baseline switch states for the displayed VL (``{switch_id:
+     * is_open}``). Drives the interactive SLD-edit feature in
+     * ``useSldTopologyEdit``: only switches present in this map are
+     * editable, and a toggle is computed as ``user_state !== baseline``.
+     * Backend populates this on every SLD endpoint via
+     * ``extract_vl_switch_states``.
+     */
+    switch_states?: Record<string, boolean>;
 }
 
 // ===== Session Save =====
@@ -550,6 +559,12 @@ export type InteractionType =
     | 'sld_overlay_opened'
     | 'sld_overlay_tab_changed'
     | 'sld_overlay_closed'
+    | 'sld_edit_mode_toggled'
+    | 'sld_switch_toggled'
+    | 'sld_maneuver_removed'
+    | 'sld_maneuver_focused'
+    | 'sld_edit_reset'
+    | 'sld_topology_simulated'
     | 'overview_shown'
     | 'overview_hidden'
     | 'overview_pin_clicked'

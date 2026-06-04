@@ -230,22 +230,44 @@ export const api = {
         );
         return response.data;
     },
-    getNSld: async (voltageLevelId: string): Promise<{ svg: string; sld_metadata: string | null; voltage_level_id: string }> => {
-        const response = await axios.post<{ svg: string; sld_metadata: string | null; voltage_level_id: string }>(
+    getNSld: async (voltageLevelId: string): Promise<{ svg: string; sld_metadata: string | null; voltage_level_id: string; switch_states?: Record<string, boolean> }> => {
+        const response = await axios.post<{ svg: string; sld_metadata: string | null; voltage_level_id: string; switch_states?: Record<string, boolean> }>(
             `${API_BASE_URL}/api/n-sld`,
             { voltage_level_id: voltageLevelId }
         );
         return response.data;
     },
-    getContingencySld: async (disconnectedElements: string[], voltageLevelId: string): Promise<{ svg: string; sld_metadata: string | null; voltage_level_id: string; flow_deltas?: Record<string, FlowDelta>; reactive_flow_deltas?: Record<string, FlowDelta>; asset_deltas?: Record<string, AssetDelta> }> => {
-        const response = await axios.post<{ svg: string; sld_metadata: string | null; voltage_level_id: string; flow_deltas?: Record<string, FlowDelta>; reactive_flow_deltas?: Record<string, FlowDelta>; asset_deltas?: Record<string, AssetDelta> }>(
+    getContingencySld: async (disconnectedElements: string[], voltageLevelId: string): Promise<{ svg: string; sld_metadata: string | null; voltage_level_id: string; flow_deltas?: Record<string, FlowDelta>; reactive_flow_deltas?: Record<string, FlowDelta>; asset_deltas?: Record<string, AssetDelta>; switch_states?: Record<string, boolean> }> => {
+        const response = await axios.post<{ svg: string; sld_metadata: string | null; voltage_level_id: string; flow_deltas?: Record<string, FlowDelta>; reactive_flow_deltas?: Record<string, FlowDelta>; asset_deltas?: Record<string, AssetDelta>; switch_states?: Record<string, boolean> }>(
             `${API_BASE_URL}/api/contingency-sld`,
             { disconnected_elements: disconnectedElements, voltage_level_id: voltageLevelId }
         );
         return response.data;
     },
-    getActionVariantSld: async (actionId: string, voltageLevelId: string): Promise<{ svg: string; sld_metadata: string | null; action_id: string; voltage_level_id: string; flow_deltas?: Record<string, FlowDelta>; reactive_flow_deltas?: Record<string, FlowDelta>; asset_deltas?: Record<string, AssetDelta>; changed_switches?: Record<string, { from_open: boolean; to_open: boolean }> }> => {
-        const response = await axios.post<{ svg: string; sld_metadata: string | null; action_id: string; voltage_level_id: string; flow_deltas?: Record<string, FlowDelta>; reactive_flow_deltas?: Record<string, FlowDelta>; asset_deltas?: Record<string, AssetDelta>; changed_switches?: Record<string, { from_open: boolean; to_open: boolean }> }>(
+    /**
+     * Target-topology preview: re-render the VL SLD with the staged
+     * switch overrides applied (topological colouring, no load flow).
+     * `stale_flows` is always true — the caller greys the flow values.
+     */
+    getSldTopologyPreview: async (params: {
+        voltageLevelId: string;
+        disconnectedElements: string[];
+        switches: Record<string, boolean>;
+        baseActionId?: string | null;
+    }): Promise<{ svg: string; sld_metadata: string | null; voltage_level_id: string; switch_states?: Record<string, boolean>; stale_flows?: boolean }> => {
+        const response = await axios.post<{ svg: string; sld_metadata: string | null; voltage_level_id: string; switch_states?: Record<string, boolean>; stale_flows?: boolean }>(
+            `${API_BASE_URL}/api/sld-topology-preview`,
+            {
+                voltage_level_id: params.voltageLevelId,
+                disconnected_elements: params.disconnectedElements,
+                switches: params.switches,
+                base_action_id: params.baseActionId ?? null,
+            }
+        );
+        return response.data;
+    },
+    getActionVariantSld: async (actionId: string, voltageLevelId: string): Promise<{ svg: string; sld_metadata: string | null; action_id: string; voltage_level_id: string; flow_deltas?: Record<string, FlowDelta>; reactive_flow_deltas?: Record<string, FlowDelta>; asset_deltas?: Record<string, AssetDelta>; changed_switches?: Record<string, { from_open: boolean; to_open: boolean }>; switch_states?: Record<string, boolean> }> => {
+        const response = await axios.post<{ svg: string; sld_metadata: string | null; action_id: string; voltage_level_id: string; flow_deltas?: Record<string, FlowDelta>; reactive_flow_deltas?: Record<string, FlowDelta>; asset_deltas?: Record<string, AssetDelta>; changed_switches?: Record<string, { from_open: boolean; to_open: boolean }>; switch_states?: Record<string, boolean> }>(
             `${API_BASE_URL}/api/action-variant-sld`,
             { action_id: actionId, voltage_level_id: voltageLevelId }
         );
@@ -313,6 +335,7 @@ export const api = {
         lines_overloaded?: string[] | null;
         target_mw?: number | null;
         target_tap?: number | null;
+        voltage_level_id?: string | null;
         mode?: 'network' | 'delta';
     }): Promise<Response> => {
         const response = await fetch(`${API_BASE_URL}/api/simulate-and-variant-diagram`, {
@@ -325,6 +348,7 @@ export const api = {
                 lines_overloaded: params.lines_overloaded ?? null,
                 target_mw: params.target_mw ?? null,
                 target_tap: params.target_tap ?? null,
+                voltage_level_id: params.voltage_level_id ?? null,
                 mode: params.mode ?? 'network',
             }),
         });

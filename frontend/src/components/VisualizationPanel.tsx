@@ -93,6 +93,28 @@ interface VisualizationPanelProps {
     vlOverlay: VlOverlay | null;
     onOverlayClose: () => void;
     onOverlaySldTabChange: (tab: SldTab) => void;
+    /**
+     * Interactive SLD topology-edit wiring. Optional — when absent the
+     * SLD overlay renders without the Edit affordance (legacy
+     * behaviour). See ``useSldTopologyEdit`` in ``App.tsx``.
+     */
+    sldEditMode?: boolean;
+    onSldEditModeChange?: (next: boolean) => void;
+    sldEditPendingSwitches?: Record<string, boolean>;
+    sldEditPendingChanges?: import('../hooks/useSldTopologyEdit').SwitchToggleEntry[];
+    onSldSwitchClick?: (equipmentId: string) => void;
+    onSldEditSimulate?: () => void;
+    onSldEditReset?: () => void;
+    sldEditBusy?: boolean;
+    sldEditCombinedWithActionId?: string | null;
+    sldPreviewSvg?: string | null;
+    sldPreviewMetadata?: string | null;
+    sldPreviewStale?: boolean;
+    sldPreviewLoading?: boolean;
+    sldFocusedSwitchId?: string | null;
+    onSldSwitchFocus?: (equipmentId: string | null) => void;
+    onSldSwitchRemove?: (equipmentId: string) => void;
+    onSldSwitchRemoveMany?: (equipmentIds: string[]) => void;
     voltageLevels: string[];
     onVlOpen: (vlName: string) => void;
     /**
@@ -234,6 +256,23 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     vlOverlay,
     onOverlayClose,
     onOverlaySldTabChange,
+    sldEditMode,
+    onSldEditModeChange,
+    sldEditPendingSwitches,
+    sldEditPendingChanges,
+    onSldSwitchClick,
+    onSldEditSimulate,
+    onSldEditReset,
+    sldEditBusy,
+    sldEditCombinedWithActionId,
+    sldPreviewSvg,
+    sldPreviewMetadata,
+    sldPreviewStale,
+    sldPreviewLoading,
+    sldFocusedSwitchId,
+    onSldSwitchFocus,
+    onSldSwitchRemove,
+    onSldSwitchRemoveMany,
     voltageLevels,
     onVlOpen,
     onOverflowPinPreview,
@@ -1334,6 +1373,23 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         selectedContingency={selectedContingency}
                         result={result}
                         monitoringFactor={monitoringFactor}
+                        editMode={sldEditMode}
+                        onEditModeChange={onSldEditModeChange}
+                        pendingSwitches={sldEditPendingSwitches}
+                        pendingChanges={sldEditPendingChanges}
+                        onSwitchClick={onSldSwitchClick}
+                        onSimulateEdit={onSldEditSimulate}
+                        onResetEdit={onSldEditReset}
+                        editSimulationBusy={sldEditBusy}
+                        editCombinedWithActionId={sldEditCombinedWithActionId}
+                        previewSvg={sldPreviewSvg}
+                        previewMetadata={sldPreviewMetadata}
+                        previewStale={sldPreviewStale}
+                        previewLoading={sldPreviewLoading}
+                        focusedSwitchId={sldFocusedSwitchId}
+                        onSwitchFocus={onSldSwitchFocus}
+                        onSwitchRemove={onSldSwitchRemove}
+                        onSwitchRemoveMany={onSldSwitchRemoveMany}
                     />
                 )}
 

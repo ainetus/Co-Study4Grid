@@ -391,6 +391,39 @@ circle.nad-highlight {
     stroke-width: 2px !important;
 }
 
+/* Target-topology preview: flow values + arrows are stale (no load
+   flow was run) so they're greyed until the operator re-simulates.
+   pypowsybl renders feeder flow info as <text> and ARROW_* glyphs. */
+.sld-preview-stale text {
+    fill: var(--signal-delta-neutral) !important;
+    opacity: 0.55 !important;
+}
+.sld-preview-stale .sld-feeder-info,
+.sld-preview-stale [class*="ARROW"] {
+    opacity: 0.4 !important;
+}
+
+/* Pending switch toggles (interactive SLD topology edit). */
+.sld-user-toggle-open path,
+.sld-user-toggle-open line,
+.sld-user-toggle-open polyline,
+.sld-user-toggle-open rect,
+.sld-user-toggle-open circle {
+    stroke: var(--signal-edit-open) !important;
+    stroke-width: 2.5px !important;
+    stroke-dasharray: 4 2 !important;
+}
+
+.sld-user-toggle-closed path,
+.sld-user-toggle-closed line,
+.sld-user-toggle-closed polyline,
+.sld-user-toggle-closed rect,
+.sld-user-toggle-closed circle {
+    stroke: var(--signal-edit-closed) !important;
+    stroke-width: 2.5px !important;
+    stroke-dasharray: 4 2 !important;
+}
+
 .sld-delta-negative path,
 .sld-delta-negative line,
 .sld-delta-negative polyline,
