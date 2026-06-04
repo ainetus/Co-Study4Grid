@@ -96,8 +96,20 @@ export function useSldTopologyEdit(
     // so the JS object identity already changes on every update.
     // Same pattern as useDiagramHighlights's reattach-prune effect —
     // a guarded reset that must run on baseline change.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    useEffect(() => { setPendingStates({}); setFocusedSwitchId(null); }, [baselineSwitchStates]);
+    //
+    // CRITICAL: the setter callbacks no-op when there's nothing to
+    // clear. Without the bail-out, a caller passing a fresh object
+    // literal on every render (which Re-renderHook does naturally in
+    // tests, and any non-memoised parent could do in production)
+    // would trigger an infinite render loop:
+    //   render → effect → setState({}) → render → effect → setState({}) …
+    // The bail-out keeps React's reconciliation short-circuit working
+    // (Object.is on the previous and next state → no re-render).
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setPendingStates(prev => (Object.keys(prev).length === 0 ? prev : {}));
+        setFocusedSwitchId(prev => (prev === null ? prev : null));
+    }, [baselineSwitchStates]);
 
     const setEditMode = useCallback((next: boolean) => {
         setEditModeState(prev => {

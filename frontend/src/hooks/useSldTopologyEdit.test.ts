@@ -17,18 +17,30 @@ const baseline = (): Record<string, boolean> => ({
     SW_C: false,
 });
 
+// IMPORTANT: each test passes a STABLE baseline reference. The hook
+// resets pendingStates whenever the baseline identity changes, so
+// recreating the object on every render (`() =>
+// useSldTopologyEdit(baseline())`) would call setState({}) inside
+// the effect on every render — an infinite loop that OOM'd CI before
+// the bail-out guard was added in the hook (see the comment on the
+// guarded useEffect). Keeping it stable here is the production
+// pattern: ``vlOverlay.switch_states`` only changes when a new SLD
+// payload arrives.
+
 describe('useSldTopologyEdit', () => {
     beforeEach(() => { interactionLogger.clear(); });
 
     it('ignores toggles while edit mode is off', () => {
-        const { result } = renderHook(() => useSldTopologyEdit(baseline()));
+        const b = baseline();
+        const { result } = renderHook(() => useSldTopologyEdit(b));
         act(() => { result.current.toggleSwitch('SW_A'); });
         expect(result.current.changedSwitches).toEqual({});
         expect(result.current.pendingChanges).toHaveLength(0);
     });
 
     it('records a switch toggle relative to baseline', () => {
-        const { result } = renderHook(() => useSldTopologyEdit(baseline()));
+        const b = baseline();
+        const { result } = renderHook(() => useSldTopologyEdit(b));
         act(() => { result.current.setEditMode(true); });
         act(() => { result.current.toggleSwitch('SW_A'); });
         expect(result.current.changedSwitches).toEqual({ SW_A: true });
@@ -38,7 +50,8 @@ describe('useSldTopologyEdit', () => {
     });
 
     it('removes the override when toggled back to baseline', () => {
-        const { result } = renderHook(() => useSldTopologyEdit(baseline()));
+        const b = baseline();
+        const { result } = renderHook(() => useSldTopologyEdit(b));
         act(() => { result.current.setEditMode(true); });
         act(() => { result.current.toggleSwitch('SW_A'); });
         act(() => { result.current.toggleSwitch('SW_A'); });
@@ -46,14 +59,16 @@ describe('useSldTopologyEdit', () => {
     });
 
     it('rejects taps on switches not in the baseline', () => {
-        const { result } = renderHook(() => useSldTopologyEdit(baseline()));
+        const b = baseline();
+        const { result } = renderHook(() => useSldTopologyEdit(b));
         act(() => { result.current.setEditMode(true); });
         act(() => { result.current.toggleSwitch('UNKNOWN_SW'); });
         expect(result.current.changedSwitches).toEqual({});
     });
 
     it('reset() clears all pending toggles and logs', () => {
-        const { result } = renderHook(() => useSldTopologyEdit(baseline()));
+        const b = baseline();
+        const { result } = renderHook(() => useSldTopologyEdit(b));
         act(() => { result.current.setEditMode(true); });
         act(() => { result.current.toggleSwitch('SW_A'); });
         act(() => { result.current.toggleSwitch('SW_B'); });
@@ -65,7 +80,8 @@ describe('useSldTopologyEdit', () => {
     });
 
     it('switching edit mode off drops pending toggles', () => {
-        const { result } = renderHook(() => useSldTopologyEdit(baseline()));
+        const b = baseline();
+        const { result } = renderHook(() => useSldTopologyEdit(b));
         act(() => { result.current.setEditMode(true); });
         act(() => { result.current.toggleSwitch('SW_A'); });
         act(() => { result.current.setEditMode(false); });
@@ -88,7 +104,8 @@ describe('useSldTopologyEdit', () => {
     });
 
     it('removeSwitch drops a single staged change', () => {
-        const { result } = renderHook(() => useSldTopologyEdit(baseline()));
+        const b = baseline();
+        const { result } = renderHook(() => useSldTopologyEdit(b));
         act(() => { result.current.setEditMode(true); });
         act(() => { result.current.toggleSwitch('SW_A'); });
         act(() => { result.current.toggleSwitch('SW_B'); });
@@ -97,7 +114,8 @@ describe('useSldTopologyEdit', () => {
     });
 
     it('removeSwitches drops a block of staged changes', () => {
-        const { result } = renderHook(() => useSldTopologyEdit(baseline()));
+        const b = baseline();
+        const { result } = renderHook(() => useSldTopologyEdit(b));
         act(() => { result.current.setEditMode(true); });
         act(() => { result.current.toggleSwitch('SW_A'); });
         act(() => { result.current.toggleSwitch('SW_B'); });
@@ -107,7 +125,8 @@ describe('useSldTopologyEdit', () => {
     });
 
     it('focus state tracks setFocusedSwitch and clears on removal', () => {
-        const { result } = renderHook(() => useSldTopologyEdit(baseline()));
+        const b = baseline();
+        const { result } = renderHook(() => useSldTopologyEdit(b));
         act(() => { result.current.setEditMode(true); });
         act(() => { result.current.toggleSwitch('SW_A'); });
         act(() => { result.current.setFocusedSwitch('SW_A'); });
@@ -117,11 +136,57 @@ describe('useSldTopologyEdit', () => {
     });
 
     it('logs sld_switch_toggled on each successful toggle', () => {
-        const { result } = renderHook(() => useSldTopologyEdit(baseline()));
+        const b = baseline();
+        const { result } = renderHook(() => useSldTopologyEdit(b));
         act(() => { result.current.setEditMode(true); });
         act(() => { result.current.toggleSwitch('SW_A'); });
         const toggles = interactionLogger.getLog().filter(e => e.type === 'sld_switch_toggled');
         expect(toggles).toHaveLength(1);
         expect(toggles[0].details).toEqual({ equipment_id: 'SW_A' });
+    });
+
+    // Regression: the baseline-change effect used to call
+    // ``setPendingStates({})`` unconditionally. When the parent passed
+    // a fresh object literal on every render (which renderHook does
+    // when the props callback re-creates it), React saw a new state
+    // value on every render → re-render → effect → setState → loop →
+    // OOM at ~4 GB. The hook now bails out via prev-equality and the
+    // test below would have failed-fast (timeout) on the old code.
+    it('does not infinite-loop when the baseline is recreated each render', () => {
+        const { result } = renderHook(
+            (props: { tick: number }) =>
+                // Same shape every render but a brand-new object → identity
+                // changes whenever ``tick`` does. The hook must not relay
+                // the change into an unconditional setState.
+                useSldTopologyEdit({ SW_A: false, _tick: props.tick > 0 } as unknown as Record<string, boolean>),
+            { initialProps: { tick: 0 } },
+        );
+        for (let i = 0; i < 50; i++) {
+            // Use renderHook's rerender via re-running act — each pass
+            // forces a fresh baseline literal. Without the bail-out
+            // this loop wedges.
+            act(() => { result.current.setEditMode(i % 2 === 0); });
+        }
+        expect(result.current.changedSwitches).toEqual({});
+    });
+
+    it('a no-op baseline change does not destroy a focus or staged toggle on the SAME identity', () => {
+        // Defensive: as long as the baseline reference is stable
+        // across renders that come from OTHER state changes, the
+        // hook must NOT drop overrides. This proves the effect's
+        // dep array is just the baseline (not e.g. pendingStates).
+        const b = baseline();
+        const { result, rerender } = renderHook(
+            (props: { b: Record<string, boolean> }) => useSldTopologyEdit(props.b),
+            { initialProps: { b } },
+        );
+        act(() => { result.current.setEditMode(true); });
+        act(() => { result.current.toggleSwitch('SW_A'); });
+        act(() => { result.current.setFocusedSwitch('SW_A'); });
+        // Force a re-render with the SAME baseline object.
+        rerender({ b });
+        rerender({ b });
+        expect(result.current.changedSwitches).toEqual({ SW_A: true });
+        expect(result.current.focusedSwitchId).toBe('SW_A');
     });
 });
