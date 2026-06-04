@@ -7,6 +7,50 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Interactive SLD topology edit → manual action card
+
+A new gesture lets the operator build a remedial action by clicking
+switches on a Single Line Diagram, mirroring the `manoeuvre_ihm` tool
+in `expert_op4grid_recommender`:
+
+- **`✎ Manual action`** button in the SLD overlay header (visible on
+  N-1 and post-action SLD tabs). Clicking it enters edit mode.
+- **Target-topology preview** — each staged switch toggle triggers a
+  debounced `POST /api/sld-topology-preview` call (new endpoint).
+  Backend clones a throwaway variant, applies the overrides, and
+  re-renders the SLD with `SldParameters(topological_coloring=True)`
+  (no load flow). The frontend shows the preview in place of the
+  baseline with stale-flow values greyed (`.sld-preview-stale`); the
+  changed breaker keeps its dashed outline so the operator always
+  sees WHERE the topology changed.
+- **Interactive maneuver list** (`SldEditPanel`) — focus a single
+  switch by clicking its row, remove one with `×`, remove a block
+  via checkbox + `Remove selected (N)`, or `Reset` all.
+- **Simulate action** — streams `/api/simulate-and-variant-diagram`
+  (new optional `voltage_level_id` field auto-names switch-only
+  actions: `"Manoeuvre manuelle sur <vl>: SW_A ouvert, SW_B fermé"`),
+  the card lands in the Action Feed and the SLD overlay auto-focuses
+  on its `ACTION` tab.
+- **Combined-action support** — editing on a post-action SLD produces
+  a combined card `<base>+user_topo_<vl>_<ts>`; the backend
+  canonicalises combined ids (`"+"`-sorted) and `_require_action`
+  aliases the raw ordering onto the canonical entry so the frontend
+  fetch keys never desync.
+- **Action-type filter** — `classifyActionTypes` (multi-bucket) is
+  introduced so a single maneuver that opens a coupling AND a line
+  (comma-joined description), or a combined card that opens one
+  coupling AND closes another, passes BOTH the corresponding filters
+  in the Action Feed / Action Overview / Combine modal / overflow
+  pins.
+- **Six new interaction events** declared in both `SPEC`
+  (`specConformance.test.ts`) and `SPEC_DETAILS`
+  (`check_standalone_parity.py`): `sld_edit_mode_toggled`,
+  `sld_switch_toggled`, `sld_maneuver_removed`,
+  `sld_maneuver_focused`, `sld_edit_reset`, `sld_topology_simulated`.
+
+Full contract + test inventory in
+[`docs/features/sld-topology-edit.md`](docs/features/sld-topology-edit.md).
+
 ### Sidebar readability refresh — collapsible feed, banner Clear, overload info bubble
 
 - **Sidebar visibility gate** — the "Select Contingency" picker card

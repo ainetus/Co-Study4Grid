@@ -15,15 +15,23 @@ Covers the additive pieces wired in by this feature:
     ``simulate_manual_action`` accepts ``action_content={"switches":
     {...}}`` + ``voltage_level_id`` and stamps a human-readable
     description on the resulting action dict entry.
+  - ``get_topology_preview_sld`` clones a throwaway variant, applies
+    user switch overrides, renders with topological colouring + flags
+    flows as stale, and always restores the working variant.
+  - ``_require_action`` resolves combined-action ids regardless of "+"
+    ordering by aliasing the raw key onto the canonical entry.
+  - HTTP boundary: ``/api/sld-topology-preview`` plumbing.
 """
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
+from fastapi.testclient import TestClient
 
 from expert_backend.services.diagram.sld_render import extract_vl_switch_states
 from expert_backend.services.simulation_helpers import (
     build_switch_action_description,
+    canonicalize_action_id,
     is_switch_only_content,
 )
 
@@ -277,3 +285,275 @@ class TestSldEndpointSwitchStates:
         result = service.get_n_sld("VL_X")
         assert result["voltage_level_id"] == "VL_X"
         assert result["switch_states"] == {"SW_X": False}
+
+
+class TestExtractVlSwitchStatesEdgeCases:
+    """Additional defensive paths."""
+
+    def test_skips_rows_with_unreadable_open_value(self):
+        # A row where `bool(row["open"])` raises must not abort the
+        # whole VL extraction — it's a corrupt-input recovery path,
+        # critical when partial pypowsybl exports leak NaNs / None.
+        network = MagicMock()
+
+        class _Boom:
+            def __bool__(self):
+                raise ValueError("not a bool")
+
+        network.get_switches.return_value = pd.DataFrame(
+            {
+                "open": [True, _Boom(), False],
+                "voltage_level_id": ["VL_A", "VL_A", "VL_A"],
+                "kind": ["BREAKER", "BREAKER", "DISCONNECTOR"],
+                "fictitious": [False, False, False],
+                "retained": [True, True, True],
+            },
+            index=["SW_OK", "SW_BAD", "SW_OK2"],
+        )
+        states = extract_vl_switch_states(network, "VL_A")
+        assert states == {"SW_OK": True, "SW_OK2": False}
+
+    def test_no_match_on_voltage_level_returns_empty(self):
+        network = MagicMock()
+        network.get_switches.return_value = pd.DataFrame(
+            {"open": [False], "voltage_level_id": ["VL_OTHER"],
+             "kind": ["BREAKER"], "fictitious": [False], "retained": [True]},
+            index=["SW_OTHER"],
+        )
+        assert extract_vl_switch_states(network, "VL_MISSING") == {}
+
+    def test_handles_missing_fictitious_column(self):
+        # ``fictitious`` may be absent on legacy pypowsybl builds — the
+        # extractor must still return states (no row filtering).
+        network = MagicMock()
+        network.get_switches.return_value = pd.DataFrame(
+            {"open": [False, True], "voltage_level_id": ["VL_A", "VL_A"]},
+            index=["SW_1", "SW_2"],
+        )
+        # Force the extractor onto the fallback get_switches call.
+        network.get_switches.side_effect = [
+            TypeError("unsupported"),
+            pd.DataFrame(
+                {"open": [False, True], "voltage_level_id": ["VL_A", "VL_A"]},
+                index=["SW_1", "SW_2"],
+            ),
+        ]
+        assert extract_vl_switch_states(network, "VL_A") == {
+            "SW_1": False, "SW_2": True,
+        }
+
+
+class TestBuildSwitchActionDescriptionShape:
+    """Description format is the contract the frontend filter relies on
+    (`coupl` + ouvert/fermé → open/close, line + ouvert/fermé → disco/
+    reco — see ``actionTypes.test.ts``)."""
+
+    def test_segments_join_with_comma(self):
+        desc = build_switch_action_description(
+            {"SW_A": True, "SW_B": False, "SW_C": True},
+            voltage_level_id="VL_X",
+        )
+        assert desc.count(",") == 2  # 3 switches → 2 separators
+
+    def test_starts_with_french_label(self):
+        desc = build_switch_action_description({"SW_A": True})
+        assert desc.lower().startswith("manoeuvre manuelle")
+
+
+class TestCanonicalAliasSymmetry:
+    """``_require_action`` must resolve a combined id whatever its
+    "+"-component ordering: A+B and B+A both alias onto the canonical
+    sorted entry."""
+
+    def _service_with(self, registered_id, extra=None):
+        from expert_backend.services.recommender_service import RecommenderService
+
+        service = RecommenderService()
+        service._last_result = {
+            "prioritized_actions": {registered_id: {"observation": object()}}
+        }
+        if extra:
+            service._last_result["prioritized_actions"].update(extra)
+        return service
+
+    def test_resolves_either_order_for_two_part_id(self):
+        service = self._service_with("user_topo_A+user_topo_B")
+        # Both orderings must land on the same entry.
+        actions = service._require_action("user_topo_B+user_topo_A")
+        assert "user_topo_B+user_topo_A" in actions
+        assert actions["user_topo_B+user_topo_A"] is actions["user_topo_A+user_topo_B"]
+
+    def test_canonicalize_is_idempotent(self):
+        # Sanity: applying canonicalize twice doesn't shuffle further.
+        once = canonicalize_action_id("user_topo_Z+user_topo_A+user_topo_M")
+        twice = canonicalize_action_id(once)
+        assert once == twice
+        # Canonical key is alphabetically sorted.
+        assert once == "user_topo_A+user_topo_M+user_topo_Z"
+
+    def test_singleton_ids_pass_through_unchanged(self):
+        assert canonicalize_action_id("disco_LINE_A") == "disco_LINE_A"
+
+
+class TestTopologyPreviewEmptyAndPostAction:
+    """Additional ``get_topology_preview_sld`` paths the earlier tests
+    don't exercise: empty switches dict (no update_switches call) and
+    the post-action branch (``base_action_id`` provided → reads from
+    the action's network manager, not the contingency variant)."""
+
+    def _mock_net_with_sld(self):
+        mock_net = MagicMock()
+        mock_net.get_working_variant_id.return_value = "ContingencyVar"
+        mock_net.get_switches.return_value = pd.DataFrame(
+            {"open": [True], "voltage_level_id": ["VL_X"],
+             "kind": ["BREAKER"], "fictitious": [False], "retained": [True]},
+            index=["SW_X"],
+        )
+        mock_sld = MagicMock()
+        mock_sld._repr_svg_.return_value = "<svg/>"
+        mock_sld._metadata = "{}"
+        mock_net.get_single_line_diagram.return_value = mock_sld
+        return mock_net
+
+    def test_empty_switches_skips_update_call(self):
+        from expert_backend.services.recommender_service import RecommenderService
+
+        service = RecommenderService()
+        net = self._mock_net_with_sld()
+        service._get_base_network = lambda: net
+        service._get_contingency_variant = lambda norm: "ContingencyVar"
+        service._normalize_contingency_elements = staticmethod(lambda e: list(e))
+
+        result = service.get_topology_preview_sld(["LINE_1"], "VL_X", {})
+        assert result["stale_flows"] is True
+        net.update_switches.assert_not_called()
+        # Clone + remove still happen so the working variant is restored.
+        net.clone_variant.assert_called_once()
+        net.remove_variant.assert_called_once()
+
+    def test_post_action_path_uses_action_network_manager(self):
+        from expert_backend.services.recommender_service import RecommenderService
+
+        service = RecommenderService()
+        # Action observation owns its OWN network_manager (which owns
+        # its OWN network) — the preview must operate on THIS network,
+        # not the base contingency one. Mirrors get_action_variant_sld.
+        action_net = self._mock_net_with_sld()
+        nm = MagicMock()
+        nm.network = action_net
+        obs = MagicMock()
+        obs._network_manager = nm
+        obs._variant_id = "ActionVariant"
+
+        service._last_result = {
+            "prioritized_actions": {"act_42": {"observation": obs}}
+        }
+        service._normalize_contingency_elements = staticmethod(lambda e: list(e))
+
+        result = service.get_topology_preview_sld(
+            ["LINE_1"], "VL_X", {"SW_X": False}, base_action_id="act_42",
+        )
+        assert result["voltage_level_id"] == "VL_X"
+        # Cloned from the action variant, not the base contingency.
+        action_net.clone_variant.assert_called_once()
+        assert action_net.clone_variant.call_args[0][0] == "ActionVariant"
+        action_net.update_switches.assert_called_once()
+
+
+class TestSldTopologyPreviewEndpoint:
+    """HTTP-boundary coverage for /api/sld-topology-preview: payload
+    shape, success path, and error→400 translation.
+
+    Importing ``expert_backend.main`` pulls in
+    ``expert_op4grid_recommender.models.expert`` (via
+    ``expert_backend.recommenders``). Sandboxes that mock
+    ``expert_op4grid_recommender`` as a plain MagicMock cannot resolve
+    the submodule lookup, so we skip this whole class when the import
+    isn't satisfiable. CI installs the real package and runs it.
+    """
+
+    @pytest.fixture
+    def client_and_service(self):
+        pytest.importorskip("expert_op4grid_recommender.models.expert")
+        from expert_backend.main import app
+        with patch("expert_backend.main.recommender_service") as mock_rs:
+            yield TestClient(app), mock_rs
+
+    def test_routes_to_service_and_returns_payload(self, client_and_service):
+        client, mock_rs = client_and_service
+        mock_rs.get_topology_preview_sld.return_value = {
+            "svg": "<svg/>",
+            "sld_metadata": "{}",
+            "voltage_level_id": "VL_X",
+            "switch_states": {"SW_X": False},
+            "stale_flows": True,
+        }
+        body = {
+            "voltage_level_id": "VL_X",
+            "disconnected_elements": ["LINE_1"],
+            "switches": {"SW_X": False},
+            "base_action_id": None,
+        }
+        r = client.post("/api/sld-topology-preview", json=body)
+        assert r.status_code == 200
+        data = r.json()
+        assert data["stale_flows"] is True
+        assert data["switch_states"] == {"SW_X": False}
+        mock_rs.get_topology_preview_sld.assert_called_once_with(
+            ["LINE_1"], "VL_X", {"SW_X": False}, base_action_id=None,
+        )
+
+    def test_post_action_id_is_forwarded(self, client_and_service):
+        client, mock_rs = client_and_service
+        mock_rs.get_topology_preview_sld.return_value = {
+            "svg": "<svg/>", "sld_metadata": None, "voltage_level_id": "VL_X",
+            "switch_states": {}, "stale_flows": True,
+        }
+        client.post("/api/sld-topology-preview", json={
+            "voltage_level_id": "VL_X",
+            "disconnected_elements": [],
+            "switches": {"SW_X": True},
+            "base_action_id": "disco_LINE_42",
+        })
+        kwargs = mock_rs.get_topology_preview_sld.call_args.kwargs
+        assert kwargs["base_action_id"] == "disco_LINE_42"
+
+    def test_service_error_is_translated_to_400(self, client_and_service):
+        client, mock_rs = client_and_service
+        mock_rs.get_topology_preview_sld.side_effect = RuntimeError("boom")
+        r = client.post("/api/sld-topology-preview", json={
+            "voltage_level_id": "VL_X",
+            "disconnected_elements": [],
+            "switches": {},
+        })
+        assert r.status_code == 400
+        assert "boom" in r.json()["detail"]
+
+
+class TestSimulateManualActionEndpointPlumbsVoltageLevel:
+    """``voltage_level_id`` must travel from the HTTP payload all the
+    way down to ``simulate_manual_action`` so auto-description picks
+    up the VL prefix."""
+
+    def test_voltage_level_id_forwarded(self):
+        pytest.importorskip("expert_op4grid_recommender.models.expert")
+        from expert_backend.main import app
+        with patch("expert_backend.main.recommender_service") as mock_rs:
+            mock_rs.simulate_manual_action.return_value = {
+                "action_id": "user_topo_VL_X_1",
+                "description_unitaire": "Manoeuvre manuelle sur VL_X: SW_A ouvert",
+                "rho_before": [], "rho_after": [], "max_rho": 0.0,
+                "max_rho_line": "N/A", "is_rho_reduction": False,
+                "non_convergence": None, "lines_overloaded": [],
+            }
+            client = TestClient(app)
+            r = client.post("/api/simulate-manual-action", json={
+                "action_id": "user_topo_VL_X_1",
+                "disconnected_elements": ["LINE_1"],
+                "action_content": {"switches": {"SW_A": True}},
+                "voltage_level_id": "VL_X",
+            })
+            assert r.status_code == 200
+            kwargs = mock_rs.simulate_manual_action.call_args.kwargs
+            assert kwargs["voltage_level_id"] == "VL_X"
+            assert kwargs["action_content"] == {"switches": {"SW_A": True}}

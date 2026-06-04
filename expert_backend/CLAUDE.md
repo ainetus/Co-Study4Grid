@@ -32,6 +32,10 @@ expert_backend/
 │   │   ├── nad_params.py          # - default NadParameters factory
 │   │   ├── nad_render.py          # - NAD generation + NaN-element stripping
 │   │   ├── sld_render.py          # - SLD SVG + metadata with fallbacks
+│   │   │                          #   + extract_vl_switch_states (per-VL
+│   │   │                          #   operable-switch baseline used by the
+│   │   │                          #   interactive SLD-edit feature, see
+│   │   │                          #   docs/features/sld-topology-edit.md)
 │   │   ├── overloads.py           # - overload filtering, element-currents
 │   │   ├── flows.py               # - branch + asset flow extractors (vectorised)
 │   │   ├── deltas.py              # - terminal-aware flow-delta math (pure)
@@ -186,6 +190,12 @@ Diagram & topology:
   the ~12 MB French NAD. See
   `docs/performance/history/svg-dom-recycling.md`.
 - `POST /api/n-sld` / `/api/contingency-sld` / `/api/action-variant-sld`
+  — each response now carries a `switch_states` map (per-VL
+  operable-switch booleans), driving the interactive SLD-edit baseline.
+- `POST /api/sld-topology-preview` — re-renders the VL SLD with the
+  user's staged switch overrides applied on a throwaway variant
+  (topological-colouring, NO load flow). Response carries
+  `stale_flows: true`. See `docs/features/sld-topology-edit.md`.
 
 Analysis:
 - `POST /api/run-analysis-step1` — detect overloads (returns once).
@@ -212,7 +222,9 @@ Analysis:
   `run_analysis_step2` and on `reset()`. The transform lives in
   `services/analysis/overflow_geo_transform.py` (pure function,
   lxml-based, fully unit-tested).
-- `POST /api/simulate-manual-action` — one-off simulation.
+- `POST /api/simulate-manual-action` — one-off simulation. Optional
+  `voltage_level_id` field used to auto-name switch-only manual actions
+  (`"Manoeuvre manuelle sur <vl>: SW_A ouvert, SW_B fermé"`).
 - `POST /api/simulate-and-variant-diagram` — combined NDJSON stream
   emitting `{type:"metrics"}` then `{type:"diagram"}` so the
   sidebar can update ahead of the SVG.
