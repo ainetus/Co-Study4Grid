@@ -106,6 +106,64 @@ frontend ALSO adopts the canonical id (taken from `metrics.action_id`)
 when registering the card so subsequent fetches start from the same
 key.
 
+### Manual-action persistence (the "not found in last analysis result" class of bug)
+
+A manually-simulated action's card lives in the frontend feed, but the
+SLD / NAD action-variant endpoints resolve it server-side through
+`_require_action(action_id)`, which reads
+`_last_result["prioritized_actions"]`. Three independent gaps used to
+let that lookup 400 while the operator stared at a live card. All three
+are now closed:
+
+1. **Registration was gated on the absence of a pypowsybl warning.**
+   `simulation_mixin._register_action_result` only stored the action
+   when `not info_action.get("exception")`. pypowsybl raises a
+   *non-fatal* warning on a no-op switch toggle (e.g. closing a coupler
+   that is already closed — the `rho_before == rho_after` case), so the
+   action silently never entered `_last_result`. Registration now keys
+   off `obs_simu_action is not None` ALONE; the warning still travels to
+   the frontend via the `non_convergence` field.
+
+2. **An `Analyze & Suggest` re-run clobbered hand-simulated actions.**
+   `run_analysis_step2` replaces `_last_result` with a fresh discovery
+   result containing only the recommender's suggestions.
+   `analysis_mixin._merge_preserved_simulated_actions` now re-attaches,
+   after the suggested feed is built, every prior entry that (a) is not
+   already refreshed by the new suggestions and (b) carries a live
+   `observation`. Preserved actions stay resolvable for the diagram
+   endpoints WITHOUT re-entering the suggested-actions feed the frontend
+   already has.
+
+3. **Defensive fallback in `_require_action`.** Manual actions are
+   always merged into `_dict_action` (with their observation) regardless
+   of `_last_result` state. When an action is missing from
+   `_last_result["prioritized_actions"]` but present in `_dict_action`
+   with a live observation, `_require_action` now promotes it back into
+   the prioritized-actions dict instead of raising. The genuine
+   "No analysis result available. Run analysis first." branch is kept
+   for the truly-uninitialised case (no observation anywhere).
+
+### Action-tab switch highlight for interactive maneuvers
+
+The action-tab SLD highlights the breaker(s) the maneuver toggled. Two
+properties make this robust for `user_topo_*` actions, which — unlike
+suggested grid2op actions — carry no round-tripped `action_topology`:
+
+- **`SldOverlay` highlights the UNION of `changed_switches` (the
+  backend N-1-vs-action switch diff on the `/api/action-variant-sld`
+  response) and `action_topology.switches`.** Neither source alone is
+  complete: suggested actions often have an empty
+  `action_topology.switches` (the diff is the only signal), while
+  interactive maneuvers may produce an empty diff (no-op toggle) but
+  always know which switches the operator clicked. The highlight pass
+  is no longer gated behind `if (action_topology)` — that gate left the
+  interactive maneuver's coupler un-highlighted.
+- **`App.tsx::handleSimulateSldEdit` folds the operator's toggled switch
+  IDs into the card's `action_topology.switches`.** Those IDs come
+  straight from the SLD's `switch_states`, so they always resolve back
+  to an SVG cell via the `equipmentId → SVG id` map — guaranteeing the
+  highlight even when the backend diff is empty.
+
 ## Frontend contract
 
 | File | Role |
@@ -113,7 +171,8 @@ key.
 | `hooks/useSldTopologyEdit.ts` | Owns the pending overrides, focus state, and the toggle / removeSwitch / removeSwitches / reset / setFocusedSwitch API. Auto-drops stale overrides on baseline identity change. |
 | `components/SldEditPanel.tsx` | Side panel under the SLD body — maneuver list, focus on row click, `×` per row, checkbox + **Remove selected (N)** for blocks, combined-with badge, Reset / Simulate buttons. |
 | `components/SldOverlay.tsx` | Header `✎ Manual action` button, switch-click delegation via SLD metadata `equipmentId → SVG id` map (dot/underscore variants handled), toggle outlines + focused-switch filter — applied **also on the preview** so the highlight persists. |
-| `App.tsx::handleSimulateSldEdit` | Streams `/api/simulate-and-variant-diagram` with `action_content={switches}` + `voltage_level_id`, primes the action-variant diagram under the **backend-canonical** id (`metrics.action_id`), pushes the card via `wrappedManualActionAdded(_, _, _, 'user')`, then `handleVlDoubleClick(id, vl, 'action')` to auto-focus the new action's tab. |
+| `App.tsx::handleSimulateSldEdit` | Streams `/api/simulate-and-variant-diagram` with `action_content={switches}` + `voltage_level_id`, primes the action-variant diagram under the **backend-canonical** id (`metrics.action_id`), folds the toggled `switches` into the card's `action_topology.switches` (so the action-tab highlight is guaranteed), pushes the card via `wrappedManualActionAdded(_, _, _, 'user')`, then `handleVlDoubleClick(id, vl, 'action')` to auto-focus the new action's tab. |
+| `components/SldOverlay.tsx` (highlight pass) | Highlights the UNION of `vlOverlay.changed_switches` and `actionDetail.action_topology.switches`; not gated on `action_topology` presence. The highlight signature includes both switch-key sets so a re-fetch re-plants the clones. |
 | `App.tsx::sldPreview` | Debounced fetch of `/api/sld-topology-preview` with sequence guard. |
 | `styles/tokens.css` | `--signal-edit-open` / `--signal-edit-closed` token pair for the toggle outline. |
 | `App.css` | `.sld-user-toggle-{open,closed}` (dashed outline) + `.sld-preview-stale` (grey flow values). |
@@ -189,6 +248,23 @@ mirrored in the conformance contract
   — HTTP-boundary tests via FastAPI `TestClient` (skipped in sandboxes
   that mock `expert_op4grid_recommender.models`).
 
+Manual-action persistence (`expert_backend/tests/test_preserve_simulated_actions.py`):
+
+- `test_preserves_manual_action_not_in_new_results` /
+  `test_does_not_overwrite_refreshed_action` /
+  `test_skips_entries_without_observation` /
+  `test_noop_on_empty_prior` /
+  `test_creates_prioritized_actions_bucket_if_missing` —
+  `_merge_preserved_simulated_actions` survival of hand-simulated
+  actions across an `Analyze & Suggest` re-run.
+- `test_register_action_result_registers_even_with_info_exception` /
+  `test_register_action_result_skips_when_obs_is_none` — registration
+  no longer gated on the non-fatal `info_action.exception` flag.
+- `test_require_action_promotes_from_dict_action_when_missing` /
+  `test_require_action_still_raises_for_truly_unknown_action` —
+  `_dict_action → _last_result` promotion fallback + the preserved
+  "truly unknown" raise.
+
 ### Frontend
 
 - `hooks/useSldTopologyEdit.test.ts` — toggle / reset / remove single /
@@ -204,6 +280,12 @@ mirrored in the conformance contract
   bucket for normal cards.
 - `utils/specConformance.test.ts` — `SPEC` rows for the six
   `sld_*` interaction types.
+- `components/SldOverlay.test.tsx` — action-tab switch highlight:
+  `highlights a coupler switch via changed_switches when
+  action_topology is absent (interactive user_topo maneuver)` and
+  `highlights a toggled switch from action_topology.switches when the
+  backend diff is empty` cover the union-of-sources highlight for
+  interactive maneuvers.
 
 ## Limitation: which backend
 
