@@ -60,6 +60,7 @@ from expert_backend.services.diagram.sld_render import (
     extract_vl_switch_states,
 )
 from expert_backend.services.sanitize import sanitize_for_json
+from expert_backend.services.simulation_helpers import canonicalize_action_id
 
 logger = logging.getLogger(__name__)
 
@@ -743,9 +744,20 @@ class DiagramMixin:
             )
         actions = self._last_result["prioritized_actions"]
         if action_id not in actions:
-            raise ActionResultUnavailableError(
-                f"Action '{action_id}' not found in last analysis result."
-            )
+            # Combined actions are stored under a CANONICAL key (the
+            # "+"-joined parts sorted alphabetically — see
+            # ``canonicalize_action_id``). A caller using the raw,
+            # unsorted order (e.g. ``base+user_topo`` straight from the
+            # frontend) would otherwise miss it. Alias the raw key onto
+            # the canonical entry so ``actions[action_id]`` works for
+            # either ordering.
+            canon = canonicalize_action_id(action_id)
+            if canon != action_id and canon in actions:
+                actions[action_id] = actions[canon]
+            else:
+                raise ActionResultUnavailableError(
+                    f"Action '{action_id}' not found in last analysis result."
+                )
         return actions
 
     def _lf_status_for_variant(self, network, variant_id: str, disconnected_elements):

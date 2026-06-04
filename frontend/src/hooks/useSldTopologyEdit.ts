@@ -40,9 +40,26 @@ export interface SldTopologyEditState {
      */
     toggleSwitch: (equipmentId: string) => void;
     /**
+     * Remove a single staged change (the maneuver-list × button) —
+     * reverts the switch to its baseline state.
+     */
+    removeSwitch: (equipmentId: string) => void;
+    /**
+     * Remove several staged changes at once (the maneuver-list
+     * "Remove selected" block action). Mirrors ExpertOp's
+     * ``seq_delete_many``.
+     */
+    removeSwitches: (equipmentIds: string[]) => void;
+    /**
      * Drop all pending toggles. Logged as ``sld_edit_reset``.
      */
     reset: () => void;
+    /**
+     * When set, the SLD highlights ONLY this switch (the maneuver-list
+     * focus gesture). Null = highlight every staged change.
+     */
+    focusedSwitchId: string | null;
+    setFocusedSwitch: (equipmentId: string | null) => void;
     /**
      * Subset of ``pendingStates`` that differ from the baseline. This
      * is what the backend receives as ``action_content.switches``.
@@ -71,6 +88,7 @@ export function useSldTopologyEdit(
 ): SldTopologyEditState {
     const [editMode, setEditModeState] = useState(false);
     const [pendingStates, setPendingStates] = useState<Record<string, boolean>>({});
+    const [focusedSwitchId, setFocusedSwitchId] = useState<string | null>(null);
 
     // Stable identity probe for the baseline — used to drop stale
     // overrides when the operator switches VL or SLD tab. We don't
@@ -79,7 +97,7 @@ export function useSldTopologyEdit(
     // Same pattern as useDiagramHighlights's reattach-prune effect —
     // a guarded reset that must run on baseline change.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    useEffect(() => { setPendingStates({}); }, [baselineSwitchStates]);
+    useEffect(() => { setPendingStates({}); setFocusedSwitchId(null); }, [baselineSwitchStates]);
 
     const setEditMode = useCallback((next: boolean) => {
         setEditModeState(prev => {
@@ -89,6 +107,7 @@ export function useSldTopologyEdit(
         });
         if (!next) {
             setPendingStates({});
+            setFocusedSwitchId(null);
         }
     }, []);
 
@@ -111,7 +130,39 @@ export function useSldTopologyEdit(
         interactionLogger.record('sld_switch_toggled', { equipment_id: equipmentId });
     }, [editMode, baselineSwitchStates]);
 
+    const removeSwitch = useCallback((equipmentId: string) => {
+        setPendingStates(prev => {
+            if (!(equipmentId in prev)) return prev;
+            const next = { ...prev };
+            delete next[equipmentId];
+            return next;
+        });
+        setFocusedSwitchId(prev => (prev === equipmentId ? null : prev));
+        interactionLogger.record('sld_maneuver_removed', { equipment_ids: [equipmentId] });
+    }, []);
+
+    const removeSwitches = useCallback((equipmentIds: string[]) => {
+        if (equipmentIds.length === 0) return;
+        const drop = new Set(equipmentIds);
+        setPendingStates(prev => {
+            const next: Record<string, boolean> = {};
+            let changed = false;
+            for (const [k, v] of Object.entries(prev)) {
+                if (drop.has(k)) { changed = true; continue; }
+                next[k] = v;
+            }
+            return changed ? next : prev;
+        });
+        setFocusedSwitchId(prev => (prev && drop.has(prev) ? null : prev));
+        interactionLogger.record('sld_maneuver_removed', { equipment_ids: equipmentIds });
+    }, []);
+
+    const setFocusedSwitch = useCallback((equipmentId: string | null) => {
+        setFocusedSwitchId(equipmentId);
+    }, []);
+
     const reset = useCallback(() => {
+        setFocusedSwitchId(null);
         setPendingStates(prev => {
             if (Object.keys(prev).length === 0) return prev;
             interactionLogger.record('sld_edit_reset');
@@ -144,7 +195,11 @@ export function useSldTopologyEdit(
         setEditMode,
         pendingStates,
         toggleSwitch,
+        removeSwitch,
+        removeSwitches,
         reset,
+        focusedSwitchId,
+        setFocusedSwitch,
         changedSwitches,
         pendingChanges,
     };

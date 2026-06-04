@@ -111,6 +111,10 @@ interface VisualizationPanelProps {
     sldPreviewMetadata?: string | null;
     sldPreviewStale?: boolean;
     sldPreviewLoading?: boolean;
+    sldFocusedSwitchId?: string | null;
+    onSldSwitchFocus?: (equipmentId: string | null) => void;
+    onSldSwitchRemove?: (equipmentId: string) => void;
+    onSldSwitchRemoveMany?: (equipmentIds: string[]) => void;
     voltageLevels: string[];
     onVlOpen: (vlName: string) => void;
     /**
@@ -265,6 +269,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     sldPreviewMetadata,
     sldPreviewStale,
     sldPreviewLoading,
+    sldFocusedSwitchId,
+    onSldSwitchFocus,
+    onSldSwitchRemove,
+    onSldSwitchRemoveMany,
     voltageLevels,
     onVlOpen,
     onOverflowPinPreview,
@@ -1378,6 +1386,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         previewMetadata={sldPreviewMetadata}
                         previewStale={sldPreviewStale}
                         previewLoading={sldPreviewLoading}
+                        focusedSwitchId={sldFocusedSwitchId}
+                        onSwitchFocus={onSldSwitchFocus}
+                        onSwitchRemove={onSldSwitchRemove}
+                        onSwitchRemoveMany={onSldSwitchRemoveMany}
                     />
                 )}
 

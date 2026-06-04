@@ -64,6 +64,15 @@ export interface SldOverlayProps {
     previewMetadata?: string | null;
     previewStale?: boolean;
     previewLoading?: boolean;
+    /**
+     * Maneuver-list focus: when set, only this switch's cell is
+     * outlined (the operator clicked its row in the panel). Null =
+     * outline every staged change.
+     */
+    focusedSwitchId?: string | null;
+    onSwitchFocus?: (equipmentId: string | null) => void;
+    onSwitchRemove?: (equipmentId: string) => void;
+    onSwitchRemoveMany?: (equipmentIds: string[]) => void;
 }
 
 const SldOverlay: React.FC<SldOverlayProps> = ({
@@ -85,6 +94,10 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
     previewMetadata = null,
     previewStale = false,
     previewLoading = false,
+    focusedSwitchId = null,
+    onSwitchFocus,
+    onSwitchRemove,
+    onSwitchRemoveMany,
 }) => {
     const overlayBodyRef = useRef<HTMLDivElement>(null);
     // When a target-topology preview is showing, the backend already
@@ -829,16 +842,17 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
             el.classList.remove('sld-user-toggle-closed');
         });
 
-        // Preview already draws switches in target state — no need to
-        // (and we shouldn't) paint toggle outlines over it.
-        if (previewActive) return;
+        // Always outline the changed switches — even on the preview —
+        // so the operator keeps seeing WHERE the topology changed. Uses
+        // the active metadata (preview metadata when previewing). When a
+        // maneuver row is focused, only that switch is outlined.
         if (!editMode || !pendingSwitches || !vlOverlay.switch_states) return;
         if (Object.keys(pendingSwitches).length === 0) return;
 
         const equipIdToSvgIds = new Map<string, string[]>();
-        if (vlOverlay.sldMetadata) {
+        if (activeMetadata) {
             try {
-                const meta = JSON.parse(vlOverlay.sldMetadata) as {
+                const meta = JSON.parse(activeMetadata) as {
                     nodes?: SldFeederNode[];
                     feederInfos?: SldFeederNode[];
                     feederNodes?: SldFeederNode[];
@@ -868,6 +882,7 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
             ?? elMap.get(svgId.replace(/_/g, '.'));
 
         for (const [equipmentId, targetOpen] of Object.entries(pendingSwitches)) {
+            if (focusedSwitchId && equipmentId !== focusedSwitchId) continue;
             const svgIds = equipIdToSvgIds.get(equipmentId)
                 ?? equipIdToSvgIds.get(equipmentId.replace(/\./g, '_'))
                 ?? equipIdToSvgIds.get(equipmentId.replace(/_/g, '.'));
@@ -1116,6 +1131,10 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
                     onClose={() => onEditModeChange(false)}
                     busy={editSimulationBusy}
                     combinedWithActionId={editCombinedWithActionId}
+                    focusedSwitchId={focusedSwitchId}
+                    onFocus={onSwitchFocus}
+                    onRemove={onSwitchRemove}
+                    onRemoveMany={onSwitchRemoveMany}
                 />
             )}
         </div>

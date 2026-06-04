@@ -561,6 +561,8 @@ export type InteractionType =
     | 'sld_overlay_closed'
     | 'sld_edit_mode_toggled'
     | 'sld_switch_toggled'
+    | 'sld_maneuver_removed'
+    | 'sld_maneuver_focused'
     | 'sld_edit_reset'
     | 'sld_topology_simulated'
     | 'overview_shown'

@@ -217,6 +217,35 @@ class TestTopologyPreviewSld:
         assert mock_net.set_working_variant.call_args_list[-1][0][0] == "ContingencyVar"
 
 
+class TestRequireActionCanonicalAlias:
+    """A combined action is registered under a CANONICAL (sorted) key;
+    ``_require_action`` must still resolve it when looked up with the
+    raw, unsorted ordering the frontend sends."""
+
+    def test_resolves_raw_unsorted_combined_id(self):
+        from expert_backend.services.recommender_service import RecommenderService
+
+        service = RecommenderService()
+        # Registered under the canonical (alphabetically sorted) key.
+        service._last_result = {
+            "prioritized_actions": {
+                "user_topo_BEON+user_topo_COUCHP6": {"observation": object()},
+            }
+        }
+        # Looked up with the raw order (base + new) as minted by the UI.
+        actions = service._require_action("user_topo_COUCHP6+user_topo_BEON")
+        assert "user_topo_COUCHP6+user_topo_BEON" in actions
+
+    def test_still_raises_when_truly_absent(self):
+        from expert_backend.services.recommender_service import RecommenderService
+        from expert_backend.services.diagram_mixin import ActionResultUnavailableError
+
+        service = RecommenderService()
+        service._last_result = {"prioritized_actions": {"some_action": {}}}
+        with pytest.raises(ActionResultUnavailableError):
+            service._require_action("nonexistent+other")
+
+
 class TestSldEndpointSwitchStates:
     """get_*_sld endpoints expose switch_states alongside svg + metadata."""
 

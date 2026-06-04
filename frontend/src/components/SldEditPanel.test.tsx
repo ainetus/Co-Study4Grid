@@ -84,4 +84,67 @@ describe('SldEditPanel', () => {
         fireEvent.click(screen.getByTestId('sld-edit-close'));
         expect(onClose).toHaveBeenCalledTimes(1);
     });
+
+    it('focuses a single switch when its row is clicked', () => {
+        const onFocus = vi.fn();
+        render(<SldEditPanel
+            {...defaultProps}
+            onFocus={onFocus}
+            pendingChanges={[
+                { switchId: 'SW_A', baselineOpen: false, targetOpen: true },
+                { switchId: 'SW_B', baselineOpen: true, targetOpen: false },
+            ]}
+        />);
+        fireEvent.click(screen.getByTestId('sld-edit-focus-SW_A'));
+        expect(onFocus).toHaveBeenCalledWith('SW_A');
+    });
+
+    it('clears focus when clicking the already-focused row', () => {
+        const onFocus = vi.fn();
+        render(<SldEditPanel
+            {...defaultProps}
+            focusedSwitchId="SW_A"
+            onFocus={onFocus}
+            pendingChanges={[{ switchId: 'SW_A', baselineOpen: false, targetOpen: true }]}
+        />);
+        fireEvent.click(screen.getByTestId('sld-edit-focus-SW_A'));
+        expect(onFocus).toHaveBeenCalledWith(null);
+    });
+
+    it('removes a single maneuver via its × button', () => {
+        const onRemove = vi.fn();
+        render(<SldEditPanel
+            {...defaultProps}
+            onRemove={onRemove}
+            pendingChanges={[{ switchId: 'SW_A', baselineOpen: false, targetOpen: true }]}
+        />);
+        fireEvent.click(screen.getByTestId('sld-edit-remove-SW_A'));
+        expect(onRemove).toHaveBeenCalledWith('SW_A');
+    });
+
+    it('removes a block of selected maneuvers', () => {
+        const onRemoveMany = vi.fn();
+        render(<SldEditPanel
+            {...defaultProps}
+            onRemoveMany={onRemoveMany}
+            pendingChanges={[
+                { switchId: 'SW_A', baselineOpen: false, targetOpen: true },
+                { switchId: 'SW_B', baselineOpen: true, targetOpen: false },
+                { switchId: 'SW_C', baselineOpen: false, targetOpen: true },
+            ]}
+        />);
+        fireEvent.click(screen.getByTestId('sld-edit-select-SW_A'));
+        fireEvent.click(screen.getByTestId('sld-edit-select-SW_C'));
+        fireEvent.click(screen.getByTestId('sld-edit-remove-selected'));
+        expect(onRemoveMany).toHaveBeenCalledTimes(1);
+        expect(new Set(onRemoveMany.mock.calls[0][0])).toEqual(new Set(['SW_A', 'SW_C']));
+    });
+
+    it('hides the block-remove button when nothing is selected', () => {
+        render(<SldEditPanel
+            {...defaultProps}
+            pendingChanges={[{ switchId: 'SW_A', baselineOpen: false, targetOpen: true }]}
+        />);
+        expect(screen.queryByTestId('sld-edit-remove-selected')).toBeNull();
+    });
 });

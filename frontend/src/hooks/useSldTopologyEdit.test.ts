@@ -87,6 +87,35 @@ describe('useSldTopologyEdit', () => {
         expect(result.current.changedSwitches).toEqual({});
     });
 
+    it('removeSwitch drops a single staged change', () => {
+        const { result } = renderHook(() => useSldTopologyEdit(baseline()));
+        act(() => { result.current.setEditMode(true); });
+        act(() => { result.current.toggleSwitch('SW_A'); });
+        act(() => { result.current.toggleSwitch('SW_B'); });
+        act(() => { result.current.removeSwitch('SW_A'); });
+        expect(result.current.changedSwitches).toEqual({ SW_B: false });
+    });
+
+    it('removeSwitches drops a block of staged changes', () => {
+        const { result } = renderHook(() => useSldTopologyEdit(baseline()));
+        act(() => { result.current.setEditMode(true); });
+        act(() => { result.current.toggleSwitch('SW_A'); });
+        act(() => { result.current.toggleSwitch('SW_B'); });
+        act(() => { result.current.toggleSwitch('SW_C'); });
+        act(() => { result.current.removeSwitches(['SW_A', 'SW_C']); });
+        expect(result.current.changedSwitches).toEqual({ SW_B: false });
+    });
+
+    it('focus state tracks setFocusedSwitch and clears on removal', () => {
+        const { result } = renderHook(() => useSldTopologyEdit(baseline()));
+        act(() => { result.current.setEditMode(true); });
+        act(() => { result.current.toggleSwitch('SW_A'); });
+        act(() => { result.current.setFocusedSwitch('SW_A'); });
+        expect(result.current.focusedSwitchId).toBe('SW_A');
+        act(() => { result.current.removeSwitch('SW_A'); });
+        expect(result.current.focusedSwitchId).toBeNull();
+    });
+
     it('logs sld_switch_toggled on each successful toggle', () => {
         const { result } = renderHook(() => useSldTopologyEdit(baseline()));
         act(() => { result.current.setEditMode(true); });

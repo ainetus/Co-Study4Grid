@@ -754,7 +754,12 @@ function App() {
         } else if (event.type === 'diagram') {
           const { type: _t, ...rest } = event;
           void _t;
-          diagrams.primeActionDiagram(actionId, rest as unknown as DiagramData & { svg: string }, voltageLevels.length);
+          // The backend canonicalises combined ids (sorts the "+"
+          // parts), so register the diagram under the id it actually
+          // stored — taken from the metrics event that always precedes
+          // the diagram event — not the raw request id.
+          const registeredId = metrics?.action_id ?? actionId;
+          diagrams.primeActionDiagram(registeredId, rest as unknown as DiagramData & { svg: string }, voltageLevels.length);
         } else if (event.type === 'error') {
           streamErr = (event.message as string) || 'stream error';
         }
@@ -773,6 +778,9 @@ function App() {
       if (streamErr) throw new Error(streamErr);
       if (!metrics) throw new Error('Stream ended without metrics event');
       const m = metrics as Awaited<ReturnType<typeof api.simulateManualAction>>;
+      // Backend-canonical id (sorted "+" parts) — use it for the card
+      // and the action-tab focus so every later lookup matches.
+      const registeredId = m.action_id || actionId;
       const detail: ActionDetail = {
         description_unitaire: m.description_unitaire,
         rho_before: m.rho_before,
@@ -789,9 +797,13 @@ function App() {
         curtailment_details: m.curtailment_details,
         pst_details: m.pst_details,
       };
-      wrappedManualActionAdded(actionId, detail, m.lines_overloaded || [], 'user');
+      wrappedManualActionAdded(registeredId, detail, m.lines_overloaded || [], 'user');
       sldTopologyEdit.reset();
       sldTopologyEdit.setEditMode(false);
+      // Switch the SLD overlay straight to the ACTION tab for the
+      // freshly-computed action so the operator sees the post-action
+      // state instead of staying on N-1.
+      handleVlDoubleClick(registeredId, vlName, 'action');
     } catch (e: unknown) {
       console.error('SLD topology edit simulation failed:', e);
       const err = e as { response?: { data?: { detail?: string } } };
@@ -802,6 +814,7 @@ function App() {
   }, [
     diagrams, sldTopologyEdit, selectedContingency, sldEditBaseActionId,
     result?.lines_overloaded, voltageLevels.length, wrappedManualActionAdded,
+    handleVlDoubleClick,
   ]);
 
   // Re-simulation of an already-present action (edit Target MW / tap on a
@@ -1788,6 +1801,10 @@ function App() {
             sldPreviewMetadata={sldPreview?.metadata ?? null}
             sldPreviewStale={!!sldPreview}
             sldPreviewLoading={sldPreviewLoading}
+            sldFocusedSwitchId={sldTopologyEdit.focusedSwitchId}
+            onSldSwitchFocus={sldTopologyEdit.setFocusedSwitch}
+            onSldSwitchRemove={sldTopologyEdit.removeSwitch}
+            onSldSwitchRemoveMany={sldTopologyEdit.removeSwitches}
             voltageLevels={voltageLevels}
             onVlOpen={handleVlOpen}
             onOverflowPinPreview={handlePinPreview}
