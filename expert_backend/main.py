@@ -221,6 +221,9 @@ class ConfigRequest(BaseModel):
     min_renewable_curtailment_actions: int | None = 0
     min_redispatch: int | None = 0
     redispatch_default_delta_mw: float | None = 10.0
+    # When non-empty, restrict the recommender to ONLY these action families
+    # (tokens: reco/close/open/disco/pst/ls/rc/redispatch). Empty = all.
+    allowed_action_types: list[str] | None = None
     n_prioritized_actions: int = 10
     lines_monitoring_path: str | None = None
     monitoring_factor: float = 0.95

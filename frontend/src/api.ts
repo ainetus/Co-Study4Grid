@@ -24,6 +24,7 @@ export interface UserConfig {
     min_load_shedding: number;
     min_renewable_curtailment_actions: number;
     min_redispatch: number;
+    allowed_action_types?: string[];
     n_prioritized_actions: number;
     monitoring_factor: number;
     pre_existing_overload_threshold: number;

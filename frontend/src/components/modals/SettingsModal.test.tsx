@@ -50,6 +50,8 @@ describe('SettingsModal', () => {
         setMinRenewableCurtailmentActions: vi.fn(),
         minRedispatch: 0.0,
         setMinRedispatch: vi.fn(),
+        allowedActionTypes: [],
+        setAllowedActionTypes: vi.fn(),
         ignoreReconnections: false,
         setIgnoreReconnections: vi.fn(),
         monitoringFactor: 0.95,
@@ -176,6 +178,26 @@ describe('SettingsModal', () => {
             ]) {
                 expect(screen.getByLabelText(label)).toBeInTheDocument();
             }
+        });
+
+        it('toggles an allowed-action-type to restrict the recommender', () => {
+            const setAllowedActionTypes = vi.fn();
+            const settings = recommenderSettings({ allowedActionTypes: [], setAllowedActionTypes });
+            render(<SettingsModal {...defaultProps} settings={settings} />);
+            const chip = screen.getByTestId('allowed-type-redispatch');
+            expect(chip).toHaveAttribute('aria-pressed', 'false');
+            fireEvent.click(chip);
+            expect(setAllowedActionTypes).toHaveBeenCalledWith(['redispatch']);
+        });
+
+        it('removes an already-selected allowed-action-type', () => {
+            const setAllowedActionTypes = vi.fn();
+            const settings = recommenderSettings({ allowedActionTypes: ['redispatch'], setAllowedActionTypes });
+            render(<SettingsModal {...defaultProps} settings={settings} />);
+            const chip = screen.getByTestId('allowed-type-redispatch');
+            expect(chip).toHaveAttribute('aria-pressed', 'true');
+            fireEvent.click(chip);
+            expect(setAllowedActionTypes).toHaveBeenCalledWith([]);
         });
     });
 

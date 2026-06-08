@@ -8,6 +8,8 @@
 import { interactionLogger } from '../../utils/interactionLogger';
 import type { SettingsState } from '../../hooks/useSettings';
 import { colors } from '../../styles/tokens';
+import { ACTION_TYPE_FILTER_TOKENS, ACTION_TYPE_LABELS } from '../../utils/actionTypes';
+import type { ActionTypeKind } from '../../utils/actionTypes';
 
 interface SettingsModalProps {
   settings: SettingsState;
@@ -32,6 +34,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
     minLoadShedding, setMinLoadShedding,
     minRenewableCurtailmentActions, setMinRenewableCurtailmentActions,
     minRedispatch, setMinRedispatch,
+    allowedActionTypes, setAllowedActionTypes,
     ignoreReconnections, setIgnoreReconnections,
     recommenderModel, setRecommenderModel,
     computeOverflowGraph, setComputeOverflowGraph,
@@ -296,6 +299,39 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
                 <label htmlFor="ignoreRec" style={{ fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer' }}>Ignore Reconnections</label>
               </div>
             )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: colors.surfaceMuted, borderRadius: '4px', border: `1px solid ${colors.borderSubtle}` }}>
+              <label style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Restrict to action types</label>
+              <span style={{ fontSize: '0.75rem', color: colors.textTertiary }}>
+                None selected = all families. Select one or more to make the recommender propose ONLY those.
+              </span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                {ACTION_TYPE_FILTER_TOKENS.filter(t => t !== 'all').map(token => {
+                  const active = allowedActionTypes.includes(token);
+                  return (
+                    <button
+                      key={token}
+                      type="button"
+                      data-testid={`allowed-type-${token}`}
+                      aria-pressed={active}
+                      onClick={() => setAllowedActionTypes(
+                        active
+                          ? allowedActionTypes.filter(t => t !== token)
+                          : [...allowedActionTypes, token]
+                      )}
+                      style={{
+                        fontSize: '0.75rem', padding: '3px 9px', borderRadius: '12px', cursor: 'pointer',
+                        border: `1px solid ${active ? colors.brand : colors.border}`,
+                        background: active ? colors.brandSoft : colors.surface,
+                        color: active ? colors.brand : colors.textSecondary,
+                        fontWeight: active ? 600 : 400,
+                      }}
+                    >
+                      {ACTION_TYPE_LABELS[token as ActionTypeKind]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
 

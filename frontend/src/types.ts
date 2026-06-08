@@ -16,6 +16,7 @@ export interface ConfigRequest {
     min_load_shedding?: number;
     min_renewable_curtailment_actions?: number;
     min_redispatch?: number;
+    allowed_action_types?: string[];
     n_prioritized_actions: number;
     lines_monitoring_path?: string;
     monitoring_factor: number;
