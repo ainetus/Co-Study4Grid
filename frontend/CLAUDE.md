@@ -178,6 +178,16 @@ in `App.tsx` because it needs multiple hook instances at once.
      auto-generated `frontend/dist-standalone/standalone.html`
      inherits the field on the next `npm run build:standalone`.
 
+Adding a new **remedial-action type** (a new action family + its
+`*_details` payload) is broader than a setting — it threads through the
+library, backend, classification, ActionCard rendering, and the
+**save / interaction-log / reload triad** (`sessionUtils.ts`,
+`App.tsx` `buildConfigInteractionDetails`, `useSession.ts`) plus the
+two `scripts/check_*.py` regression specs. Follow the full checklist in
+[`docs/features/adding-action-type.md`](../docs/features/adding-action-type.md);
+the §3.5 "save/log/reload triad" table is the part that regresses
+silently (the `redispatch_details` save-drop bug).
+
 ## Data flow (happy path)
 
 1. **Boot**: `App.tsx` first effect calls `api.getUserConfig()` →

@@ -135,6 +135,7 @@ Co-Study4Grid/
 | `frontend/CLAUDE.md` | Frontend internals: hook split, data flow, state reset, SVG performance levers, detached/tied tabs, interaction logger contract |
 | `docs/README.md` | Index of design/feature/perf/architecture/proposal docs. Start here for any `docs/**` lookup. |
 | `docs/features/save-results.md` | Save / reload session contract (JSON schema, reload flow, regression-guard matrix) |
+| `docs/features/adding-action-type.md` | Cross-cutting checklist for adding/upgrading a remedial-action type (lib → backend → frontend → save/log/reload triad → regression specs) |
 | `docs/features/interaction-logging.md` | Replay-ready event log contract |
 | `docs/features/sld-topology-edit.md` | Interactive SLD topology edit → manual action card |
 

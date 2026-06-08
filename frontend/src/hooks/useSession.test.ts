@@ -289,6 +289,7 @@ describe('useSession — handleRestoreSession', () => {
             min_load_shedding: 2.5,
             min_renewable_curtailment_actions: 1.25,
             min_redispatch: 3.0,
+            allowed_action_types: ['redispatch'],
             n_prioritized_actions: 8,
             lines_monitoring_path: '/data/monitoring.csv',
             monitoring_factor: 0.93,
@@ -336,6 +337,7 @@ describe('useSession — handleRestoreSession', () => {
         expect(ctx.setMinLoadShedding).toHaveBeenCalledWith(2.5);
         expect(ctx.setMinRenewableCurtailmentActions).toHaveBeenCalledWith(1.25);
         expect(ctx.setMinRedispatch).toHaveBeenCalledWith(3.0);
+        expect(ctx.setAllowedActionTypes).toHaveBeenCalledWith(['redispatch']);
         expect(ctx.setNPrioritizedActions).toHaveBeenCalledWith(8);
 
         // Monitoring + flags
@@ -780,6 +782,27 @@ describe('useSession — handleRestoreSession', () => {
                             is_manually_simulated: false,
                         },
                     },
+                    redispatch_1: {
+                        description_unitaire: 'Redispatch GEN_A',
+                        rho_before: [1.1],
+                        rho_after: [0.85],
+                        max_rho: 0.85,
+                        max_rho_line: 'LINE_OL1',
+                        is_rho_reduction: true,
+                        redispatch_details: [
+                            {
+                                gen_name: 'GEN_A', voltage_level_id: 'VL_3',
+                                delta_mw: 12.5, target_mw: 112.5, direction: 'up',
+                                current_mw: 100.0, max_raise_mw: 40.0, max_lower_mw: 60.0,
+                            },
+                        ],
+                        status: {
+                            is_selected: false,
+                            is_suggested: true,
+                            is_rejected: false,
+                            is_manually_simulated: false,
+                        },
+                    },
                 },
             },
         }));
@@ -812,6 +835,16 @@ describe('useSession — handleRestoreSession', () => {
         const pst = restored!.actions['pst_1'];
         expect(pst.pst_details).toEqual([
             { pst_name: 'PST_A', tap_position: 5, low_tap: -16, high_tap: 16 },
+        ]);
+
+        // Redispatch editor card depends on redispatch_details (headroom bounds)
+        const redispatch = restored!.actions['redispatch_1'];
+        expect(redispatch.redispatch_details).toEqual([
+            {
+                gen_name: 'GEN_A', voltage_level_id: 'VL_3',
+                delta_mw: 12.5, target_mw: 112.5, direction: 'up',
+                current_mw: 100.0, max_raise_mw: 40.0, max_lower_mw: 60.0,
+            },
         ]);
     });
 

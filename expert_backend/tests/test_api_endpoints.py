@@ -951,6 +951,9 @@ class TestPydanticModels:
             assert config.ignore_reconnections is False
             assert config.pypowsybl_fast_mode is True
             assert config.lines_monitoring_path is None
+            # Recommender restriction defaults to "no restriction" (None → []).
+            assert config.allowed_action_types is None
+            assert config.min_redispatch == 0
 
     def test_analysis_request_validation(self):
         from expert_backend.main import AnalysisRequest

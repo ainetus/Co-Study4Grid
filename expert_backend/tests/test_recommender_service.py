@@ -47,7 +47,9 @@ class TestRecommenderService:
             monitoring_factor=0.85,
             pre_existing_overload_threshold=0.05,
             ignore_reconnections=True,
-            pypowsybl_fast_mode=False
+            pypowsybl_fast_mode=False,
+            min_redispatch=2,
+            allowed_action_types=["redispatch", "disco"],
         )
 
         service.update_config(settings)
@@ -70,6 +72,10 @@ class TestRecommenderService:
         # Verify the new settings are applied
         assert config.IGNORE_RECONNECTIONS is True
         assert config.PYPOWSYBL_FAST_MODE is False
+
+        # Redispatch floor + recommender action-type restriction
+        assert config.MIN_REDISPATCH == 2
+        assert config.ALLOWED_ACTION_TYPES == ["redispatch", "disco"]
 
         # Overflow viewer: HTML is now the default output format (PR #74
         # interactive viewer). Legacy .pdf loading is handled at the
@@ -167,6 +173,8 @@ class TestRecommenderService:
             assert config.PYPOWSYBL_FAST_MODE is True
             assert config.MONITORING_FACTOR_THERMAL_LIMITS == 0.95
             assert config.PRE_EXISTING_OVERLOAD_WORSENING_THRESHOLD == 0.02
+            # No restriction by default → recommender considers all families.
+            assert config.ALLOWED_ACTION_TYPES == []
 
 
 class TestRestoreAnalysisContext:
