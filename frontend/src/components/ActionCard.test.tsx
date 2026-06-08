@@ -329,6 +329,33 @@ describe('ActionCard', () => {
         expect(screen.getByTestId('edit-mw-act_1')).toBeInTheDocument();
     });
 
+    it('renders redispatch details with signed-delta MW input when viewing', () => {
+        const details: ActionDetail = {
+            ...baseDetails,
+            redispatch_details: [
+                { gen_name: 'THERM_1', voltage_level_id: 'VL3', delta_mw: 10.0, target_mw: 40.0, direction: 'up' }
+            ],
+        };
+        render(<ActionCard {...defaultProps} details={details} isViewing={true} />);
+        expect(screen.getByText(/Redispatch on/)).toBeInTheDocument();
+        expect(screen.getByText('THERM_1')).toBeInTheDocument();
+        expect(screen.getByTestId('edit-mw-act_1')).toBeInTheDocument();
+        expect(screen.getByTestId('resimulate-act_1')).toBeInTheDocument();
+    });
+
+    it('passes the signed delta (incl. negative) to onResimulate for redispatch', () => {
+        const onResimulate = vi.fn();
+        const details: ActionDetail = {
+            ...baseDetails,
+            redispatch_details: [
+                { gen_name: 'THERM_1', voltage_level_id: 'VL3', delta_mw: -10.0, target_mw: 20.0, direction: 'down' }
+            ],
+        };
+        render(<ActionCard {...defaultProps} details={details} isViewing={true} onResimulate={onResimulate} />);
+        fireEvent.click(screen.getByTestId('resimulate-act_1'));
+        expect(onResimulate).toHaveBeenCalledWith('act_1', -10.0);
+    });
+
     it('renders PST details with tap input and re-simulate button when viewing', () => {
         const details: ActionDetail = {
             ...baseDetails,

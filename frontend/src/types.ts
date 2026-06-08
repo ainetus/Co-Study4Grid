@@ -72,6 +72,16 @@ export interface PstDetail {
     low_tap: number | null;
     high_tap: number | null;
 }
+export interface RedispatchDetail {
+    gen_name: string;
+    voltage_level_id: string | null;
+    // Signed MW change applied to the generator: > 0 raises production,
+    // < 0 lowers it.
+    delta_mw: number;
+    // Resulting production magnitude (MW) after the redispatch.
+    target_mw: number;
+    direction: 'up' | 'down';
+}
 
 export interface ActionDetail {
     description_unitaire: string;
@@ -92,6 +102,7 @@ export interface ActionDetail {
     lines_overloaded_after?: string[];
     load_shedding_details?: LoadSheddingDetail[];
     curtailment_details?: CurtailmentDetail[];
+    redispatch_details?: RedispatchDetail[];
     pst_details?: PstDetail[];
     /**
      * Provenance of the action card — distinct from `is_manual`, which
@@ -392,6 +403,7 @@ export interface SavedActionEntry {
     lines_overloaded_after?: string[];
     load_shedding_details?: LoadSheddingDetail[];
     curtailment_details?: CurtailmentDetail[];
+    redispatch_details?: RedispatchDetail[];
     pst_details?: PstDetail[];
     /**
      * Provenance of the action — `"user"` or a recommender model id.
@@ -597,7 +609,7 @@ export interface InteractionLogEntry {
 
 export type ActionSeverityCategory = 'green' | 'orange' | 'red' | 'grey';
 
-export type ActionTypeFilterToken = 'all' | 'disco' | 'reco' | 'ls' | 'rc' | 'open' | 'close' | 'pst';
+export type ActionTypeFilterToken = 'all' | 'disco' | 'reco' | 'ls' | 'rc' | 'redispatch' | 'open' | 'close' | 'pst';
 
 export interface ActionOverviewFilters {
     categories: Record<ActionSeverityCategory, boolean>;

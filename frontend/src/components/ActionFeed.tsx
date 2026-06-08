@@ -425,6 +425,7 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                 lines_overloaded_after: result.lines_overloaded_after,
                 load_shedding_details: result.load_shedding_details,
                 curtailment_details: result.curtailment_details,
+                redispatch_details: result.redispatch_details,
                 pst_details: result.pst_details,
 
             };
@@ -519,6 +520,7 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                 lines_overloaded_after: result.lines_overloaded_after,
                 load_shedding_details: result.load_shedding_details,
                 curtailment_details: result.curtailment_details,
+                redispatch_details: result.redispatch_details,
                 pst_details: result.pst_details,
             };
             onActionResimulated(actionId, newDetail, result.lines_overloaded || []);
@@ -571,6 +573,7 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                 lines_overloaded_after: result.lines_overloaded_after,
                 load_shedding_details: result.load_shedding_details,
                 curtailment_details: result.curtailment_details,
+                redispatch_details: result.redispatch_details,
                 pst_details: result.pst_details,
             };
             onActionResimulated(actionId, newDetail, result.lines_overloaded || []);

@@ -167,6 +167,15 @@ describe('classifyActionType', () => {
         expect(classifyActionType('rc_GEN_X', null, 'open_gen')).toBe('rc');
     });
 
+    it('classifies redispatching from id prefix / score type', () => {
+        expect(classifyActionType('redispatch_THERM_1', null, 'redispatch')).toBe('redispatch');
+        expect(classifyActionType('redispatch_THERM_1', "Redispatch hausse 'THERM_1'", null)).toBe('redispatch');
+    });
+
+    it('does not misclassify redispatch as renewable curtailment', () => {
+        expect(classifyActionType('redispatch_THERM_1', null, 'redispatch')).not.toBe('rc');
+    });
+
     it('falls back to "unknown" when no signal matches', () => {
         expect(classifyActionType('mystery_action', 'floats', 'weird_type')).toBe('unknown');
     });
@@ -251,8 +260,8 @@ describe('classifyActionTypes (multi-bucket)', () => {
 });
 
 describe('ACTION_TYPE_FILTER_TOKENS', () => {
-    it('lists all eight chip tokens in display order', () => {
-        expect(ACTION_TYPE_FILTER_TOKENS).toEqual(['all', 'disco', 'reco', 'ls', 'rc', 'open', 'close', 'pst']);
+    it('lists all nine chip tokens in display order', () => {
+        expect(ACTION_TYPE_FILTER_TOKENS).toEqual(['all', 'disco', 'reco', 'ls', 'rc', 'redispatch', 'open', 'close', 'pst']);
     });
 });
 

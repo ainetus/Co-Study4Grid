@@ -178,6 +178,7 @@ export const api = {
         action_topology?: import('./types').ActionTopology;
         load_shedding_details?: import('./types').LoadSheddingDetail[];
         curtailment_details?: import('./types').CurtailmentDetail[];
+        redispatch_details?: import('./types').RedispatchDetail[];
         pst_details?: import('./types').PstDetail[];
     }> => {
 

@@ -7,6 +7,40 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Redispatching action type
+
+End-to-end support for **redispatching** remedial actions (raise / lower a
+dispatchable generator), mirroring the renewable-curtailment pipeline but
+with an editable *signed* MW delta (default ±10 MW):
+
+- **Backend**:
+  - `services/analysis/mw_start_scoring.py` — new `redispatch` tag in
+    `classify_action_type` + `mw_start_redispatch` helper, dispatched from
+    `get_action_mw_start`.
+  - `services/analysis/action_enrichment.py` — `compute_redispatch_details`
+    (per-generator signed `delta_mw`, `target_mw`, `direction`), attached to
+    `redispatch_`-prefixed actions in `analysis_mixin._enrich_actions` and in
+    `simulation_mixin.simulate_manual_action`.
+  - `services/simulation_helpers.py` — `compute_redispatch_setpoint`
+    (`current ± signed delta`, floored at 0); `redispatch_details` added to
+    `serialize_action_result`.
+  - `services/simulation_mixin.py` — `_create_dynamic_redispatch` branch and
+    redispatch-aware `_apply_target_mw_updates` (interprets `target_mw` as the
+    signed delta for `redispatch_` actions).
+  - `main.py` / `recommender_service.py` — `min_redispatch` +
+    `redispatch_default_delta_mw` config plumbing.
+- **Frontend**:
+  - `types.ts` — `RedispatchDetail` interface, `redispatch_details` on
+    `ActionDetail`, `'redispatch'` added to `ActionTypeFilterToken`.
+  - `utils/actionTypes.ts` — `redispatch` filter token + label +
+    `classifyActionType` branch (checked before the renewable bucket).
+  - `components/ActionTypeIcon.tsx` — redispatch glyph (up/down arrows);
+    `components/ActionFilterRings.tsx` — token in the action-type ring.
+  - `components/ActionCard.tsx` — editable signed-delta MW input (allows
+    negative values) + Re-simulate, cloned from the curtailment editor.
+  - `components/ActionFeed.tsx` / `api.ts` — `redispatch_details` carried
+    through the simulate / re-simulate result pipeline.
+
 ### Interactive SLD topology edit → manual action card
 
 A new gesture lets the operator build a remedial action by clicking
