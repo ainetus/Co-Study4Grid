@@ -57,10 +57,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
   const models = availableModels ?? [];
   const activeModel = models.find(m => m.name === recommenderModel) ?? null;
   const declaredParamNames = new Set((activeModel?.params ?? []).map(p => p.name));
-  // When `availableModels` is empty (initial load or fetch failure) we
+  // When `availableModels` is empty (initial load), the active model is
+  // unknown, OR the active model declares NO params (the degraded
+  // fallback served when `/api/models` errored, or a params_spec failure),
   // fall back to showing every input — same behaviour as before the
-  // pluggable model selector existed.
-  const showAll = models.length === 0 || activeModel === null;
+  // pluggable model selector existed. Without the empty-params guard a
+  // single backend params_spec() exception would blank out every
+  // parameter in this tab (regression).
+  const showAll = models.length === 0 || activeModel === null || declaredParamNames.size === 0;
   const showField = (name: string): boolean => showAll || declaredParamNames.has(name);
 
   // When the active model declares `requires_overflow_graph`, the step

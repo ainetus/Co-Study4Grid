@@ -48,6 +48,8 @@ describe('SettingsModal', () => {
         setMinLoadShedding: vi.fn(),
         minRenewableCurtailmentActions: 0.0,
         setMinRenewableCurtailmentActions: vi.fn(),
+        minRedispatch: 0.0,
+        setMinRedispatch: vi.fn(),
         ignoreReconnections: false,
         setIgnoreReconnections: vi.fn(),
         monitoringFactor: 0.95,
@@ -121,6 +123,60 @@ describe('SettingsModal', () => {
         const pickButtons = screen.getAllByText('📄');
         fireEvent.click(pickButtons[0]);
         expect(mockSettings.pickSettingsPath).toHaveBeenCalled();
+    });
+
+    // =====================================================================
+    // Model-driven param filtering + degraded-fallback robustness
+    // =====================================================================
+    describe('recommender param visibility', () => {
+        const recommenderSettings = (overrides: Record<string, unknown>) => ({
+            ...mockSettings,
+            settingsTab: 'recommender',
+            recommenderModel: 'expert',
+            setRecommenderModel: vi.fn(),
+            computeOverflowGraph: true,
+            setComputeOverflowGraph: vi.fn(),
+            ...overrides,
+        } as unknown as SettingsState);
+
+        it('renders the Min Redispatch field when the active model declares it', () => {
+            const settings = recommenderSettings({
+                availableModels: [{
+                    name: 'expert', label: 'Expert system',
+                    requires_overflow_graph: true, is_default: true,
+                    params: [
+                        { name: 'min_redispatch', label: 'Min Redispatching', kind: 'int' },
+                        { name: 'min_load_shedding', label: 'Min Load Shedding', kind: 'int' },
+                    ],
+                }],
+            });
+            render(<SettingsModal {...defaultProps} settings={settings} />);
+            expect(screen.getByLabelText('Min Redispatch')).toBeInTheDocument();
+            expect(screen.getByLabelText('Min Load Shedding')).toBeInTheDocument();
+            // Undeclared field must stay hidden (dynamic filtering still works).
+            expect(screen.queryByLabelText('Min PST Actions')).not.toBeInTheDocument();
+        });
+
+        it('REGRESSION: a model that declares NO params (degraded /api/models fallback) shows ALL fields, not none', () => {
+            // When /api/models errors the frontend serves a static
+            // {name:'expert', params:[]} fallback. Without the empty-params
+            // guard this blanked out every parameter in the tab.
+            const settings = recommenderSettings({
+                availableModels: [{
+                    name: 'expert', label: 'Expert system',
+                    requires_overflow_graph: true, is_default: true,
+                    params: [],
+                }],
+            });
+            render(<SettingsModal {...defaultProps} settings={settings} />);
+            for (const label of [
+                'Min Line Reconnections', 'Min Close Coupling', 'Min Open Coupling',
+                'Min Line Disconnections', 'Min PST Actions', 'Min Load Shedding',
+                'Min Renewable Curtailment', 'Min Redispatch',
+            ]) {
+                expect(screen.getByLabelText(label)).toBeInTheDocument();
+            }
+        });
     });
 
     // =====================================================================
