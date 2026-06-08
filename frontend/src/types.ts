@@ -82,6 +82,12 @@ export interface RedispatchDetail {
     // Resulting production magnitude (MW) after the redispatch.
     target_mw: number;
     direction: 'up' | 'down';
+    // Current production (MW) before the redispatch.
+    current_mw?: number;
+    // Maximum further raise / lower (MW) bounded by the generator's
+    // [min_p, max_p] active-power limits. Null when unknown.
+    max_raise_mw?: number | null;
+    max_lower_mw?: number | null;
 }
 
 export interface ActionDetail {

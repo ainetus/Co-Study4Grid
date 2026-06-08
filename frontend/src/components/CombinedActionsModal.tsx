@@ -314,9 +314,10 @@ const CombinedActionsModal: React.FC<Props> = ({
     // Check if any selected action involves load shedding or curtailment (combination not supported)
     const allActions = { ...simulatedActions, ...analysisResult?.actions };
     const selectedActionsDetails = Array.from(selectedIds).map(id => allActions[id]);
-    const hasRestricted = selectedActionsDetails.some(detail => 
+    const hasRestricted = selectedActionsDetails.some(detail =>
         (detail?.load_shedding_details && detail.load_shedding_details.length > 0) ||
-        (detail?.curtailment_details && detail.curtailment_details.length > 0)
+        (detail?.curtailment_details && detail.curtailment_details.length > 0) ||
+        (detail?.redispatch_details && detail.redispatch_details.length > 0)
     );
 
     const handleToggle = (id: string) => {
@@ -399,6 +400,7 @@ const CombinedActionsModal: React.FC<Props> = ({
                 lines_overloaded_after: result.lines_overloaded_after,
                 load_shedding_details: result.load_shedding_details,
                 curtailment_details: result.curtailment_details,
+                redispatch_details: result.redispatch_details,
                 pst_details: result.pst_details,
                 estimated_max_rho: estimationData?.estimated_max_rho ?? estimationData?.max_rho,
                 estimated_max_rho_line: estimationData?.estimated_max_rho_line ?? estimationData?.max_rho_line,

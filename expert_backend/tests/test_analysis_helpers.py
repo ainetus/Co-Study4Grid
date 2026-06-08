@@ -558,13 +558,31 @@ class TestComputeRedispatchDetails:
         obs_action = self._obs(["THERM_1"], [-40.0])
         ns = MagicMock()
         ns.get_generator_voltage_level.return_value = "VL_T"
+        ns.get_generator_active_power_limits.return_value = (0.0, 100.0)
         out = action_enrichment.compute_redispatch_details(
             {"action": action, "observation": obs_action}, obs_n1, ns,
         )
         assert out == [{
             "gen_name": "THERM_1", "voltage_level_id": "VL_T",
             "delta_mw": 10.0, "target_mw": 40.0, "direction": "up",
+            "current_mw": 30.0,
+            "max_raise_mw": 70.0,   # 100 (max_p) - 30 (current)
+            "max_lower_mw": 30.0,   # 30 (current) - 0 (min_p)
         }]
+
+    def test_headroom_none_when_limits_unavailable(self):
+        action = SimpleNamespace(gens_p={"THERM_1": 40.0})
+        obs_n1 = self._obs(["THERM_1"], [-30.0])
+        obs_action = self._obs(["THERM_1"], [-40.0])
+        ns = MagicMock()
+        ns.get_generator_voltage_level.return_value = None
+        ns.get_generator_active_power_limits.return_value = None
+        out = action_enrichment.compute_redispatch_details(
+            {"action": action, "observation": obs_action}, obs_n1, ns,
+        )
+        assert out[0]["max_raise_mw"] is None
+        assert out[0]["max_lower_mw"] is None
+        assert out[0]["current_mw"] == 30.0
 
     def test_lower_direction_negative_delta(self):
         action = SimpleNamespace(gens_p={"THERM_1": 20.0})
@@ -576,6 +594,23 @@ class TestComputeRedispatchDetails:
             {"action": action, "observation": obs_action}, obs_n1, ns,
         )
         assert out[0]["delta_mw"] == -30.0
+        assert out[0]["direction"] == "down"
+
+    def test_delta_uses_encoded_target_not_redistributed_simulation(self):
+        # Regression: a 10 MW lower from 12 MW encodes target_p = 2 MW, but the
+        # load flow may back the unit off to 0 MW. The editable delta must stay
+        # the INTENDED -10 MW (encoded target vs current), NOT -12 MW (simulated).
+        action = SimpleNamespace(gens_p={"G": 2.0})
+        obs_n1 = self._obs(["G"], [-12.0])       # producing 12 MW
+        obs_action = self._obs(["G"], [0.0])      # slack redistribution → 0 MW
+        ns = MagicMock()
+        ns.get_generator_voltage_level.return_value = None
+        out = action_enrichment.compute_redispatch_details(
+            {"action": action, "observation": obs_action}, obs_n1, ns,
+        )
+        assert out[0]["delta_mw"] == -10.0
+        assert out[0]["target_mw"] == 2.0
+        assert out[0]["current_mw"] == 12.0
         assert out[0]["direction"] == "down"
 
     def test_discovery_stage_uses_target_from_content(self):

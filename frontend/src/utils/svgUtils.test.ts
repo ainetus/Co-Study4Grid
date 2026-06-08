@@ -501,6 +501,36 @@ describe('getActionTargetLines', () => {
 
 describe('getActionTargetVoltageLevels', () => {
 
+    it('extracts the VL from a redispatch_details entry (gen highlight)', () => {
+        const detail: ActionDetail = {
+            description_unitaire: 'No description available',
+            rho_before: null, rho_after: null, max_rho: null, max_rho_line: '',
+            is_rho_reduction: false,
+            redispatch_details: [
+                { gen_name: 'THERM_1', voltage_level_id: 'VL_GEN', delta_mw: 10, target_mw: 40, direction: 'up' },
+            ],
+        };
+        const result = getActionTargetVoltageLevels(detail, 'redispatch_THERM_1', makeNodeMap('VL_GEN'));
+        expect(result).toEqual(['VL_GEN']);
+    });
+
+    it('extracts the VL from load_shedding / curtailment detail arrays too', () => {
+        const ls: ActionDetail = {
+            description_unitaire: 'No description available',
+            rho_before: null, rho_after: null, max_rho: null, max_rho_line: '',
+            is_rho_reduction: false,
+            load_shedding_details: [{ load_name: 'L1', voltage_level_id: 'VL_LS', shedded_mw: 5 }],
+        };
+        expect(getActionTargetVoltageLevels(ls, 'load_shedding_L1', makeNodeMap('VL_LS'))).toEqual(['VL_LS']);
+        const rc: ActionDetail = {
+            description_unitaire: 'No description available',
+            rho_before: null, rho_after: null, max_rho: null, max_rho_line: '',
+            is_rho_reduction: false,
+            curtailment_details: [{ gen_name: 'W1', voltage_level_id: 'VL_RC', curtailed_mw: 8 }],
+        };
+        expect(getActionTargetVoltageLevels(rc, 'curtail_W1', makeNodeMap('VL_RC'))).toEqual(['VL_RC']);
+    });
+
     it('extracts VL from quoted string in description', () => {
         const detail: ActionDetail = {
             description_unitaire: "Ouverture couplage dans le poste 'SUBSTATION_A'",

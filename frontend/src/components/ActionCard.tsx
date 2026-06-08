@@ -178,6 +178,16 @@ const ActionCard: React.FC<ActionCardProps> = ({
             }
         });
 
+        details.redispatch_details?.forEach(rd => {
+            if (rd.voltage_level_id && !vlSet.has(rd.voltage_level_id)) {
+                vlSet.add(rd.voltage_level_id);
+                badges.push(badgeBtn(rd.voltage_level_id, colors.successSoft, colors.successText, `Click: zoom to ${rd.voltage_level_id} | Double-click: open SLD`, (e) => {
+                    e.stopPropagation();
+                    onVlDoubleClick?.(id, rd.voltage_level_id!);
+                }));
+            }
+        });
+
         if (nodesByEquipmentId) {
             const vlNames = getActionTargetVoltageLevels(details, id, nodesByEquipmentId);
             vlNames.forEach(vlName => {
@@ -426,22 +436,40 @@ const ActionCard: React.FC<ActionCardProps> = ({
 
                     {details.redispatch_details && details.redispatch_details.length > 0 && (
                         <div style={{ ...editorRowStyle, background: colors.infoSoft, color: colors.infoText, border: `1px solid ${colors.infoBorder}` }}>
-                            {details.redispatch_details.map((rd, i) => (
+                            {details.redispatch_details.map((rd, i) => {
+                                // Signed-delta bounds from the generator's [min_p, max_p]:
+                                // a raise can go up to +max_raise_mw, a lower down to -max_lower_mw.
+                                const headroom = rd.direction === 'up' ? rd.max_raise_mw : rd.max_lower_mw;
+                                const minDelta = rd.direction === 'up' ? 0 : (rd.max_lower_mw != null ? -rd.max_lower_mw : undefined);
+                                const maxDelta = rd.direction === 'up' ? (rd.max_raise_mw ?? undefined) : 0;
+                                const clamp = (v: number) => {
+                                    if (minDelta != null) v = Math.max(minDelta, v);
+                                    if (maxDelta != null) v = Math.min(maxDelta, v);
+                                    return v;
+                                };
+                                return (
                                 <div key={rd.gen_name} style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: i > 0 ? '4px' : 0 }}>
                                     <span>Redispatch on <strong>{rd.gen_name}</strong> ({rd.direction === 'up' ? 'raise' : 'lower'}) in MW:</span>
                                     <input
                                         data-testid={`edit-mw-${id}`}
                                         type="number"
                                         step={0.1}
+                                        min={minDelta}
+                                        max={maxDelta}
                                         value={cardEditMw[id] ?? rd.delta_mw.toFixed(1)}
                                         onChange={(e) => onCardEditMwChange(id, e.target.value)}
                                         style={{ width: '65px', fontSize: '11px', fontFamily: 'monospace', padding: '2px 4px', border: `1px solid ${colors.info}`, borderRadius: '3px', textAlign: 'right' }}
                                     />
+                                    {headroom != null && (
+                                        <span style={{ fontSize: '10px', color: colors.info }}>
+                                            max {rd.direction === 'up' ? 'raise' : 'lower'}: {headroom.toFixed(0)} MW
+                                        </span>
+                                    )}
                                     <button
                                         data-testid={`resimulate-${id}`}
                                         onClick={() => {
-                                            const mwVal = parseFloat(cardEditMw[id] ?? String(rd.delta_mw));
-                                            if (!isNaN(mwVal)) onResimulate(id, mwVal);
+                                            const raw = parseFloat(cardEditMw[id] ?? String(rd.delta_mw));
+                                            if (!isNaN(raw)) onResimulate(id, clamp(raw));
                                         }}
                                         disabled={resimulating === id}
                                         style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.info}`, background: colors.infoBorder, color: colors.infoText, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
@@ -449,7 +477,8 @@ const ActionCard: React.FC<ActionCardProps> = ({
                                         {resimulating === id ? 'Simulating...' : 'Re-simulate'}
                                     </button>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
 

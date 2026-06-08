@@ -356,6 +356,38 @@ describe('ActionCard', () => {
         expect(onResimulate).toHaveBeenCalledWith('act_1', -10.0);
     });
 
+    it('renders a clickable VL chip for a redispatch action (zoom + SLD)', () => {
+        const onVlDoubleClick = vi.fn();
+        const details: ActionDetail = {
+            ...baseDetails,
+            redispatch_details: [
+                { gen_name: 'THERM_1', voltage_level_id: 'VL_BIEST', delta_mw: 10.0, target_mw: 40.0, direction: 'up' }
+            ],
+        };
+        render(<ActionCard {...defaultProps} details={details} onVlDoubleClick={onVlDoubleClick} />);
+        const chip = screen.getByText('VL_BIEST');
+        expect(chip).toBeInTheDocument();
+        fireEvent.doubleClick(chip);
+        expect(onVlDoubleClick).toHaveBeenCalledWith('act_1', 'VL_BIEST');
+    });
+
+    it('shows the max-raise headroom and clamps the delta to it on re-simulate', () => {
+        const onResimulate = vi.fn();
+        const details: ActionDetail = {
+            ...baseDetails,
+            redispatch_details: [
+                { gen_name: 'THERM_1', voltage_level_id: 'VL3', delta_mw: 10.0, target_mw: 40.0,
+                  direction: 'up', current_mw: 30, max_raise_mw: 25, max_lower_mw: 30 }
+            ],
+        };
+        render(<ActionCard {...defaultProps} details={details} isViewing={true}
+            onResimulate={onResimulate} cardEditMw={{ act_1: '999' }} />);
+        expect(screen.getByText(/max raise: 25 MW/)).toBeInTheDocument();
+        fireEvent.click(screen.getByTestId('resimulate-act_1'));
+        // 999 requested but clamped to the 25 MW raise headroom.
+        expect(onResimulate).toHaveBeenCalledWith('act_1', 25);
+    });
+
     it('renders PST details with tap input and re-simulate button when viewing', () => {
         const details: ActionDetail = {
             ...baseDetails,

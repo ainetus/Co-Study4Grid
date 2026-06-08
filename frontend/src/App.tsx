@@ -632,6 +632,7 @@ function App() {
           lines_overloaded_after: metrics.lines_overloaded_after,
           load_shedding_details: metrics.load_shedding_details,
           curtailment_details: metrics.curtailment_details,
+          redispatch_details: metrics.redispatch_details,
           pst_details: metrics.pst_details,
         };
         // An unsimulated pin is a scored-but-not-yet-materialised
@@ -796,6 +797,7 @@ function App() {
         lines_overloaded_after: m.lines_overloaded_after,
         load_shedding_details: m.load_shedding_details,
         curtailment_details: m.curtailment_details,
+        redispatch_details: m.redispatch_details,
         pst_details: m.pst_details,
       };
       wrappedManualActionAdded(registeredId, detail, m.lines_overloaded || [], 'user');

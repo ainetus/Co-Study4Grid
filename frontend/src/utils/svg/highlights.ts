@@ -214,6 +214,15 @@ export const getActionTargetVoltageLevels = (
     if (topo?.voltage_level_id && nodesByEquipmentId.has(topo.voltage_level_id)) {
         targets.add(topo.voltage_level_id);
     }
+    // Per-generator / per-load detail arrays carry an explicit
+    // ``voltage_level_id`` — the authoritative target for load-shedding,
+    // curtailment and redispatch actions (no string heuristics needed).
+    const addVl = (vlId: string | null | undefined) => {
+        if (vlId && nodesByEquipmentId.has(vlId)) targets.add(vlId);
+    };
+    actionDetail?.load_shedding_details?.forEach(d => addVl(d.voltage_level_id));
+    actionDetail?.curtailment_details?.forEach(d => addVl(d.voltage_level_id));
+    actionDetail?.redispatch_details?.forEach(d => addVl(d.voltage_level_id));
     if (desc && desc !== 'No description available') {
         // Try all quoted strings — any might be the VL name
         const quotedMatches = desc.match(/'([^']+)'/g);

@@ -400,6 +400,7 @@ export function useSession(): SessionState {
             lines_overloaded_after: entry.lines_overloaded_after,
             load_shedding_details: entry.load_shedding_details,
             curtailment_details: entry.curtailment_details,
+            redispatch_details: entry.redispatch_details,
             pst_details: entry.pst_details,
             is_manual: entry.status.is_manually_simulated,
             // Provenance. Restored verbatim when present; legacy
