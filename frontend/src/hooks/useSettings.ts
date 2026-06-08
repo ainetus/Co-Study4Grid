@@ -356,13 +356,14 @@ export function useSettings(): SettingsState {
     minLoadShedding,
     minRenewableCurtailmentActions,
     minRedispatch,
+    allowedActionTypes,
     nPrioritizedActions,
     linesMonitoringPath,
     monitoringFactor,
     preExistingOverloadThreshold,
     ignoreReconnections,
     pypowsyblFastMode,
-  }), [networkPath, actionPath, layoutPath, outputFolderPath, minLineReconnections, minCloseCoupling, minOpenCoupling, minLineDisconnections, minLoadShedding, minRenewableCurtailmentActions, minRedispatch, nPrioritizedActions, linesMonitoringPath, monitoringFactor, preExistingOverloadThreshold, ignoreReconnections, pypowsyblFastMode]);
+  }), [networkPath, actionPath, layoutPath, outputFolderPath, minLineReconnections, minCloseCoupling, minOpenCoupling, minLineDisconnections, minLoadShedding, minRenewableCurtailmentActions, minRedispatch, allowedActionTypes, nPrioritizedActions, linesMonitoringPath, monitoringFactor, preExistingOverloadThreshold, ignoreReconnections, pypowsyblFastMode]);
 
   const handleOpenSettings = useCallback((tab: 'recommender' | 'configurations' | 'paths' = 'paths') => {
     interactionLogger.record('settings_opened', { tab });
@@ -385,6 +386,7 @@ export function useSettings(): SettingsState {
       setMinLoadShedding(settingsBackup.minLoadShedding ?? 0.0);
       setMinRenewableCurtailmentActions(settingsBackup.minRenewableCurtailmentActions ?? 0.0);
       setMinRedispatch(settingsBackup.minRedispatch ?? 0.0);
+      setAllowedActionTypes(settingsBackup.allowedActionTypes ?? []);
       setNPrioritizedActions(settingsBackup.nPrioritizedActions);
       setLinesMonitoringPath(settingsBackup.linesMonitoringPath);
       setMonitoringFactor(settingsBackup.monitoringFactor);

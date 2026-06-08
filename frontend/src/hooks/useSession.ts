@@ -36,6 +36,7 @@ export interface SaveParams {
   minLoadShedding: number;
   minRenewableCurtailmentActions: number;
   minRedispatch: number;
+  allowedActionTypes: string[];
   nPrioritizedActions: number;
   linesMonitoringPath: string;
   monitoringFactor: number;
@@ -82,6 +83,7 @@ export interface RestoreContext {
   setMinLoadShedding: (v: number) => void;
   setMinRenewableCurtailmentActions: (v: number) => void;
   setMinRedispatch: (v: number) => void;
+  setAllowedActionTypes: (v: string[]) => void;
   setNPrioritizedActions: (v: number) => void;
   setLinesMonitoringPath: (v: string) => void;
   setMonitoringFactor: (v: number) => void;
@@ -158,6 +160,7 @@ export function useSession(): SessionState {
       minLoadShedding: params.minLoadShedding,
       minRenewableCurtailmentActions: params.minRenewableCurtailmentActions,
       minRedispatch: params.minRedispatch,
+      allowedActionTypes: params.allowedActionTypes,
       nPrioritizedActions: params.nPrioritizedActions,
       linesMonitoringPath: params.linesMonitoringPath,
       monitoringFactor: params.monitoringFactor,
@@ -266,6 +269,7 @@ export function useSession(): SessionState {
       ctx.setMinLoadShedding(cfg.min_load_shedding ?? 0.0);
       ctx.setMinRenewableCurtailmentActions(cfg.min_renewable_curtailment_actions ?? 0.0);
       ctx.setMinRedispatch(cfg.min_redispatch ?? 0.0);
+      ctx.setAllowedActionTypes(cfg.allowed_action_types ?? []);
       ctx.setNPrioritizedActions(cfg.n_prioritized_actions);
       ctx.setLinesMonitoringPath(cfg.lines_monitoring_path || '');
       ctx.setMonitoringFactor(cfg.monitoring_factor);
@@ -286,6 +290,7 @@ export function useSession(): SessionState {
         min_load_shedding: cfg.min_load_shedding ?? 0.0,
         min_renewable_curtailment_actions: cfg.min_renewable_curtailment_actions ?? 0.0,
         min_redispatch: cfg.min_redispatch ?? 0.0,
+        allowed_action_types: cfg.allowed_action_types ?? [],
         n_prioritized_actions: cfg.n_prioritized_actions,
         lines_monitoring_path: cfg.lines_monitoring_path,
         monitoring_factor: cfg.monitoring_factor,

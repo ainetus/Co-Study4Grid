@@ -238,6 +238,7 @@ describe('useSession — handleRestoreSession', () => {
         setMinLoadShedding: vi.fn(),
         setMinRenewableCurtailmentActions: vi.fn(),
         setMinRedispatch: vi.fn(),
+        setAllowedActionTypes: vi.fn(),
         setNPrioritizedActions: vi.fn(),
         setLinesMonitoringPath: vi.fn(),
         setMonitoringFactor: vi.fn(),
