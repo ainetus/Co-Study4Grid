@@ -46,10 +46,12 @@ def is_na_action_type(action_type: str) -> bool:
 
 
 def classify_action_type(action_type: str) -> str:
-    """Return a normalised tag: 'disco' | 'pst' | 'load_shedding' | 'curtail' | 'open' | 'other'."""
+    """Return a normalised tag: 'disco' | 'pst' | 'load_shedding' | 'curtail' | 'redispatch' | 'open' | 'other'."""
     t = action_type.lower()
     if "load_shedding" in t or "ls" in t:
         return "load_shedding"
+    if "redispatch" in t:
+        return "redispatch"
     if "renewable_curtailment" in t or "curtail" in t:
         return "curtail"
     if "disco" in t or "line_disconnection" in t:
@@ -140,6 +142,39 @@ def mw_start_curtailment(
 
     if action_id.startswith("curtail_"):
         gen_name = action_id[len("curtail_"):]
+        if gen_name in gen_idx_map:
+            return round(_gen_active_power(obs_n1, gen_idx_map[gen_name]), 1)
+    return None
+
+
+def mw_start_redispatch(
+    action_id: str,
+    action_entry: dict | None,
+    obs_n1: Any,
+    gen_idx_map: dict[str, int],
+) -> float | None:
+    """MW at start for a redispatching action.
+
+    Like curtailment, this is the generator's current active power in N-1
+    state — the baseline the operator raises/lowers from. Resolves the
+    generator from ``content.set_gen_p`` or the ``redispatch_<name>`` id.
+    """
+    if action_entry is not None:
+        content = action_entry.get("content", {})
+        if content:
+            set_gen_p = content.get("set_gen_p", {})
+            if set_gen_p:
+                total_mw = 0.0
+                found = False
+                for gen_name in set_gen_p:
+                    if gen_name in gen_idx_map:
+                        total_mw += _gen_active_power(obs_n1, gen_idx_map[gen_name])
+                        found = True
+                if found:
+                    return round(total_mw, 1)
+
+    if action_id.startswith("redispatch_"):
+        gen_name = action_id[len("redispatch_"):]
         if gen_name in gen_idx_map:
             return round(_gen_active_power(obs_n1, gen_idx_map[gen_name]), 1)
     return None
@@ -248,6 +283,8 @@ def get_action_mw_start(
         return mw_start_load_shedding(action_id, action_entry, obs_n1, load_idx_map)
     if tag == "curtail":
         return mw_start_curtailment(action_id, action_entry, obs_n1, gen_idx_map)
+    if tag == "redispatch":
+        return mw_start_redispatch(action_id, action_entry, obs_n1, gen_idx_map)
 
     if action_entry is None:
         return None

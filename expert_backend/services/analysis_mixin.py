@@ -43,6 +43,7 @@ from expert_op4grid_recommender.utils.superposition import get_virtual_line_flow
 from expert_backend.services.analysis.action_enrichment import (
     compute_curtailment_details,
     compute_load_shedding_details,
+    compute_redispatch_details,
     compute_lines_overloaded_after,
     compute_pst_details,
     derive_non_convergence,
@@ -142,6 +143,14 @@ class AnalysisMixin:
             is_renewable_fn=lambda gen_name, obs: self._is_renewable_gen(gen_name, obs=obs),
         )
 
+    def _compute_redispatch_details(self, action_data, obs_n1=None):
+        """Per-generator redispatch MW details (delegates to the stateless helper)."""
+        return compute_redispatch_details(
+            action_data,
+            obs_n1 if obs_n1 is not None else self._obs_n1_from_context(),
+            self._network_service(),
+        )
+
     def _compute_pst_details(self, action_data):
         """Per-PST tap details with current bounds (delegates to the stateless helper)."""
         return compute_pst_details(action_data, self._pst_tap_info_fn())
@@ -209,6 +218,11 @@ class AnalysisMixin:
             curtailment = self._compute_curtailment_details(action_data)
             if curtailment:
                 enriched["curtailment_details"] = curtailment
+
+            if action_id.startswith("redispatch_"):
+                redispatch = self._compute_redispatch_details(action_data)
+                if redispatch:
+                    enriched["redispatch_details"] = redispatch
 
             pst_details = self._compute_pst_details(action_data)
             if pst_details:

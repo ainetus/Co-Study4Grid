@@ -121,6 +121,37 @@ def compute_reduction_setpoint(
         return 0.0
 
 
+def compute_redispatch_setpoint(
+    gen_name: str,
+    delta_mw: float | None,
+    obs_n1: Any,
+    default_delta_mw: float = 10.0,
+) -> float:
+    """Compute the new generator setpoint for a redispatch (current + signed delta).
+
+    Unlike :func:`compute_reduction_setpoint` (which *subtracts* a reduction
+    from the current output), redispatch *adds* a signed delta: a positive
+    ``delta_mw`` raises production, a negative one lowers it. Works in
+    production-positive magnitude (pypowsybl ``target_p`` convention) and is
+    floored at 0. Falls back to ``default_delta_mw`` (raise) when no delta is
+    supplied, and to ``default_delta_mw`` itself when the generator cannot be
+    located on the observation.
+    """
+    delta = float(delta_mw) if delta_mw is not None else float(default_delta_mw)
+    if obs_n1 is None:
+        return round(max(0.0, delta), 2)
+    try:
+        idx = list(obs_n1.name_gen).index(gen_name)
+        current_mw = abs(float(obs_n1.gen_p[idx]))
+        return round(max(0.0, current_mw + delta), 2)
+    except Exception as e:
+        logger.warning(
+            "[compute_redispatch_setpoint] could not compute setpoint for %s: %s — using delta only",
+            gen_name, e,
+        )
+        return round(max(0.0, delta), 2)
+
+
 _PST_TAP_PATTERN = re.compile(r"(pst(?:_tap)?_(.+))_(inc|dec)(\d+)$")
 
 
@@ -476,6 +507,7 @@ def serialize_action_result(action_id: str, action_data: dict) -> dict:
         "action_topology": action_data.get("action_topology"),
         "curtailment_details": action_data.get("curtailment_details"),
         "load_shedding_details": action_data.get("load_shedding_details"),
+        "redispatch_details": action_data.get("redispatch_details"),
         "pst_details": action_data.get("pst_details"),
         "content": action_data.get("content"),
     }

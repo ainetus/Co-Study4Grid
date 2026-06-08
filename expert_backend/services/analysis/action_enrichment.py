@@ -390,6 +390,85 @@ def compute_curtailment_details(
     return details or None
 
 
+def _gather_redispatch_targets(action_obj: Any, content: Any) -> dict[str, float]:
+    """Collect generator name -> target active power (MW) for a redispatch action."""
+    targets: dict[str, float] = {}
+    gens_p = _get(action_obj, "gens_p")
+    if not gens_p and isinstance(content, dict):
+        gens_p = content.get("set_gen_p")
+    if gens_p and isinstance(gens_p, dict):
+        for name, target in gens_p.items():
+            try:
+                targets[name] = float(target)
+            except (TypeError, ValueError):
+                continue
+    return targets
+
+
+def compute_redispatch_details(
+    action_data: dict,
+    obs_n1: Any,
+    network_service: Any,
+) -> list[dict] | None:
+    """Per-generator redispatch MW details (signed delta + direction).
+
+    Unlike curtailment (which forces production to 0 on renewable
+    generators), redispatching raises/lowers a *dispatchable* generator by
+    a signed delta. Reports, per generator: the signed ``delta_mw`` (>0 =
+    raise, <0 = lower), the resulting ``target_mw`` (production magnitude),
+    and the ``direction``.
+    """
+    action_obj = action_data.get("action")
+    if action_obj is None:
+        return None
+
+    content = action_data.get("content")
+    targets = _gather_redispatch_targets(action_obj, content)
+    if not targets:
+        return None
+
+    obs_action = action_data.get("observation")
+
+    details = []
+    for gen_name, target_mw in targets.items():
+        prod_before = None
+        prod_after = None
+        if obs_n1 is not None and obs_action is not None:
+            try:
+                idx = list(obs_action.name_gen).index(gen_name)
+                prod_before = abs(_gen_active_power(obs_n1, idx))
+                prod_after = abs(_gen_active_power(obs_action, idx))
+            except (ValueError, IndexError, AttributeError):
+                prod_before = None
+        if prod_before is None and obs_n1 is not None:
+            # Discovery stage (no post-action obs): use the encoded target.
+            try:
+                idx = list(obs_n1.name_gen).index(gen_name)
+                prod_before = abs(_gen_active_power(obs_n1, idx))
+            except (ValueError, IndexError, AttributeError):
+                prod_before = None
+            prod_after = abs(target_mw)
+        if prod_before is None:
+            continue
+
+        delta_mw = round(prod_after - prod_before, 1)
+
+        vl_id = None
+        try:
+            vl_id = network_service.get_generator_voltage_level(gen_name)
+        except Exception as e:
+            logger.debug("Suppressed exception: %s", e)
+
+        details.append({
+            "gen_name": gen_name,
+            "voltage_level_id": vl_id,
+            "delta_mw": delta_mw,
+            "target_mw": round(prod_after, 1),
+            "direction": "up" if delta_mw >= 0 else "down",
+        })
+    return details or None
+
+
 def _gather_pst_targets(action_obj: Any, content: Any, action_topology: Any) -> dict[str, int]:
     """Collect PST targets from the first source that has them."""
     entries: dict[str, int] = {}

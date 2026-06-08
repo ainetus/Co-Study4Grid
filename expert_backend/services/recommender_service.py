@@ -361,7 +361,11 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
             config.MIN_LOAD_SHEDDING = settings.min_load_shedding
         if hasattr(settings, 'min_renewable_curtailment_actions') and settings.min_renewable_curtailment_actions is not None:
             config.MIN_RENEWABLE_CURTAILMENT_ACTIONS = settings.min_renewable_curtailment_actions
-        
+        if hasattr(settings, 'min_redispatch') and settings.min_redispatch is not None:
+            config.MIN_REDISPATCH = settings.min_redispatch
+        if hasattr(settings, 'redispatch_default_delta_mw') and settings.redispatch_default_delta_mw is not None:
+            config.REDISPATCH_DEFAULT_DELTA_MW = settings.redispatch_default_delta_mw
+
         # New layout file path
         if hasattr(settings, 'layout_path') and settings.layout_path:
             config.LAYOUT_FILE_PATH = Path(settings.layout_path)
