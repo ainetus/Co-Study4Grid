@@ -24,6 +24,7 @@ export interface SessionInput {
     minPst: number;
     minLoadShedding: number;
     minRenewableCurtailmentActions: number;
+    minRedispatch: number;
     nPrioritizedActions: number;
     linesMonitoringPath: string;
     monitoringFactor: number;
@@ -69,7 +70,7 @@ export interface SessionInput {
 export function buildSessionResult(input: SessionInput): SessionResult {
     const {
         networkPath, actionPath, layoutPath,
-        minLineReconnections, minCloseCoupling, minOpenCoupling, minLineDisconnections, minPst, minLoadShedding, minRenewableCurtailmentActions,
+        minLineReconnections, minCloseCoupling, minOpenCoupling, minLineDisconnections, minPst, minLoadShedding, minRenewableCurtailmentActions, minRedispatch,
         nPrioritizedActions, linesMonitoringPath, monitoringFactor,
         preExistingOverloadThreshold, ignoreReconnections, pypowsyblFastMode,
         recommenderModel, computeOverflowGraph,
@@ -189,6 +190,7 @@ export function buildSessionResult(input: SessionInput): SessionResult {
             min_pst: minPst,
             min_load_shedding: minLoadShedding,
             min_renewable_curtailment_actions: minRenewableCurtailmentActions,
+            min_redispatch: minRedispatch,
             n_prioritized_actions: nPrioritizedActions,
             lines_monitoring_path: linesMonitoringPath,
             monitoring_factor: monitoringFactor,

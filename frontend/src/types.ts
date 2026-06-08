@@ -15,6 +15,7 @@ export interface ConfigRequest {
     min_pst?: number;
     min_load_shedding?: number;
     min_renewable_curtailment_actions?: number;
+    min_redispatch?: number;
     n_prioritized_actions: number;
     lines_monitoring_path?: string;
     monitoring_factor: number;
@@ -317,6 +318,7 @@ export interface SettingsBackup {
     minLineDisconnections: number;
     minLoadShedding: number;
     minRenewableCurtailmentActions: number;
+    minRedispatch: number;
     nPrioritizedActions: number;
     linesMonitoringPath: string;
     monitoringFactor: number;
@@ -334,6 +336,7 @@ export interface RecommenderDisplayConfig {
     minPst: number;
     minLoadShedding: number;
     minRenewableCurtailmentActions: number;
+    minRedispatch: number;
     nPrioritizedActions: number;
     ignoreReconnections: boolean;
 }
@@ -445,6 +448,7 @@ export interface SessionResult {
         min_pst: number;
         min_load_shedding: number;
         min_renewable_curtailment_actions?: number;
+        min_redispatch?: number;
         n_prioritized_actions: number;
         lines_monitoring_path: string;
         monitoring_factor: number;

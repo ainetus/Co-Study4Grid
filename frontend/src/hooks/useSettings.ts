@@ -43,6 +43,8 @@ export interface SettingsState {
   setMinLoadShedding: (v: number) => void;
   minRenewableCurtailmentActions: number;
   setMinRenewableCurtailmentActions: (v: number) => void;
+  minRedispatch: number;
+  setMinRedispatch: (v: number) => void;
   ignoreReconnections: boolean;
   setIgnoreReconnections: (v: boolean) => void;
   recommenderModel: string;
@@ -92,6 +94,7 @@ export interface SettingsState {
     min_pst: number;
     min_load_shedding: number;
     min_renewable_curtailment_actions: number;
+    min_redispatch: number;
     n_prioritized_actions: number;
     lines_monitoring_path: string;
     monitoring_factor: number;
@@ -122,6 +125,7 @@ export function useSettings(): SettingsState {
   const [minPst, setMinPst] = useState(1.0);
   const [minLoadShedding, setMinLoadShedding] = useState(0.0);
   const [minRenewableCurtailmentActions, setMinRenewableCurtailmentActions] = useState(0.0);
+  const [minRedispatch, setMinRedispatch] = useState(0.0);
   const [ignoreReconnections, setIgnoreReconnections] = useState(false);
 
   const [recommenderModel, setRecommenderModel] = useState<string>(localStorage.getItem('recommenderModel') || 'expert');
@@ -160,6 +164,7 @@ export function useSettings(): SettingsState {
     if (cfg.min_pst !== undefined) setMinPst(cfg.min_pst);
     if (cfg.min_load_shedding !== undefined) setMinLoadShedding(cfg.min_load_shedding);
     if (cfg.min_renewable_curtailment_actions !== undefined) setMinRenewableCurtailmentActions(cfg.min_renewable_curtailment_actions);
+    if (cfg.min_redispatch !== undefined) setMinRedispatch(cfg.min_redispatch);
     if (cfg.n_prioritized_actions !== undefined) setNPrioritizedActions(cfg.n_prioritized_actions);
     if (cfg.monitoring_factor !== undefined) setMonitoringFactor(cfg.monitoring_factor);
     if (cfg.pre_existing_overload_threshold !== undefined) setPreExistingOverloadThreshold(cfg.pre_existing_overload_threshold);
@@ -256,6 +261,7 @@ export function useSettings(): SettingsState {
     min_pst: cfg.min_pst,
     min_load_shedding: cfg.min_load_shedding,
     min_renewable_curtailment_actions: cfg.min_renewable_curtailment_actions,
+    min_redispatch: cfg.min_redispatch,
     n_prioritized_actions: cfg.n_prioritized_actions,
     lines_monitoring_path: cfg.lines_monitoring_path ?? '',
     monitoring_factor: cfg.monitoring_factor,
@@ -281,6 +287,7 @@ export function useSettings(): SettingsState {
       min_pst: minPst,
       min_load_shedding: minLoadShedding,
       min_renewable_curtailment_actions: minRenewableCurtailmentActions,
+      min_redispatch: minRedispatch,
       n_prioritized_actions: nPrioritizedActions,
       monitoring_factor: monitoringFactor,
       pre_existing_overload_threshold: preExistingOverloadThreshold,
@@ -302,7 +309,7 @@ export function useSettings(): SettingsState {
     });
   }, [networkPath, actionPath, layoutPath, outputFolderPath, linesMonitoringPath,
     minLineReconnections, minCloseCoupling, minOpenCoupling, minLineDisconnections,
-    minPst, minLoadShedding, minRenewableCurtailmentActions, nPrioritizedActions, monitoringFactor, preExistingOverloadThreshold,
+    minPst, minLoadShedding, minRenewableCurtailmentActions, minRedispatch, nPrioritizedActions, monitoringFactor, preExistingOverloadThreshold,
     ignoreReconnections, pypowsyblFastMode, recommenderModel, computeOverflowGraph]);
 
   const pickSettingsPath = useCallback(async (type: 'file' | 'dir', setter: (path: string) => void) => {
@@ -341,13 +348,14 @@ export function useSettings(): SettingsState {
     minLineDisconnections,
     minLoadShedding,
     minRenewableCurtailmentActions,
+    minRedispatch,
     nPrioritizedActions,
     linesMonitoringPath,
     monitoringFactor,
     preExistingOverloadThreshold,
     ignoreReconnections,
     pypowsyblFastMode,
-  }), [networkPath, actionPath, layoutPath, outputFolderPath, minLineReconnections, minCloseCoupling, minOpenCoupling, minLineDisconnections, minLoadShedding, minRenewableCurtailmentActions, nPrioritizedActions, linesMonitoringPath, monitoringFactor, preExistingOverloadThreshold, ignoreReconnections, pypowsyblFastMode]);
+  }), [networkPath, actionPath, layoutPath, outputFolderPath, minLineReconnections, minCloseCoupling, minOpenCoupling, minLineDisconnections, minLoadShedding, minRenewableCurtailmentActions, minRedispatch, nPrioritizedActions, linesMonitoringPath, monitoringFactor, preExistingOverloadThreshold, ignoreReconnections, pypowsyblFastMode]);
 
   const handleOpenSettings = useCallback((tab: 'recommender' | 'configurations' | 'paths' = 'paths') => {
     interactionLogger.record('settings_opened', { tab });
@@ -369,6 +377,7 @@ export function useSettings(): SettingsState {
       setMinLineDisconnections(settingsBackup.minLineDisconnections);
       setMinLoadShedding(settingsBackup.minLoadShedding ?? 0.0);
       setMinRenewableCurtailmentActions(settingsBackup.minRenewableCurtailmentActions ?? 0.0);
+      setMinRedispatch(settingsBackup.minRedispatch ?? 0.0);
       setNPrioritizedActions(settingsBackup.nPrioritizedActions);
       setLinesMonitoringPath(settingsBackup.linesMonitoringPath);
       setMonitoringFactor(settingsBackup.monitoringFactor);
@@ -390,6 +399,7 @@ export function useSettings(): SettingsState {
     min_pst: minPst,
     min_load_shedding: minLoadShedding,
     min_renewable_curtailment_actions: minRenewableCurtailmentActions,
+    min_redispatch: minRedispatch,
     n_prioritized_actions: nPrioritizedActions,
     lines_monitoring_path: linesMonitoringPath,
     monitoring_factor: monitoringFactor,
@@ -398,7 +408,7 @@ export function useSettings(): SettingsState {
     pypowsybl_fast_mode: pypowsyblFastMode,
     model: recommenderModel,
     compute_overflow_graph: computeOverflowGraph,
-  }), [networkPath, actionPath, layoutPath, minLineReconnections, minCloseCoupling, minOpenCoupling, minLineDisconnections, minPst, minLoadShedding, minRenewableCurtailmentActions, nPrioritizedActions, linesMonitoringPath, monitoringFactor, preExistingOverloadThreshold, ignoreReconnections, pypowsyblFastMode, recommenderModel, computeOverflowGraph]);
+  }), [networkPath, actionPath, layoutPath, minLineReconnections, minCloseCoupling, minOpenCoupling, minLineDisconnections, minPst, minLoadShedding, minRenewableCurtailmentActions, minRedispatch, nPrioritizedActions, linesMonitoringPath, monitoringFactor, preExistingOverloadThreshold, ignoreReconnections, pypowsyblFastMode, recommenderModel, computeOverflowGraph]);
 
   const applyConfigResponse = useCallback((configRes: Record<string, unknown>) => {
     if (configRes && configRes.total_lines_count !== undefined) {
@@ -426,6 +436,7 @@ export function useSettings(): SettingsState {
     minPst, setMinPst,
     minLoadShedding, setMinLoadShedding,
     minRenewableCurtailmentActions, setMinRenewableCurtailmentActions,
+    minRedispatch, setMinRedispatch,
     ignoreReconnections, setIgnoreReconnections,
     recommenderModel, setRecommenderModel,
     computeOverflowGraph, setComputeOverflowGraph,
@@ -452,7 +463,7 @@ export function useSettings(): SettingsState {
   }), [
     networkPath, actionPath, layoutPath, outputFolderPath,
     minLineReconnections, minCloseCoupling, minOpenCoupling, minLineDisconnections,
-    nPrioritizedActions, minPst, minLoadShedding, minRenewableCurtailmentActions, ignoreReconnections,
+    nPrioritizedActions, minPst, minLoadShedding, minRenewableCurtailmentActions, minRedispatch, ignoreReconnections,
     recommenderModel, computeOverflowGraph, availableModels,
     linesMonitoringPath, monitoredLinesCount, totalLinesCount, showMonitoringWarning, monitoringFactor, preExistingOverloadThreshold, pypowsyblFastMode,
     actionDictFileName, actionDictStats,

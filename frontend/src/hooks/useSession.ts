@@ -35,6 +35,7 @@ export interface SaveParams {
   minPst: number;
   minLoadShedding: number;
   minRenewableCurtailmentActions: number;
+  minRedispatch: number;
   nPrioritizedActions: number;
   linesMonitoringPath: string;
   monitoringFactor: number;
@@ -80,6 +81,7 @@ export interface RestoreContext {
   setMinPst: (v: number) => void;
   setMinLoadShedding: (v: number) => void;
   setMinRenewableCurtailmentActions: (v: number) => void;
+  setMinRedispatch: (v: number) => void;
   setNPrioritizedActions: (v: number) => void;
   setLinesMonitoringPath: (v: string) => void;
   setMonitoringFactor: (v: number) => void;
@@ -155,6 +157,7 @@ export function useSession(): SessionState {
       minPst: params.minPst,
       minLoadShedding: params.minLoadShedding,
       minRenewableCurtailmentActions: params.minRenewableCurtailmentActions,
+      minRedispatch: params.minRedispatch,
       nPrioritizedActions: params.nPrioritizedActions,
       linesMonitoringPath: params.linesMonitoringPath,
       monitoringFactor: params.monitoringFactor,
@@ -262,6 +265,7 @@ export function useSession(): SessionState {
       ctx.setMinPst(cfg.min_pst ?? 1.0);
       ctx.setMinLoadShedding(cfg.min_load_shedding ?? 0.0);
       ctx.setMinRenewableCurtailmentActions(cfg.min_renewable_curtailment_actions ?? 0.0);
+      ctx.setMinRedispatch(cfg.min_redispatch ?? 0.0);
       ctx.setNPrioritizedActions(cfg.n_prioritized_actions);
       ctx.setLinesMonitoringPath(cfg.lines_monitoring_path || '');
       ctx.setMonitoringFactor(cfg.monitoring_factor);
@@ -281,6 +285,7 @@ export function useSession(): SessionState {
         min_pst: cfg.min_pst ?? 1.0,
         min_load_shedding: cfg.min_load_shedding ?? 0.0,
         min_renewable_curtailment_actions: cfg.min_renewable_curtailment_actions ?? 0.0,
+        min_redispatch: cfg.min_redispatch ?? 0.0,
         n_prioritized_actions: cfg.n_prioritized_actions,
         lines_monitoring_path: cfg.lines_monitoring_path,
         monitoring_factor: cfg.monitoring_factor,

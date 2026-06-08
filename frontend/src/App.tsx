@@ -53,6 +53,7 @@ function App() {
     minPst, setMinPst,
     minLoadShedding, setMinLoadShedding,
     minRenewableCurtailmentActions, setMinRenewableCurtailmentActions,
+    minRedispatch, setMinRedispatch,
     ignoreReconnections, setIgnoreReconnections,
     linesMonitoringPath, setLinesMonitoringPath,
     monitoredLinesCount, totalLinesCount,
@@ -265,11 +266,11 @@ function App() {
   const recommenderConfig = useMemo<RecommenderDisplayConfig>(() => ({
     minLineReconnections, minCloseCoupling, minOpenCoupling,
     minLineDisconnections, minPst, minLoadShedding,
-    minRenewableCurtailmentActions, nPrioritizedActions, ignoreReconnections,
+    minRenewableCurtailmentActions, minRedispatch, nPrioritizedActions, ignoreReconnections,
   }), [
     minLineReconnections, minCloseCoupling, minOpenCoupling,
     minLineDisconnections, minPst, minLoadShedding,
-    minRenewableCurtailmentActions, nPrioritizedActions, ignoreReconnections,
+    minRenewableCurtailmentActions, minRedispatch, nPrioritizedActions, ignoreReconnections,
   ]);
 
   const session = useSession();
@@ -937,7 +938,7 @@ function App() {
     networkPath, actionPath, layoutPath, outputFolderPath,
     minLineReconnections, minCloseCoupling, minOpenCoupling,
     minLineDisconnections, minPst, minLoadShedding,
-    minRenewableCurtailmentActions, nPrioritizedActions,
+    minRenewableCurtailmentActions, minRedispatch, nPrioritizedActions,
     linesMonitoringPath, monitoringFactor,
     preExistingOverloadThreshold, ignoreReconnections, pypowsyblFastMode,
     selectedBranch: selectedContingency.join('+'),
@@ -955,7 +956,7 @@ function App() {
     networkPath, actionPath, layoutPath, outputFolderPath,
     minLineReconnections, minCloseCoupling, minOpenCoupling,
     minLineDisconnections, minPst, minLoadShedding,
-    minRenewableCurtailmentActions, nPrioritizedActions,
+    minRenewableCurtailmentActions, minRedispatch, nPrioritizedActions,
     linesMonitoringPath, monitoringFactor,
     preExistingOverloadThreshold, ignoreReconnections, pypowsyblFastMode,
     selectedContingency, selectedOverloads, monitorDeselected,
@@ -981,7 +982,7 @@ function App() {
     setNetworkPath, setActionPath, setLayoutPath,
     setMinLineReconnections, setMinCloseCoupling, setMinOpenCoupling,
     setMinLineDisconnections, setMinPst, setMinLoadShedding,
-    setMinRenewableCurtailmentActions, setNPrioritizedActions,
+    setMinRenewableCurtailmentActions, setMinRedispatch, setNPrioritizedActions,
     setLinesMonitoringPath, setMonitoringFactor, setPreExistingOverloadThreshold,
     setIgnoreReconnections, setPypowsyblFastMode,
     setMonitorDeselected: analysis.setMonitorDeselected,
@@ -1010,7 +1011,7 @@ function App() {
     setNetworkPath, setActionPath, setLayoutPath,
     setMinLineReconnections, setMinCloseCoupling, setMinOpenCoupling,
     setMinLineDisconnections, setMinPst, setMinLoadShedding,
-    setMinRenewableCurtailmentActions, setNPrioritizedActions,
+    setMinRenewableCurtailmentActions, setMinRedispatch, setNPrioritizedActions,
     setLinesMonitoringPath, setMonitoringFactor, setPreExistingOverloadThreshold,
     setIgnoreReconnections, setPypowsyblFastMode,
     analysis, actionsHook, setResult, setSelectedContingency, setPendingContingency, resetAllState,
@@ -1061,6 +1062,7 @@ function App() {
     min_pst: minPst,
     min_load_shedding: minLoadShedding,
     min_renewable_curtailment_actions: minRenewableCurtailmentActions,
+    min_redispatch: minRedispatch,
     n_prioritized_actions: nPrioritizedActions,
     lines_monitoring_path: linesMonitoringPath,
     monitoring_factor: monitoringFactor,
@@ -1071,7 +1073,7 @@ function App() {
     networkPath, actionPath, layoutPath, outputFolderPath,
     minLineReconnections, minCloseCoupling, minOpenCoupling,
     minLineDisconnections, minPst, minLoadShedding,
-    minRenewableCurtailmentActions, nPrioritizedActions,
+    minRenewableCurtailmentActions, minRedispatch, nPrioritizedActions,
     linesMonitoringPath, monitoringFactor, preExistingOverloadThreshold,
     ignoreReconnections, pypowsyblFastMode,
   ]);
@@ -1544,7 +1546,7 @@ function App() {
         title: 'Recommender thresholds',
         body: (
           <>
-            <div>• Minimum actions: {recommenderConfig.minLineReconnections} reco, {recommenderConfig.minCloseCoupling} close, {recommenderConfig.minOpenCoupling} open, {recommenderConfig.minLineDisconnections} disco, {recommenderConfig.minPst} PST, {recommenderConfig.minLoadShedding} load shedding, {recommenderConfig.minRenewableCurtailmentActions} RC</div>
+            <div>• Minimum actions: {recommenderConfig.minLineReconnections} reco, {recommenderConfig.minCloseCoupling} close, {recommenderConfig.minOpenCoupling} open, {recommenderConfig.minLineDisconnections} disco, {recommenderConfig.minPst} PST, {recommenderConfig.minLoadShedding} load shedding, {recommenderConfig.minRenewableCurtailmentActions} RC, {recommenderConfig.minRedispatch} redispatch</div>
             <div>• Maximum suggestions: {recommenderConfig.nPrioritizedActions}</div>
             <div>• Ignore reconnections: {recommenderConfig.ignoreReconnections ? 'Yes' : 'No'}</div>
           </>

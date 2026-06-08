@@ -31,6 +31,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
     minPst, setMinPst,
     minLoadShedding, setMinLoadShedding,
     minRenewableCurtailmentActions, setMinRenewableCurtailmentActions,
+    minRedispatch, setMinRedispatch,
     ignoreReconnections, setIgnoreReconnections,
     recommenderModel, setRecommenderModel,
     computeOverflowGraph, setComputeOverflowGraph,
@@ -258,6 +259,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
               { label: 'Min PST Actions', value: minPst, setter: setMinPst, id: 'minPst', name: 'min_pst' },
               { label: 'Min Load Shedding', value: minLoadShedding, setter: setMinLoadShedding, id: 'minLoadShedding', name: 'min_load_shedding' },
               { label: 'Min Renewable Curtailment', value: minRenewableCurtailmentActions, setter: setMinRenewableCurtailmentActions, id: 'minRenewableCurtailment', name: 'min_renewable_curtailment_actions' },
+              { label: 'Min Redispatch', value: minRedispatch, setter: setMinRedispatch, id: 'minRedispatch', name: 'min_redispatch' },
             ].filter(({ name }) => showField(name)).map(({ label, value, setter, id }) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label htmlFor={id} style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{label}</label>
