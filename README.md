@@ -18,6 +18,7 @@ to extend it.
 ## Table of Contents
 
 - [Key Features](#key-features)
+- [References](#references)
 - [Architecture](#architecture)
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
@@ -128,6 +129,23 @@ Co-Study4Grid is built around the operator's ability to triage hundreds of remed
 - **React ErrorBoundary** wrapping the app root (PR #82) to contain crashes.
 - **Vitest + React Testing Library** unit tests co-located as `*.test.tsx` — ~1000 specs.
 - **Auto-generated single-file UI** (`frontend/dist-standalone/standalone.html` via `npm run build:standalone`, PR #101) mirroring every feature of the React app, for zero-install demos. The legacy hand-maintained `standalone_interface.html` has been decommissioned.
+
+---
+
+## References
+
+This work builds on the following publications. Each entry lists the venue of publication and its first two authors.
+
+1. **Expert system for topological remedial action discovery in smart grids** — A. Marot, B. Donnot *et al.* — *MEDPOWER 2018* (IET International Conference on Mediterranean Power Generation, Transmission, Distribution and Energy Conversion), 2018. [[IEEE Xplore]](https://ieeexplore.ieee.org/document/9128159/)
+
+2. **Towards an AI assistant for human grid operators** — A. Marot, A. Rozier *et al.* — *Hybrid Human-Artificial Intelligence (HHAI)*, Amsterdam, 2022. [[arXiv:2012.02026]](https://arxiv.org/abs/2012.02026)
+   - Companion vision paper: **Perspectives on Future Power System Control Centers for Energy Transition** — A. Marot, A. Kelly *et al.* — *Journal of Modern Power Systems and Clean Energy*, 10(2), 2022. [[DOI]](https://doi.org/10.35833/MPCE.2021.000673)
+
+3. **Superposition Theorem for Flexible Grids** — A. Marot, B. Donnot *et al.* — *IEEE Transactions on Power Systems*, 2025. [[arXiv:2310.04437]](https://arxiv.org/abs/2310.04437)
+
+4. **A Conceptual Framework for AI-based Decision Systems in Critical Infrastructures** — M. Leyli-abadi, R. J. Bessa *et al.* — AI4RealNet, 2025. [[arXiv:2504.16133]](https://arxiv.org/abs/2504.16133)
+
+5. **The Supportive AI Framework: From Recommending to Supporting** — T. Waefler, S. Hamouche *et al.* — *Lecture Notes in Computer Science (Augmented Cognition)*, Springer, AI4RealNet, 2025. [[DOI]](https://link.springer.com/chapter/10.1007/978-3-031-93724-8_22)
 
 ---
 
