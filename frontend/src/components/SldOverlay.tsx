@@ -697,6 +697,9 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
                 for (const d of actionDetail.curtailment_details ?? []) {
                     if (d?.gen_name) targetEquipIds.add(d.gen_name);
                 }
+                for (const d of actionDetail.redispatch_details ?? []) {
+                    if (d?.gen_name) targetEquipIds.add(d.gen_name);
+                }
                 for (const d of actionDetail.pst_details ?? []) {
                     if (d?.pst_name) targetEquipIds.add(d.pst_name);
                 }

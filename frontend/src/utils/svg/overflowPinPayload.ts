@@ -189,6 +189,16 @@ const resolveActionSubstation = (
             return { substation, vlIds: [vlId], lineNames: [] };
         }
     }
+    if (details.redispatch_details?.length) {
+        const vlId = details.redispatch_details[0].voltage_level_id;
+        if (vlId) {
+            const sub = vlToSubstation[vlId];
+            const substation = (sub && overflowSubstationSet.has(sub))
+                ? sub
+                : (sub || vlId);
+            return { substation, vlIds: [vlId], lineNames: [] };
+        }
+    }
 
     // Track the action's PRIMARY branch targets vs a max_rho_line
     // fallback separately so we can apply the same priority order

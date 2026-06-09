@@ -21,7 +21,7 @@ import type { ActionOverviewFilters, ActionSeverityCategory, ActionTypeFilterTok
 
 /** Canonical chip tokens rendered in the filter row (in display order). */
 export const ACTION_TYPE_FILTER_TOKENS: readonly ActionTypeFilterToken[] = [
-    'all', 'disco', 'reco', 'ls', 'rc', 'open', 'close', 'pst',
+    'all', 'disco', 'reco', 'ls', 'rc', 'redispatch', 'open', 'close', 'pst',
 ];
 
 /**
@@ -61,6 +61,7 @@ export const ACTION_TYPE_LABELS: Record<ActionTypeKind, string> = {
     close: 'Close coupling',
     ls: 'Load shedding',
     rc: 'Renewable curtailment',
+    redispatch: 'Redispatching',
     pst: 'Phase shifter tap',
 };
 
@@ -159,8 +160,13 @@ export const classifyActionType = (
         && !isDisco && !isReco && !isOpenCoupling && !isCloseCoupling;
     const isLoadShedding = (aid.includes('load_shedding') || desc.includes('load shedding') || t.includes('load_shedding'))
         && !isDisco && !isReco && !isOpenCoupling && !isCloseCoupling && !isPstAction;
-    const isRenewableCurtailment = (t.includes('renewable_curtailment') || t.includes('open_gen'))
+    // Redispatching raises/lowers a dispatchable generator (id prefix
+    // ``redispatch_`` / score type ``redispatch``). Checked before the
+    // renewable bucket because both encode generator power changes.
+    const isRedispatch = (aid.startsWith('redispatch_') || t.includes('redispatch') || desc.includes('redispatch'))
         && !isDisco && !isReco && !isOpenCoupling && !isCloseCoupling && !isPstAction && !isLoadShedding;
+    const isRenewableCurtailment = (t.includes('renewable_curtailment') || t.includes('open_gen'))
+        && !isDisco && !isReco && !isOpenCoupling && !isCloseCoupling && !isPstAction && !isLoadShedding && !isRedispatch;
 
     if (isDisco) return 'disco';
     if (isReco) return 'reco';
@@ -168,6 +174,7 @@ export const classifyActionType = (
     if (isCloseCoupling) return 'close';
     if (isPstAction) return 'pst';
     if (isLoadShedding) return 'ls';
+    if (isRedispatch) return 'redispatch';
     if (isRenewableCurtailment) return 'rc';
     return 'unknown';
 };

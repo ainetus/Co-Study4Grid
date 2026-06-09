@@ -62,6 +62,18 @@ const GLYPHS: Record<ActionTypeKind, React.ReactNode> = {
             <path d="M8 9 V13.4" />
         </>
     ),
+    // Redispatching — a generator dial with up/down arrows: production
+    // can be raised OR lowered (signed delta), unlike curtailment which
+    // only reduces.
+    redispatch: (
+        <>
+            <circle cx="8" cy="8" r="3" />
+            <path d="M13 4.5 V8.5" />
+            <path d="M11.4 6.9 L13 8.5 L14.6 6.9" />
+            <path d="M3 11.5 V7.5" />
+            <path d="M1.4 9.1 L3 7.5 L4.6 9.1" />
+        </>
+    ),
     // Tap dial — a gauge with a needle.
     pst: (
         <>

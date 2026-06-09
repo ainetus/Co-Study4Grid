@@ -355,6 +355,24 @@ class NetworkService:
                 return row['voltage_level_id']
         return None
 
+    def get_generator_active_power_limits(self, gen_id: str) -> tuple[float, float] | None:
+        """Return ``(min_p, max_p)`` active-power limits (MW) of a generator.
+
+        Used to expose the maximum redispatch headroom on a remedial action
+        card (raise: ``max_p - current``; lower: ``current - min_p``)."""
+        if not self.network:
+            raise ValueError("Network not loaded")
+
+        generators = self.network.get_generators(attributes=['min_p', 'max_p'])
+        if generators is not None and gen_id in generators.index:
+            row = generators.loc[gen_id]
+            if 'min_p' in row.index and 'max_p' in row.index:
+                try:
+                    return float(row['min_p']), float(row['max_p'])
+                except (TypeError, ValueError):
+                    return None
+        return None
+
     def get_generator_type(self, gen_id: str) -> str | None:
         """Return the energy source type of a given generator."""
         if not self.network:

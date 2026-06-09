@@ -35,6 +35,8 @@ export interface SaveParams {
   minPst: number;
   minLoadShedding: number;
   minRenewableCurtailmentActions: number;
+  minRedispatch: number;
+  allowedActionTypes: string[];
   nPrioritizedActions: number;
   linesMonitoringPath: string;
   monitoringFactor: number;
@@ -80,6 +82,8 @@ export interface RestoreContext {
   setMinPst: (v: number) => void;
   setMinLoadShedding: (v: number) => void;
   setMinRenewableCurtailmentActions: (v: number) => void;
+  setMinRedispatch: (v: number) => void;
+  setAllowedActionTypes: (v: string[]) => void;
   setNPrioritizedActions: (v: number) => void;
   setLinesMonitoringPath: (v: string) => void;
   setMonitoringFactor: (v: number) => void;
@@ -155,6 +159,8 @@ export function useSession(): SessionState {
       minPst: params.minPst,
       minLoadShedding: params.minLoadShedding,
       minRenewableCurtailmentActions: params.minRenewableCurtailmentActions,
+      minRedispatch: params.minRedispatch,
+      allowedActionTypes: params.allowedActionTypes,
       nPrioritizedActions: params.nPrioritizedActions,
       linesMonitoringPath: params.linesMonitoringPath,
       monitoringFactor: params.monitoringFactor,
@@ -262,6 +268,8 @@ export function useSession(): SessionState {
       ctx.setMinPst(cfg.min_pst ?? 1.0);
       ctx.setMinLoadShedding(cfg.min_load_shedding ?? 0.0);
       ctx.setMinRenewableCurtailmentActions(cfg.min_renewable_curtailment_actions ?? 0.0);
+      ctx.setMinRedispatch(cfg.min_redispatch ?? 0.0);
+      ctx.setAllowedActionTypes(cfg.allowed_action_types ?? []);
       ctx.setNPrioritizedActions(cfg.n_prioritized_actions);
       ctx.setLinesMonitoringPath(cfg.lines_monitoring_path || '');
       ctx.setMonitoringFactor(cfg.monitoring_factor);
@@ -281,6 +289,8 @@ export function useSession(): SessionState {
         min_pst: cfg.min_pst ?? 1.0,
         min_load_shedding: cfg.min_load_shedding ?? 0.0,
         min_renewable_curtailment_actions: cfg.min_renewable_curtailment_actions ?? 0.0,
+        min_redispatch: cfg.min_redispatch ?? 0.0,
+        allowed_action_types: cfg.allowed_action_types ?? [],
         n_prioritized_actions: cfg.n_prioritized_actions,
         lines_monitoring_path: cfg.lines_monitoring_path,
         monitoring_factor: cfg.monitoring_factor,
@@ -395,6 +405,7 @@ export function useSession(): SessionState {
             lines_overloaded_after: entry.lines_overloaded_after,
             load_shedding_details: entry.load_shedding_details,
             curtailment_details: entry.curtailment_details,
+            redispatch_details: entry.redispatch_details,
             pst_details: entry.pst_details,
             is_manual: entry.status.is_manually_simulated,
             // Provenance. Restored verbatim when present; legacy

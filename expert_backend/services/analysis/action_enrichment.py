@@ -390,6 +390,97 @@ def compute_curtailment_details(
     return details or None
 
 
+def _gather_redispatch_targets(action_obj: Any, content: Any) -> dict[str, float]:
+    """Collect generator name -> target active power (MW) for a redispatch action."""
+    targets: dict[str, float] = {}
+    gens_p = _get(action_obj, "gens_p")
+    if not gens_p and isinstance(content, dict):
+        gens_p = content.get("set_gen_p")
+    if gens_p and isinstance(gens_p, dict):
+        for name, target in gens_p.items():
+            try:
+                targets[name] = float(target)
+            except (TypeError, ValueError):
+                continue
+    return targets
+
+
+def compute_redispatch_details(
+    action_data: dict,
+    obs_n1: Any,
+    network_service: Any,
+) -> list[dict] | None:
+    """Per-generator redispatch MW details (signed delta + direction).
+
+    Unlike curtailment (which forces production to 0 on renewable
+    generators), redispatching raises/lowers a *dispatchable* generator by
+    a signed delta. Reports, per generator: the signed ``delta_mw`` (>0 =
+    raise, <0 = lower), the resulting ``target_mw`` (production magnitude),
+    and the ``direction``.
+    """
+    action_obj = action_data.get("action")
+    if action_obj is None:
+        return None
+
+    content = action_data.get("content")
+    targets = _gather_redispatch_targets(action_obj, content)
+    if not targets:
+        return None
+
+    details = []
+    for gen_name, target_mw in targets.items():
+        # Current production (before the action) from the N-1 state.
+        prod_before = None
+        if obs_n1 is not None:
+            try:
+                idx = list(obs_n1.name_gen).index(gen_name)
+                prod_before = abs(_gen_active_power(obs_n1, idx))
+            except (ValueError, IndexError, AttributeError):
+                prod_before = None
+        if prod_before is None:
+            continue
+
+        # The editable delta is the INTENDED change: the encoded ``set_gen_p``
+        # target (production-positive) vs the current production. We must NOT
+        # use the post-load-flow simulated output here — slack redistribution
+        # can shift it past the configured increment (e.g. -11.9 MW for a
+        # 10 MW step), which would mislead the operator.
+        target_prod = abs(float(target_mw))
+        delta_mw = round(target_prod - prod_before, 1)
+        prod_after = target_prod
+
+        vl_id = None
+        try:
+            vl_id = network_service.get_generator_voltage_level(gen_name)
+        except Exception as e:
+            logger.debug("Suppressed exception: %s", e)
+
+        # Headroom: how much further the operator can raise / lower this unit
+        # from its CURRENT production, bounded by the generator's [min_p, max_p].
+        max_raise_mw = None
+        max_lower_mw = None
+        try:
+            limits = network_service.get_generator_active_power_limits(gen_name)
+            if limits is not None:
+                min_p, max_p = limits
+                max_raise_mw = round(max(0.0, max_p - prod_before), 1)
+                max_lower_mw = round(max(0.0, prod_before - min_p), 1)
+        except Exception as e:
+            logger.debug("Suppressed exception: %s", e)
+
+        details.append({
+            "gen_name": gen_name,
+            "voltage_level_id": vl_id,
+            "delta_mw": delta_mw,
+            "target_mw": round(prod_after, 1),
+            "direction": "up" if delta_mw >= 0 else "down",
+            "current_mw": round(prod_before, 1),
+            "max_raise_mw": max_raise_mw,
+            "max_lower_mw": max_lower_mw,
+        })
+    return details or None
+
+
 def _gather_pst_targets(action_obj: Any, content: Any, action_topology: Any) -> dict[str, int]:
     """Collect PST targets from the first source that has them."""
     entries: dict[str, int] = {}

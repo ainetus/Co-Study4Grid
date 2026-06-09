@@ -33,6 +33,7 @@ from expert_backend.services.simulation_helpers import (
     compute_action_metrics,
     compute_combined_rho,
     compute_reduction_setpoint,
+    compute_redispatch_setpoint,
     compute_target_max_rho,
     extract_action_topology,
     is_pst_action,
@@ -327,6 +328,10 @@ class SimulationMixin:
         action_data["load_shedding_details"] = self._compute_load_shedding_details(
             action_data, obs_n1=obs_n1
         )
+        if action_id.startswith("redispatch_"):
+            action_data["redispatch_details"] = self._compute_redispatch_details(
+                action_data, obs_n1=obs_n1
+            )
         action_data["pst_details"] = self._compute_pst_details(action_data)
 
         self._register_action_result(action_id, action_data, info_action, obs_simu_action)
@@ -414,11 +419,13 @@ class SimulationMixin:
     def _create_dynamic_actions_if_needed(
         self, action_ids, recent_actions, obs_n1, nm, target_mw
     ):
-        """Auto-create heuristic actions for curtail_ / load_shedding_ / pst_tap_ / reco_ prefixes."""
+        """Auto-create heuristic actions for redispatch_ / curtail_ / load_shedding_ / pst_tap_ / reco_ prefixes."""
         for aid in action_ids:
             if aid in self._dict_action or aid in recent_actions:
                 continue
-            if aid.startswith("curtail_"):
+            if aid.startswith("redispatch_"):
+                self._create_dynamic_redispatch(aid, target_mw, obs_n1)
+            elif aid.startswith("curtail_"):
                 self._create_dynamic_curtailment(aid, target_mw, obs_n1)
             elif aid.startswith("load_shedding_"):
                 self._create_dynamic_load_shedding(aid, target_mw, obs_n1)
@@ -426,6 +433,38 @@ class SimulationMixin:
                 self._create_dynamic_pst(aid, nm)
             elif aid.startswith("reco_"):
                 self._create_dynamic_reconnection(aid)
+
+    def _create_dynamic_redispatch(self, aid, target_mw, obs_n1):
+        gen_name = aid[len("redispatch_"):]
+        default_delta = getattr(config, "REDISPATCH_DEFAULT_DELTA_MW", 10.0)
+        # For redispatch, ``target_mw`` is the SIGNED delta (raise > 0 / lower
+        # < 0); the resulting absolute setpoint is current production + delta.
+        setpoint = compute_redispatch_setpoint(gen_name, target_mw, obs_n1, default_delta)
+        topo = {"gens_p": {gen_name: setpoint}}
+        entry = self._build_action_entry_from_topology(aid, topo)
+
+        vl_id = None
+        try:
+            from expert_backend.services.network_service import network_service as ns
+            vl_id = ns.get_generator_voltage_level(gen_name)
+        except Exception as e:
+            logger.debug("Suppressed exception: %s", e)
+        delta = float(target_mw) if target_mw is not None else float(default_delta)
+        verb = "hausse" if delta >= 0 else "baisse"
+        if vl_id:
+            entry["description"] = (
+                f"Redispatch on generator '{gen_name}' at voltage level '{vl_id}'"
+            )
+            entry["description_unitaire"] = f"Redispatch {verb} '{gen_name}' ('{vl_id}')"
+        else:
+            entry["description"] = f"Redispatch on generator '{gen_name}'"
+            entry["description_unitaire"] = f"Redispatch {verb} '{gen_name}'"
+
+        self._dict_action[aid] = entry
+        logger.info(
+            "[simulate_manual_action] Created dynamic redispatch action '%s' (setpoint=%s MW)",
+            aid, setpoint,
+        )
 
     def _create_dynamic_curtailment(self, aid, target_mw, obs_n1):
         gen_name = aid[len("curtail_"):]
@@ -552,6 +591,7 @@ class SimulationMixin:
             if not entry:
                 continue
             content = entry.get("content", {})
+            is_redispatch = aid.startswith("redispatch_")
             if "set_load_p" in content:
                 for load_name in content["set_load_p"]:
                     sp = compute_reduction_setpoint(load_name, "load", target_mw, obs_n1)
@@ -562,7 +602,12 @@ class SimulationMixin:
                     )
             if "set_gen_p" in content:
                 for gen_name in content["set_gen_p"]:
-                    sp = compute_reduction_setpoint(gen_name, "gen", target_mw, obs_n1)
+                    if is_redispatch:
+                        # target_mw is the signed delta; setpoint = current + delta.
+                        default_delta = getattr(config, "REDISPATCH_DEFAULT_DELTA_MW", 10.0)
+                        sp = compute_redispatch_setpoint(gen_name, target_mw, obs_n1, default_delta)
+                    else:
+                        sp = compute_reduction_setpoint(gen_name, "gen", target_mw, obs_n1)
                     content["set_gen_p"][gen_name] = sp
                     logger.info(
                         "[simulate_manual_action] Updated set_gen_p[%s] = %s MW",

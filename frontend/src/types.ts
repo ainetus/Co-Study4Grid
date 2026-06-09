@@ -15,6 +15,8 @@ export interface ConfigRequest {
     min_pst?: number;
     min_load_shedding?: number;
     min_renewable_curtailment_actions?: number;
+    min_redispatch?: number;
+    allowed_action_types?: string[];
     n_prioritized_actions: number;
     lines_monitoring_path?: string;
     monitoring_factor: number;
@@ -72,6 +74,22 @@ export interface PstDetail {
     low_tap: number | null;
     high_tap: number | null;
 }
+export interface RedispatchDetail {
+    gen_name: string;
+    voltage_level_id: string | null;
+    // Signed MW change applied to the generator: > 0 raises production,
+    // < 0 lowers it.
+    delta_mw: number;
+    // Resulting production magnitude (MW) after the redispatch.
+    target_mw: number;
+    direction: 'up' | 'down';
+    // Current production (MW) before the redispatch.
+    current_mw?: number;
+    // Maximum further raise / lower (MW) bounded by the generator's
+    // [min_p, max_p] active-power limits. Null when unknown.
+    max_raise_mw?: number | null;
+    max_lower_mw?: number | null;
+}
 
 export interface ActionDetail {
     description_unitaire: string;
@@ -92,6 +110,7 @@ export interface ActionDetail {
     lines_overloaded_after?: string[];
     load_shedding_details?: LoadSheddingDetail[];
     curtailment_details?: CurtailmentDetail[];
+    redispatch_details?: RedispatchDetail[];
     pst_details?: PstDetail[];
     /**
      * Provenance of the action card — distinct from `is_manual`, which
@@ -306,6 +325,8 @@ export interface SettingsBackup {
     minLineDisconnections: number;
     minLoadShedding: number;
     minRenewableCurtailmentActions: number;
+    minRedispatch: number;
+    allowedActionTypes: string[];
     nPrioritizedActions: number;
     linesMonitoringPath: string;
     monitoringFactor: number;
@@ -323,6 +344,7 @@ export interface RecommenderDisplayConfig {
     minPst: number;
     minLoadShedding: number;
     minRenewableCurtailmentActions: number;
+    minRedispatch: number;
     nPrioritizedActions: number;
     ignoreReconnections: boolean;
 }
@@ -392,6 +414,7 @@ export interface SavedActionEntry {
     lines_overloaded_after?: string[];
     load_shedding_details?: LoadSheddingDetail[];
     curtailment_details?: CurtailmentDetail[];
+    redispatch_details?: RedispatchDetail[];
     pst_details?: PstDetail[];
     /**
      * Provenance of the action — `"user"` or a recommender model id.
@@ -433,6 +456,8 @@ export interface SessionResult {
         min_pst: number;
         min_load_shedding: number;
         min_renewable_curtailment_actions?: number;
+        min_redispatch?: number;
+        allowed_action_types?: string[];
         n_prioritized_actions: number;
         lines_monitoring_path: string;
         monitoring_factor: number;
@@ -597,7 +622,7 @@ export interface InteractionLogEntry {
 
 export type ActionSeverityCategory = 'green' | 'orange' | 'red' | 'grey';
 
-export type ActionTypeFilterToken = 'all' | 'disco' | 'reco' | 'ls' | 'rc' | 'open' | 'close' | 'pst';
+export type ActionTypeFilterToken = 'all' | 'disco' | 'reco' | 'ls' | 'rc' | 'redispatch' | 'open' | 'close' | 'pst';
 
 export interface ActionOverviewFilters {
     categories: Record<ActionSeverityCategory, boolean>;

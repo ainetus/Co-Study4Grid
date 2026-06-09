@@ -189,6 +189,13 @@ export const resolveActionAnchor = (
             if (node && Number.isFinite(node.x)) return { x: node.x, y: node.y };
         }
     }
+    if (details.redispatch_details?.length) {
+        const vlId = details.redispatch_details[0].voltage_level_id;
+        if (vlId) {
+            const node = nodesByEquipmentId.get(vlId);
+            if (node && Number.isFinite(node.x)) return { x: node.x, y: node.y };
+        }
+    }
 
     // Try line targets first
     const lineTargets = getActionTargetLines(details, actionId, edgesByEquipmentId);

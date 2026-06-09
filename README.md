@@ -1,6 +1,6 @@
 # Co-Study4Grid
 
-**Co-Study4Grid** is a full-stack web application for **power grid contingency analysis and remedial action search**. It provides an interactive interface on top of the [`expert_op4grid_recommender`](https://github.com/marota/Expert_op4grid_recommender) library, letting grid operators simulate element disconnections, visualize and analyze network overflows, and explore prioritized remedial actions — topology changes, PST tap adjustments, renewable curtailment, and load shedding — individually or combined.It adopts the supportive framework mindset from AI4RealNet European project, empowering and supporting the user in developping its expertise rather than automating it.
+**Co-Study4Grid** is a full-stack web application for **power grid contingency analysis and remedial action search**. It provides an interactive interface on top of the [`expert_op4grid_recommender`](https://github.com/marota/Expert_op4grid_recommender) library, letting grid operators simulate element disconnections, visualize and analyze network overflows, and explore prioritized remedial actions — topology changes, PST tap adjustments, renewable curtailment, load shedding, and generation redispatch — individually or combined.It adopts the supportive framework mindset from AI4RealNet European project, empowering and supporting the user in developping its expertise rather than automating it.
 
 The remedial action recommender is **pluggable**: pick the expert rule-based system, a random
 baseline, or any third-party model like a learnt model — from the **Settings → Recommender** tab
@@ -18,6 +18,7 @@ to extend it.
 ## Table of Contents
 
 - [Key Features](#key-features)
+- [References](#references)
 - [Architecture](#architecture)
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
@@ -60,6 +61,7 @@ to extend it.
   - Topological switches and bus reconfiguration
   - **Phase Shifting Transformer (PST)** tap adjustment with tap-start / target columns, re-simulation, and superposition fallback (PR #78)
   - **Renewable curtailment** and **load shedding** via the `set_load_p` / `set_gen_p` power-reduction format, with configurable MW reduction (PR #72, #73). See [`docs/features/curtailment-loadshedding-pst-actions.md`](docs/features/curtailment-loadshedding-pst-actions.md).
+  - **Generation redispatch** — raising / lowering dispatchable generators via the `set_gen_p` power-adjustment format, with configurable MW, to relieve constrained corridors
   </td>
 <td valign="top" width="200">
 
@@ -93,7 +95,7 @@ to extend it.
 ### Efficient interactions
 Co-Study4Grid is built around the operator's ability to triage hundreds of remedial actions quickly. The UI is wired so a single click, a chip, or a keystroke replaces a multi-step menu walk.
 
-- **Synchronized filter chips** (PRs #105 / #109 / #116 / #129): one `ActionOverviewFilters` state — severity categories (Solves / Low margin / Still overloaded / Divergent-or-islanded), max-loading threshold slider, `Show unsimulated` toggle, and action-type chips (DISCO / RECO / LS / RC / OPEN / CLOSE / PST) — drives the Action Feed sidebar, the Action Overview pin layer, **and** the overflow-graph pin overlay simultaneously. Hide a card in any view, it disappears from the others.
+- **Synchronized filter chips** (PRs #105 / #109 / #116 / #129): one `ActionOverviewFilters` state — severity categories (Solves / Low margin / Still overloaded / Divergent-or-islanded), max-loading threshold slider, `Show unsimulated` toggle, and action-type chips (DISCO / RECO / LS / RC / REDISPATCH / OPEN / CLOSE / PST) — drives the Action Feed sidebar, the Action Overview pin layer, **and** the overflow-graph pin overlay simultaneously. Hide a card in any view, it disappears from the others.
 - **Click-to-inspect with auto-zoom + impacted-asset halos**: clicking an `ActionCard` in the sidebar feed (or a pin via its popover) selects the action, fetches its post-action NAD, **auto-zooms onto the action target and the lines it affects**, and paints clone-based halos on every impacted asset (action target, contingency, newly overloaded / relieved lines, action-induced topology changes). The same auto-fit logic runs on contingency selection and on overload-row clicks in the sidebar — no manual pan/zoom needed to check whether a candidate action lands where the operator expects.
 - **Pin-driven workflow**: single-click a pin → `ActionCardPopover` opens anchored on the pin (no tab switch); double-click → drills into the SLD overlay for that voltage level; double-click an unsimulated pin → kicks off a manual simulation through `simulate_manual_action`. Same gesture grammar on the Action Overview NAD, the overflow viewer, and the Action Feed cards.
 - **Simulate any action on demand** — from three surfaces: (1) the **action-score table** in the *Manual Selection* dropdown (every scored-but-not-yet-simulated action becomes a one-click `Simulate` row, with editable target setpoints for load-shedding / curtailment / PST and a *"Make a first guess"* shortcut when no analysis is loaded yet); (2) the **un-simulated pin layer** on both the Action Overview NAD and the overflow viewer (dimmed dashed pins, double-click triggers the same code path); (3) any **manual action ID** typed into the dropdown's free-text field. Reconnection (`reco_*`) and load-shedding / curtailment / PST actions are auto-built on the fly when missing from the dictionary, so the operator can compose mixed disconnect + reconnect studies without editing the action JSON.
@@ -107,7 +109,7 @@ Co-Study4Grid is built around the operator's ability to triage hundreds of remed
 <table>
   <tr>
     <td align="center" width="33%"><a href="docs/images/readme/Innovations/MakeAFirstGuess.png"><img src="docs/images/readme/Innovations/MakeAFirstGuess.png" alt="Make a first guess"></a><br><sub><b>Make a first guess</b> — the UI invites the operator's hypothesis before the recommender runs.</sub></td>
-    <td align="center" width="33%"><a href="docs/images/readme/Innovations/ModaleScore.png"><img src="docs/images/readme/Innovations/ModaleScore.png" alt="Scored Actions table"></a><br><sub><b>Scored actions table</b> — ranking, editable setpoints (LS / RC / PST) and on-demand simulation per row.</sub></td>
+    <td align="center" width="33%"><a href="docs/images/readme/Innovations/ModaleScore.png"><img src="docs/images/readme/Innovations/ModaleScore.png" alt="Scored Actions table"></a><br><sub><b>Scored actions table</b> — ranking, editable setpoints (LS / RC / Redispatch / PST) and on-demand simulation per row.</sub></td>
     <td align="center" width="33%"><a href="docs/images/readme/Innovations/ModaleCombinaisons.png"><img src="docs/images/readme/Innovations/ModaleCombinaisons.png" alt="Action combinations modal"></a><br><sub><b>Action combinations</b> — superposition estimates vs full simulation, side by side.</sub></td>
   </tr>
 </table>
@@ -127,6 +129,23 @@ Co-Study4Grid is built around the operator's ability to triage hundreds of remed
 - **React ErrorBoundary** wrapping the app root (PR #82) to contain crashes.
 - **Vitest + React Testing Library** unit tests co-located as `*.test.tsx` — ~1000 specs.
 - **Auto-generated single-file UI** (`frontend/dist-standalone/standalone.html` via `npm run build:standalone`, PR #101) mirroring every feature of the React app, for zero-install demos. The legacy hand-maintained `standalone_interface.html` has been decommissioned.
+
+---
+
+## References
+
+This work builds on the following publications. Each entry lists the venue of publication and its first two authors.
+
+1. **Expert system for topological remedial action discovery in smart grids** — A. Marot, B. Donnot *et al.* — *MEDPOWER 2018* (IET International Conference on Mediterranean Power Generation, Transmission, Distribution and Energy Conversion), 2018. [[IEEE Xplore]](https://ieeexplore.ieee.org/document/9128159/)
+
+2. **Towards an AI assistant for human grid operators** — A. Marot, A. Rozier *et al.* — *Hybrid Human-Artificial Intelligence (HHAI)*, Amsterdam, 2022. [[arXiv:2012.02026]](https://arxiv.org/abs/2012.02026)
+   - Companion vision paper: **Perspectives on Future Power System Control Centers for Energy Transition** — A. Marot, A. Kelly *et al.* — *Journal of Modern Power Systems and Clean Energy*, 10(2), 2022. [[DOI]](https://doi.org/10.35833/MPCE.2021.000673)
+
+3. **Superposition Theorem for Flexible Grids** — A. Marot, B. Donnot *et al.* — *IEEE Transactions on Power Systems*, 2025. [[arXiv:2310.04437]](https://arxiv.org/abs/2310.04437)
+
+4. **A Conceptual Framework for AI-based Decision Systems in Critical Infrastructures** — M. Leyli-abadi, R. J. Bessa *et al.* — AI4RealNet, 2025. [[arXiv:2504.16133]](https://arxiv.org/abs/2504.16133)
+
+5. **The Supportive AI Framework: From Recommending to Supporting** — T. Waefler, S. Hamouche *et al.* — *Lecture Notes in Computer Science (Augmented Cognition)*, Springer, AI4RealNet, 2025. [[DOI]](https://link.springer.com/chapter/10.1007/978-3-031-93724-8_22)
 
 ---
 
