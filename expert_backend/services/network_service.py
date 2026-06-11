@@ -11,6 +11,89 @@ import os
 class NetworkService:
     def __init__(self):
         self.network = None
+        # Cached equipment tables + derived column lookups. The Network is
+        # read-only after load, so fetching the generators / loads DataFrame
+        # once (one pypowsybl/Java boundary crossing each) and serving every
+        # subsequent metadata query from in-process dicts avoids re-fetching
+        # the entire table per generator/load. Action enrichment calls these
+        # accessors once per generator per prioritized action — on the French
+        # grid (~3k generators) the un-cached path dominated the enrichment
+        # phase. All cleared in ``load_network`` when the Network changes.
+        self._generators_df = None
+        self._gen_vl_map = None      # gen_id -> voltage_level_id
+        self._gen_source_map = None  # gen_id -> energy_source
+        self._gen_limits_map = None  # gen_id -> (min_p, max_p)
+        self._loads_df = None
+        self._load_vl_map = None     # load_id -> voltage_level_id
+
+    def _invalidate_equipment_caches(self):
+        """Drop the cached generator / load tables (called when the Network changes)."""
+        self._generators_df = None
+        self._gen_vl_map = None
+        self._gen_source_map = None
+        self._gen_limits_map = None
+        self._loads_df = None
+        self._load_vl_map = None
+
+    def _get_generators_df(self):
+        """Return the generators DataFrame, fetched once and memoized.
+
+        The default ``get_generators()`` column set already includes
+        ``energy_source``, ``min_p``, ``max_p`` and ``voltage_level_id``, so a
+        single cached table backs every generator metadata accessor below.
+        """
+        if not self.network:
+            raise ValueError("Network not loaded")
+        if self._generators_df is None:
+            self._generators_df = self.network.get_generators()
+        return self._generators_df
+
+    def _get_gen_vl_map(self) -> dict:
+        if self._gen_vl_map is None:
+            df = self._get_generators_df()
+            self._gen_vl_map = (
+                df['voltage_level_id'].to_dict()
+                if df is not None and 'voltage_level_id' in df.columns else {}
+            )
+        return self._gen_vl_map
+
+    def _get_gen_source_map(self) -> dict:
+        if self._gen_source_map is None:
+            df = self._get_generators_df()
+            self._gen_source_map = (
+                df['energy_source'].to_dict()
+                if df is not None and 'energy_source' in df.columns else {}
+            )
+        return self._gen_source_map
+
+    def _get_gen_limits_map(self) -> dict:
+        if self._gen_limits_map is None:
+            df = self._get_generators_df()
+            if df is not None and 'min_p' in df.columns and 'max_p' in df.columns:
+                self._gen_limits_map = {
+                    gid: (mn, mx)
+                    for gid, mn, mx in zip(df.index, df['min_p'], df['max_p'])
+                }
+            else:
+                self._gen_limits_map = {}
+        return self._gen_limits_map
+
+    def _get_loads_df(self):
+        """Return the loads DataFrame, fetched once and memoized."""
+        if not self.network:
+            raise ValueError("Network not loaded")
+        if self._loads_df is None:
+            self._loads_df = self.network.get_loads()
+        return self._loads_df
+
+    def _get_load_vl_map(self) -> dict:
+        if self._load_vl_map is None:
+            df = self._get_loads_df()
+            self._load_vl_map = (
+                df['voltage_level_id'].to_dict()
+                if df is not None and 'voltage_level_id' in df.columns else {}
+            )
+        return self._load_vl_map
 
     def load_network(self, network_path: str):
         if not os.path.exists(network_path):
@@ -42,6 +125,7 @@ class NetworkService:
         # do NOT have. Keeping the default (False) preserves correctness;
         # the contention (~2-3 s) is an accepted residual cost.
         self.network = pn.load(file_path)
+        self._invalidate_equipment_caches()
         return {"message": "Network loaded successfully", "id": self.network.id}
 
     def get_disconnectable_elements(self):
@@ -316,90 +400,37 @@ class NetworkService:
 
     def get_load_voltage_level(self, load_id: str) -> str | None:
         """Return the voltage level ID that a given load belongs to."""
-        if not self.network:
-            raise ValueError("Network not loaded")
-
-        loads = self.network.get_loads()
-        if loads is not None and load_id in loads.index:
-            row = loads.loc[load_id]
-            if 'voltage_level_id' in row.index:
-                return row['voltage_level_id']
-        return None
+        return self._get_load_vl_map().get(load_id)
 
     def get_load_voltage_levels_bulk(self, load_ids: list[str]) -> dict[str, str]:
         """Return {load_id: voltage_level_id} for a list of loads."""
-        if not self.network:
-            raise ValueError("Network not loaded")
-
-        loads = self.network.get_loads()
-        if loads is None or loads.empty:
-            return {}
-
-        result: dict[str, str] = {}
-        for lid in load_ids:
-            if lid in loads.index:
-                row = loads.loc[lid]
-                if 'voltage_level_id' in row.index:
-                    result[lid] = row['voltage_level_id']
-        return result
+        vl_map = self._get_load_vl_map()
+        return {lid: vl_map[lid] for lid in load_ids if lid in vl_map}
 
     def get_generator_voltage_level(self, gen_id: str) -> str | None:
         """Return the voltage level ID that a given generator belongs to."""
-        if not self.network:
-            raise ValueError("Network not loaded")
-
-        generators = self.network.get_generators()
-        if generators is not None and gen_id in generators.index:
-            row = generators.loc[gen_id]
-            if 'voltage_level_id' in row.index:
-                return row['voltage_level_id']
-        return None
+        return self._get_gen_vl_map().get(gen_id)
 
     def get_generator_active_power_limits(self, gen_id: str) -> tuple[float, float] | None:
         """Return ``(min_p, max_p)`` active-power limits (MW) of a generator.
 
         Used to expose the maximum redispatch headroom on a remedial action
         card (raise: ``max_p - current``; lower: ``current - min_p``)."""
-        if not self.network:
-            raise ValueError("Network not loaded")
-
-        generators = self.network.get_generators(attributes=['min_p', 'max_p'])
-        if generators is not None and gen_id in generators.index:
-            row = generators.loc[gen_id]
-            if 'min_p' in row.index and 'max_p' in row.index:
-                try:
-                    return float(row['min_p']), float(row['max_p'])
-                except (TypeError, ValueError):
-                    return None
-        return None
+        limits = self._get_gen_limits_map().get(gen_id)
+        if limits is None:
+            return None
+        try:
+            return float(limits[0]), float(limits[1])
+        except (TypeError, ValueError):
+            return None
 
     def get_generator_type(self, gen_id: str) -> str | None:
         """Return the energy source type of a given generator."""
-        if not self.network:
-            raise ValueError("Network not loaded")
-
-        generators = self.network.get_generators()
-        if generators is not None and gen_id in generators.index:
-            row = generators.loc[gen_id]
-            if 'energy_source' in row.index:
-                return row['energy_source']
-        return None
+        return self._get_gen_source_map().get(gen_id)
 
     def get_generator_types_bulk(self, gen_ids: list[str]) -> dict[str, str]:
         """Return {gen_id: energy_source} for a list of generators."""
-        if not self.network:
-            raise ValueError("Network not loaded")
-
-        generators = self.network.get_generators()
-        if generators is None or generators.empty:
-            return {}
-
-        result = {}
-        for gid in gen_ids:
-            if gid in generators.index:
-                row = generators.loc[gid]
-                if 'energy_source' in row.index:
-                    result[gid] = row['energy_source']
-        return result
+        source_map = self._get_gen_source_map()
+        return {gid: source_map[gid] for gid in gen_ids if gid in source_map}
 
 network_service = NetworkService()
