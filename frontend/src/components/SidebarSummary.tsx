@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useLayoutEffect, type CSSProperties } from 'react';
 import type { ActionOverviewFilters } from '../types';
 import { colors, radius, space, text } from '../styles/tokens';
 import ActionFilterRings from './ActionFilterRings';
@@ -86,6 +86,7 @@ export default function SidebarSummary({
   const hasFilters = !!hasActions && !!overviewFilters && !!onOverviewFiltersChange;
   const [popoverOpen, setPopoverOpen] = useState(false);
   const hideTimerRef = useRef<number | null>(null);
+  const bubbleRef = useRef<HTMLButtonElement>(null);
 
   const cancelHide = useCallback(() => {
     if (hideTimerRef.current != null) {
@@ -233,6 +234,7 @@ export default function SidebarSummary({
               onMouseLeave={scheduleHide}
             >
               <button
+                ref={bubbleRef}
                 data-testid="sidebar-summary-overloads-bubble"
                 onClick={(e) => { e.stopPropagation(); setPopoverOpen(o => !o); }}
                 aria-label="Overload details"
@@ -269,6 +271,7 @@ export default function SidebarSummary({
                   monitoringHint={monitoringHint}
                   onAssetClick={onOverloadClick}
                   displayName={displayName}
+                  anchorRef={bubbleRef}
                 />
               )}
             </span>
@@ -297,6 +300,11 @@ interface OverloadInfoPopoverProps {
   monitoringHint?: string | null;
   onAssetClick: (actionId: string, assetName: string, tab: 'n' | 'contingency') => void;
   displayName: (id: string) => string;
+  /** The `?` bubble button the popover anchors to. The popover renders with
+   *  `position: fixed` computed from this element's bounding rect so it
+   *  escapes the sidebar's `overflow: hidden` clipping and always paints
+   *  above the network visualization. */
+  anchorRef: React.RefObject<HTMLButtonElement | null>;
 }
 
 function OverloadInfoPopover({
@@ -311,21 +319,53 @@ function OverloadInfoPopover({
   monitoringHint,
   onAssetClick,
   displayName,
+  anchorRef,
 }: OverloadInfoPopoverProps) {
   const formatRho = (v: number | undefined) =>
     v == null || Number.isNaN(v) ? null : `${(v * 100).toFixed(1)}%`;
   const hasDeselected = n1LinesOverloaded.some(name => !(selectedOverloads?.has(name) ?? true));
+
+  // The sidebar that hosts the `?` bubble sets `overflow: hidden`, so an
+  // absolutely-positioned popover gets clipped (and visually masked by the
+  // network visualization) the moment it spills past the sidebar edge.
+  // Anchor with `position: fixed` against the button's viewport rect instead
+  // so the popover escapes the clip and always paints on top.
+  const POPOVER_MAX_WIDTH = 320;
+  const MARGIN = 8;
+  const [fixedPos, setFixedPos] = useState<CSSProperties>({
+    position: 'fixed',
+    visibility: 'hidden',
+    top: 0,
+    left: 0,
+  });
+
+  useLayoutEffect(() => {
+    const anchor = anchorRef.current;
+    if (!anchor) return;
+    const rect = anchor.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    // Align the popover's left edge to the bubble, clamped to the viewport.
+    const left = Math.max(
+      MARGIN,
+      Math.min(rect.left, vw - POPOVER_MAX_WIDTH - MARGIN),
+    );
+    setFixedPos({
+      position: 'fixed',
+      left,
+      top: Math.min(rect.bottom + 4, vh - MARGIN),
+      maxHeight: vh - rect.bottom - 2 * MARGIN,
+      overflowY: 'auto',
+    });
+  }, [anchorRef]);
 
   return (
     <div
       data-testid="overload-info-popover"
       role="dialog"
       style={{
-        position: 'absolute',
-        top: '100%',
-        left: 0,
-        marginTop: space[1],
-        zIndex: 50,
+        ...fixedPos,
+        zIndex: 300,
         background: colors.surface,
         border: `1px solid ${colors.border}`,
         borderRadius: radius.md,
