@@ -133,11 +133,15 @@ export function useGameSession(): GameSessionState {
       solved,
     };
 
-    setResults((prev) => {
-      const next = [...prev, result];
-      resultsRef.current = next;
-      return next;
-    });
+    // Update resultsRef SYNCHRONOUSLY here, not inside the setResults updater:
+    // when this commit ends the session, loadStudyAt(nextIndex) reads
+    // resultsRef.current to build the final log on the very next synchronous
+    // line, before React has run the functional updater — so a ref assigned
+    // inside the updater would still be stale and the last study would be
+    // dropped from the results screen and the exported session log.
+    const next = [...resultsRef.current, result];
+    resultsRef.current = next;
+    setResults(next);
 
     const nextIndex = idx + 1;
     setCurrentIndex(nextIndex);
