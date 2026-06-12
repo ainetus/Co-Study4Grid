@@ -12,16 +12,22 @@ import './index.css'
 import App from './App.tsx'
 import ErrorBoundary from './components/ErrorBoundary.tsx'
 import { interactionLogger } from './utils/interactionLogger'
+import { gameBridge } from './game/gameBridge'
+import GameShell from './game/GameShell.tsx'
 
 if (import.meta.env.DEV || import.meta.env.VITE_EXPOSE_LOGGER) {
   (window as unknown as { __interactionLogger: typeof interactionLogger }).__interactionLogger
     = interactionLogger;
 }
 
+// Game Mode wraps the unchanged workspace in a timed, scored session shell.
+// Activated with `?game=1`; the bare workspace is the default.
+const Root = gameBridge.isGameMode() ? GameShell : App;
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <App />
+      <Root />
     </ErrorBoundary>
   </StrictMode>,
 )

@@ -29,6 +29,8 @@ import { useTiedTabsSync, type PZInstance } from './hooks/useTiedTabsSync';
 import { useContingencyFetch } from './hooks/useContingencyFetch';
 import { useDiagramHighlights } from './hooks/useDiagramHighlights';
 import { interactionLogger } from './utils/interactionLogger';
+import { gameBridge } from './game/gameBridge';
+import type { GameStudy } from './game/types';
 import { DEFAULT_ACTION_OVERVIEW_FILTERS } from './utils/actionTypes';
 import { applyVlTitles } from './utils/svgUtils';
 import {
@@ -527,8 +529,22 @@ function App() {
   );
 
   const wrappedActionFavorite = useCallback(
-    (actionId: string) => actionsHook.handleActionFavorite(actionId, setResult),
-    [actionsHook, setResult]
+    (actionId: string) => {
+      // Game Mode caps the number of committed (starred) actions per study.
+      // Block starring a *new* action once the cap is reached; un-starring
+      // and re-starring an existing pick stays allowed.
+      if (
+        !actionsHook.selectedActionIds.has(actionId) &&
+        !gameBridge.canStarAnotherAction(actionsHook.selectedActionIds.size)
+      ) {
+        setError(
+          `Game Mode: at most ${gameBridge.getMaxActions()} actions per study — un-star one to pick another.`,
+        );
+        return;
+      }
+      actionsHook.handleActionFavorite(actionId, setResult);
+    },
+    [actionsHook, setResult, setError]
   );
 
   // Manually-added (first-time simulated) action. Same SLD refresh
@@ -1158,6 +1174,109 @@ function App() {
     setConfirmDialog,
     setError,
   });
+
+  // ===== Game Mode integration =====
+  // Drives the workspace from the Game shell (load a study's network +
+  // contingency) and publishes the physical result back so the shell can
+  // score it. The whole block is inert unless launched with `?game=1`.
+
+  // Load a study: swap network + action catalogue, then arm its contingency.
+  // Mirrors handleLoadConfig but builds the config request explicitly from
+  // the study so it doesn't depend on not-yet-flushed settings state.
+  const loadGameStudy = useCallback(async (study: GameStudy) => {
+    setConfigLoading(true);
+    resetAllState();
+    // Reflect the study paths in Settings so save/persist stays coherent.
+    setNetworkPath(study.networkPath);
+    setActionPath(study.actionFilePath);
+    if (study.layoutPath !== undefined) setLayoutPath(study.layoutPath);
+    if (study.linesMonitoringPath !== undefined) setLinesMonitoringPath(study.linesMonitoringPath);
+    try {
+      const configRequest = {
+        ...buildConfigRequest(),
+        network_path: study.networkPath,
+        action_file_path: study.actionFilePath,
+        layout_path: study.layoutPath ?? '',
+        ...(study.linesMonitoringPath !== undefined
+          ? { lines_monitoring_path: study.linesMonitoringPath }
+          : {}),
+      };
+      const configRes = await api.updateConfig(configRequest);
+      applyConfigResponse(configRes as Record<string, unknown>);
+
+      const [branchRes, vlRes, nomVRes, diagramRaw, vlSubRes] = await Promise.all([
+        api.getBranches(),
+        api.getVoltageLevels(),
+        api.getNominalVoltages(),
+        api.getNetworkDiagram(),
+        api.getVoltageLevelSubstations().catch(() => ({ mapping: {} as Record<string, string> })),
+      ]);
+
+      setBranches(branchRes.branches);
+      setVoltageLevels(vlRes.voltage_levels);
+      setNameMap({ ...branchRes.name_map, ...vlRes.name_map });
+      setPendingContingency([]);
+
+      diagrams.setNominalVoltageMap(nomVRes.mapping);
+      diagrams.setUniqueVoltages(nomVRes.unique_kv);
+      if (nomVRes.unique_kv.length > 0) {
+        diagrams.setVoltageRange([nomVRes.unique_kv[0], nomVRes.unique_kv[nomVRes.unique_kv.length - 1]]);
+      }
+      diagrams.ingestBaseDiagram(diagramRaw, vlRes.voltage_levels.length);
+      setVlToSubstation(vlSubRes.mapping || {});
+      committedNetworkPathRef.current = study.networkPath;
+      interactionLogger.record('config_loaded', buildConfigInteractionDetails());
+
+      // Arm the contingency — useContingencyFetch picks this up and fetches
+      // the N-1 diagram (no analysis state yet, so no confirm dialog).
+      if (study.contingencyElementId) {
+        setSelectedContingency([study.contingencyElementId]);
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } }; message?: string };
+      const msg = 'Failed to load study: ' + (e.response?.data?.detail || e.message);
+      setError(msg);
+      throw new Error(msg);
+    } finally {
+      setConfigLoading(false);
+    }
+  }, [
+    buildConfigRequest, applyConfigResponse, resetAllState, diagrams,
+    setNetworkPath, setActionPath, setLayoutPath, setLinesMonitoringPath,
+    setBranches, setVoltageLevels, setNameMap, setPendingContingency,
+    setVlToSubstation, setSelectedContingency, setConfigLoading, setError,
+    buildConfigInteractionDetails,
+  ]);
+
+  useEffect(() => {
+    if (!gameBridge.isGameMode()) return;
+    gameBridge.registerLoader(loadGameStudy);
+  }, [loadGameStudy]);
+
+  // Publish the physical result of the current study to the Game shell.
+  useEffect(() => {
+    if (!gameBridge.isGameMode()) return;
+    const chosenActions = [...selectedActionIds].map((id) => {
+      const d = result?.actions[id];
+      const maxRho = d?.max_rho ?? null;
+      const after = d?.lines_overloaded_after;
+      const solved = maxRho != null && maxRho < 1.0 && (!after || after.length === 0);
+      return {
+        actionId: id,
+        description: d?.description_unitaire,
+        maxRho,
+        linesOverloadedAfter: after,
+        solved,
+      };
+    });
+    const rhoArr = n1Diagram?.lines_overloaded_rho;
+    const baselineMaxRho = rhoArr && rhoArr.length ? Math.max(...rhoArr) : null;
+    gameBridge.publishSnapshot({
+      contingencyElementIds: selectedContingency,
+      baselineMaxRho,
+      chosenActions,
+    });
+  }, [result, selectedActionIds, selectedContingency, n1Diagram]);
 
   // Re-seed selectedOverloads with the full N-1 overload list only when a
   // new n1Diagram is loaded. Comparing against the live selectedOverloads

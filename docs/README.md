@@ -41,6 +41,7 @@ docs/
 | [`actions-topology.md`](features/actions-topology.md) | Action formats + topology algorithms (switch → set_bus, Union-Find cache). |
 | [`curtailment-loadshedding-pst-actions.md`](features/curtailment-loadshedding-pst-actions.md) | Renewable curtailment, load shedding, PST tap actions. |
 | [`frontend-ui-improvements.md`](features/frontend-ui-improvements.md) | Voltage filter, run-button placement, color codes, always-visible tabs. |
+| [`game-mode-codabench.md`](features/game-mode-codabench.md) | Timed, scored Game Mode wrapper (`?game=1`) + Codabench benchmark bundle: session config, timer, ≤3-action cap, JSON/CSV log export, shared scoring, local E2E. |
 
 ## Performance (`performance/`)
 
