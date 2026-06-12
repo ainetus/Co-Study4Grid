@@ -84,10 +84,19 @@ class GameBridge {
     return this.maxActions;
   }
 
-  /** Shell requests App to load a study; resolves when the load completes. */
+  /** Shell requests App to load a study; resolves when the load completes.
+   *
+   * App registers its loader from a mount effect, which only runs once the
+   * shell has flipped to the `loading`/`playing` phase that mounts `<App/>`.
+   * The very first load therefore races that effect, so we poll briefly for
+   * the loader to appear before giving up. */
   async loadStudy(study: GameStudy): Promise<void> {
-    if (!this.loader) {
-      throw new Error('gameBridge: no study loader registered by App yet');
+    const start = Date.now();
+    while (!this.loader) {
+      if (Date.now() - start > 5000) {
+        throw new Error('gameBridge: no study loader registered by App');
+      }
+      await new Promise((r) => setTimeout(r, 50));
     }
     return this.loader(study);
   }
