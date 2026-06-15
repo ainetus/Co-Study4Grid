@@ -131,6 +131,29 @@ On the frontend the Explore Pairs tab no longer blocks estimation for
 LS / curtailment / redispatch (`hasRestricted` is always `false` now, and the
 "cannot be combined for estimation" caveats were removed).
 
+**Estimation accuracy / AC anchoring.** The GST reads only AC load-flow values
+(both the injection superposition term and the injection-shifted beta), so it is
+anchored at the true AC operating point — but the superposition *law* is
+DC-exact only, so AC nonlinearities are not reproduced. Consequences operators
+see:
+
+- The **on-target overload** (the line the contingency overloads) is predicted
+  reliably — that is what `target_max_rho` reports, and it matches simulation.
+- The **global `max_rho` line can flip** between two near-equally-loaded
+  monitored lines (e.g. estimate `C.FOUL31MERVA` ~74 % vs simulation
+  `PYMONL31SAISS` ~70 %). This is a few-MW AC flow-split error on low-flow
+  parallel-corridor lines, **not a bug** — it is provably 0 MW in DC (a direct
+  `run_dc` check reconstructs the pair exactly) and appears identically on
+  pure-topology pairs. So trust `target_max_rho`; treat the off-target global max
+  as indicative.
+- **Injection + injection** pairs are lower-confidence (two large injections
+  compound the AC error); prefer a full simulation for those.
+
+The library diagnostic
+`scripts/gst_estimation_vs_simulation_small_grid.py` reproduces all of this
+(EST-vs-GST per-pair accuracy + the DC-exactness proof) at the library level, no
+running backend required.
+
 ### Full simulation
 
 Combines individual grid2op action objects and runs a full load flow.

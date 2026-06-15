@@ -30,6 +30,14 @@ plugs the recommender library's GST (`compute_combined_pair_gst`) into Co-Study.
     combined for estimation" caveat banners.
 - **Tests**: new GST cases in `expert_backend/tests/test_superposition_service.py`
   (topology+injection, injection-first, injection+injection, `is_injection_action`).
+- **Diagnostic**: `scripts/gst_estimation_vs_simulation_small_grid.py` — a
+  library-level (no running backend) reproduction of the GST estimate-vs-
+  simulation behaviour on the small grid, including a direct-DC exactness proof
+  showing the AC est-vs-sim gap is AC-nonlinearity (0 MW error in DC), not a bug.
+- **Docs**: `docs/features/combined-actions.md` documents the AC-anchoring of the
+  GST estimate and how to read it (trust `target_max_rho`; the off-target global
+  max can flip between near-equal low-flow lines; injection+injection is
+  lower-confidence).
 
 ### Redispatching action type
 
