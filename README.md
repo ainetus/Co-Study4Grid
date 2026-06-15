@@ -11,7 +11,7 @@ different model. See [Plug Your Own Recommendation Model](#plug-your-own-recomme
 to extend it.
 
 ![License: MPL 2.0](https://img.shields.io/badge/license-MPL--2.0-blue)
-![Release](https://img.shields.io/badge/release-0.7.5-green)
+![Release](https://img.shields.io/badge/release-0.8.0-green)
 
 ---
 
@@ -56,7 +56,7 @@ to extend it.
 - **AC/DC fallback**: analysis runs on the AC load flow and transparently falls back to DC when AC fails to converge.
 - **Prioritized action feed** with search, filter, star / reject, and per-action metadata — severity, MW deltas, rho after action, impacted overloaded lines.
 - **Manual action simulation** from the score table, including a *"Make a first guess"* shortcut when no suggestion is loaded.
-- **Combined actions** (PR #62 family): evaluate pairs of actions via a fast **superposition (beta-coefficient) estimation** or a full exact simulation, through the *Computed Pairs* / *Explore Pairs* modal. See [`docs/features/combined-actions.md`](docs/features/combined-actions.md).
+- **Combined actions** (PR #62 family): evaluate pairs of actions via a fast **superposition (beta-coefficient) estimation** or a full exact simulation, through the *Computed Pairs* / *Explore Pairs* modal. The **Generalized Superposition Theorem (GST)** extends the fast estimate to pairs that mix a topology action with an **injection** action (load shedding, curtailment, redispatch), so those pairs are now estimable rather than simulation-only. See [`docs/features/combined-actions.md`](docs/features/combined-actions.md).
 - **Full remedial action catalog**:
   - Topological switches and bus reconfiguration
   - **Phase Shifting Transformer (PST)** tap adjustment with tap-start / target columns, re-simulation, and superposition fallback (PR #78)
@@ -75,7 +75,7 @@ to extend it.
 - **Four synchronized tabs** — *Network N*, *Contingency N-1*, *Remedial Action*, *Overflow Analysis* — rendered as pypowsybl Network-Area Diagrams (NAD) with flow-delta overlays. A **Flow ↔ Impacts** view-mode switch on every NAD recolours the branches by post-contingency Δ-rho (orange = newly more loaded, blue = offloaded, grey = unchanged), so the operator reads *cause* of the constraint, not just loading.
 - **Interactive overflow analysis** (PRs #116, #122–#127): the legacy static PDF is replaced by a same-origin HTML viewer with a layer-toggle sidebar (Constrained path, Red-loop, Overloads, Hubs, Reconnectable, Production / Consumption nodes, flow polarities), a hierarchical ↔ geographic layout switch backed by a per-study cache, and a double-click → SLD drill-down on any node. Stackable filters answer the operator's reading of *"if I block my constraint, where does the flow re-report itself?"* directly on the graph. See [`docs/features/interactive-overflow-analysis.md`](docs/features/interactive-overflow-analysis.md).
 - **Action pin overview** (PR #105 + #116): the post-contingency NAD doubles as a Google-Maps-style overview where every remedial action becomes a coloured pin anchored on the grid asset it targets. Pins reflect triage decisions (gold star = selected, red cross = rejected, dashed-curve = simulated combined pair, dimmed-dashed `?` = scored-but-unsimulated). The same pin overlay is mirrored on top of the interactive overflow viewer, kept in lock-step via `postMessage` so a single-click anywhere previews the action card and a double-click drills into the SLD or kicks off a manual simulation. See [`docs/features/action-overview-diagram.md`](docs/features/action-overview-diagram.md).
-- **Single-Line Diagrams (SLD)** for voltage levels in N, N-1, and post-action states, with persistent highlight of impacted switches and coupling breakers (PR #63).
+- **Single-Line Diagrams (SLD)** for voltage levels in N, N-1, and post-action states, with persistent highlight of impacted switches and coupling breakers (PR #63). An **✎ Manual action** mode lets the operator click breakers to stage a target topology — a live preview re-renders the SLD with the staged switches applied (topological colouring, no load flow) before turning the maneuver into a manual action card. See [`docs/features/sld-topology-edit.md`](docs/features/sld-topology-edit.md).
 - **Robust highlighting**: contingencies, overloads and impacted assets are drawn as clone-based halos that survive pan, zoom, SLD overlay, and action-target dimming.
 - **Auto-zoom** on contingency, newly overloaded line, or action target; pinned sticky feed summary and overload-click to jump to the N-1 tab (PR #88).
 - **Zoom-tier level-of-detail** (PR #76): labels, nodes and flow arrows are dynamically boosted proportional to `sqrt(diagramSize / referenceSize)`, so large grids remain legible at any zoom.
@@ -125,6 +125,7 @@ Co-Study4Grid is built around the operator's ability to triage hundreds of remed
 - **Phase 1 refactor** (PR #74): `App.tsx` reduced from ~2100 lines to a pure state-orchestration hub; UI split into focused presentational components under `components/` and `components/modals/`.
 - **Phase 2 hook extraction** (PR #109): `useContingencyFetch` (svgPatch fast-path + `/api/contingency-diagram` fallback) and `useDiagramHighlights` (per-tab SVG highlight pipeline) extracted out of `App.tsx`; sidebar moved into dedicated `AppSidebar` / `SidebarSummary` / `StatusToasts` components.
 - **SVG DOM recycling** (PR #108): `utils/svgPatch.ts` clones the mounted N-state SVG and patches only per-branch deltas on N-1 / action tab switches — **~80 % faster** tab switching on the ~12 MB French NAD (full benches in [`CHANGELOG.md`](CHANGELOG.md) 0.6.5).
+- **Design tokens + light / dark theme** (PRs #120, #157): every colour / spacing / radius value lives in a single `src/styles/tokens.{css,ts}` palette (the code-quality gate enforces zero hex literals outside it), which makes the **dark mode** toggle a token swap rather than a per-component rewrite. The theme persists across reloads and a legibility pass covers the pypowsybl NAD / SLD chrome and the interactive overflow viewer. See [`docs/features/dark-mode.md`](docs/features/dark-mode.md).
 - **Code-quality gate** (PR #104): CI enforces zero `print()` / bare except / `any` / `@ts-ignore`, module-size ceilings, and publishes a full Markdown metrics report to each run's workflow summary.
 - **React ErrorBoundary** wrapping the app root (PR #82) to contain crashes.
 - **Vitest + React Testing Library** unit tests co-located as `*.test.tsx` — ~1000 specs.
@@ -835,7 +836,7 @@ layers of automated checks (`scripts/check_standalone_parity.py`,
 
 ## Changelog
 
-See [`CHANGELOG.md`](CHANGELOG.md) for the list of changes per release. The current release is **0.7.5**.
+See [`CHANGELOG.md`](CHANGELOG.md) for the list of changes per release. The current release is **0.8.0**.
 
 ---
 

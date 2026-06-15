@@ -52,14 +52,22 @@ frontend/
     │   ├── useTiedTabsSync.ts      # Mirror viewBox between detached + main
     │   ├── useContingencyFetch.ts           # N-1 diagram fetch (svgPatch fast-path
     │   │                           # + full /api/contingency-diagram fallback)
-    │   └── useDiagramHighlights.ts # Per-tab SVG highlight pipeline
-    │                               # (overload halos, contingency highlight,
-    │                               # action targets, delta visuals) + the
-    │                               # per-tab Flow/Impacts view-mode state
+    │   ├── useDiagramHighlights.ts # Per-tab SVG highlight pipeline
+    │   │                           # (overload halos, contingency highlight,
+    │   │                           # action targets, delta visuals) + the
+    │   │                           # per-tab Flow/Impacts view-mode state
+    │   ├── useOverflowIframe.ts    # Interactive overflow viewer: iframe
+    │   │                           # lifecycle, layer toggles, hierarchical ↔
+    │   │                           # geo switch, postMessage bridge, pin overlay
+    │   └── useTheme.ts             # Light/dark theme toggle + persistence
+    │                               # (0.8.0; see docs/features/dark-mode.md)
     ├── components/           # Presentational components (no API calls)
     │   ├── Header.tsx, ActionFeed.tsx, OverloadPanel.tsx,
     │   ├── VisualizationPanel.tsx, ActionCard.tsx, ActionCardPopover.tsx,
     │   ├── ActionOverviewDiagram.tsx, ActionSearchDropdown.tsx,
+    │   ├── ActionTypeIcon.tsx, SeverityIcon.tsx,   # action-type + severity
+    │   │                               # pictograms (shared by cards / rings / pins)
+    │   ├── DiagramLegend.tsx, AdditionalLinesPicker.tsx,
     │   ├── ActionFilterRings.tsx       # Shared sidebar strip: severity ring
     │   │                               # (4 colour-coded pictogram toggles
     │   │                               # with single-click toggle + double-
@@ -145,7 +153,8 @@ frontend/
 `App.tsx` is the **state orchestration hub** — it instantiates the
 custom hooks (`useSettings`, `useActions`, `useAnalysis`,
 `useDiagrams`, `useSession`, `useDetachedTabs`, `useTiedTabsSync`,
-`useContingencyFetch`, `useDiagramHighlights`), wires them together, and
+`useContingencyFetch`, `useDiagramHighlights`, `useOverflowIframe`,
+`useSldTopologyEdit`, `useTheme`), wires them together, and
 routes state into presentational components. It MUST NOT contain
 large inline JSX blocks — when adding UI sections, create a new
 component under `components/` or `components/modals/` and pass

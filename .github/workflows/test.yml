@@ -27,7 +27,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install ".[test]"
-          pip install --no-deps --no-cache-dir "expert_op4grid_recommender==0.2.3.post1"
+          # Always test against the LATEST published expert_op4grid_recommender
+          # release (no version pin, on purpose). --no-cache-dir defeats any
+          # stale GitHub Actions pip index — the reason an exact pin used to be
+          # needed — and --upgrade guarantees the newest is picked up; --no-deps
+          # skips the recommender's heavy transitive stack (pypowsybl already
+          # comes from co_study4grid's own dependencies).
+          pip install --no-deps --no-cache-dir --upgrade expert_op4grid_recommender
       - name: Run Pytest (excluding graphviz-dependent tests)
         run: pytest --ignore=expert_backend/tests/test_overflow_html_dim_logic.py
 
@@ -91,6 +97,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install ".[test]"
-          pip install --no-deps --no-cache-dir "expert_op4grid_recommender==0.2.3.post1"
+          # Always test against the LATEST published expert_op4grid_recommender
+          # release (no version pin, on purpose). --no-cache-dir defeats any
+          # stale GitHub Actions pip index — the reason an exact pin used to be
+          # needed — and --upgrade guarantees the newest is picked up; --no-deps
+          # skips the recommender's heavy transitive stack (pypowsybl already
+          # comes from co_study4grid's own dependencies).
+          pip install --no-deps --no-cache-dir --upgrade expert_op4grid_recommender
       - name: Run graphviz-dependent Pytest subset
         run: pytest expert_backend/tests/test_overflow_html_dim_logic.py

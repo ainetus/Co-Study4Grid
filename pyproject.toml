@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "co_study4grid"
-version = "0.7.5"
+version = "0.8.0"
 authors = [
     { name="RTE", email="rte@rte-france.com" },
 ]

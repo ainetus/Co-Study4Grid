@@ -54,14 +54,19 @@ expert_backend/
 │   ├── analysis_mixin.py          # Two-step orchestrator — delegates pure
 │   │                              # numerics to services/analysis/ helpers
 │   ├── analysis/                  # PR #104 decomposition (ex-analysis_mixin):
-│   │   ├── action_enrichment.py   # - LS / curtail / PST / topology details
+│   │   ├── action_enrichment.py   # - LS / curtail / redispatch / PST / topology
+│   │   │                          #   details (compute_redispatch_details, 0.8.0)
 │   │   ├── mw_start_scoring.py    # - MW-at-start dispatcher + per-type math
+│   │   │                          #   (incl. the `redispatch` classify tag, 0.8.0)
 │   │   ├── analysis_runner.py     # - AC→DC fallback worker, PDF-polling stream
-│   │   └── pdf_watcher.py         # - overflow PDF glob + mtime filter
+│   │   ├── pdf_watcher.py         # - overflow PDF glob + mtime filter
+│   │   └── overflow_geo_transform.py  # - hierarchical → geo SVG transform for
+│   │                              #   /api/regenerate-overflow-graph (0.7.0)
 │   ├── simulation_mixin.py        # Manual-action + superposition orchestrator
-│   ├── simulation_helpers.py      # PR #104 decomposition — 14 stateless
-│   │                              # helpers (setpoint math, PST parsing, care
-│   │                              # mask, metrics, result serialisation, …)
+│   ├── simulation_helpers.py      # PR #104 decomposition — stateless helpers
+│   │                              # (setpoint math incl. redispatch, PST parsing,
+│   │                              # care mask, metrics, result serialisation,
+│   │                              # is_injection_action for the GST path, …)
 │   ├── overflow_overlay.py        # PR #116 (0.7.0) — pin / filter overlay
 │   │                              # injector for the interactive HTML overflow
 │   │                              # viewer. `inject_overlay(html)` grafts the

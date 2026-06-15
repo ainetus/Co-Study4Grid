@@ -7,6 +7,20 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [0.8.0] — 2026-06-15
+
+Feature-rich release that broadens the **remedial-action vocabulary**
+(generation redispatch, GST estimation for injection actions, interactive
+SLD topology editing) and consolidates the **operator UI** (light / dark
+theme, a shared Action-Filter ring strip, a readability-first collapsible
+sidebar, a tiered notice pill, and a per-stage execution-time breakdown).
+Paired with [`expert_op4grid_recommender`](https://github.com/marota/Expert_op4grid_recommender)
+**0.2.4**; from this release on, CI always tests against the **latest
+published recommender release** rather than a pinned version (see
+`.github/workflows/test.yml` / `.circleci/config.yml`).
+
 ### Generalized Superposition Theorem (GST) for combined-pair estimation
 
 The combined-pair **estimation** (`POST /api/compute-superposition`, Explore
@@ -73,6 +87,25 @@ with an editable *signed* MW delta (default ±10 MW):
     negative values) + Re-simulate, cloned from the curtailment editor.
   - `components/ActionFeed.tsx` / `api.ts` — `redispatch_details` carried
     through the simulate / re-simulate result pipeline.
+
+### Recommender action-type restriction
+
+A new **Restrict to action types** control in the **Settings →
+Recommender** tab scopes the recommender to a chosen subset of action
+families. None selected = all families (the previous behaviour);
+selecting one or more makes the recommender propose **only** those.
+This addresses the long-standing confusion that setting `Min = 0` on a
+family does **not** exclude it (Min is a floor, not a switch).
+
+- **Frontend**: `allowedActionTypes` threaded through `useSettings`
+  (state, hydrate, persist, `buildConfigRequest`), the `SettingsModal`
+  Recommender tab, the `SettingsBackup` revert-on-cancel path, the
+  session snapshot (`sessionUtils.buildSessionResult`) + restore
+  (`useSession` / `restore-analysis-context`), and the config
+  interaction-log replay payload — so the restriction stays
+  fidelity-complete across Save / Reload and Settings-cancel.
+- **Backend**: `POST /api/config` `allowed_action_types` →
+  `config.ALLOWED_ACTION_TYPES` on the recommender service.
 
 ### Interactive SLD topology edit → manual action card
 
@@ -202,6 +235,25 @@ Full contract + test inventory in
   breakdown](docs/backend/recommender_models.md#execution-time-breakdown)
   and [docs/features/save-results.md § analysis](docs/features/save-results.md#analysis).
 
+### Light / dark theme
+
+A full **dark mode** for the whole interface, toggled from a sun / moon
+button in the header and persisted across reloads:
+
+- **Single source of truth**: every colour resolves from the
+  `src/styles/tokens.{css,ts}` design-token palette, so theming is a
+  token-swap rather than per-component overrides. A `useTheme` hook plus
+  a tiny pre-mount script (run before React hydrates) avoids the
+  first-paint flash; the "soft-background" trap and the full rationale
+  are documented in [`docs/features/dark-mode.md`](docs/features/dark-mode.md).
+- **Diagram + viewer theming**: a legibility pass across the NAD / SLD
+  chrome (flow-value labels, VL-name toggle, inactive tab titles) and
+  the interactive overflow viewer (edges, flow-label chips, the
+  SELECTION box, the Hierarchical / Geo toggle) so the pypowsybl-rendered
+  SVG and the injected overlay stay readable on a dark backdrop.
+- **Tests**: `useTheme` hook, header toggle, and overflow-CSS dark-mode
+  specs.
+
 ### Internal refactor — diagram-mixin decomposition
 
 - **`services/diagram/action_patch.py`** (new): extracted the entire
@@ -310,6 +362,17 @@ Full contract + test inventory in
   active).
 
 ---
+
+### Polish & fixes
+
+- **ActionCard header reshuffle** — the severity icon moves to the left
+  of the title and the star / reject controls move to the card header's
+  top-right, so a dense feed reads top-down at a glance.
+- **Overflow info bubble** is no longer clipped behind the visualization
+  panel (sidebar overflow-popover stacking fix).
+- **Step-2 perf** — the action-assessment loop caches the equipment
+  tables it re-reads per action and skips the curtailment recompute for
+  `redispatch_` actions, trimming the per-action cost on large grids.
 
 ## [0.7.5] — 2026-05-12
 
@@ -1246,7 +1309,8 @@ the authoritative reference for pre-0.5.0 work.
 
 ---
 
-[Unreleased]: https://github.com/marota/Co-Study4Grid/compare/0.7.5...HEAD
+[Unreleased]: https://github.com/marota/Co-Study4Grid/compare/0.8.0...HEAD
+[0.8.0]: https://github.com/marota/Co-Study4Grid/releases/tag/0.8.0
 [0.7.5]: https://github.com/marota/Co-Study4Grid/releases/tag/0.7.5
 [0.7.0]: https://github.com/marota/Co-Study4Grid/releases/tag/0.7.0
 [0.6.5]: https://github.com/marota/Co-Study4Grid/releases/tag/0.6.5

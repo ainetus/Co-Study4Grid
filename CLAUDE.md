@@ -12,7 +12,7 @@ Co-Study4Grid is a full-stack web application for **power grid contingency analy
 Co-Study4Grid/
 ├── CLAUDE.md                  # This file — project overview + standalone parity audit
 ├── README.md                  # User-facing project description + quick start
-├── CHANGELOG.md               # Per-release changelog (current: 0.7.0)
+├── CHANGELOG.md               # Per-release changelog (current: 0.8.0)
 ├── CONTRIBUTING.md            # Contributor setup, code-quality gate
 ├── pyproject.toml             # Python project metadata + ruff config (E9/F ruleset)
 ├── pytest.ini                 # Pytest config (testpaths = expert_backend/tests)
@@ -64,9 +64,16 @@ Co-Study4Grid/
 │       │                          # path + full fallback) / useDiagramHighlights (per-tab
 │       │                          # highlight pipeline + Flow/Impacts view-mode state) /
 │       │                          # useOverflowIframe (PR #116 — iframe lifecycle, layer
-│       │                          # toggles, postMessage bridge, pin overlay payload)
+│       │                          # toggles, postMessage bridge, pin overlay payload) /
+│       │                          # useSldTopologyEdit (interactive SLD switch-edit →
+│       │                          # manual action, 0.8.0) / useTheme (light/dark theme
+│       │                          # toggle + persistence, 0.8.0)
 │       ├── components/            # Header, ActionFeed, ActionCard, ActionCardPopover,
 │       │                          # ActionSearchDropdown, ActionTypeFilterChips,
+│       │                          # ActionFilterRings (shared severity + action-type +
+│       │                          # Max-loading ring strip, 0.8.0), ActionTypeIcon /
+│       │                          # SeverityIcon (action-type + severity pictograms),
+│       │                          # AdditionalLinesPicker,
 │       │                          # ActionOverviewDiagram, AppSidebar (collapsible
 │       │                          # shell — readability-feed PR), SidebarSummary
 │       │                          # (sticky strip — hosts Clear button + overload
@@ -76,7 +83,8 @@ Co-Study4Grid/
 │       │                          # (kept on disk for unit-test backwards-compat;
 │       │                          # no longer rendered from App.tsx),
 │       │                          # CombinedActionsModal, ComputedPairsTable,
-│       │                          # ExplorePairsTab, SldOverlay, DetachableTabHost,
+│       │                          # ExplorePairsTab, SldOverlay, SldEditPanel
+│       │                          # (interactive maneuver list, 0.8.0), DetachableTabHost,
 │       │                          # MemoizedSvgContainer, ErrorBoundary, NoticesPanel
 │       │                          # (PR #122 tier system), DiagramLegend (PR #122),
 │       │                          # InspectSearchField + DetachedPlaceholder (PR #116
@@ -297,12 +305,14 @@ Both scripts run in CI (`.github/workflows/code-quality.yml` and
 - **Functional components** with React hooks; no external state management library
 - **Inline styles**: Components use inline `style` objects rather than CSS modules or utility classes
 - **Design tokens (PR #120, 0.7.0)**: every colour / spacing / typography / radius value lives in `frontend/src/styles/tokens.{css,ts}`. Inline `style` objects import the typed `colors` / `space` / `text` / `radius` constants from `tokens.ts`; stylesheet rules use `var(--…)` from `tokens.css`. Raw SVG attribute setters (`element.setAttribute('fill', …)`) import the hex-valued `pinColors` / `pinChrome` constants because browsers don't reliably resolve `var(--…)` inside SVG presentation attributes. **The code-quality gate enforces zero hex literals outside the two token files.**
+- **Light / dark theme (0.8.0)**: theming is a token swap, not per-component overrides — the `useTheme` hook flips a theme attribute that re-points the `tokens.css` custom properties, with a tiny pre-mount script to avoid the first-paint flash. A legibility pass covers the pypowsybl NAD / SLD chrome and the injected overflow-viewer overlay. See [`docs/features/dark-mode.md`](docs/features/dark-mode.md).
 - **Component architecture (Phase 2 hook extraction, PR #109)**:
   - `App.tsx` (~1400 lines) is the **state orchestration hub** — it wires all hooks together and handles cross-hook logic (e.g., `handleApplySettings`). It should NOT contain large JSX blocks.
   - **Presentational components** live in `components/` and `components/modals/`. They receive data and callbacks via typed props; all business logic stays in `App.tsx` or in hooks.
   - `hooks/useContingencyFetch.ts` owns the N-1 diagram fetch pipeline (svgPatch fast-path + `/api/contingency-diagram` fallback + contingency-change confirm routing).
   - `hooks/useDiagramHighlights.ts` owns the per-tab SVG highlight pipeline (overload halos, contingency highlight, action targets, delta visuals) + per-tab Flow/Impacts view-mode state.
   - `hooks/useOverflowIframe.ts` (PR #116, 0.7.0) owns the interactive overflow viewer — iframe lifecycle, layer-toggle state, hierarchical ↔ geo layout switch, postMessage bridge to the host, and the action-pin overlay payload computation.
+  - `hooks/useSldTopologyEdit.ts` (0.8.0) owns the interactive SLD switch-edit flow — `editMode`, staged `pendingStates`, `toggle` / `removeSwitch(es)` / `focusedSwitchId` — that turns clicked breakers into a manual action card. See [`docs/features/sld-topology-edit.md`](docs/features/sld-topology-edit.md).
   - `useSettings.ts` exposes `SettingsState` (all settings values + setters), which is passed wholesale to `SettingsModal` to avoid 30+ prop-drilling.
 - **SVG DOM recycling (PR #108)**: `utils/svgPatch.ts` clones the already-mounted N-state `SVGSVGElement` and patches only per-branch deltas on N-1 / action tab switches, saving a 12–28 MB SVG re-download and re-parse.
 - **Props-based data flow**: State lifted to `App.tsx`, passed down via props
