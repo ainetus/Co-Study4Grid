@@ -147,7 +147,16 @@ see:
   pure-topology pairs. So trust `target_max_rho`; treat the off-target global max
   as indicative.
 - **Injection + injection** pairs are lower-confidence (two large injections
-  compound the AC error); prefer a full simulation for those.
+  compound the AC error). Example: `load_shedding_P.SAO3TR312 +
+  load_shedding_BEON3 TR311` over-predicts the relief on the target line
+  (`BEON L31CPVAN` estimated ~5.6 % vs simulated ~38.1 %; mean rho gap ~4 pts,
+  worst ~33 pts). Prefer a full simulation for these.
+
+The two known larger-error cases (heavily-loaded-line disconnection onto a
+low-flow corridor → off-target max-line flip; and injection+injection → relief
+over-prediction) are catalogued with measured numbers, root cause and how to
+read them in the `expert_op4grid_recommender` library docs:
+`docs/superposition_module.md` §10 "Known larger-error cases".
 
 The library diagnostic
 `scripts/gst_estimation_vs_simulation_small_grid.py` reproduces all of this

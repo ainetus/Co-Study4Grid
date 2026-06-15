@@ -37,7 +37,8 @@ plugs the recommender library's GST (`compute_combined_pair_gst`) into Co-Study.
 - **Docs**: `docs/features/combined-actions.md` documents the AC-anchoring of the
   GST estimate and how to read it (trust `target_max_rho`; the off-target global
   max can flip between near-equal low-flow lines; injection+injection is
-  lower-confidence).
+  lower-confidence, with the measured `BEON` 5.6 % est vs 38.1 % sim example),
+  and points to the library's "Known larger-error cases" catalog.
 
 ### Redispatching action type
 
