@@ -109,6 +109,28 @@ Where:
 
 **Flag:** Results always have `is_estimated: true`
 
+#### Generalized Superposition Theorem (GST) — injection actions
+
+The EST formula above combines two **topology** actions. When a pair involves an
+**injection** action — load shedding (`set_load_p`), curtailment / redispatch
+(`set_gen_p`) — `compute_superposition` detects it via
+`simulation_helpers.is_injection_action` and forwards `act1_is_injection` /
+`act2_is_injection` to `compute_combined_pair_superposition`, which routes to the
+library's **GST** (`compute_combined_pair_gst`).
+
+The integration point is deliberately thin: the GST reports an injection action
+with **`beta = 1.0`** and the topology action with its (injection-shifted) beta.
+With that convention the EST `rho_combined` formula above is **unchanged** — it
+already reproduces the exact GST loading — so `compute_combined_rho` and
+`_augment_superposition_result` need no GST-specific branch. The only backend
+changes are: (1) detect injection actions, (2) skip the "cannot identify
+elements" bail-out for them (they carry no topology element), (3) pass the
+injection flags through.
+
+On the frontend the Explore Pairs tab no longer blocks estimation for
+LS / curtailment / redispatch (`hasRestricted` is always `false` now, and the
+"cannot be combined for estimation" caveats were removed).
+
 ### Full simulation
 
 Combines individual grid2op action objects and runs a full load flow.
@@ -238,10 +260,11 @@ ways:
 
 - **Load-shedding and curtailment are now allowed in combined pairs**
   (commit `a019555`). Previously restricted to topology actions, the
-  Explore Pairs tab now accepts LS / curtailment on either side as
-  long as the pair is simulated (the superposition-estimation path
-  still requires both actions to have a pre-computed beta, which only
-  exists for topology actions).
+  Explore Pairs tab now accepts LS / curtailment on either side. As of
+  the Generalized Superposition Theorem work (see "Generalized
+  Superposition Theorem (GST)" below) the **superposition-estimation
+  path also handles these injection actions** — they no longer require
+  a full simulation just to preview the combined loading.
 - **"Simulate Combined" moved out of the action card** (commit
   `e871006`). The trigger now lives in the modal footer. After a
   simulate-only pair lands, the resulting card is shown in the main
@@ -330,5 +353,8 @@ When modifying combined actions logic:
 - [ ] `simulationFeedback` state must be cleared when the selected pair changes
 - [ ] The modal must stay open during simulation so the user sees feedback
 - [ ] Test both tabs: Computed Pairs uses `handleSimulate(pairId)`, Explore uses `handleSimulate()` (no args)
-- [ ] Load-shedding / curtailment pairs work via simulate-only; the
-      estimation preview path is still topology-only.
+- [ ] Load-shedding / curtailment / redispatch pairs work via BOTH the
+      estimation preview (GST) and full simulation. When adding a new
+      injection-type action, make sure `is_injection_action`
+      (`simulation_helpers.py`) recognises its id prefix / classifier
+      type so `compute_superposition` routes the pair to the GST.

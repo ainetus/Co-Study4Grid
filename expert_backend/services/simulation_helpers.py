@@ -209,6 +209,33 @@ def is_pst_action(action_id: str, dict_action: dict | None, classifier: Any) -> 
     )
 
 
+# Injection-action detection — kept in sync with the recommender library's
+# ``superposition.is_injection_action`` (id prefix + classifier action type).
+# Replicated here (rather than imported) so it stays correct when the library
+# module is stubbed by the test mock layer, exactly like ``is_pst_action``.
+_INJECTION_ID_PREFIXES: tuple[str, ...] = ("load_shedding_", "curtail_", "redispatch_")
+_INJECTION_ACTION_TYPES: frozenset[str] = frozenset({
+    "load_power_reduction", "gen_power_reduction", "gen_redispatch",
+    "open_load", "open_gen",
+})
+
+
+def is_injection_action(action_id: str, dict_action: dict | None, classifier: Any) -> bool:
+    """Detect injection actions (load shedding / curtailment / redispatch).
+
+    These change only nodal injections (``set_load_p`` / ``set_gen_p``), not the
+    topology, and are combined with topology actions through the Generalized
+    Superposition Theorem (GST). Detection is by action-id prefix and, when the
+    classifier resolves a type, by the injection action types — mirroring the
+    library's ``superposition.is_injection_action``.
+    """
+    if action_id and action_id.startswith(_INJECTION_ID_PREFIXES):
+        return True
+    desc = (dict_action or {}).get(action_id, {})
+    action_type = classifier.identify_action_type(desc, by_description=True)
+    return action_type in _INJECTION_ACTION_TYPES
+
+
 def pst_fallback_line_idxs(
     action_id: str,
     dict_action: dict | None,

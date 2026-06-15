@@ -311,14 +311,11 @@ const CombinedActionsModal: React.FC<Props> = ({
 
     if (!isOpen) return null;
 
-    // Check if any selected action involves load shedding or curtailment (combination not supported)
-    const allActions = { ...simulatedActions, ...analysisResult?.actions };
-    const selectedActionsDetails = Array.from(selectedIds).map(id => allActions[id]);
-    const hasRestricted = selectedActionsDetails.some(detail =>
-        (detail?.load_shedding_details && detail.load_shedding_details.length > 0) ||
-        (detail?.curtailment_details && detail.curtailment_details.length > 0) ||
-        (detail?.redispatch_details && detail.redispatch_details.length > 0)
-    );
+    // Estimation is available for every action type: the Generalized
+    // Superposition Theorem (GST) now combines load shedding / curtailment /
+    // redispatch (injection changes) with topology actions, so no selection is
+    // restricted from the estimation path anymore.
+    const hasRestricted = false;
 
     const handleToggle = (id: string) => {
         setSimulationFeedback(null);

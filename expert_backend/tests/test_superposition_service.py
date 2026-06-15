@@ -659,5 +659,118 @@ def test_augment_combined_actions_with_target_max_rho_is_noop_without_context():
     assert "target_max_rho_line" not in pair
 
 
+def test_compute_superposition_allows_injection_action(recommender):
+    """An injection action (load shedding / curtailment / redispatch) has no
+    topology element — it must NOT trigger the 'cannot identify elements'
+    bail-out, and must be forwarded to the library with act_is_injection=True
+    so the Generalized Superposition Theorem (GST) path handles the pair."""
+    topo_id = "disco_LINE1"
+    inj_id = "load_shedding_LOAD_7"
+    obs_topo = _make_obs([0.9], [0.0])      # LINE1 disconnected
+    obs_inj = _make_obs([0.85], [85.0])     # injection state
+    actions = {
+        topo_id: {"action": MagicMock(), "observation": obs_topo},
+        inj_id: {"action": MagicMock(), "observation": obs_inj},
+    }
+    da = {
+        topo_id: {"content": {"set_bus": {"lines_or_bus": {"LINE1": -1}}},
+                  "description_unitaire": "Open LINE1"},
+        inj_id: {"content": {"set_load_p": {"LOAD_7": 0.0}},
+                 "description_unitaire": "Load shedding LOAD_7"},
+    }
+    _setup_superposition_env(recommender, actions, da)
+
+    def side_effect(act_obj, aid, dict_action, classifier, env):
+        # topology action resolves to a line; injection action has no element
+        return ([0], []) if aid == topo_id else ([], [])
+
+    with patch('expert_backend.services.simulation_mixin._identify_action_elements', side_effect=side_effect), \
+         patch('expert_backend.services.simulation_mixin.compute_combined_pair_superposition') as mock_combine:
+        # injection is reported with beta = 1.0 (GST convention)
+        mock_combine.return_value = {"betas": [0.7, 1.0], "p_or_combined": [100.0]}
+        result = recommender.compute_superposition(topo_id, inj_id, "contingency")
+
+        assert "error" not in result, f"injection pair must not bail out: {result.get('error')}"
+        ck = mock_combine.call_args.kwargs
+        assert ck.get("act1_is_injection") is False
+        assert ck.get("act2_is_injection") is True
+        assert result["is_estimated"] is True
+        assert "betas" in result
+
+
+def test_compute_superposition_injection_first(recommender):
+    """Injection action on the FIRST side — act1_is_injection must be True."""
+    inj_id = "curtail_GEN_2"
+    topo_id = "disco_LINE1"
+    obs_inj = _make_obs([0.85], [85.0])
+    obs_topo = _make_obs([0.9], [0.0])
+    actions = {
+        inj_id: {"action": MagicMock(), "observation": obs_inj},
+        topo_id: {"action": MagicMock(), "observation": obs_topo},
+    }
+    da = {
+        inj_id: {"content": {"set_gen_p": {"GEN_2": 0.0}}, "description_unitaire": "Curtail GEN_2"},
+        topo_id: {"content": {"set_bus": {"lines_or_bus": {"LINE1": -1}}}, "description_unitaire": "Open LINE1"},
+    }
+    _setup_superposition_env(recommender, actions, da)
+
+    def side_effect(act_obj, aid, dict_action, classifier, env):
+        return ([], []) if aid == inj_id else ([0], [])
+
+    with patch('expert_backend.services.simulation_mixin._identify_action_elements', side_effect=side_effect), \
+         patch('expert_backend.services.simulation_mixin.compute_combined_pair_superposition') as mock_combine:
+        mock_combine.return_value = {"betas": [1.0, 0.7], "p_or_combined": [100.0]}
+        result = recommender.compute_superposition(inj_id, topo_id, "contingency")
+
+        assert "error" not in result
+        ck = mock_combine.call_args.kwargs
+        assert ck.get("act1_is_injection") is True
+        assert ck.get("act2_is_injection") is False
+
+
+def test_compute_superposition_injection_plus_injection(recommender):
+    """Two injection actions (no topology element on either side) are still
+    estimated via the GST (pure injection superposition)."""
+    inj1 = "curtail_GEN_2"
+    inj2 = "load_shedding_LOAD_7"
+    obs1 = _make_obs([0.9], [90.0])
+    obs2 = _make_obs([0.85], [85.0])
+    actions = {
+        inj1: {"action": MagicMock(), "observation": obs1},
+        inj2: {"action": MagicMock(), "observation": obs2},
+    }
+    da = {
+        inj1: {"content": {"set_gen_p": {"GEN_2": 0.0}}, "description_unitaire": "Curtail"},
+        inj2: {"content": {"set_load_p": {"LOAD_7": 0.0}}, "description_unitaire": "Shed"},
+    }
+    _setup_superposition_env(recommender, actions, da)
+
+    with patch('expert_backend.services.simulation_mixin._identify_action_elements', return_value=([], [])), \
+         patch('expert_backend.services.simulation_mixin.compute_combined_pair_superposition') as mock_combine:
+        mock_combine.return_value = {"betas": [1.0, 1.0], "p_or_combined": [100.0]}
+        result = recommender.compute_superposition(inj1, inj2, "contingency")
+
+        assert "error" not in result
+        ck = mock_combine.call_args.kwargs
+        assert ck.get("act1_is_injection") is True
+        assert ck.get("act2_is_injection") is True
+
+
+def test_is_injection_action_helper():
+    """The backend injection detector matches the library convention by id
+    prefix (independent of the classifier, so it works under the test mock
+    layer too)."""
+    from expert_backend.services.simulation_helpers import is_injection_action
+    classifier = MagicMock()
+    classifier.identify_action_type.return_value = "unknown"
+    assert is_injection_action("load_shedding_LOAD_5", {}, classifier) is True
+    assert is_injection_action("curtail_GEN_2", {}, classifier) is True
+    assert is_injection_action("redispatch_GEN_7", {}, classifier) is True
+    assert is_injection_action("disco_LINE_3", {}, classifier) is False
+    # classifier-resolved injection type also counts
+    classifier.identify_action_type.return_value = "load_power_reduction"
+    assert is_injection_action("x", {"x": {}}, classifier) is True
+
+
 if __name__ == "__main__":
     pytest.main([__file__])
