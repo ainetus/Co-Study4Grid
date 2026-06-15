@@ -36,6 +36,7 @@ from expert_backend.services.simulation_helpers import (
     compute_redispatch_setpoint,
     compute_target_max_rho,
     extract_action_topology,
+    is_injection_action,
     is_pst_action,
     is_switch_only_content,
     normalise_non_convergence,
@@ -738,7 +739,13 @@ class SimulationMixin:
         line_idxs2, sub_idxs2 = self._identify_elements_with_pst_fallback(
             action2_id, all_actions, classifier, env
         )
-        if (not line_idxs1 and not sub_idxs1) or (not line_idxs2 and not sub_idxs2):
+        # Injection actions (load shedding / curtailment / redispatch) carry no
+        # topology element — they are combined via the Generalized Superposition
+        # Theorem. Only topology actions must resolve to a switched element.
+        act1_is_injection = is_injection_action(action1_id, self._dict_action, classifier)
+        act2_is_injection = is_injection_action(action2_id, self._dict_action, classifier)
+        if (not act1_is_injection and not line_idxs1 and not sub_idxs1) or \
+           (not act2_is_injection and not line_idxs2 and not sub_idxs2):
             return {
                 "error": (
                     f"Cannot identify elements for one or both actions "
@@ -802,12 +809,12 @@ class SimulationMixin:
 
         logger.info("[compute_superposition] Calling compute_combined_pair_superposition with:")
         logger.info(
-            "  act1_line_idxs=%s, act1_sub_idxs=%s, act1_is_pst=%s",
-            line_idxs1, sub_idxs1, act1_is_pst,
+            "  act1_line_idxs=%s, act1_sub_idxs=%s, act1_is_pst=%s, act1_is_injection=%s",
+            line_idxs1, sub_idxs1, act1_is_pst, act1_is_injection,
         )
         logger.info(
-            "  act2_line_idxs=%s, act2_sub_idxs=%s, act2_is_pst=%s",
-            line_idxs2, sub_idxs2, act2_is_pst,
+            "  act2_line_idxs=%s, act2_sub_idxs=%s, act2_is_pst=%s, act2_is_injection=%s",
+            line_idxs2, sub_idxs2, act2_is_pst, act2_is_injection,
         )
         combined_id = f"{action1_id}+{action2_id}"
         result = compute_combined_pair_superposition(
@@ -821,6 +828,8 @@ class SimulationMixin:
             obs_combined=all_actions.get(combined_id, {}).get("observation"),
             act1_is_pst=act1_is_pst,
             act2_is_pst=act2_is_pst,
+            act1_is_injection=act1_is_injection,
+            act2_is_injection=act2_is_injection,
         )
 
         if "error" not in result:

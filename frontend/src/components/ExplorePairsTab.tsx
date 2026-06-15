@@ -112,36 +112,6 @@ const ExplorePairsTab: React.FC<ExplorePairsTabProps> = ({
                                 <span>{type.replace(/_/g, ' ').toUpperCase()}</span>
                                 <span>{filteredList.filter(item => item.type === type).length} actions</span>
                             </div>
-                            {(type === 'load_shedding' || type === 'ls') && (
-                                <div style={{
-                                    padding: '6px 10px',
-                                    background: colors.warningSoft,
-                                    color: colors.warningText,
-                                    borderBottom: `1px solid ${colors.warningBorder}`,
-                                    fontSize: '11px',
-                                    fontWeight: 600,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px'
-                                }}>
-                                    <span>⚠️</span> Load shedding actions cannot be combined for estimation.
-                                </div>
-                            )}
-                            {(type === 'renewable_curtailment' || type === 'rc') && (
-                                <div style={{
-                                    padding: '6px 10px',
-                                    background: colors.infoSoft,
-                                    color: colors.infoText,
-                                    borderBottom: `1px solid ${colors.infoBorder}`,
-                                    fontSize: '11px',
-                                    fontWeight: 600,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px'
-                                }}>
-                                    <span>ℹ️</span> Renewable curtailment actions cannot be combined for estimation.
-                                </div>
-                            )}
                             <table className="action-table" style={{ margin: 0, border: 'none' }}>
                                 <tbody>
                                     {filteredList

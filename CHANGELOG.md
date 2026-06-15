@@ -7,6 +7,39 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Generalized Superposition Theorem (GST) for combined-pair estimation
+
+The combined-pair **estimation** (`POST /api/compute-superposition`, Explore
+Pairs tab) now supports pairs that involve an **injection** action — load
+shedding, renewable curtailment, redispatch — not just topology actions. This
+plugs the recommender library's GST (`compute_combined_pair_gst`) into Co-Study.
+
+- **Backend** (`services/`):
+  - `simulation_helpers.is_injection_action(action_id, dict_action, classifier)`
+    — new detector (id prefix + classifier type), kept in sync with the library.
+  - `simulation_mixin.compute_superposition` — computes `act1_is_injection` /
+    `act2_is_injection`, no longer bails out with "cannot identify elements" for
+    an injection action (they carry no topology element), and forwards the flags
+    to `compute_combined_pair_superposition` (GST path). The injection action is
+    returned with `beta = 1.0`, so `compute_combined_rho` /
+    `_augment_superposition_result` work unchanged.
+- **Frontend**:
+  - `CombinedActionsModal` — `hasRestricted` is now always `false`; LS /
+    curtailment / redispatch are estimable.
+  - `ExplorePairsTab` — removed the "load shedding / curtailment cannot be
+    combined for estimation" caveat banners.
+- **Tests**: new GST cases in `expert_backend/tests/test_superposition_service.py`
+  (topology+injection, injection-first, injection+injection, `is_injection_action`).
+- **Diagnostic**: `scripts/gst_estimation_vs_simulation_small_grid.py` — a
+  library-level (no running backend) reproduction of the GST estimate-vs-
+  simulation behaviour on the small grid, including a direct-DC exactness proof
+  showing the AC est-vs-sim gap is AC-nonlinearity (0 MW error in DC), not a bug.
+- **Docs**: `docs/features/combined-actions.md` documents the AC-anchoring of the
+  GST estimate and how to read it (trust `target_max_rho`; the off-target global
+  max can flip between near-equal low-flow lines; injection+injection is
+  lower-confidence, with the measured `BEON` 5.6 % est vs 38.1 % sim example),
+  and points to the library's "Known larger-error cases" catalog.
+
 ### Redispatching action type
 
 End-to-end support for **redispatching** remedial actions (raise / lower a
