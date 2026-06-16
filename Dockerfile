@@ -47,13 +47,15 @@ WORKDIR /home/user/app
 
 # --- Python dependencies (own layer for caching) ---------------------------
 # `pip install .` pulls the declared runtime deps (ExpertOp4Grid, pypowsybl,
-# fastapi, …). The recommender ships separately (matches the CI pin), then
-# overrides.txt forces the pinned transitive versions last.
+# fastapi, …). The recommender ships with `--no-deps` — mirroring CI — because
+# its own dependency tree is self-conflicting (it wants numpy>=2 while its
+# transitive `pypowsybl2grid` pins numpy==1.26.4); the working runtime deps
+# come from `pip install .`. overrides.txt forces the pinned versions last.
 COPY --chown=user pyproject.toml README.md overrides.txt ./
 COPY --chown=user expert_backend/ ./expert_backend/
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir . \
-    && pip install --no-cache-dir "expert_op4grid_recommender==0.2.3.post1" \
+    && pip install --no-cache-dir --no-deps "expert_op4grid_recommender==0.2.3.post1" \
     && pip install --no-cache-dir -r overrides.txt
 
 # --- Application code, bundled grids, built SPA ----------------------------

@@ -61,8 +61,24 @@ docker run --rm -p 7860:7860 costudy4grid-game
 # → open http://localhost:7860
 ```
 
-If a dependency lacks a prebuilt wheel on the build host, add `build-essential`
-to the `apt-get install` line in the runtime stage and rebuild.
+The build has been validated end to end: the frontend bundle, the full
+scientific stack (`pypowsybl`, `ExpertOp4Grid`, `grid2op`, `pandapower`,
+`lightsim2grid`), backend import (42 routes), uvicorn on `:7860`, same-origin
+SPA + `/api/models`, and the bundled fr225_400 grid loading via pypowsybl all
+work. Image is ~370 MB.
+
+Notes if you reproduce the build:
+
+- The recommender is installed with `--no-deps` on purpose — its own dependency
+  tree is self-conflicting (`numpy>=2` vs its transitive `pypowsybl2grid`'s
+  `numpy==1.26.4`). The working runtime deps come from `pip install .` +
+  `overrides.txt`. This mirrors CI.
+- If `docker pull` of the base images hits Docker Hub's anonymous rate limit,
+  either `docker login` or point the daemon at a pull-through mirror
+  (`/etc/docker/daemon.json`: `{"registry-mirrors": ["https://mirror.gcr.io"]}`)
+  and restart it.
+- If a dependency lacks a prebuilt wheel on the build host, add `build-essential`
+  to the `apt-get install` line in the runtime stage and rebuild.
 
 ## Caveat: one active study per instance
 
