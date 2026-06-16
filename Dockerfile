@@ -59,6 +59,9 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r overrides.txt
 
 # --- Application code, bundled grids, built SPA ----------------------------
+# Seed the default user config (recommender params + the fr225_400 paths);
+# the backend copies it to config.json on first boot.
+COPY --chown=user config.default.json ./
 COPY --chown=user data/ ./data/
 COPY --chown=user scripts/ ./scripts/
 COPY --chown=user --from=frontend /build/dist ./frontend/dist
