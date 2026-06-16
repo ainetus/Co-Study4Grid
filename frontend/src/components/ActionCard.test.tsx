@@ -145,6 +145,31 @@ describe('ActionCard', () => {
         expect(screen.getByTitle('Reject this action')).toBeInTheDocument();
     });
 
+    it('places severity icon before the title and star/reject rail in the header row', () => {
+        // Structural spec: the header row contains (left to right)
+        // the severity pictogram, then the title, then the hover-
+        // revealed star/reject rail in the top-right corner.
+        const { container } = render(<ActionCard {...defaultProps} />);
+        // The first child of the card is the header flex row
+        const card = container.querySelector('[data-testid="action-card-act_1"]')!;
+        const headerRow = card.children[0] as HTMLElement;
+
+        // Left group: severity icon + title
+        const leftGroup = headerRow.children[0] as HTMLElement;
+        const severity = leftGroup.querySelector('[data-testid="action-card-act_1-severity"]');
+        const title = leftGroup.querySelector('h4');
+        expect(severity).not.toBeNull();
+        expect(title).not.toBeNull();
+        // Severity comes before title in DOM order
+        const children = Array.from(leftGroup.children);
+        expect(children.indexOf(severity!)).toBeLessThan(children.indexOf(title!));
+
+        // Right group: the rail sits as the second child of the header row
+        const rail = headerRow.querySelector('.action-card-rail');
+        expect(rail).not.toBeNull();
+        expect(headerRow.children[1]).toBe(rail);
+    });
+
     it('calls onActionSelect when card is clicked', () => {
         const onActionSelect = vi.fn();
         render(<ActionCard {...defaultProps} onActionSelect={onActionSelect} />);
@@ -302,6 +327,65 @@ describe('ActionCard', () => {
         expect(screen.getByText(/Curtailment on/)).toBeInTheDocument();
         expect(screen.getByText('GEN_Y')).toBeInTheDocument();
         expect(screen.getByTestId('edit-mw-act_1')).toBeInTheDocument();
+    });
+
+    it('renders redispatch details with signed-delta MW input when viewing', () => {
+        const details: ActionDetail = {
+            ...baseDetails,
+            redispatch_details: [
+                { gen_name: 'THERM_1', voltage_level_id: 'VL3', delta_mw: 10.0, target_mw: 40.0, direction: 'up' }
+            ],
+        };
+        render(<ActionCard {...defaultProps} details={details} isViewing={true} />);
+        expect(screen.getByText(/Redispatch on/)).toBeInTheDocument();
+        expect(screen.getByText('THERM_1')).toBeInTheDocument();
+        expect(screen.getByTestId('edit-mw-act_1')).toBeInTheDocument();
+        expect(screen.getByTestId('resimulate-act_1')).toBeInTheDocument();
+    });
+
+    it('passes the signed delta (incl. negative) to onResimulate for redispatch', () => {
+        const onResimulate = vi.fn();
+        const details: ActionDetail = {
+            ...baseDetails,
+            redispatch_details: [
+                { gen_name: 'THERM_1', voltage_level_id: 'VL3', delta_mw: -10.0, target_mw: 20.0, direction: 'down' }
+            ],
+        };
+        render(<ActionCard {...defaultProps} details={details} isViewing={true} onResimulate={onResimulate} />);
+        fireEvent.click(screen.getByTestId('resimulate-act_1'));
+        expect(onResimulate).toHaveBeenCalledWith('act_1', -10.0);
+    });
+
+    it('renders a clickable VL chip for a redispatch action (zoom + SLD)', () => {
+        const onVlDoubleClick = vi.fn();
+        const details: ActionDetail = {
+            ...baseDetails,
+            redispatch_details: [
+                { gen_name: 'THERM_1', voltage_level_id: 'VL_BIEST', delta_mw: 10.0, target_mw: 40.0, direction: 'up' }
+            ],
+        };
+        render(<ActionCard {...defaultProps} details={details} onVlDoubleClick={onVlDoubleClick} />);
+        const chip = screen.getByText('VL_BIEST');
+        expect(chip).toBeInTheDocument();
+        fireEvent.doubleClick(chip);
+        expect(onVlDoubleClick).toHaveBeenCalledWith('act_1', 'VL_BIEST');
+    });
+
+    it('shows the max-raise headroom and clamps the delta to it on re-simulate', () => {
+        const onResimulate = vi.fn();
+        const details: ActionDetail = {
+            ...baseDetails,
+            redispatch_details: [
+                { gen_name: 'THERM_1', voltage_level_id: 'VL3', delta_mw: 10.0, target_mw: 40.0,
+                  direction: 'up', current_mw: 30, max_raise_mw: 25, max_lower_mw: 30 }
+            ],
+        };
+        render(<ActionCard {...defaultProps} details={details} isViewing={true}
+            onResimulate={onResimulate} cardEditMw={{ act_1: '999' }} />);
+        expect(screen.getByText(/max raise: 25 MW/)).toBeInTheDocument();
+        fireEvent.click(screen.getByTestId('resimulate-act_1'));
+        // 999 requested but clamped to the 25 MW raise headroom.
+        expect(onResimulate).toHaveBeenCalledWith('act_1', 25);
     });
 
     it('renders PST details with tap input and re-simulate button when viewing', () => {

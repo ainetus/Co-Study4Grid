@@ -122,6 +122,7 @@ Configuration in `frontend/vite.config.ts` (Vitest plugin).
 | `test_direct_file_loading.py` | Direct file loading configuration |
 | `test_config_persistence.py` | Configuration file persistence |
 | `test_sld_highlight.py` | SLD highlight and switch change computation |
+| `test_sld_topology_edit.py` | Interactive SLD-edit feature — `extract_vl_switch_states` filters, auto-description for switch-only actions, `get_topology_preview_sld` (clones / applies / removes / restores), `_require_action` canonical-id alias, `/api/sld-topology-preview` HTTP-boundary (skipped when `expert_op4grid_recommender.models` is unavailable). See `docs/features/sld-topology-edit.md`. |
 
 ## Frontend Test Structure
 

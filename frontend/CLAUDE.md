@@ -42,6 +42,11 @@ frontend/
     │   ├── useDiagrams.ts          # NAD fetching + tab management
     │   ├── usePanZoom.ts           # ViewBox state, zoom-to-element
     │   ├── useSldOverlay.ts        # Single-Line-Diagram overlay
+    │   ├── useSldTopologyEdit.ts    # Interactive SLD switch-edit:
+    │   │                            # editMode + pendingStates +
+    │   │                            # toggle / removeSwitch /
+    │   │                            # removeSwitches / focusedSwitchId
+    │   │                            # (see docs/features/sld-topology-edit.md)
     │   ├── useSession.ts           # Session save / restore
     │   ├── useDetachedTabs.ts      # Detached visualization windows
     │   ├── useTiedTabsSync.ts      # Mirror viewBox between detached + main
@@ -79,6 +84,14 @@ frontend/
     │   ├── CombinedActionsModal.tsx, ComputedPairsTable.tsx,
     │   ├── DetachableTabHost.tsx, ErrorBoundary.tsx, ExplorePairsTab.tsx,
     │   ├── MemoizedSvgContainer.tsx, SldOverlay.tsx,
+    │   ├── SldEditPanel.tsx        # Interactive maneuver list under
+    │   │                           # the SLD overlay — focus on row
+    │   │                           # click, ✕ per row, checkbox +
+    │   │                           # Remove selected (N), Reset,
+    │   │                           # Simulate action. Mirrors
+    │   │                           # manoeuvre_ihm's seq_delete /
+    │   │                           # seq_delete_many. See
+    │   │                           # docs/features/sld-topology-edit.md.
     │   ├── AppSidebar.tsx          # Sidebar layout shell (summary +
     │   │                           # contingency picker + children).
     │   │                           # Collapsible to a 32-px strip via
@@ -164,6 +177,16 @@ in `App.tsx` because it needs multiple hook instances at once.
      required. The legacy file has been decommissioned; the
      auto-generated `frontend/dist-standalone/standalone.html`
      inherits the field on the next `npm run build:standalone`.
+
+Adding a new **remedial-action type** (a new action family + its
+`*_details` payload) is broader than a setting — it threads through the
+library, backend, classification, ActionCard rendering, and the
+**save / interaction-log / reload triad** (`sessionUtils.ts`,
+`App.tsx` `buildConfigInteractionDetails`, `useSession.ts`) plus the
+two `scripts/check_*.py` regression specs. Follow the full checklist in
+[`docs/features/adding-action-type.md`](../docs/features/adding-action-type.md);
+the §3.5 "save/log/reload triad" table is the part that regresses
+silently (the `redispatch_details` save-drop bug).
 
 ## Data flow (happy path)
 

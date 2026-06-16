@@ -14,9 +14,12 @@ not on this app.
 """
 from __future__ import annotations
 
+import logging
 from typing import Dict, List, Type
 
 from expert_op4grid_recommender.models.base import RecommenderModel
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "expert"
 
@@ -76,12 +79,13 @@ def list_models() -> List[dict]:
     """
     out = []
     for cls in _REGISTRY.values():
-        out.append({
-            "name": cls.name,
-            "label": cls.label,
-            "requires_overflow_graph": cls.requires_overflow_graph,
-            "is_default": cls.name == DEFAULT_MODEL,
-            "params": [
+        # Resilience: a single model whose params_spec() raises (e.g. it
+        # references a config attribute missing from a stale install) must
+        # NOT take down the whole endpoint — that would blank out every
+        # model AND every parameter in the Settings UI. Degrade to an empty
+        # param list for the offending model and keep the rest working.
+        try:
+            params = [
                 {
                     "name": p.name,
                     "label": p.label,
@@ -93,6 +97,18 @@ def list_models() -> List[dict]:
                     "group": p.group,
                 }
                 for p in cls.params_spec()
-            ],
+            ]
+        except Exception as e:
+            logger.warning(
+                "params_spec() failed for model %r: %s — serving empty param list",
+                cls.name, e,
+            )
+            params = []
+        out.append({
+            "name": cls.name,
+            "label": cls.label,
+            "requires_overflow_graph": cls.requires_overflow_graph,
+            "is_default": cls.name == DEFAULT_MODEL,
+            "params": params,
         })
     return out

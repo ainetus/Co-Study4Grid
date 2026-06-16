@@ -219,6 +219,11 @@ class ConfigRequest(BaseModel):
     min_pst: float = 1.0
     min_load_shedding: float = 0.0
     min_renewable_curtailment_actions: int | None = 0
+    min_redispatch: int | None = 0
+    redispatch_default_delta_mw: float | None = 10.0
+    # When non-empty, restrict the recommender to ONLY these action families
+    # (tokens: reco/close/open/disco/pst/ls/rc/redispatch). Empty = all.
+    allowed_action_types: list[str] | None = None
     n_prioritized_actions: int = 10
     lines_monitoring_path: str | None = None
     monitoring_factor: float = 0.95
@@ -273,6 +278,7 @@ class ManualActionRequest(BaseModel):
     lines_overloaded: list[str] | None = None
     target_mw: float | None = None
     target_tap: int | None = None
+    voltage_level_id: str | None = None
 
 class SaveSessionRequest(BaseModel):
     session_name: str
@@ -820,12 +826,34 @@ class ContingencySldRequest(BaseModel):
     disconnected_elements: list[str]
     voltage_level_id: str
 
+class SldTopologyPreviewRequest(BaseModel):
+    voltage_level_id: str
+    disconnected_elements: list[str]
+    switches: dict
+    base_action_id: str | None = None
+
 @app.post("/api/contingency-sld")
 def get_contingency_sld(request: ContingencySldRequest, http_request: Request) -> Response:
     try:
         diagram = recommender_service.get_contingency_sld(
             request.disconnected_elements,
             request.voltage_level_id,
+        )
+        return _maybe_gzip_json(diagram, http_request)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("API boundary error")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/sld-topology-preview")
+def sld_topology_preview(request: SldTopologyPreviewRequest, http_request: Request) -> Response:
+    try:
+        diagram = recommender_service.get_topology_preview_sld(
+            request.disconnected_elements,
+            request.voltage_level_id,
+            request.switches,
+            base_action_id=request.base_action_id,
         )
         return _maybe_gzip_json(diagram, http_request)
     except HTTPException:
@@ -851,6 +879,7 @@ def simulate_manual_action(request: ManualActionRequest) -> dict:
             lines_overloaded=request.lines_overloaded,
             target_mw=request.target_mw,
             target_tap=request.target_tap,
+            voltage_level_id=request.voltage_level_id,
         )
         return result
     except Exception as e:
@@ -865,6 +894,7 @@ class SimulateAndVariantDiagramRequest(BaseModel):
     lines_overloaded: list[str] | None = None
     target_mw: float | None = None
     target_tap: int | None = None
+    voltage_level_id: str | None = None
     mode: str = "network"
 
 
@@ -878,6 +908,7 @@ async def simulate_and_variant_diagram(request: SimulateAndVariantDiagramRequest
                 lines_overloaded=request.lines_overloaded,
                 target_mw=request.target_mw,
                 target_tap=request.target_tap,
+                voltage_level_id=request.voltage_level_id,
             )
             yield json.dumps({"type": "metrics", **sim_result}) + "\n"
 

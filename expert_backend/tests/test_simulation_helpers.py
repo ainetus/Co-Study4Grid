@@ -25,6 +25,7 @@ from expert_backend.services.simulation_helpers import (
     compute_action_metrics,
     compute_combined_rho,
     compute_reduction_setpoint,
+    compute_redispatch_setpoint,
     extract_action_topology,
     is_pst_action,
     normalise_non_convergence,
@@ -91,6 +92,40 @@ class TestComputeReductionSetpoint:
         obs = self._mock_obs()
         obs.load_p = np.array([50.123456, 0])
         assert compute_reduction_setpoint("LOAD_A", "load", 10.0, obs) == 40.12
+
+
+# ----------------------------------------------------------------------
+# compute_redispatch_setpoint
+# ----------------------------------------------------------------------
+
+class TestComputeRedispatchSetpoint:
+    def _mock_obs(self):
+        obs = MagicMock()
+        obs.name_gen = ["GEN_X", "GEN_Y"]
+        obs.gen_p = np.array([-50.0, -30.0])  # producing 50 / 30 MW
+        return obs
+
+    def test_raise_adds_delta(self):
+        # 30 MW production + 10 MW raise -> 40 MW target
+        assert compute_redispatch_setpoint("GEN_Y", 10.0, self._mock_obs()) == 40.0
+
+    def test_lower_subtracts_delta(self):
+        # 50 MW production - 20 MW lower -> 30 MW target
+        assert compute_redispatch_setpoint("GEN_X", -20.0, self._mock_obs()) == 30.0
+
+    def test_lower_clamps_at_zero(self):
+        # 30 MW production - 100 MW lower -> clamped to 0
+        assert compute_redispatch_setpoint("GEN_Y", -100.0, self._mock_obs()) == 0.0
+
+    def test_none_delta_uses_default_raise(self):
+        # default delta is a raise on current production (30 + 10 = 40)
+        assert compute_redispatch_setpoint("GEN_Y", None, self._mock_obs(), 10.0) == 40.0
+
+    def test_missing_element_falls_back_to_delta(self):
+        assert compute_redispatch_setpoint("UNKNOWN", 10.0, self._mock_obs()) == 10.0
+
+    def test_none_obs_returns_delta(self):
+        assert compute_redispatch_setpoint("GEN_X", 10.0, None) == 10.0
 
 
 # ----------------------------------------------------------------------

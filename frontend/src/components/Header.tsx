@@ -8,6 +8,7 @@
 import type { AnalysisResult } from '../types';
 import { colors, radius, space } from '../styles/tokens';
 import NoticesPanel, { type Notice } from './NoticesPanel';
+import { useTheme } from '../hooks/useTheme';
 
 type SettingsTab = 'paths' | 'recommender' | 'configurations';
 
@@ -52,6 +53,7 @@ const Header: React.FC<HeaderProps> = ({
   notices,
 }) => {
   const saveDisabled = !result && selectedContingency.length === 0;
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <header style={{
@@ -146,6 +148,21 @@ const Header: React.FC<HeaderProps> = ({
         title="Reload a previously saved session"
       >
         {sessionRestoring ? 'Restoring...' : 'Reload Session'}
+      </button>
+
+      <button
+        data-testid="header-theme-toggle"
+        onClick={toggleTheme}
+        style={{
+          background: colors.chromeSoft, display: 'flex', alignItems: 'center',
+          justifyContent: 'center', padding: `${space[2]} ${space[2]}`, fontSize: '1rem',
+          color: colors.textOnBrand, border: 'none', borderRadius: radius.sm,
+          cursor: 'pointer', fontWeight: 'bold', minWidth: '34px'
+        }}
+        title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {theme === 'dark' ? '☀' : '☾'}
       </button>
 
       <button

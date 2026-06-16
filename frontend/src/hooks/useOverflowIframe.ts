@@ -343,6 +343,28 @@ export function useOverflowIframe(args: UseOverflowIframeArgs): OverflowIframeSt
         iframe.contentWindow.postMessage(msg, '*');
     }, [overlayReady, overflowGraphTime]);
 
+    // Mirror the host's light/dark theme into the embedded overflow
+    // viewer. We read `<html data-theme>` directly (rather than the
+    // React theme state, which lives in independent useTheme instances)
+    // and re-broadcast whenever it flips via a MutationObserver — so a
+    // theme toggle anywhere in the app reaches the iframe.
+    React.useEffect(() => {
+        const iframe = overflowIframeRef.current;
+        if (!iframe || !iframe.contentWindow) return;
+        if (!overlayReady) return;
+        const send = () => {
+            const win = overflowIframeRef.current?.contentWindow;
+            if (!win) return;
+            const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+            const msg: ParentToIframeMessage = { type: 'cs4g:theme', theme };
+            win.postMessage(msg, '*');
+        };
+        send();
+        const observer = new MutationObserver(send);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        return () => observer.disconnect();
+    }, [overlayReady]);
+
     return {
         overflowIframeRef,
         overflowPopoverRef,

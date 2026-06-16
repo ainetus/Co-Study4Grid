@@ -361,6 +361,7 @@ class TestClassifyActionType:
         ("load_shedding", "load_shedding"),
         ("LS_GROUP", "load_shedding"),
         ("renewable_curtailment", "curtail"),
+        ("redispatch", "redispatch"),
         ("line_disconnection", "disco"),
         ("pst_tap_change", "pst"),
         ("open_coupling", "open"),
@@ -541,6 +542,116 @@ class TestDeriveAnalysisMessage:
     def test_generic_fallback_message(self):
         out = analysis_runner.derive_analysis_message("", "unrelated output", result=None)
         assert "no recommendations" in out
+
+
+class TestComputeRedispatchDetails:
+    def _obs(self, names, gen_p):
+        return SimpleNamespace(name_gen=names, gen_p=np.array(gen_p))
+
+    def test_returns_none_without_action(self):
+        assert action_enrichment.compute_redispatch_details({}, None, MagicMock()) is None
+
+    def test_raise_direction_positive_delta(self):
+        # Therm at 30 MW (gen_p negative convention), target 40 MW -> +10 raise.
+        action = SimpleNamespace(gens_p={"THERM_1": 40.0})
+        obs_n1 = self._obs(["THERM_1"], [-30.0])
+        obs_action = self._obs(["THERM_1"], [-40.0])
+        ns = MagicMock()
+        ns.get_generator_voltage_level.return_value = "VL_T"
+        ns.get_generator_active_power_limits.return_value = (0.0, 100.0)
+        out = action_enrichment.compute_redispatch_details(
+            {"action": action, "observation": obs_action}, obs_n1, ns,
+        )
+        assert out == [{
+            "gen_name": "THERM_1", "voltage_level_id": "VL_T",
+            "delta_mw": 10.0, "target_mw": 40.0, "direction": "up",
+            "current_mw": 30.0,
+            "max_raise_mw": 70.0,   # 100 (max_p) - 30 (current)
+            "max_lower_mw": 30.0,   # 30 (current) - 0 (min_p)
+        }]
+
+    def test_headroom_none_when_limits_unavailable(self):
+        action = SimpleNamespace(gens_p={"THERM_1": 40.0})
+        obs_n1 = self._obs(["THERM_1"], [-30.0])
+        obs_action = self._obs(["THERM_1"], [-40.0])
+        ns = MagicMock()
+        ns.get_generator_voltage_level.return_value = None
+        ns.get_generator_active_power_limits.return_value = None
+        out = action_enrichment.compute_redispatch_details(
+            {"action": action, "observation": obs_action}, obs_n1, ns,
+        )
+        assert out[0]["max_raise_mw"] is None
+        assert out[0]["max_lower_mw"] is None
+        assert out[0]["current_mw"] == 30.0
+
+    def test_lower_direction_negative_delta(self):
+        action = SimpleNamespace(gens_p={"THERM_1": 20.0})
+        obs_n1 = self._obs(["THERM_1"], [-50.0])
+        obs_action = self._obs(["THERM_1"], [-20.0])
+        ns = MagicMock()
+        ns.get_generator_voltage_level.return_value = None
+        out = action_enrichment.compute_redispatch_details(
+            {"action": action, "observation": obs_action}, obs_n1, ns,
+        )
+        assert out[0]["delta_mw"] == -30.0
+        assert out[0]["direction"] == "down"
+
+    def test_delta_uses_encoded_target_not_redistributed_simulation(self):
+        # Regression: a 10 MW lower from 12 MW encodes target_p = 2 MW, but the
+        # load flow may back the unit off to 0 MW. The editable delta must stay
+        # the INTENDED -10 MW (encoded target vs current), NOT -12 MW (simulated).
+        action = SimpleNamespace(gens_p={"G": 2.0})
+        obs_n1 = self._obs(["G"], [-12.0])       # producing 12 MW
+        obs_action = self._obs(["G"], [0.0])      # slack redistribution → 0 MW
+        ns = MagicMock()
+        ns.get_generator_voltage_level.return_value = None
+        out = action_enrichment.compute_redispatch_details(
+            {"action": action, "observation": obs_action}, obs_n1, ns,
+        )
+        assert out[0]["delta_mw"] == -10.0
+        assert out[0]["target_mw"] == 2.0
+        assert out[0]["current_mw"] == 12.0
+        assert out[0]["direction"] == "down"
+
+    def test_discovery_stage_uses_target_from_content(self):
+        # No post-action observation: fall back to the encoded set_gen_p target.
+        obs_n1 = self._obs(["THERM_1"], [-30.0])
+        ns = MagicMock()
+        ns.get_generator_voltage_level.return_value = None
+        out = action_enrichment.compute_redispatch_details(
+            {"action": SimpleNamespace(gens_p={}),
+             "content": {"set_gen_p": {"THERM_1": 45.0}}, "observation": None},
+            obs_n1, ns,
+        )
+        assert out[0]["target_mw"] == 45.0
+        assert out[0]["delta_mw"] == 15.0
+        assert out[0]["direction"] == "up"
+
+
+class TestMwStartRedispatch:
+    def test_reads_set_gen_p(self):
+        obs = SimpleNamespace(gen_p=np.array([-55.0, 10.0]))
+        entry = {"content": {"set_gen_p": {"THERM_1": 65.0}}}
+        result = mw_start_scoring.mw_start_redispatch(
+            "x", entry, obs, {"THERM_1": 0, "THERM_2": 1},
+        )
+        assert result == 55.0  # current production magnitude, not the target
+
+    def test_action_id_fallback(self):
+        obs = SimpleNamespace(gen_p=np.array([-42.0]))
+        result = mw_start_scoring.mw_start_redispatch(
+            "redispatch_THERM_1", None, obs, {"THERM_1": 0},
+        )
+        assert result == 42.0
+
+    def test_dispatcher_routes_redispatch(self):
+        obs = SimpleNamespace(gen_p=np.array([-33.0]))
+        result = mw_start_scoring.get_action_mw_start(
+            "redispatch_THERM_1", "redispatch", obs,
+            line_idx_map={}, load_idx_map={}, gen_idx_map={"THERM_1": 0},
+            action_entry=None,
+        )
+        assert result == 33.0
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ import type { ActionOverviewFilters, ActionSeverityCategory, ActionTypeFilterTok
 
 /** Canonical chip tokens rendered in the filter row (in display order). */
 export const ACTION_TYPE_FILTER_TOKENS: readonly ActionTypeFilterToken[] = [
-    'all', 'disco', 'reco', 'ls', 'rc', 'open', 'close', 'pst',
+    'all', 'disco', 'reco', 'ls', 'rc', 'redispatch', 'open', 'close', 'pst',
 ];
 
 /**
@@ -61,6 +61,7 @@ export const ACTION_TYPE_LABELS: Record<ActionTypeKind, string> = {
     close: 'Close coupling',
     ls: 'Load shedding',
     rc: 'Renewable curtailment',
+    redispatch: 'Redispatching',
     pst: 'Phase shifter tap',
 };
 
@@ -159,8 +160,13 @@ export const classifyActionType = (
         && !isDisco && !isReco && !isOpenCoupling && !isCloseCoupling;
     const isLoadShedding = (aid.includes('load_shedding') || desc.includes('load shedding') || t.includes('load_shedding'))
         && !isDisco && !isReco && !isOpenCoupling && !isCloseCoupling && !isPstAction;
-    const isRenewableCurtailment = (t.includes('renewable_curtailment') || t.includes('open_gen'))
+    // Redispatching raises/lowers a dispatchable generator (id prefix
+    // ``redispatch_`` / score type ``redispatch``). Checked before the
+    // renewable bucket because both encode generator power changes.
+    const isRedispatch = (aid.startsWith('redispatch_') || t.includes('redispatch') || desc.includes('redispatch'))
         && !isDisco && !isReco && !isOpenCoupling && !isCloseCoupling && !isPstAction && !isLoadShedding;
+    const isRenewableCurtailment = (t.includes('renewable_curtailment') || t.includes('open_gen'))
+        && !isDisco && !isReco && !isOpenCoupling && !isCloseCoupling && !isPstAction && !isLoadShedding && !isRedispatch;
 
     if (isDisco) return 'disco';
     if (isReco) return 'reco';
@@ -168,14 +174,67 @@ export const classifyActionType = (
     if (isCloseCoupling) return 'close';
     if (isPstAction) return 'pst';
     if (isLoadShedding) return 'ls';
+    if (isRedispatch) return 'redispatch';
     if (isRenewableCurtailment) return 'rc';
     return 'unknown';
+};
+
+/**
+ * Multi-bucket classifier: returns the SET of action-type buckets an
+ * action belongs to. Most actions belong to exactly one (the singular
+ * `classifyActionType` result), but **manual maneuver** cards — and
+ * especially `[COMBINED]` ones — can belong to several at once:
+ *
+ *   "[COMBINED] Manoeuvre manuelle sur COUCHP6: …COUPL… ouvert
+ *    + Manoeuvre manuelle sur PYMONP3: …COUPL… fermé"
+ *
+ * opens one coupling AND closes another, so it must pass BOTH the
+ * `open` and `close` type filters. The singular classifier also misses
+ * these because the SLD-edit descriptions use the past participles
+ * `ouvert` / `fermé` (not the recommender's nouns `ouverture` /
+ * `fermeture`). We parse the maneuver text per `+`-segment here.
+ */
+export const classifyActionTypes = (
+    actionId: string,
+    description: string | null | undefined,
+    scoreType: string | null | undefined,
+): Set<ActionTypeKind> => {
+    const set = new Set<ActionTypeKind>();
+    const primary = classifyActionType(actionId, description, scoreType);
+    if (primary !== 'unknown') set.add(primary);
+
+    const aid = actionId.toLowerCase();
+    const desc = (description ?? '').toLowerCase();
+    const looksManual = aid.includes('user_topo')
+        || desc.includes('manoeuvre manuelle')
+        || desc.includes('manœuvre manuelle');
+    if (looksManual) {
+        // A single maneuver can toggle SEVERAL switches, joined by ", "
+        // ("…COUPL… ouvert, …CPVAN.1… ouvert"), and combined actions
+        // join maneuvers with " + ". Classify PER SWITCH clause —
+        // splitting on both separators — so a coupling-open in the same
+        // maneuver as a line-open doesn't mask the line as a coupling.
+        for (const clause of desc.split(/[+,]/)) {
+            const isCoupling = clause.includes('coupl');
+            // `ouvert` also matches `ouverture`; `ferm` matches both
+            // `fermé`/`ferme` and `fermeture`.
+            const opens = /ouvert/.test(clause);
+            const closes = /ferm[eé]/.test(clause);
+            if (opens) set.add(isCoupling ? 'open' : 'disco');
+            if (closes) set.add(isCoupling ? 'close' : 'reco');
+        }
+    }
+    return set;
 };
 
 /**
  * True iff the classified bucket for an action matches the active
  * filter token. `all` matches everything; `unknown` matches only
  * when the filter is `all` (no chip for the unknown bucket today).
+ *
+ * Routes through the multi-bucket `classifyActionTypes` so a combined
+ * manual maneuver that both opens and closes a coupling passes either
+ * the `open` or the `close` filter.
  */
 export const matchesActionTypeFilter = (
     filter: ActionTypeFilterToken,
@@ -184,7 +243,7 @@ export const matchesActionTypeFilter = (
     scoreType: string | null | undefined,
 ): boolean => {
     if (filter === 'all') return true;
-    return classifyActionType(actionId, description, scoreType) === filter;
+    return classifyActionTypes(actionId, description, scoreType).has(filter as ActionTypeKind);
 };
 
 // ---------------------------------------------------------------------

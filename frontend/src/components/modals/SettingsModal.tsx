@@ -8,6 +8,8 @@
 import { interactionLogger } from '../../utils/interactionLogger';
 import type { SettingsState } from '../../hooks/useSettings';
 import { colors } from '../../styles/tokens';
+import { ACTION_TYPE_FILTER_TOKENS, ACTION_TYPE_LABELS } from '../../utils/actionTypes';
+import type { ActionTypeKind } from '../../utils/actionTypes';
 
 interface SettingsModalProps {
   settings: SettingsState;
@@ -31,6 +33,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
     minPst, setMinPst,
     minLoadShedding, setMinLoadShedding,
     minRenewableCurtailmentActions, setMinRenewableCurtailmentActions,
+    minRedispatch, setMinRedispatch,
+    allowedActionTypes, setAllowedActionTypes,
     ignoreReconnections, setIgnoreReconnections,
     recommenderModel, setRecommenderModel,
     computeOverflowGraph, setComputeOverflowGraph,
@@ -56,10 +60,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
   const models = availableModels ?? [];
   const activeModel = models.find(m => m.name === recommenderModel) ?? null;
   const declaredParamNames = new Set((activeModel?.params ?? []).map(p => p.name));
-  // When `availableModels` is empty (initial load or fetch failure) we
+  // When `availableModels` is empty (initial load), the active model is
+  // unknown, OR the active model declares NO params (the degraded
+  // fallback served when `/api/models` errored, or a params_spec failure),
   // fall back to showing every input — same behaviour as before the
-  // pluggable model selector existed.
-  const showAll = models.length === 0 || activeModel === null;
+  // pluggable model selector existed. Without the empty-params guard a
+  // single backend params_spec() exception would blank out every
+  // parameter in this tab (regression).
+  const showAll = models.length === 0 || activeModel === null || declaredParamNames.size === 0;
   const showField = (name: string): boolean => showAll || declaredParamNames.has(name);
 
   // When the active model declares `requires_overflow_graph`, the step
@@ -258,6 +266,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
               { label: 'Min PST Actions', value: minPst, setter: setMinPst, id: 'minPst', name: 'min_pst' },
               { label: 'Min Load Shedding', value: minLoadShedding, setter: setMinLoadShedding, id: 'minLoadShedding', name: 'min_load_shedding' },
               { label: 'Min Renewable Curtailment', value: minRenewableCurtailmentActions, setter: setMinRenewableCurtailmentActions, id: 'minRenewableCurtailment', name: 'min_renewable_curtailment_actions' },
+              { label: 'Min Redispatch', value: minRedispatch, setter: setMinRedispatch, id: 'minRedispatch', name: 'min_redispatch' },
             ].filter(({ name }) => showField(name)).map(({ label, value, setter, id }) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label htmlFor={id} style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{label}</label>
@@ -290,6 +299,39 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
                 <label htmlFor="ignoreRec" style={{ fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer' }}>Ignore Reconnections</label>
               </div>
             )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: colors.surfaceMuted, borderRadius: '4px', border: `1px solid ${colors.borderSubtle}` }}>
+              <label style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Restrict to action types</label>
+              <span style={{ fontSize: '0.75rem', color: colors.textTertiary }}>
+                None selected = all families. Select one or more to make the recommender propose ONLY those.
+              </span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                {ACTION_TYPE_FILTER_TOKENS.filter(t => t !== 'all').map(token => {
+                  const active = allowedActionTypes.includes(token);
+                  return (
+                    <button
+                      key={token}
+                      type="button"
+                      data-testid={`allowed-type-${token}`}
+                      aria-pressed={active}
+                      onClick={() => setAllowedActionTypes(
+                        active
+                          ? allowedActionTypes.filter(t => t !== token)
+                          : [...allowedActionTypes, token]
+                      )}
+                      style={{
+                        fontSize: '0.75rem', padding: '3px 9px', borderRadius: '12px', cursor: 'pointer',
+                        border: `1px solid ${active ? colors.brand : colors.border}`,
+                        background: active ? colors.brandSoft : colors.surface,
+                        color: active ? colors.brand : colors.textSecondary,
+                        fontWeight: active ? 600 : 400,
+                      }}
+                    >
+                      {ACTION_TYPE_LABELS[token as ActionTypeKind]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
 

@@ -132,6 +132,12 @@ const SPEC: Record<string, SpecRow> = {
   sld_overlay_opened:             { required: new Set(['vl_name', 'action_id']) },
   sld_overlay_tab_changed:        { required: new Set(['tab', 'vl_name']) },
   sld_overlay_closed:             { required: new Set() },
+  sld_edit_mode_toggled:          { required: new Set(['enabled']) },
+  sld_switch_toggled:             { required: new Set(['equipment_id']) },
+  sld_maneuver_removed:           { required: new Set(['equipment_ids']) },
+  sld_maneuver_focused:           { required: new Set(['equipment_id']) },
+  sld_edit_reset:                 { required: new Set() },
+  sld_topology_simulated:         { required: new Set(['voltage_level_id', 'switches']), optional: new Set(['combined_with']) },
   // --- Session Management ---
   session_saved:                  { required: new Set(['output_folder']) },
   session_reload_modal_opened:    { required: new Set() },
@@ -139,6 +145,8 @@ const SPEC: Record<string, SpecRow> = {
   // --- Sidebar layout / contingency clear ---
   sidebar_collapsed_toggled:      { required: new Set(['collapsed']) },
   contingency_clear_requested:    { required: new Set(['had_analysis_state']) },
+  // --- Theme ---
+  theme_toggled:                  { required: new Set(['theme']) },
 };
 
 // ---------------------------------------------------------------------

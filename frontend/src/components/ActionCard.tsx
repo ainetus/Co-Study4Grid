@@ -178,6 +178,16 @@ const ActionCard: React.FC<ActionCardProps> = ({
             }
         });
 
+        details.redispatch_details?.forEach(rd => {
+            if (rd.voltage_level_id && !vlSet.has(rd.voltage_level_id)) {
+                vlSet.add(rd.voltage_level_id);
+                badges.push(badgeBtn(rd.voltage_level_id, colors.successSoft, colors.successText, `Click: zoom to ${rd.voltage_level_id} | Double-click: open SLD`, (e) => {
+                    e.stopPropagation();
+                    onVlDoubleClick?.(id, rd.voltage_level_id!);
+                }));
+            }
+        });
+
         if (nodesByEquipmentId) {
             const vlNames = getActionTargetVoltageLevels(details, id, nodesByEquipmentId);
             vlNames.forEach(vlName => {
@@ -257,51 +267,67 @@ const ActionCard: React.FC<ActionCardProps> = ({
                 position: 'relative',
             }} onClick={() => onActionSelect(id)}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
-                <h4 style={{
-                    margin: 0,
-                    fontSize: '12px',
-                    color: isViewing ? colors.brandStrong : undefined,
-                    flex: 1,
-                    minWidth: 0,
-                    overflowWrap: 'anywhere',
-                    fontWeight: 700,
-                    lineHeight: 1.35,
-                }}>
-                    #{index + 1} {'—'} {id}
-                </h4>
-                {/* Icon-only severity pictogram — the label text was
-                    redundant with the colour and ate horizontal space the
-                    action-id title needs. The full wording is reachable on
-                    hover (native title tooltip) and to assistive tech. */}
-                <span
-                    data-testid={`action-card-${id}-severity`}
-                    title={sc.label}
-                    aria-label={sc.label}
-                    role="img"
-                    style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '3px',
-                        borderRadius: '50%',
-                        background: sc.badgeBg,
-                        color: sc.badgeText,
-                        flexShrink: 0,
-                        lineHeight: 0,
-                    }}
-                >
-                    <SeverityIcon kind={sc.kind} />
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flex: 1, minWidth: 0 }}>
+                    {/* Severity pictogram — placed before the title so the
+                        operator immediately reads the outcome colour. */}
+                    <span
+                        data-testid={`action-card-${id}-severity`}
+                        title={sc.label}
+                        aria-label={sc.label}
+                        role="img"
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '3px',
+                            borderRadius: '50%',
+                            background: sc.badgeBg,
+                            color: sc.badgeText,
+                            flexShrink: 0,
+                            lineHeight: 0,
+                        }}
+                    >
+                        <SeverityIcon kind={sc.kind} />
+                    </span>
+                    <h4 style={{
+                        margin: 0,
+                        fontSize: '12px',
+                        color: isViewing ? colors.brandStrong : undefined,
+                        flex: 1,
+                        minWidth: 0,
+                        overflowWrap: 'anywhere',
+                        fontWeight: 700,
+                        lineHeight: 1.35,
+                    }}>
+                        #{index + 1} {'—'} {id}
+                    </h4>
+                </div>
+                {/* Star / reject rail — top-right, revealed on hover via
+                    CSS (.action-card-rail opacity transition). */}
+                <div className="action-card-rail" style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
+                    {!isSelected && (
+                        <button
+                            data-testid={`favorite-${id}`}
+                            onClick={(e) => { e.stopPropagation(); onActionFavorite(id); }}
+                            style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '4px', cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            title="Select this action"
+                        ><span style={{ fontSize: '15px', lineHeight: 1 }}>⭐</span></button>
+                    )}
+                    {!isRejected && (
+                        <button
+                            data-testid={`reject-${id}`}
+                            onClick={(e) => { e.stopPropagation(); onActionReject(id); }}
+                            style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '4px', cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            title={isSelected ? "Remove from selected" : "Reject this action"}
+                        ><span style={{ fontSize: '15px', lineHeight: 1 }}>❌</span></button>
+                    )}
+                </div>
             </div>
 
             {/* Compact at-rest body: max loading + target badges. The
-                rail (⭐ / ❌) sits to the right and fades in on
-                hover or when this card is being viewed. The row wraps
-                so multi-VL badge stacks flow to a second line when
-                the title is long or the badges don't fit alongside
-                the loading metric — without that, ``flexShrink:0`` on
-                the badges + rail forces the loading text to collapse
-                into a one-word-per-line vertical strip. */}
+                row wraps so multi-VL badge stacks flow to a second
+                line when the title is long or the badges don't fit
+                alongside the loading metric. */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', rowGap: '6px', gap: '8px', marginTop: '6px' }}>
                 <div style={{ flex: '1 1 160px', fontSize: '12px', minWidth: 'min-content' }}>
                     {maxRhoPct != null ? (
@@ -320,24 +346,6 @@ const ActionCard: React.FC<ActionCardProps> = ({
                     )}
                 </div>
                 {renderBadges()}
-                <div className="action-card-rail" style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                    {!isSelected && (
-                        <button
-                            data-testid={`favorite-${id}`}
-                            onClick={(e) => { e.stopPropagation(); onActionFavorite(id); }}
-                            style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '4px', cursor: 'pointer', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            title="Select this action"
-                        ><span style={{ fontSize: '14px' }}>⭐</span></button>
-                    )}
-                    {!isRejected && (
-                        <button
-                            data-testid={`reject-${id}`}
-                            onClick={(e) => { e.stopPropagation(); onActionReject(id); }}
-                            style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '4px', cursor: 'pointer', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            title={isSelected ? "Remove from selected" : "Reject this action"}
-                        ><span style={{ fontSize: '14px' }}>❌</span></button>
-                    )}
-                </div>
             </div>
 
             {/* Fault states (divergent / islanded) are primary signals
@@ -387,7 +395,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
                                             if (!isNaN(mwVal) && mwVal >= 0) onResimulate(id, mwVal);
                                         }}
                                         disabled={resimulating === id}
-                                        style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.warningStrong}`, background: colors.warning, color: colors.warningText, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+                                        style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.warningStrong}`, background: colors.warning, color: colors.textOnBright, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
                                     >
                                         {resimulating === id ? 'Simulating...' : 'Re-simulate'}
                                     </button>
@@ -423,6 +431,54 @@ const ActionCard: React.FC<ActionCardProps> = ({
                                     </button>
                                 </div>
                             ))}
+                        </div>
+                    )}
+
+                    {details.redispatch_details && details.redispatch_details.length > 0 && (
+                        <div style={{ ...editorRowStyle, background: colors.infoSoft, color: colors.infoText, border: `1px solid ${colors.infoBorder}` }}>
+                            {details.redispatch_details.map((rd, i) => {
+                                // Signed-delta bounds from the generator's [min_p, max_p]:
+                                // a raise can go up to +max_raise_mw, a lower down to -max_lower_mw.
+                                const headroom = rd.direction === 'up' ? rd.max_raise_mw : rd.max_lower_mw;
+                                const minDelta = rd.direction === 'up' ? 0 : (rd.max_lower_mw != null ? -rd.max_lower_mw : undefined);
+                                const maxDelta = rd.direction === 'up' ? (rd.max_raise_mw ?? undefined) : 0;
+                                const clamp = (v: number) => {
+                                    if (minDelta != null) v = Math.max(minDelta, v);
+                                    if (maxDelta != null) v = Math.min(maxDelta, v);
+                                    return v;
+                                };
+                                return (
+                                <div key={rd.gen_name} style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: i > 0 ? '4px' : 0 }}>
+                                    <span>Redispatch on <strong>{rd.gen_name}</strong> ({rd.direction === 'up' ? 'raise' : 'lower'}) in MW:</span>
+                                    <input
+                                        data-testid={`edit-mw-${id}`}
+                                        type="number"
+                                        step={0.1}
+                                        min={minDelta}
+                                        max={maxDelta}
+                                        value={cardEditMw[id] ?? rd.delta_mw.toFixed(1)}
+                                        onChange={(e) => onCardEditMwChange(id, e.target.value)}
+                                        style={{ width: '65px', fontSize: '11px', fontFamily: 'monospace', padding: '2px 4px', border: `1px solid ${colors.info}`, borderRadius: '3px', textAlign: 'right' }}
+                                    />
+                                    {headroom != null && (
+                                        <span style={{ fontSize: '10px', color: colors.info }}>
+                                            max {rd.direction === 'up' ? 'raise' : 'lower'}: {headroom.toFixed(0)} MW
+                                        </span>
+                                    )}
+                                    <button
+                                        data-testid={`resimulate-${id}`}
+                                        onClick={() => {
+                                            const raw = parseFloat(cardEditMw[id] ?? String(rd.delta_mw));
+                                            if (!isNaN(raw)) onResimulate(id, clamp(raw));
+                                        }}
+                                        disabled={resimulating === id}
+                                        style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.info}`, background: colors.infoBorder, color: colors.infoText, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+                                    >
+                                        {resimulating === id ? 'Simulating...' : 'Re-simulate'}
+                                    </button>
+                                </div>
+                                );
+                            })}
                         </div>
                     )}
 

@@ -24,6 +24,8 @@ export interface SessionInput {
     minPst: number;
     minLoadShedding: number;
     minRenewableCurtailmentActions: number;
+    minRedispatch: number;
+    allowedActionTypes: string[];
     nPrioritizedActions: number;
     linesMonitoringPath: string;
     monitoringFactor: number;
@@ -69,7 +71,7 @@ export interface SessionInput {
 export function buildSessionResult(input: SessionInput): SessionResult {
     const {
         networkPath, actionPath, layoutPath,
-        minLineReconnections, minCloseCoupling, minOpenCoupling, minLineDisconnections, minPst, minLoadShedding, minRenewableCurtailmentActions,
+        minLineReconnections, minCloseCoupling, minOpenCoupling, minLineDisconnections, minPst, minLoadShedding, minRenewableCurtailmentActions, minRedispatch, allowedActionTypes,
         nPrioritizedActions, linesMonitoringPath, monitoringFactor,
         preExistingOverloadThreshold, ignoreReconnections, pypowsyblFastMode,
         recommenderModel, computeOverflowGraph,
@@ -159,6 +161,7 @@ export function buildSessionResult(input: SessionInput): SessionResult {
                         load_shedding_details: detail.load_shedding_details,
                         curtailment_details: detail.curtailment_details,
                         pst_details: detail.pst_details,
+                        redispatch_details: detail.redispatch_details,
                         // Provenance: "user" or a recommender model id.
                         // Restored verbatim on reload (with a derived
                         // fallback for legacy dumps that lack the field).
@@ -189,6 +192,8 @@ export function buildSessionResult(input: SessionInput): SessionResult {
             min_pst: minPst,
             min_load_shedding: minLoadShedding,
             min_renewable_curtailment_actions: minRenewableCurtailmentActions,
+            min_redispatch: minRedispatch,
+            allowed_action_types: allowedActionTypes,
             n_prioritized_actions: nPrioritizedActions,
             lines_monitoring_path: linesMonitoringPath,
             monitoring_factor: monitoringFactor,

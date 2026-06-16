@@ -29,6 +29,14 @@ remaining hex-literal count after each migration.
   --color-surface-muted: #f8f9fa;
   --color-surface-raised: #fcfcfc;
 
+  /* Backdrop behind the pypowsybl NAD/SLD diagram. White in light
+     mode; flipped dark by [data-theme="dark"] below. The diagram SVG
+     itself is transparent, so this token IS the diagram background. */
+  --color-diagram-surface: #ffffff;
+  /* Semi-opaque veil painted over the diagram while a new one loads
+     (dims the stale diagram). Translucent so the old SVG shows through. */
+  --color-diagram-veil: rgba(255, 255, 255, 0.85);
+
   /* ----- Color: borders ----- */
   --color-border: #cccccc;
   --color-border-subtle: #eeeeee;
@@ -39,6 +47,11 @@ remaining hex-literal count after each migration.
   --color-text-secondary: #555555;
   --color-text-tertiary: #888888;
   --color-text-on-brand: #ffffff;
+  /* Dark ink for text sitting on a bright, solid fill (warning yellow,
+     notice badge, etc.). Stays dark in BOTH themes because those fills
+     are bright in both — unlike the *-text tokens which are tuned for
+     the matching *-soft background and flip light in dark mode. */
+  --color-text-on-bright: #1f2937;
 
   /* ----- Color: brand (Tailwind blue ramp) ----- */
   --color-brand: #1e40af;          /* blue-800 — primary links + active CTAs */
@@ -121,6 +134,14 @@ remaining hex-literal count after each migration.
   --signal-delta-negative: #2196f3;
   --signal-delta-neutral: #999999;
 
+  /* ----- SLD interactive topology-edit highlight -----
+     The interactive SLD-edit feature (useSldTopologyEdit + SldEditPanel)
+     stages switch toggles in the frontend and visually marks the
+     pending breaker. Distinct hues from action / contingency / overload
+     so a toggled switch on an overloaded line still reads as both. */
+  --signal-edit-open: #d81b60;
+  --signal-edit-closed: #1976d2;
+
   /* ----- Action-overview pin palette -----
      Severity buckets for Remedial Action overview pins
      (utils/svg/actionPin{Data,Render}.ts + ActionOverviewDiagram.tsx).
@@ -154,4 +175,70 @@ remaining hex-literal count after each migration.
      before body { background-color: var(--color-surface) } takes over.
      Kept as a token so the dark-mode initial-paint color has a name. */
   --color-surface-dark: #242424;
+}
+
+/* ===== Dark theme =====
+   Engaged via `<html data-theme="dark">`, set by useTheme + the
+   pre-mount script in index.html. Only chrome tokens flip — domain
+   signals (overload / contingency / action-target / pin palette)
+   stay identical because pypowsybl SVGs render on a light backdrop
+   and the colors encode semantic state. The diagram <svg> container
+   keeps `colors.surface` here = light grey-blue so flow arrows /
+   delta colors keep their meaning. */
+[data-theme="dark"] {
+  /* Surfaces — app shell is dark; the diagram backdrop goes near-black
+     (see --color-diagram-surface) so voltage-coded lines pop. */
+  --color-surface: #1b1f24;            /* base app background */
+  --color-surface-muted: #232830;      /* sidebar / cards */
+  --color-surface-raised: #2a3038;     /* hover / raised tiles */
+  --color-diagram-surface: #0c0f13;    /* near-black diagram backdrop */
+  --color-diagram-veil: rgba(12, 15, 19, 0.78);
+
+  /* Borders */
+  --color-border: #3a4049;
+  --color-border-subtle: #2d333b;
+  --color-border-strong: #555c66;
+
+  /* Text — high-contrast on the dark surfaces above. */
+  --color-text-primary: #e6e8eb;
+  --color-text-secondary: #b5bac1;
+  --color-text-tertiary: #8b9098;
+  --color-text-on-brand: #ffffff;
+
+  /* Brand — lift the Tailwind blue one step so it stays vivid on dark. */
+  --color-brand: #3b82f6;              /* blue-500 — primary CTAs */
+  --color-brand-strong: #60a5fa;       /* blue-400 — hover */
+  --color-brand-soft: #1e3a8a;         /* blue-900 — selection bg */
+  --color-brand-mid: #60a5fa;          /* slider / range fills */
+
+  /* Success / Warning / Danger / Info — keep hue, deepen the soft
+     backgrounds so badge text stays readable on dark cards. */
+  --color-success: #22c55e;
+  --color-success-strong: #16a34a;
+  --color-success-soft: #14532d;
+  --color-success-text: #bbf7d0;
+
+  --color-warning: #facc15;
+  --color-warning-strong: #eab308;
+  --color-warning-soft: #422006;
+  --color-warning-border: #713f12;
+  --color-warning-text: #fde68a;
+
+  --color-danger: #ef4444;
+  --color-danger-strong: #dc2626;
+  --color-danger-soft: #4c1d1d;
+  --color-danger-text: #fecaca;
+
+  --color-accent: #c084fc;             /* save/secondary action */
+  --color-accent-soft: #3b1f5c;
+  --color-accent-border: #7e22ce;
+  --color-accent-text: #e9d5ff;
+  --color-chrome: #0f1419;             /* header background */
+  --color-chrome-soft: #4a5159;        /* settings cog */
+  --color-disabled: #4b5563;
+
+  --color-info: #38bdf8;
+  --color-info-soft: #0c3445;
+  --color-info-border: #075985;
+  --color-info-text: #bae6fd;
 }

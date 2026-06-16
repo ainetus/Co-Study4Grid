@@ -7,6 +7,117 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Generalized Superposition Theorem (GST) for combined-pair estimation
+
+The combined-pair **estimation** (`POST /api/compute-superposition`, Explore
+Pairs tab) now supports pairs that involve an **injection** action — load
+shedding, renewable curtailment, redispatch — not just topology actions. This
+plugs the recommender library's GST (`compute_combined_pair_gst`) into Co-Study.
+
+- **Backend** (`services/`):
+  - `simulation_helpers.is_injection_action(action_id, dict_action, classifier)`
+    — new detector (id prefix + classifier type), kept in sync with the library.
+  - `simulation_mixin.compute_superposition` — computes `act1_is_injection` /
+    `act2_is_injection`, no longer bails out with "cannot identify elements" for
+    an injection action (they carry no topology element), and forwards the flags
+    to `compute_combined_pair_superposition` (GST path). The injection action is
+    returned with `beta = 1.0`, so `compute_combined_rho` /
+    `_augment_superposition_result` work unchanged.
+- **Frontend**:
+  - `CombinedActionsModal` — `hasRestricted` is now always `false`; LS /
+    curtailment / redispatch are estimable.
+  - `ExplorePairsTab` — removed the "load shedding / curtailment cannot be
+    combined for estimation" caveat banners.
+- **Tests**: new GST cases in `expert_backend/tests/test_superposition_service.py`
+  (topology+injection, injection-first, injection+injection, `is_injection_action`).
+- **Diagnostic**: `scripts/gst_estimation_vs_simulation_small_grid.py` — a
+  library-level (no running backend) reproduction of the GST estimate-vs-
+  simulation behaviour on the small grid, including a direct-DC exactness proof
+  showing the AC est-vs-sim gap is AC-nonlinearity (0 MW error in DC), not a bug.
+- **Docs**: `docs/features/combined-actions.md` documents the AC-anchoring of the
+  GST estimate and how to read it (trust `target_max_rho`; the off-target global
+  max can flip between near-equal low-flow lines; injection+injection is
+  lower-confidence, with the measured `BEON` 5.6 % est vs 38.1 % sim example),
+  and points to the library's "Known larger-error cases" catalog.
+
+### Redispatching action type
+
+End-to-end support for **redispatching** remedial actions (raise / lower a
+dispatchable generator), mirroring the renewable-curtailment pipeline but
+with an editable *signed* MW delta (default ±10 MW):
+
+- **Backend**:
+  - `services/analysis/mw_start_scoring.py` — new `redispatch` tag in
+    `classify_action_type` + `mw_start_redispatch` helper, dispatched from
+    `get_action_mw_start`.
+  - `services/analysis/action_enrichment.py` — `compute_redispatch_details`
+    (per-generator signed `delta_mw`, `target_mw`, `direction`), attached to
+    `redispatch_`-prefixed actions in `analysis_mixin._enrich_actions` and in
+    `simulation_mixin.simulate_manual_action`.
+  - `services/simulation_helpers.py` — `compute_redispatch_setpoint`
+    (`current ± signed delta`, floored at 0); `redispatch_details` added to
+    `serialize_action_result`.
+  - `services/simulation_mixin.py` — `_create_dynamic_redispatch` branch and
+    redispatch-aware `_apply_target_mw_updates` (interprets `target_mw` as the
+    signed delta for `redispatch_` actions).
+  - `main.py` / `recommender_service.py` — `min_redispatch` +
+    `redispatch_default_delta_mw` config plumbing.
+- **Frontend**:
+  - `types.ts` — `RedispatchDetail` interface, `redispatch_details` on
+    `ActionDetail`, `'redispatch'` added to `ActionTypeFilterToken`.
+  - `utils/actionTypes.ts` — `redispatch` filter token + label +
+    `classifyActionType` branch (checked before the renewable bucket).
+  - `components/ActionTypeIcon.tsx` — redispatch glyph (up/down arrows);
+    `components/ActionFilterRings.tsx` — token in the action-type ring.
+  - `components/ActionCard.tsx` — editable signed-delta MW input (allows
+    negative values) + Re-simulate, cloned from the curtailment editor.
+  - `components/ActionFeed.tsx` / `api.ts` — `redispatch_details` carried
+    through the simulate / re-simulate result pipeline.
+
+### Interactive SLD topology edit → manual action card
+
+A new gesture lets the operator build a remedial action by clicking
+switches on a Single Line Diagram, mirroring the `manoeuvre_ihm` tool
+in `expert_op4grid_recommender`:
+
+- **`✎ Manual action`** button in the SLD overlay header (visible on
+  N-1 and post-action SLD tabs). Clicking it enters edit mode.
+- **Target-topology preview** — each staged switch toggle triggers a
+  debounced `POST /api/sld-topology-preview` call (new endpoint).
+  Backend clones a throwaway variant, applies the overrides, and
+  re-renders the SLD with `SldParameters(topological_coloring=True)`
+  (no load flow). The frontend shows the preview in place of the
+  baseline with stale-flow values greyed (`.sld-preview-stale`); the
+  changed breaker keeps its dashed outline so the operator always
+  sees WHERE the topology changed.
+- **Interactive maneuver list** (`SldEditPanel`) — focus a single
+  switch by clicking its row, remove one with `×`, remove a block
+  via checkbox + `Remove selected (N)`, or `Reset` all.
+- **Simulate action** — streams `/api/simulate-and-variant-diagram`
+  (new optional `voltage_level_id` field auto-names switch-only
+  actions: `"Manoeuvre manuelle sur <vl>: SW_A ouvert, SW_B fermé"`),
+  the card lands in the Action Feed and the SLD overlay auto-focuses
+  on its `ACTION` tab.
+- **Combined-action support** — editing on a post-action SLD produces
+  a combined card `<base>+user_topo_<vl>_<ts>`; the backend
+  canonicalises combined ids (`"+"`-sorted) and `_require_action`
+  aliases the raw ordering onto the canonical entry so the frontend
+  fetch keys never desync.
+- **Action-type filter** — `classifyActionTypes` (multi-bucket) is
+  introduced so a single maneuver that opens a coupling AND a line
+  (comma-joined description), or a combined card that opens one
+  coupling AND closes another, passes BOTH the corresponding filters
+  in the Action Feed / Action Overview / Combine modal / overflow
+  pins.
+- **Six new interaction events** declared in both `SPEC`
+  (`specConformance.test.ts`) and `SPEC_DETAILS`
+  (`check_standalone_parity.py`): `sld_edit_mode_toggled`,
+  `sld_switch_toggled`, `sld_maneuver_removed`,
+  `sld_maneuver_focused`, `sld_edit_reset`, `sld_topology_simulated`.
+
+Full contract + test inventory in
+[`docs/features/sld-topology-edit.md`](docs/features/sld-topology-edit.md).
+
 ### Sidebar readability refresh — collapsible feed, banner Clear, overload info bubble
 
 - **Sidebar visibility gate** — the "Select Contingency" picker card

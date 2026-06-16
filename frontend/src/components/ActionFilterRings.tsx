@@ -41,7 +41,7 @@ const SEVERITY_RING: ReadonlyArray<{ cat: ActionSeverityCategory; kind: Severity
 
 const ALL_CATEGORIES: ReadonlyArray<ActionSeverityCategory> = ['green', 'orange', 'red', 'grey'];
 
-const TYPE_RING: ReadonlyArray<ActionTypeKind> = ['disco', 'reco', 'open', 'close', 'ls', 'rc', 'pst'];
+const TYPE_RING: ReadonlyArray<ActionTypeKind> = ['disco', 'reco', 'open', 'close', 'ls', 'rc', 'redispatch', 'pst'];
 
 const TOGGLE_SIZE = 22;
 

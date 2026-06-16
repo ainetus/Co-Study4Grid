@@ -109,6 +109,60 @@ Where:
 
 **Flag:** Results always have `is_estimated: true`
 
+#### Generalized Superposition Theorem (GST) — injection actions
+
+The EST formula above combines two **topology** actions. When a pair involves an
+**injection** action — load shedding (`set_load_p`), curtailment / redispatch
+(`set_gen_p`) — `compute_superposition` detects it via
+`simulation_helpers.is_injection_action` and forwards `act1_is_injection` /
+`act2_is_injection` to `compute_combined_pair_superposition`, which routes to the
+library's **GST** (`compute_combined_pair_gst`).
+
+The integration point is deliberately thin: the GST reports an injection action
+with **`beta = 1.0`** and the topology action with its (injection-shifted) beta.
+With that convention the EST `rho_combined` formula above is **unchanged** — it
+already reproduces the exact GST loading — so `compute_combined_rho` and
+`_augment_superposition_result` need no GST-specific branch. The only backend
+changes are: (1) detect injection actions, (2) skip the "cannot identify
+elements" bail-out for them (they carry no topology element), (3) pass the
+injection flags through.
+
+On the frontend the Explore Pairs tab no longer blocks estimation for
+LS / curtailment / redispatch (`hasRestricted` is always `false` now, and the
+"cannot be combined for estimation" caveats were removed).
+
+**Estimation accuracy / AC anchoring.** The GST reads only AC load-flow values
+(both the injection superposition term and the injection-shifted beta), so it is
+anchored at the true AC operating point — but the superposition *law* is
+DC-exact only, so AC nonlinearities are not reproduced. Consequences operators
+see:
+
+- The **on-target overload** (the line the contingency overloads) is predicted
+  reliably — that is what `target_max_rho` reports, and it matches simulation.
+- The **global `max_rho` line can flip** between two near-equally-loaded
+  monitored lines (e.g. estimate `C.FOUL31MERVA` ~74 % vs simulation
+  `PYMONL31SAISS` ~70 %). This is a few-MW AC flow-split error on low-flow
+  parallel-corridor lines, **not a bug** — it is provably 0 MW in DC (a direct
+  `run_dc` check reconstructs the pair exactly) and appears identically on
+  pure-topology pairs. So trust `target_max_rho`; treat the off-target global max
+  as indicative.
+- **Injection + injection** pairs are lower-confidence (two large injections
+  compound the AC error). Example: `load_shedding_P.SAO3TR312 +
+  load_shedding_BEON3 TR311` over-predicts the relief on the target line
+  (`BEON L31CPVAN` estimated ~5.6 % vs simulated ~38.1 %; mean rho gap ~4 pts,
+  worst ~33 pts). Prefer a full simulation for these.
+
+The two known larger-error cases (heavily-loaded-line disconnection onto a
+low-flow corridor → off-target max-line flip; and injection+injection → relief
+over-prediction) are catalogued with measured numbers, root cause and how to
+read them in the `expert_op4grid_recommender` library docs:
+`docs/superposition_module.md` §10 "Known larger-error cases".
+
+The library diagnostic
+`scripts/gst_estimation_vs_simulation_small_grid.py` reproduces all of this
+(EST-vs-GST per-pair accuracy + the DC-exactness proof) at the library level, no
+running backend required.
+
 ### Full simulation
 
 Combines individual grid2op action objects and runs a full load flow.
@@ -238,10 +292,11 @@ ways:
 
 - **Load-shedding and curtailment are now allowed in combined pairs**
   (commit `a019555`). Previously restricted to topology actions, the
-  Explore Pairs tab now accepts LS / curtailment on either side as
-  long as the pair is simulated (the superposition-estimation path
-  still requires both actions to have a pre-computed beta, which only
-  exists for topology actions).
+  Explore Pairs tab now accepts LS / curtailment on either side. As of
+  the Generalized Superposition Theorem work (see "Generalized
+  Superposition Theorem (GST)" below) the **superposition-estimation
+  path also handles these injection actions** — they no longer require
+  a full simulation just to preview the combined loading.
 - **"Simulate Combined" moved out of the action card** (commit
   `e871006`). The trigger now lives in the modal footer. After a
   simulate-only pair lands, the resulting card is shown in the main
@@ -330,5 +385,8 @@ When modifying combined actions logic:
 - [ ] `simulationFeedback` state must be cleared when the selected pair changes
 - [ ] The modal must stay open during simulation so the user sees feedback
 - [ ] Test both tabs: Computed Pairs uses `handleSimulate(pairId)`, Explore uses `handleSimulate()` (no args)
-- [ ] Load-shedding / curtailment pairs work via simulate-only; the
-      estimation preview path is still topology-only.
+- [ ] Load-shedding / curtailment / redispatch pairs work via BOTH the
+      estimation preview (GST) and full simulation. When adding a new
+      injection-type action, make sure `is_injection_action`
+      (`simulation_helpers.py`) recognises its id prefix / classifier
+      type so `compute_superposition` routes the pair to the GST.

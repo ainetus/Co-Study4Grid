@@ -43,6 +43,7 @@ from expert_op4grid_recommender.utils.superposition import get_virtual_line_flow
 from expert_backend.services.analysis.action_enrichment import (
     compute_curtailment_details,
     compute_load_shedding_details,
+    compute_redispatch_details,
     compute_lines_overloaded_after,
     compute_pst_details,
     derive_non_convergence,
@@ -142,6 +143,14 @@ class AnalysisMixin:
             is_renewable_fn=lambda gen_name, obs: self._is_renewable_gen(gen_name, obs=obs),
         )
 
+    def _compute_redispatch_details(self, action_data, obs_n1=None):
+        """Per-generator redispatch MW details (delegates to the stateless helper)."""
+        return compute_redispatch_details(
+            action_data,
+            obs_n1 if obs_n1 is not None else self._obs_n1_from_context(),
+            self._network_service(),
+        )
+
     def _compute_pst_details(self, action_data):
         """Per-PST tap details with current bounds (delegates to the stateless helper)."""
         return compute_pst_details(action_data, self._pst_tap_info_fn())
@@ -206,9 +215,20 @@ class AnalysisMixin:
             if load_shedding:
                 enriched["load_shedding_details"] = load_shedding
 
-            curtailment = self._compute_curtailment_details(action_data)
-            if curtailment:
-                enriched["curtailment_details"] = curtailment
+            # Curtailment and redispatch are mutually exclusive families: both
+            # encode ``set_gen_p`` but a ``redispatch_`` action targets a
+            # dispatchable generator that curtailment would reject anyway. Skip
+            # the curtailment pass for redispatch actions — it would otherwise
+            # iterate the generator(s) and probe ``is_renewable_gen`` only to
+            # return None.
+            if action_id.startswith("redispatch_"):
+                redispatch = self._compute_redispatch_details(action_data)
+                if redispatch:
+                    enriched["redispatch_details"] = redispatch
+            else:
+                curtailment = self._compute_curtailment_details(action_data)
+                if curtailment:
+                    enriched["curtailment_details"] = curtailment
 
             pst_details = self._compute_pst_details(action_data)
             if pst_details:
@@ -659,6 +679,7 @@ class AnalysisMixin:
             # Never leak combined-action ids into the main actions feed —
             # those are estimations that live in `combined_actions`.
             enriched_actions = {aid: data for aid, data in enriched_actions.items() if "+" not in aid}
+            _t_enrich_actions_done = time.time()
 
             # Enrich each pre-computed pair with a `target_max_rho` /
             # `target_max_rho_line` scoped to the user-selected overloads
@@ -667,9 +688,22 @@ class AnalysisMixin:
             # contingency they're resolving even when linearisation
             # noise puts the global max on an off-target line.
             self._augment_combined_actions_with_target_max_rho(results, context)
+            _t_augment_done = time.time()
 
             action_scores = self._compute_mw_start_for_scores(results.get("action_scores", {}))
             enrichment_time = time.time() - _t_enrich
+
+            # Sub-phase split so a slow enrichment phase can be attributed to
+            # the right contributor (per-action detail enrichment vs the
+            # combined-pair target-max-rho pass vs the score MW-start pass).
+            logger.info(
+                "[Step 2] Enrichment breakdown: enrich_actions=%.3fs, "
+                "augment_pairs=%.3fs, mw_start_scores=%.3fs (total=%.3fs)",
+                _t_enrich_actions_done - _t_enrich,
+                _t_augment_done - _t_enrich_actions_done,
+                time.time() - _t_augment_done,
+                enrichment_time,
+            )
 
             logger.info(
                 "[Step 2] Yielding final result event with %d enriched actions "

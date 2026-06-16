@@ -55,6 +55,40 @@ def canonicalize_action_id(action_id: str) -> str:
     return "+".join(sorted(p.strip() for p in action_id.split("+")))
 
 
+def is_switch_only_content(content: Any) -> bool:
+    """True if ``content`` carries only a non-empty ``switches`` dict.
+
+    Used by ``simulate_manual_action`` to decide whether to auto-build a
+    human-readable description for user-built SLD-edit actions, instead
+    of falling back to the raw ``action_id`` (which is just a generated
+    placeholder like ``user_topo_<vl>_<ts>``).
+    """
+    if not isinstance(content, dict):
+        return False
+    switches = content.get("switches")
+    if not isinstance(switches, dict) or not switches:
+        return False
+    other_keys = [k for k in content.keys() if k != "switches"]
+    return len(other_keys) == 0
+
+
+def build_switch_action_description(
+    switches: dict[str, bool],
+    voltage_level_id: str | None = None,
+) -> str:
+    """Return ``"Manoeuvre manuelle sur <vl>: A ouvert, B fermé"`` ."""
+    if not switches:
+        return "Manoeuvre manuelle (aucun switch)"
+    parts: list[str] = []
+    for sw_id, is_open in switches.items():
+        verb = "ouvert" if is_open else "fermé"
+        parts.append(f"{sw_id} {verb}")
+    body = ", ".join(parts)
+    if voltage_level_id:
+        return f"Manoeuvre manuelle sur {voltage_level_id}: {body}"
+    return f"Manoeuvre manuelle: {body}"
+
+
 def compute_reduction_setpoint(
     element_name: str,
     element_type: str,
@@ -85,6 +119,37 @@ def compute_reduction_setpoint(
             element_name, e,
         )
         return 0.0
+
+
+def compute_redispatch_setpoint(
+    gen_name: str,
+    delta_mw: float | None,
+    obs_n1: Any,
+    default_delta_mw: float = 10.0,
+) -> float:
+    """Compute the new generator setpoint for a redispatch (current + signed delta).
+
+    Unlike :func:`compute_reduction_setpoint` (which *subtracts* a reduction
+    from the current output), redispatch *adds* a signed delta: a positive
+    ``delta_mw`` raises production, a negative one lowers it. Works in
+    production-positive magnitude (pypowsybl ``target_p`` convention) and is
+    floored at 0. Falls back to ``default_delta_mw`` (raise) when no delta is
+    supplied, and to ``default_delta_mw`` itself when the generator cannot be
+    located on the observation.
+    """
+    delta = float(delta_mw) if delta_mw is not None else float(default_delta_mw)
+    if obs_n1 is None:
+        return round(max(0.0, delta), 2)
+    try:
+        idx = list(obs_n1.name_gen).index(gen_name)
+        current_mw = abs(float(obs_n1.gen_p[idx]))
+        return round(max(0.0, current_mw + delta), 2)
+    except Exception as e:
+        logger.warning(
+            "[compute_redispatch_setpoint] could not compute setpoint for %s: %s — using delta only",
+            gen_name, e,
+        )
+        return round(max(0.0, delta), 2)
 
 
 _PST_TAP_PATTERN = re.compile(r"(pst(?:_tap)?_(.+))_(inc|dec)(\d+)$")
@@ -142,6 +207,33 @@ def is_pst_action(action_id: str, dict_action: dict | None, classifier: Any) -> 
         or "pst_tap" in action_id
         or "pst_" in action_id
     )
+
+
+# Injection-action detection — kept in sync with the recommender library's
+# ``superposition.is_injection_action`` (id prefix + classifier action type).
+# Replicated here (rather than imported) so it stays correct when the library
+# module is stubbed by the test mock layer, exactly like ``is_pst_action``.
+_INJECTION_ID_PREFIXES: tuple[str, ...] = ("load_shedding_", "curtail_", "redispatch_")
+_INJECTION_ACTION_TYPES: frozenset[str] = frozenset({
+    "load_power_reduction", "gen_power_reduction", "gen_redispatch",
+    "open_load", "open_gen",
+})
+
+
+def is_injection_action(action_id: str, dict_action: dict | None, classifier: Any) -> bool:
+    """Detect injection actions (load shedding / curtailment / redispatch).
+
+    These change only nodal injections (``set_load_p`` / ``set_gen_p``), not the
+    topology, and are combined with topology actions through the Generalized
+    Superposition Theorem (GST). Detection is by action-id prefix and, when the
+    classifier resolves a type, by the injection action types — mirroring the
+    library's ``superposition.is_injection_action``.
+    """
+    if action_id and action_id.startswith(_INJECTION_ID_PREFIXES):
+        return True
+    desc = (dict_action or {}).get(action_id, {})
+    action_type = classifier.identify_action_type(desc, by_description=True)
+    return action_type in _INJECTION_ACTION_TYPES
 
 
 def pst_fallback_line_idxs(
@@ -442,6 +534,7 @@ def serialize_action_result(action_id: str, action_data: dict) -> dict:
         "action_topology": action_data.get("action_topology"),
         "curtailment_details": action_data.get("curtailment_details"),
         "load_shedding_details": action_data.get("load_shedding_details"),
+        "redispatch_details": action_data.get("redispatch_details"),
         "pst_details": action_data.get("pst_details"),
         "content": action_data.get("content"),
     }

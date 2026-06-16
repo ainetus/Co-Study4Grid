@@ -55,8 +55,12 @@ from expert_backend.services.diagram.overloads import (
     get_element_max_currents,
     get_overloaded_lines,
 )
-from expert_backend.services.diagram.sld_render import extract_sld_svg_and_metadata
+from expert_backend.services.diagram.sld_render import (
+    extract_sld_svg_and_metadata,
+    extract_vl_switch_states,
+)
 from expert_backend.services.sanitize import sanitize_for_json
+from expert_backend.services.simulation_helpers import canonicalize_action_id
 
 logger = logging.getLogger(__name__)
 
@@ -481,12 +485,14 @@ class DiagramMixin:
         try:
             sld = n.get_single_line_diagram(voltage_level_id)
             svg, sld_metadata = extract_sld_svg_and_metadata(sld)
+            switch_states = extract_vl_switch_states(n, voltage_level_id)
         finally:
             n.set_working_variant(original_variant)
         return {
             "svg": svg,
             "sld_metadata": sld_metadata,
             "voltage_level_id": voltage_level_id,
+            "switch_states": switch_states,
         }
 
     def get_contingency_sld(self, disconnected_elements, voltage_level_id: str) -> dict:
@@ -499,11 +505,13 @@ class DiagramMixin:
         try:
             sld = n.get_single_line_diagram(voltage_level_id)
             svg, sld_metadata = extract_sld_svg_and_metadata(sld)
+            switch_states = extract_vl_switch_states(n, voltage_level_id)
             result = {
                 "svg": svg,
                 "sld_metadata": sld_metadata,
                 "voltage_level_id": voltage_level_id,
                 "disconnected_elements": list(norm),
+                "switch_states": switch_states,
             }
             self._attach_flow_deltas_vs_base(result, n, voltage_level_ids=[voltage_level_id])
             return result
@@ -531,12 +539,14 @@ class DiagramMixin:
         network = nm.network
         sld = network.get_single_line_diagram(voltage_level_id)
         svg, sld_metadata = extract_sld_svg_and_metadata(sld)
+        switch_states = extract_vl_switch_states(network, voltage_level_id)
 
         result = {
             "svg": svg,
             "sld_metadata": sld_metadata,
             "action_id": action_id,
             "voltage_level_id": voltage_level_id,
+            "switch_states": switch_states,
         }
         self._attach_convergence_from_obs(result, obs)
 
@@ -623,6 +633,80 @@ class DiagramMixin:
 
         return result
 
+    def _render_topological_sld(self, network, voltage_level_id):
+        """Render a VL SLD with topological (per-connected-bus) colouring.
+
+        Topological colouring is what makes a node split / merge visible:
+        opening a coupling splits the busbar into two connected
+        components, which pypowsybl then paints in distinct colours —
+        the same affordance the ``manoeuvre_ihm`` target-topology view
+        relies on. Falls back to the default parameters when the
+        installed pypowsybl predates ``SldParameters`` or rejects the
+        flag.
+        """
+        try:
+            import pypowsybl.network as pn
+            params = pn.SldParameters(use_name=True, topological_coloring=True)
+            return network.get_single_line_diagram(voltage_level_id, parameters=params)
+        except Exception as e:
+            logger.debug("Topological SLD params unavailable, using default: %s", e)
+            return network.get_single_line_diagram(voltage_level_id)
+
+    def get_topology_preview_sld(
+        self, disconnected_elements, voltage_level_id, switches, base_action_id=None
+    ) -> dict:
+        """Render a *target-topology preview* SLD.
+
+        Clones a throwaway variant from the contingency state (or the
+        post-action variant when ``base_action_id`` is given), applies
+        the user's pending switch overrides, and re-renders the VL SLD
+        with topological colouring. NO load flow is run — the flow
+        values shown are stale, so the response carries
+        ``stale_flows: True`` and the frontend greys them out until the
+        operator commits the simulation.
+
+        The throwaway variant is always removed and the working variant
+        restored in a ``finally`` so the shared Network is never left
+        mutated.
+        """
+        norm = self._normalize_contingency_elements(disconnected_elements)
+
+        if base_action_id:
+            actions = self._require_action(base_action_id)
+            obs = actions[base_action_id]["observation"]
+            nm = obs._network_manager
+            network = nm.network
+            base_variant = obs._variant_id
+        else:
+            network = self._get_base_network()
+            base_variant = self._get_contingency_variant(norm)
+
+        original_variant = network.get_working_variant_id()
+        preview_variant = f"sld_preview_{voltage_level_id}_{time.time_ns()}"
+        network.clone_variant(base_variant, preview_variant)
+        try:
+            network.set_working_variant(preview_variant)
+            if switches:
+                ids = [str(k) for k in switches.keys()]
+                opens = [bool(switches[k]) for k in switches.keys()]
+                network.update_switches(id=ids, open=opens)
+            sld = self._render_topological_sld(network, voltage_level_id)
+            svg, sld_metadata = extract_sld_svg_and_metadata(sld)
+            switch_states = extract_vl_switch_states(network, voltage_level_id)
+            return {
+                "svg": svg,
+                "sld_metadata": sld_metadata,
+                "voltage_level_id": voltage_level_id,
+                "switch_states": switch_states,
+                "stale_flows": True,
+            }
+        finally:
+            network.set_working_variant(original_variant)
+            try:
+                network.remove_variant(preview_variant)
+            except Exception as e:
+                logger.debug("Failed to remove preview variant %s: %s", preview_variant, e)
+
     def _diff_action_switches_vs_contingency(self, action_switches_snap, disconnected_elements) -> dict:
         """Diff a pre-captured action-variant switch snapshot against the
         live contingency variant.
@@ -660,9 +744,20 @@ class DiagramMixin:
             )
         actions = self._last_result["prioritized_actions"]
         if action_id not in actions:
-            raise ActionResultUnavailableError(
-                f"Action '{action_id}' not found in last analysis result."
-            )
+            # Combined actions are stored under a CANONICAL key (the
+            # "+"-joined parts sorted alphabetically — see
+            # ``canonicalize_action_id``). A caller using the raw,
+            # unsorted order (e.g. ``base+user_topo`` straight from the
+            # frontend) would otherwise miss it. Alias the raw key onto
+            # the canonical entry so ``actions[action_id]`` works for
+            # either ordering.
+            canon = canonicalize_action_id(action_id)
+            if canon != action_id and canon in actions:
+                actions[action_id] = actions[canon]
+            else:
+                raise ActionResultUnavailableError(
+                    f"Action '{action_id}' not found in last analysis result."
+                )
         return actions
 
     def _lf_status_for_variant(self, network, variant_id: str, disconnected_elements):

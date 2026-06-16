@@ -26,15 +26,19 @@ from expert_op4grid_recommender.utils.superposition import (
 from expert_backend.services.sanitize import sanitize_for_json
 from expert_backend.services.simulation_helpers import (
     build_combined_description,
+    build_switch_action_description,
     canonicalize_action_id,
     classify_action_content,
     clamp_tap,
     compute_action_metrics,
     compute_combined_rho,
     compute_reduction_setpoint,
+    compute_redispatch_setpoint,
     compute_target_max_rho,
     extract_action_topology,
+    is_injection_action,
     is_pst_action,
+    is_switch_only_content,
     normalise_non_convergence,
     parse_pst_tap_id,
     pst_fallback_line_idxs,
@@ -135,6 +139,7 @@ class SimulationMixin:
         lines_overloaded=None,
         target_mw=None,
         target_tap=None,
+        voltage_level_id=None,
     ):
         """Simulate a single or combined action and return its impact.
 
@@ -165,7 +170,9 @@ class SimulationMixin:
             self._last_result.get("prioritized_actions", {}) if self._last_result else {}
         )
 
-        self._inject_action_content_entries(action_ids, action_content, recent_actions)
+        self._inject_action_content_entries(
+            action_ids, action_content, recent_actions, voltage_level_id=voltage_level_id
+        )
 
         env = self._get_simulation_env()
         nm = env.network_manager
@@ -322,6 +329,10 @@ class SimulationMixin:
         action_data["load_shedding_details"] = self._compute_load_shedding_details(
             action_data, obs_n1=obs_n1
         )
+        if action_id.startswith("redispatch_"):
+            action_data["redispatch_details"] = self._compute_redispatch_details(
+                action_data, obs_n1=obs_n1
+            )
         action_data["pst_details"] = self._compute_pst_details(action_data)
 
         self._register_action_result(action_id, action_data, info_action, obs_simu_action)
@@ -334,12 +345,22 @@ class SimulationMixin:
     # read/mutate self state (caches, `_dict_action`, `_last_result`).
     # ------------------------------------------------------------------
 
-    def _inject_action_content_entries(self, action_ids, action_content, recent_actions):
+    def _inject_action_content_entries(
+        self, action_ids, action_content, recent_actions, voltage_level_id=None
+    ):
         """Inject caller-provided topology dicts into `_dict_action`.
 
-        Used on session reload: actions restored from a saved JSON may
-        not be in the action dictionary, and we need their content
-        available before `env.action_space(content)` is called.
+        Used on session reload AND on user-built SLD topology edits:
+        actions whose ID was minted at the call site (e.g.
+        ``user_topo_<vl>_<ts>``) aren't in the action dictionary, and
+        their content has to be available before
+        ``env.action_space(content)`` is called.
+
+        When the content is switch-only (the SLD-edit case) and a
+        ``voltage_level_id`` is provided, the placeholder ``Restored
+        action`` description is replaced with a human-readable one so
+        the resulting card in the frontend feed reads "Manoeuvre
+        manuelle sur <vl>: …" instead of the synthetic id.
         """
         if not action_content:
             return
@@ -351,6 +372,13 @@ class SimulationMixin:
             if not topo:
                 continue
             entry = self._build_action_entry_from_topology(aid, topo)
+            content = entry.get("content") or {}
+            if is_switch_only_content(content):
+                desc = build_switch_action_description(
+                    content["switches"], voltage_level_id=voltage_level_id
+                )
+                entry["description_unitaire"] = desc
+                entry["description"] = desc
             self._dict_action[aid] = entry
             logger.info(
                 "[simulate_manual_action] Injected restored action '%s' into dict", aid
@@ -392,11 +420,13 @@ class SimulationMixin:
     def _create_dynamic_actions_if_needed(
         self, action_ids, recent_actions, obs_n1, nm, target_mw
     ):
-        """Auto-create heuristic actions for curtail_ / load_shedding_ / pst_tap_ / reco_ prefixes."""
+        """Auto-create heuristic actions for redispatch_ / curtail_ / load_shedding_ / pst_tap_ / reco_ prefixes."""
         for aid in action_ids:
             if aid in self._dict_action or aid in recent_actions:
                 continue
-            if aid.startswith("curtail_"):
+            if aid.startswith("redispatch_"):
+                self._create_dynamic_redispatch(aid, target_mw, obs_n1)
+            elif aid.startswith("curtail_"):
                 self._create_dynamic_curtailment(aid, target_mw, obs_n1)
             elif aid.startswith("load_shedding_"):
                 self._create_dynamic_load_shedding(aid, target_mw, obs_n1)
@@ -404,6 +434,38 @@ class SimulationMixin:
                 self._create_dynamic_pst(aid, nm)
             elif aid.startswith("reco_"):
                 self._create_dynamic_reconnection(aid)
+
+    def _create_dynamic_redispatch(self, aid, target_mw, obs_n1):
+        gen_name = aid[len("redispatch_"):]
+        default_delta = getattr(config, "REDISPATCH_DEFAULT_DELTA_MW", 10.0)
+        # For redispatch, ``target_mw`` is the SIGNED delta (raise > 0 / lower
+        # < 0); the resulting absolute setpoint is current production + delta.
+        setpoint = compute_redispatch_setpoint(gen_name, target_mw, obs_n1, default_delta)
+        topo = {"gens_p": {gen_name: setpoint}}
+        entry = self._build_action_entry_from_topology(aid, topo)
+
+        vl_id = None
+        try:
+            from expert_backend.services.network_service import network_service as ns
+            vl_id = ns.get_generator_voltage_level(gen_name)
+        except Exception as e:
+            logger.debug("Suppressed exception: %s", e)
+        delta = float(target_mw) if target_mw is not None else float(default_delta)
+        verb = "hausse" if delta >= 0 else "baisse"
+        if vl_id:
+            entry["description"] = (
+                f"Redispatch on generator '{gen_name}' at voltage level '{vl_id}'"
+            )
+            entry["description_unitaire"] = f"Redispatch {verb} '{gen_name}' ('{vl_id}')"
+        else:
+            entry["description"] = f"Redispatch on generator '{gen_name}'"
+            entry["description_unitaire"] = f"Redispatch {verb} '{gen_name}'"
+
+        self._dict_action[aid] = entry
+        logger.info(
+            "[simulate_manual_action] Created dynamic redispatch action '%s' (setpoint=%s MW)",
+            aid, setpoint,
+        )
 
     def _create_dynamic_curtailment(self, aid, target_mw, obs_n1):
         gen_name = aid[len("curtail_"):]
@@ -530,6 +592,7 @@ class SimulationMixin:
             if not entry:
                 continue
             content = entry.get("content", {})
+            is_redispatch = aid.startswith("redispatch_")
             if "set_load_p" in content:
                 for load_name in content["set_load_p"]:
                     sp = compute_reduction_setpoint(load_name, "load", target_mw, obs_n1)
@@ -540,7 +603,12 @@ class SimulationMixin:
                     )
             if "set_gen_p" in content:
                 for gen_name in content["set_gen_p"]:
-                    sp = compute_reduction_setpoint(gen_name, "gen", target_mw, obs_n1)
+                    if is_redispatch:
+                        # target_mw is the signed delta; setpoint = current + delta.
+                        default_delta = getattr(config, "REDISPATCH_DEFAULT_DELTA_MW", 10.0)
+                        sp = compute_redispatch_setpoint(gen_name, target_mw, obs_n1, default_delta)
+                    else:
+                        sp = compute_reduction_setpoint(gen_name, "gen", target_mw, obs_n1)
                     content["set_gen_p"][gen_name] = sp
                     logger.info(
                         "[simulate_manual_action] Updated set_gen_p[%s] = %s MW",
@@ -671,7 +739,13 @@ class SimulationMixin:
         line_idxs2, sub_idxs2 = self._identify_elements_with_pst_fallback(
             action2_id, all_actions, classifier, env
         )
-        if (not line_idxs1 and not sub_idxs1) or (not line_idxs2 and not sub_idxs2):
+        # Injection actions (load shedding / curtailment / redispatch) carry no
+        # topology element — they are combined via the Generalized Superposition
+        # Theorem. Only topology actions must resolve to a switched element.
+        act1_is_injection = is_injection_action(action1_id, self._dict_action, classifier)
+        act2_is_injection = is_injection_action(action2_id, self._dict_action, classifier)
+        if (not act1_is_injection and not line_idxs1 and not sub_idxs1) or \
+           (not act2_is_injection and not line_idxs2 and not sub_idxs2):
             return {
                 "error": (
                     f"Cannot identify elements for one or both actions "
@@ -735,12 +809,12 @@ class SimulationMixin:
 
         logger.info("[compute_superposition] Calling compute_combined_pair_superposition with:")
         logger.info(
-            "  act1_line_idxs=%s, act1_sub_idxs=%s, act1_is_pst=%s",
-            line_idxs1, sub_idxs1, act1_is_pst,
+            "  act1_line_idxs=%s, act1_sub_idxs=%s, act1_is_pst=%s, act1_is_injection=%s",
+            line_idxs1, sub_idxs1, act1_is_pst, act1_is_injection,
         )
         logger.info(
-            "  act2_line_idxs=%s, act2_sub_idxs=%s, act2_is_pst=%s",
-            line_idxs2, sub_idxs2, act2_is_pst,
+            "  act2_line_idxs=%s, act2_sub_idxs=%s, act2_is_pst=%s, act2_is_injection=%s",
+            line_idxs2, sub_idxs2, act2_is_pst, act2_is_injection,
         )
         combined_id = f"{action1_id}+{action2_id}"
         result = compute_combined_pair_superposition(
@@ -754,6 +828,8 @@ class SimulationMixin:
             obs_combined=all_actions.get(combined_id, {}).get("observation"),
             act1_is_pst=act1_is_pst,
             act2_is_pst=act2_is_pst,
+            act1_is_injection=act1_is_injection,
+            act2_is_injection=act2_is_injection,
         )
 
         if "error" not in result:

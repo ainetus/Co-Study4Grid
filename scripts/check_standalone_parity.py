@@ -107,7 +107,8 @@ _CONFIG_FIELDS = frozenset({
     "network_path", "action_file_path", "layout_path", "output_folder_path",
     "min_line_reconnections", "min_close_coupling", "min_open_coupling",
     "min_line_disconnections", "min_pst", "min_load_shedding",
-    "min_renewable_curtailment_actions", "n_prioritized_actions",
+    "min_renewable_curtailment_actions", "min_redispatch",
+    "allowed_action_types", "n_prioritized_actions",
     "lines_monitoring_path", "monitoring_factor",
     "pre_existing_overload_threshold", "ignore_reconnections",
     "pypowsybl_fast_mode",
@@ -215,6 +216,12 @@ SPEC_DETAILS: dict[str, dict] = {
     "sld_overlay_opened":       _spec_row({"vl_name", "action_id"}),
     "sld_overlay_tab_changed":  _spec_row({"tab", "vl_name"}),
     "sld_overlay_closed":       _spec_row(set()),
+    "sld_edit_mode_toggled":    _spec_row({"enabled"}),
+    "sld_switch_toggled":       _spec_row({"equipment_id"}),
+    "sld_maneuver_removed":     _spec_row({"equipment_ids"}),
+    "sld_maneuver_focused":     _spec_row({"equipment_id"}),
+    "sld_edit_reset":           _spec_row(set()),
+    "sld_topology_simulated":   _spec_row({"voltage_level_id", "switches"}, {"combined_with"}),
     # --- Session Management ---
     "session_saved":            _spec_row({"output_folder"}),
     "session_reload_modal_opened": _spec_row(set()),
@@ -222,6 +229,8 @@ SPEC_DETAILS: dict[str, dict] = {
     # --- Sidebar layout / contingency clear ---
     "sidebar_collapsed_toggled": _spec_row({"collapsed"}),
     "contingency_clear_requested": _spec_row({"had_analysis_state"}),
+    # --- Theme ---
+    "theme_toggled":            _spec_row({"theme"}),
 }
 
 # Event types whose details argument is a bare identifier or a

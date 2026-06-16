@@ -43,6 +43,8 @@ const baseInput: SessionInput = {
     minPst: 1.0,
     minLoadShedding: 0.0,
     minRenewableCurtailmentActions: 0.0,
+    minRedispatch: 0.0,
+    allowedActionTypes: [],
     nPrioritizedActions: 10,
     linesMonitoringPath: '/data/monitoring.csv',
     monitoringFactor: 0.95,
@@ -83,6 +85,8 @@ describe('buildSessionResult — structure', () => {
             min_pst: 1.0,
             min_load_shedding: 0.0,
             min_renewable_curtailment_actions: 0.0,
+            min_redispatch: 0.0,
+            allowed_action_types: [],
             n_prioritized_actions: 10,
             lines_monitoring_path: '/data/monitoring.csv',
             monitoring_factor: 0.95,
@@ -201,6 +205,36 @@ describe('buildSessionResult — structure', () => {
         expect(saved.is_rho_reduction).toBe(true);
         expect(saved.non_convergence).toBeNull();
         expect(saved.action_topology).toEqual({ lines_ex_bus: { LINE_X: 1 }, lines_or_bus: {}, gens_bus: {}, loads_bus: {} });
+    });
+
+    it('persists redispatch_details so it survives save → reload (regression)', () => {
+        // Regression: redispatch_details was declared on SavedActionEntry
+        // AND assigned in useSession.handleRestoreSession, but
+        // buildSessionResult silently dropped it on save (load_shedding /
+        // curtailment / pst details were copied, redispatch was not), so
+        // reloaded sessions lost the redispatch editor headroom. The save
+        // path must copy it like the other enrichment families.
+        const redispatch_details = [{
+            gen_name: 'GEN_A', voltage_level_id: 'VL_A',
+            delta_mw: 12.5, target_mw: 112.5, direction: 'up' as const,
+            current_mw: 100.0, max_raise_mw: 40.0, max_lower_mw: 60.0,
+        }];
+        const action = makeAction('Redispatch GEN_A', { redispatch_details });
+        const out = buildSessionResult({
+            ...baseInput,
+            result: makeResult({ actions: { redispatch_GEN_A: action } }),
+        });
+        expect(out.analysis!.actions.redispatch_GEN_A.redispatch_details).toEqual(redispatch_details);
+    });
+
+    it('serializes recommender restriction config (allowed_action_types + min_redispatch)', () => {
+        const out = buildSessionResult({
+            ...baseInput,
+            minRedispatch: 2.0,
+            allowedActionTypes: ['redispatch', 'disco'],
+        });
+        expect(out.configuration.min_redispatch).toBe(2.0);
+        expect(out.configuration.allowed_action_types).toEqual(['redispatch', 'disco']);
     });
 
     it('persists lines_overloaded_after so it survives save → reload (regression)', () => {
