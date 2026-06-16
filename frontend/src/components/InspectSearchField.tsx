@@ -31,7 +31,11 @@ const InspectSearchField: React.FC<{
     inspectQuery: string;
     onChangeQuery: (tab: TabId, q: string) => void;
     filteredInspectables: string[];
-}> = ({ tabId, inspectQuery, onChangeQuery, filteredInspectables }) => {
+    /** id → human-readable name (the label drawn on the diagram). When a
+     *  name exists, the dropdown shows it so an element can be found by the
+     *  name visible on the network, not only by its raw id. */
+    displayName?: (id: string) => string;
+}> = ({ tabId, inspectQuery, onChangeQuery, filteredInspectables, displayName }) => {
     const [focused, setFocused] = useState(false);
     // Keep the dropdown visible long enough for an option click to
     // register before onBlur hides it (click fires after blur).
@@ -116,8 +120,14 @@ const InspectSearchField: React.FC<{
                             }}
                             onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = colors.brandSoft; }}
                             onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = colors.surface; }}
+                            title={item}
                         >
-                            {item}
+                            {(() => {
+                                const name = displayName ? displayName(item) : item;
+                                return name && name !== item
+                                    ? `${name}  —  ${item}`
+                                    : item;
+                            })()}
                         </div>
                     ))}
                 </div>

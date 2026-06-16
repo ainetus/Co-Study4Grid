@@ -371,8 +371,14 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     const filteredInspectables = useMemo(() => {
         const q = inspectQuery.toUpperCase();
         if (!q) return inspectableItems.slice(0, 50);
-        return inspectableItems.filter(b => b.toUpperCase().includes(q)).slice(0, 50);
-    }, [inspectableItems, inspectQuery]);
+        // Match on the raw id OR the human-readable name drawn on the
+        // diagram, so an element can be found by the name the operator
+        // sees (e.g. "LESQUIVE 400kV") rather than only its raw id.
+        return inspectableItems.filter(b =>
+            b.toUpperCase().includes(q)
+            || (displayName ? displayName(b).toUpperCase().includes(q) : false)
+        ).slice(0, 50);
+    }, [inspectableItems, inspectQuery, displayName]);
 
     // Tab label adapts to the size of the applied contingency: N-1 for
     // a single disconnected element, N-2 / N-K for multi-element
@@ -590,6 +596,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                                     inspectQuery={inspectQuery}
                                     onChangeQuery={inspectQueryChangeForCb}
                                     filteredInspectables={filteredInspectables}
+                                    displayName={displayName}
                                 />
                                 {onToggleVoltageLevelNames && (
                                     <button
