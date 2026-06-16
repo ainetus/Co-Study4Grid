@@ -13,7 +13,7 @@ import type { ConfigRequest, BranchResponse, DiagramData, DiagramPatch, FlowDelt
 // every request becomes a relative `/api/...` URL. When the variable is
 // unset — local dev (`npm run dev` on :5173) and the Vitest suite — it falls
 // back to the standalone backend at :8000.
-const API_BASE_URL: string =
+export const API_BASE_URL: string =
     (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://127.0.0.1:8000';
 
 export interface UserConfig {

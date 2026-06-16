@@ -19,6 +19,7 @@ import ActionFilterRings from './ActionFilterRings';
 import type { DetachedTabsMap } from '../hooks/useDetachedTabs';
 import type { PZInstance } from '../hooks/useTiedTabsSync';
 import { useOverflowIframe } from '../hooks/useOverflowIframe';
+import { API_BASE_URL } from '../api';
 import { colors } from '../styles/tokens';
 import {
     computePopoverStyle,
@@ -1007,7 +1008,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         {result?.pdf_url ? (
                             <iframe
                                 ref={overflowIframeRef}
-                                src={`http://localhost:8000${result.pdf_url}`}
+                                src={`${API_BASE_URL}${result.pdf_url}`}
                                 key={result.pdf_url}
                                 style={{ width: '100%', height: '100%', border: 'none' }}
                                 title="Overflow Graph"
