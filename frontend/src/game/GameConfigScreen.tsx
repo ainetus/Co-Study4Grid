@@ -43,7 +43,7 @@ let customSeq = 0;
 export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
   const [sessionName, setSessionName] = useState('Training session');
   const [player, setPlayer] = useState('');
-  const [minutes, setMinutes] = useState(3);
+  const [minutes, setMinutes] = useState(5);
   const [seconds, setSeconds] = useState(0);
   const [maxActions, setMaxActions] = useState(3);
   const [studies, setStudies] = useState<GameStudy[]>(DEFAULT_SESSION_STUDIES);
