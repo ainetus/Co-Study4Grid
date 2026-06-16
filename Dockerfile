@@ -63,6 +63,10 @@ RUN pip install --no-cache-dir --upgrade pip \
 # the backend copies it to config.json on first boot.
 COPY --chown=user config.default.json ./
 COPY --chown=user data/ ./data/
+# The European grid ships compressed (its raw .xiidm exceeds HuggingFace's
+# 10 MiB git file limit, so it travels as a Git-LFS .zip). Decompress it here
+# so pypowsybl can load network.xiidm directly — the "Medium" game difficulty.
+RUN python -c "import zipfile, pathlib; z = pathlib.Path('data/pypsa_eur_eur220_225_380_400/network.xiidm.zip'); zipfile.ZipFile(z).extractall(z.parent) if z.exists() else print('eur220 network zip absent — skipping')"
 COPY --chown=user scripts/ ./scripts/
 COPY --chown=user --from=frontend /build/dist ./frontend/dist
 # The overflow-viewer overlay (services/overflow_overlay.py) inlines this

@@ -1,0 +1,7 @@
+# Binary assets are stored via Git LFS / HuggingFace Xet so they can be pushed
+# to a HuggingFace Space (its git endpoint rejects non-LFS binary files).
+# Run `git lfs install` once; see deploy/huggingface/SETUP.md.
+*.zip filter=lfs diff=lfs merge=lfs -text
+*.png filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
