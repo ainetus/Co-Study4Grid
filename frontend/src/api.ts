@@ -8,7 +8,13 @@
 import axios from 'axios';
 import type { ConfigRequest, BranchResponse, DiagramData, DiagramPatch, FlowDelta, AssetDelta, AvailableAction, SessionResult } from './types';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+// Same-origin by default when built with `VITE_API_BASE_URL=''` (the
+// frontend is served by the backend, e.g. on a HuggingFace Docker Space):
+// every request becomes a relative `/api/...` URL. When the variable is
+// unset — local dev (`npm run dev` on :5173) and the Vitest suite — it falls
+// back to the standalone backend at :8000.
+const API_BASE_URL: string =
+    (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://127.0.0.1:8000';
 
 export interface UserConfig {
     network_path: string;

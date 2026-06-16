@@ -44,8 +44,14 @@ class GameBridge {
   private loader: StudyLoader | null = null;
   private maxActions = 3;
 
-  /** True when the app was launched in game mode (`?game=1`). */
+  /**
+   * True when the app was launched in game mode. Two triggers:
+   * - `?game=1` query param (local dev / shareable link), or
+   * - a `VITE_GAME_MODE=1` build flag, so a dedicated deployment (e.g. the
+   *   HuggingFace Space) boots straight into the game without a query string.
+   */
   isGameMode(): boolean {
+    if (import.meta.env.VITE_GAME_MODE === '1') return true;
     if (typeof window === 'undefined') return false;
     const params = new URLSearchParams(window.location.search);
     return params.get('game') === '1' || params.has('game');
