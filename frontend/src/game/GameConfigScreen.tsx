@@ -8,11 +8,10 @@
 import { useState } from 'react';
 import { colors, space, text, radius } from '../styles/tokens';
 import {
-  DEFAULT_SESSION_STUDIES,
-  PRESET_STUDIES,
-  PRESET_ACTION_PATH,
-  PRESET_NETWORK_PATH,
-  PRESET_LAYOUT_PATH,
+  DIFFICULTY_TIERS,
+  DEFAULT_DIFFICULTY,
+  difficultyTier,
+  type Difficulty,
 } from './presets';
 import type { GameSessionConfig, GameStudy } from './types';
 
@@ -46,10 +45,20 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
   const [minutes, setMinutes] = useState(5);
   const [seconds, setSeconds] = useState(0);
   const [maxActions, setMaxActions] = useState(3);
-  const [studies, setStudies] = useState<GameStudy[]>(DEFAULT_SESSION_STUDIES);
+  const [difficulty, setDifficulty] = useState<Difficulty>(DEFAULT_DIFFICULTY);
+  const tier = difficultyTier(difficulty);
+  const [studies, setStudies] = useState<GameStudy[]>(tier.studies);
   const [presetToAdd, setPresetToAdd] = useState('');
 
   const timerSeconds = minutes * 60 + seconds;
+
+  // Switching difficulty swaps the whole study list to the new grid's
+  // reference set (paths differ, so a mixed list would not load).
+  const changeDifficulty = (d: Difficulty) => {
+    setDifficulty(d);
+    setStudies(difficultyTier(d).studies);
+    setPresetToAdd('');
+  };
 
   const updateStudy = (i: number, patch: Partial<GameStudy>) =>
     setStudies((prev) => prev.map((s, j) => (j === i ? { ...s, ...patch } : s)));
@@ -65,7 +74,7 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
     });
 
   const addPreset = () => {
-    const p = PRESET_STUDIES.find((s) => s.id === presetToAdd);
+    const p = tier.studies.find((s) => s.id === presetToAdd);
     if (!p) return;
     // Clone with a fresh id so the same preset can appear twice.
     setStudies((prev) => [...prev, { ...p, id: `${p.id}-${customSeq++}` }]);
@@ -76,9 +85,9 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
     setStudies((prev) => [...prev, {
       id: `custom-${customSeq++}`,
       label: 'Custom study',
-      networkPath: PRESET_NETWORK_PATH,
-      actionFilePath: PRESET_ACTION_PATH,
-      layoutPath: PRESET_LAYOUT_PATH,
+      networkPath: tier.networkPath,
+      actionFilePath: tier.actionFilePath,
+      layoutPath: tier.layoutPath,
       contingencyElementId: '',
       contingencyLabel: '',
     }]);
@@ -145,7 +154,19 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
               <input type="number" min={1} max={3} value={maxActions} style={{ ...inputStyle, width: 80 }}
                 onChange={(e) => setMaxActions(Math.min(3, Math.max(1, Number(e.target.value))))} />
             </div>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <label style={labelStyle}>Difficulty</label>
+              <select style={inputStyle} value={difficulty}
+                onChange={(e) => changeDifficulty(e.target.value as Difficulty)}>
+                {DIFFICULTY_TIERS.map((t) => (
+                  <option key={t.id} value={t.id}>{t.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
+          <p style={{ color: colors.textTertiary, fontSize: text.xs, margin: `${space[1]} 0 0` }}>
+            {tier.blurb}
+          </p>
         </div>
 
         {/* Studies */}
@@ -156,7 +177,7 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
               <select value={presetToAdd} style={{ ...inputStyle, width: 260 }}
                 onChange={(e) => setPresetToAdd(e.target.value)}>
                 <option value="">Add preset contingency…</option>
-                {PRESET_STUDIES.map((p) => (
+                {tier.studies.map((p) => (
                   <option key={p.id} value={p.id}>{p.label}</option>
                 ))}
               </select>
