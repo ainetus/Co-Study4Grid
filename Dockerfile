@@ -62,6 +62,10 @@ RUN pip install --no-cache-dir --upgrade pip \
 COPY --chown=user data/ ./data/
 COPY --chown=user scripts/ ./scripts/
 COPY --chown=user --from=frontend /build/dist ./frontend/dist
+# The overflow-viewer overlay (services/overflow_overlay.py) inlines this
+# shared pin-glyph source module at request time, so it must exist at the
+# path it expects even though the rest of frontend/src is not shipped.
+COPY --chown=user frontend/src/utils/svg/pinGlyph.js ./frontend/src/utils/svg/pinGlyph.js
 
 # The backend serves this directory at "/" (same origin as the API).
 ENV COSTUDY4GRID_FRONTEND_DIST=/home/user/app/frontend/dist \
