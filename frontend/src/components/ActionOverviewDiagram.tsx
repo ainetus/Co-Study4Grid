@@ -23,6 +23,8 @@ import {
 } from '../utils/svgUtils';
 import { usePanZoom } from '../hooks/usePanZoom';
 import ActionCardPopover from './ActionCardPopover';
+import InspectSearchField from './InspectSearchField';
+import { filterInspectables } from '../utils/inspectables';
 import { interactionLogger } from '../utils/interactionLogger';
 import {
     POPOVER_WIDTH,
@@ -694,16 +696,15 @@ const ActionOverviewDiagram: React.FC<ActionOverviewDiagramProps> = ({
     // ----- Inspect / asset-focus search -----
     // Kept deliberately local so the overview manages its own
     // focus without plumbing through the detached-tab /
-    // tied-tab infrastructure of the main-window inspect field.
+    // tied-tab infrastructure of the main-window inspect field. The
+    // input + dropdown UI is the shared `InspectSearchField` so this
+    // surface searches by displayed name exactly like the N / N-1 tabs.
     const [inspectQuery, setInspectQuery] = useState('');
-    const [inspectFocused, setInspectFocused] = useState(false);
-    const closeTimerRef = useRef<number | null>(null);
 
-    const filteredInspectables = useMemo(() => {
-        const q = inspectQuery.toUpperCase();
-        if (!q) return [] as string[];
-        return inspectableItems.filter(item => item.toUpperCase().includes(q)).slice(0, 20);
-    }, [inspectQuery, inspectableItems]);
+    const filteredInspectables = useMemo(
+        () => filterInspectables(inspectableItems, inspectQuery, displayName, 20),
+        [inspectQuery, inspectableItems, displayName],
+    );
 
     const exactInspectMatch = useMemo(() => {
         if (!inspectQuery) return null;
@@ -816,10 +817,6 @@ const ActionOverviewDiagram: React.FC<ActionOverviewDiagramProps> = ({
     // ActionCardPopover wraps the no-op stubs for the
     // re-simulate / asset-click callbacks internally — we only
     // need to pass the minimal set of handlers below.
-    const showInspectDropdown = inspectFocused
-        && inspectQuery.length > 0
-        && filteredInspectables.length > 0
-        && !exactInspectMatch;
 
     return (
         <div
@@ -978,80 +975,16 @@ const ActionOverviewDiagram: React.FC<ActionOverviewDiagramProps> = ({
                         </button>
                     </div>
                     <div style={{ display: 'flex', gap: 4, alignItems: 'center', position: 'relative', pointerEvents: 'auto' }}>
-                        <div style={{ position: 'relative' }}>
-                            <input
-                                data-testid="overview-inspect-input"
-                                value={inspectQuery}
-                                onChange={e => setInspectQuery(e.target.value)}
-                                onFocus={() => {
-                                    if (closeTimerRef.current !== null) {
-                                        window.clearTimeout(closeTimerRef.current);
-                                        closeTimerRef.current = null;
-                                    }
-                                    setInspectFocused(true);
-                                }}
-                                onBlur={() => {
-                                    closeTimerRef.current = window.setTimeout(() => {
-                                        setInspectFocused(false);
-                                        closeTimerRef.current = null;
-                                    }, 150);
-                                }}
-                                placeholder="🔍 Focus asset..."
-                                style={{
-                                    padding: '5px 10px',
-                                    border: inspectQuery ? `2px solid ${colors.brand}` : `1px solid ${colors.border}`,
-                                    borderRadius: 4,
-                                    fontSize: 12,
-                                    width: 180,
-                                    boxShadow: '0 2px 5px rgba(0,0,0,0.15)',
-                                    background: colors.surface,
-                                    color: colors.textPrimary,
-                                }}
-                            />
-                            {showInspectDropdown && (
-                                <div
-                                    style={{
-                                        position: 'absolute',
-                                        bottom: '100%',
-                                        left: 0,
-                                        marginBottom: 4,
-                                        width: 220,
-                                        maxHeight: 220,
-                                        overflowY: 'auto',
-                                        background: colors.surface,
-                                        color: colors.textPrimary,
-                                        border: `1px solid ${colors.brand}`,
-                                        borderRadius: 4,
-                                        boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
-                                        zIndex: 200,
-                                        fontSize: 12,
-                                    }}
-                                >
-                                    {filteredInspectables.map(item => (
-                                        <div
-                                            key={item}
-                                            onMouseDown={e => {
-                                                e.preventDefault();
-                                                setInspectQuery(item);
-                                                focusEquipment(item);
-                                            }}
-                                            style={{
-                                                padding: '5px 10px',
-                                                cursor: 'pointer',
-                                                borderBottom: `1px solid ${colors.borderSubtle}`,
-                                                whiteSpace: 'nowrap',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                            }}
-                                            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = colors.brandSoft; }}
-                                            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = colors.surface; }}
-                                        >
-                                            {item}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                        <InspectSearchField
+                            tabId="action"
+                            inspectQuery={inspectQuery}
+                            onChangeQuery={(_, q) => setInspectQuery(q)}
+                            filteredInspectables={filteredInspectables}
+                            displayName={displayName}
+                            placeholder="🔍 Focus asset..."
+                            inputTestId="overview-inspect-input"
+                            onSelect={focusEquipment}
+                        />
                         {inspectQuery && (
                             <button
                                 onClick={() => setInspectQuery('')}

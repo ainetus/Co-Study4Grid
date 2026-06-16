@@ -14,6 +14,7 @@ import ActionOverviewDiagram from './ActionOverviewDiagram';
 import ActionCardPopover from './ActionCardPopover';
 import DiagramLegend from './DiagramLegend';
 import InspectSearchField from './InspectSearchField';
+import { filterInspectables } from '../utils/inspectables';
 import DetachedPlaceholder from './DetachedPlaceholder';
 import ActionFilterRings from './ActionFilterRings';
 import type { DetachedTabsMap } from '../hooks/useDetachedTabs';
@@ -368,17 +369,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
         detachedWindow: detachedTabs['overflow']?.window ?? null,
     });
 
-    const filteredInspectables = useMemo(() => {
-        const q = inspectQuery.toUpperCase();
-        if (!q) return inspectableItems.slice(0, 50);
-        // Match on the raw id OR the human-readable name drawn on the
-        // diagram, so an element can be found by the name the operator
-        // sees (e.g. "LESQUIVE 400kV") rather than only its raw id.
-        return inspectableItems.filter(b =>
-            b.toUpperCase().includes(q)
-            || (displayName ? displayName(b).toUpperCase().includes(q) : false)
-        ).slice(0, 50);
-    }, [inspectableItems, inspectQuery, displayName]);
+    const filteredInspectables = useMemo(
+        () => filterInspectables(inspectableItems, inspectQuery, displayName, 50),
+        [inspectableItems, inspectQuery, displayName],
+    );
 
     // Tab label adapts to the size of the applied contingency: N-1 for
     // a single disconnected element, N-2 / N-K for multi-element
