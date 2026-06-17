@@ -55,7 +55,7 @@ COPY --chown=user pyproject.toml README.md overrides.txt ./
 COPY --chown=user expert_backend/ ./expert_backend/
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir . \
-    && pip install --no-cache-dir --no-deps "expert_op4grid_recommender==0.2.3.post1" \
+    && pip install --no-cache-dir --no-deps "expert_op4grid_recommender>=0.2.4" \
     && pip install --no-cache-dir -r overrides.txt
 
 # --- Application code, bundled grids, built SPA ----------------------------
