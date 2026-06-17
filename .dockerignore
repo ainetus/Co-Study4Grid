@@ -1,0 +1,28 @@
+# Build artifacts / caches — rebuilt inside the image.
+frontend/node_modules
+frontend/dist
+frontend/dist-standalone
+**/__pycache__
+**/*.pyc
+**/*.pyo
+
+# Local virtualenvs.
+venv
+.venv
+env
+
+# VCS / CI / editor.
+.git
+.github
+.circleci
+.idea
+.vscode
+
+# Runtime + report output (regenerated at runtime).
+Overflow_Graph
+reports
+test-results
+
+# Docs and the frozen legacy mirror are not needed at runtime.
+docs
+standalone_interface_legacy.html

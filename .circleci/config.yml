@@ -18,13 +18,13 @@ jobs:
           command: |
             python -m pip install --upgrade pip
             pip install ".[test]"
-            # Always test against the LATEST published expert_op4grid_recommender
-            # release (no version pin, on purpose). --no-cache-dir defeats any
-            # stale pip index — the reason an exact pin used to be needed — and
-            # --upgrade guarantees the newest is picked up; --no-deps skips the
+            # Track the latest published expert_op4grid_recommender release: the
+            # >=0.2.4 floor documents the minimum the GST / superposition tests
+            # need, and pip + --no-cache-dir always resolve to the newest release
+            # above it (no stale pinned version to bump). --no-deps skips the
             # recommender's heavy transitive stack (pypowsybl already comes from
             # co_study4grid's own dependencies).
-            pip install --no-deps --no-cache-dir --upgrade expert_op4grid_recommender
+            pip install --no-deps --no-cache-dir "expert_op4grid_recommender>=0.2.4"
       - run:
           name: Run Pytest
           command: pytest

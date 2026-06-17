@@ -14,11 +14,13 @@ import ActionOverviewDiagram from './ActionOverviewDiagram';
 import ActionCardPopover from './ActionCardPopover';
 import DiagramLegend from './DiagramLegend';
 import InspectSearchField from './InspectSearchField';
+import { filterInspectables } from '../utils/inspectables';
 import DetachedPlaceholder from './DetachedPlaceholder';
 import ActionFilterRings from './ActionFilterRings';
 import type { DetachedTabsMap } from '../hooks/useDetachedTabs';
 import type { PZInstance } from '../hooks/useTiedTabsSync';
 import { useOverflowIframe } from '../hooks/useOverflowIframe';
+import { API_BASE_URL } from '../api';
 import { colors } from '../styles/tokens';
 import {
     computePopoverStyle,
@@ -367,11 +369,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
         detachedWindow: detachedTabs['overflow']?.window ?? null,
     });
 
-    const filteredInspectables = useMemo(() => {
-        const q = inspectQuery.toUpperCase();
-        if (!q) return inspectableItems.slice(0, 50);
-        return inspectableItems.filter(b => b.toUpperCase().includes(q)).slice(0, 50);
-    }, [inspectableItems, inspectQuery]);
+    const filteredInspectables = useMemo(
+        () => filterInspectables(inspectableItems, inspectQuery, displayName, 50),
+        [inspectableItems, inspectQuery, displayName],
+    );
 
     // Tab label adapts to the size of the applied contingency: N-1 for
     // a single disconnected element, N-2 / N-K for multi-element
@@ -589,6 +590,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                                     inspectQuery={inspectQuery}
                                     onChangeQuery={inspectQueryChangeForCb}
                                     filteredInspectables={filteredInspectables}
+                                    displayName={displayName}
                                 />
                                 {onToggleVoltageLevelNames && (
                                     <button
@@ -1007,7 +1009,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         {result?.pdf_url ? (
                             <iframe
                                 ref={overflowIframeRef}
-                                src={`http://localhost:8000${result.pdf_url}`}
+                                src={`${API_BASE_URL}${result.pdf_url}`}
                                 key={result.pdf_url}
                                 style={{ width: '100%', height: '100%', border: 'none' }}
                                 title="Overflow Graph"

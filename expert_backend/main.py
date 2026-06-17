@@ -19,6 +19,7 @@ from fastapi import Body, FastAPI, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from expert_backend.services.diagram_mixin import ActionResultUnavailableError
@@ -934,6 +935,31 @@ def compute_superposition(request: ComputeSuperpositionRequest) -> dict:
         logger.exception("API boundary error")
         raise HTTPException(status_code=400, detail=str(e))
 
+# ---------------------------------------------------------------------------
+# Static frontend (same-origin SPA hosting — e.g. a HuggingFace Docker Space).
+#
+# Mounted LAST so every `/api/*` and `/results/*` route declared above keeps
+# priority over the catch-all. The mount is OPTIONAL: in local dev and in the
+# test suite the built bundle is absent, so the backend stays a pure API
+# server and the Vite dev server (:5173) serves the SPA instead. Point
+# `COSTUDY4GRID_FRONTEND_DIST` at the `vite build` output to enable it.
+# ---------------------------------------------------------------------------
+_FRONTEND_DIST = Path(
+    os.environ.get(
+        "COSTUDY4GRID_FRONTEND_DIST",
+        str(Path(__file__).resolve().parent.parent / "frontend" / "dist"),
+    )
+).resolve()
+if (_FRONTEND_DIST / "index.html").is_file():
+    app.mount(
+        "/", StaticFiles(directory=str(_FRONTEND_DIST), html=True), name="frontend"
+    )
+    logger.info("Serving frontend SPA from %s", _FRONTEND_DIST)
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    # Honour $PORT (HuggingFace Spaces / generic PaaS) with the local default.
+    port = int(os.environ.get("PORT", "8000"))
+    uvicorn.run(app, host="0.0.0.0", port=port)

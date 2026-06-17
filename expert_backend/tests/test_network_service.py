@@ -69,6 +69,57 @@ class TestLoadNetwork:
             "Flag must remain OFF — see docs/performance/history/concurrent-variants.md."
         )
 
+
+class TestLoadNetworkZip:
+    """Auto-decompression of zipped networks (e.g. a shipped network.xiidm.zip)."""
+
+    @staticmethod
+    def _make_zip(dir_path, zip_name="network.xiidm.zip", member="network.xiidm"):
+        import zipfile
+        zpath = os.path.join(str(dir_path), zip_name)
+        with zipfile.ZipFile(zpath, "w") as zf:
+            zf.writestr(member, "<network/>")
+        return zpath
+
+    @patch("expert_backend.services.network_service.pn")
+    def test_loads_from_explicit_zip(self, mock_pn, tmp_path):
+        zpath = self._make_zip(tmp_path)
+        mock_pn.load.return_value = MagicMock(id="z")
+
+        NetworkService().load_network(zpath)
+
+        loaded = mock_pn.load.call_args[0][0]
+        assert loaded.endswith("network.xiidm")
+        assert os.path.isfile(loaded)
+
+    @patch("expert_backend.services.network_service.pn")
+    def test_loads_xiidm_when_only_sibling_zip_exists(self, mock_pn, tmp_path):
+        self._make_zip(tmp_path)
+        requested = os.path.join(str(tmp_path), "network.xiidm")  # absent on disk
+        assert not os.path.exists(requested)
+        mock_pn.load.return_value = MagicMock(id="z")
+
+        NetworkService().load_network(requested)
+
+        loaded = mock_pn.load.call_args[0][0]
+        assert os.path.isfile(loaded) and loaded.endswith("network.xiidm")
+
+    def test_resolve_is_cached(self, tmp_path):
+        self._make_zip(tmp_path)
+        requested = os.path.join(str(tmp_path), "network.xiidm")
+        svc = NetworkService()
+        first = svc._resolve_network_file(requested)
+        second = svc._resolve_network_file(requested)
+        assert first == second and os.path.isfile(first)
+
+    def test_zip_without_network_raises(self, tmp_path):
+        import zipfile
+        zpath = os.path.join(str(tmp_path), "bad.zip")
+        with zipfile.ZipFile(zpath, "w") as zf:
+            zf.writestr("readme.txt", "no network here")
+        with pytest.raises(FileNotFoundError):
+            NetworkService().load_network(zpath)
+
     @patch("expert_backend.services.network_service.pn")
     def test_load_network_from_directory(self, mock_pn, tmp_path):
         # Create a directory with a xiidm file inside

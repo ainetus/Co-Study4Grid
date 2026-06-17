@@ -31,7 +31,16 @@ const InspectSearchField: React.FC<{
     inspectQuery: string;
     onChangeQuery: (tab: TabId, q: string) => void;
     filteredInspectables: string[];
-}> = ({ tabId, inspectQuery, onChangeQuery, filteredInspectables }) => {
+    /** id → human-readable name (the label drawn on the diagram). When a
+     *  name exists, the dropdown shows it so an element can be found by the
+     *  name visible on the network, not only by its raw id. */
+    displayName?: (id: string) => string;
+    placeholder?: string;
+    inputTestId?: string;
+    /** Called when an option is picked from the dropdown, in addition to
+     *  onChangeQuery — lets a caller (e.g. the overview) zoom immediately. */
+    onSelect?: (id: string) => void;
+}> = ({ tabId, inspectQuery, onChangeQuery, filteredInspectables, displayName, placeholder, inputTestId, onSelect }) => {
     const [focused, setFocused] = useState(false);
     // Keep the dropdown visible long enough for an option click to
     // register before onBlur hides it (click fires after blur).
@@ -46,6 +55,7 @@ const InspectSearchField: React.FC<{
     return (
         <div style={{ position: 'relative' }}>
             <input
+                data-testid={inputTestId}
                 value={inspectQuery}
                 onChange={e => onChangeQuery(tabId, e.target.value)}
                 onFocus={() => {
@@ -64,7 +74,7 @@ const InspectSearchField: React.FC<{
                         closeTimer.current = null;
                     }, 150);
                 }}
-                placeholder="🔍 Inspect..."
+                placeholder={placeholder ?? '🔍 Inspect...'}
                 style={{
                     padding: '5px 10px',
                     border: inspectQuery ? `2px solid ${colors.brand}` : `1px solid ${colors.border}`,
@@ -105,6 +115,7 @@ const InspectSearchField: React.FC<{
                             onMouseDown={e => {
                                 e.preventDefault();
                                 onChangeQuery(tabId, item);
+                                onSelect?.(item);
                             }}
                             style={{
                                 padding: '5px 10px',
@@ -116,8 +127,14 @@ const InspectSearchField: React.FC<{
                             }}
                             onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = colors.brandSoft; }}
                             onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = colors.surface; }}
+                            title={item}
                         >
-                            {item}
+                            {(() => {
+                                const name = displayName ? displayName(item) : item;
+                                return name && name !== item
+                                    ? `${name}  —  ${item}`
+                                    : item;
+                            })()}
                         </div>
                     ))}
                 </div>

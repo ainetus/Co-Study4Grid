@@ -51,8 +51,11 @@ unit-test the injector without an HTML parser dependency.
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Path to the shared JS pin-glyph module. Same file is consumed by the
 # React/TS bundle (`actionPinRender.ts`) via a normal ES import; here
@@ -1035,7 +1038,17 @@ def inject_overlay(html: str) -> str:
             continue
         html = html[:start] + html[end + len(end_tag):]
 
-    block = _build_overlay_block()
+    # The overlay inlines pinGlyph.js (a frontend source file). If that file
+    # is unavailable — e.g. a runtime image that ships only the built bundle —
+    # degrade gracefully: serve the upstream viewer unchanged rather than 500.
+    try:
+        block = _build_overlay_block()
+    except OSError:
+        logger.warning(
+            "pinGlyph.js unavailable — serving the overflow viewer without the "
+            "Co-Study4Grid pin overlay."
+        )
+        return html
     return html.replace(closing, block + closing, 1)
 
 

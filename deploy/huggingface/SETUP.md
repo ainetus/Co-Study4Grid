@@ -1,0 +1,115 @@
+# Deploying the Co-Study4Grid game to a HuggingFace Docker Space
+
+This scaffolds a **single-container** deployment: one uvicorn process serves the
+FastAPI backend *and* the built React frontend (same origin) on port **7860**,
+with the sample grids bundled so Game Mode works out of the box.
+
+It is sized for **one player per running Space** (the backend holds a single
+active study — see the caveat at the bottom). For more players, each person
+clicks **Duplicate this Space** to get an isolated instance.
+
+## What was wired up
+
+| File | Role |
+|---|---|
+| `Dockerfile` (repo root) | Multi-stage build: Vite SPA → Python runtime serving API + SPA + grids on `:7860`. |
+| `.dockerignore` (repo root) | Trims the build context (no `node_modules`, `.git`, `Overflow_Graph`, …). |
+| `deploy/huggingface/README.md` | The **Space README** (YAML frontmatter `sdk: docker`, `app_port: 7860`) + landing page. |
+| `frontend/src/api.ts` | API base URL is now `VITE_API_BASE_URL ?? http://127.0.0.1:8000` → empty in the image = same-origin. |
+| `frontend/src/game/gameBridge.ts` | `isGameMode()` also honors `VITE_GAME_MODE=1`, so the Space boots straight into the game. |
+| `expert_backend/main.py` | Serves the built SPA at `/` when `COSTUDY4GRID_FRONTEND_DIST` exists; honors `$PORT`. |
+| `.gitattributes` (repo root) | Tracks `*.zip` / `*.png` / `*.jpg` via Git LFS so binaries can be pushed to the HF Space (its git endpoint rejects non-LFS binaries). |
+| `config.default.json` (repo root) | Seeded into the image; the backend copies it to `config.json` on first boot (recommender defaults). |
+
+The Dockerfile sets `VITE_API_BASE_URL=""` and `VITE_GAME_MODE="1"` for the
+frontend build. Local dev (`npm run dev`) and the Vitest suite are unaffected
+(both variables are unset there, so the old `:8000` + `?game=1` behavior holds).
+
+## Large binaries: Git LFS / Xet
+
+HuggingFace's git endpoint rejects files **> 10 MiB** *and* non-LFS **binary**
+files. The European grid (`pypsa_eur_eur220_225_380_400/network.xiidm`, ~22 MB)
+therefore travels as a Git-LFS **`.zip`** (~2 MB), and the doc images travel as
+LFS too. `.gitattributes` (repo root) declares this. The Dockerfile decompresses
+the `.zip` back to `network.xiidm` at build time.
+
+One-time, on your machine:
+
+```bash
+git lfs install
+```
+
+If your existing binaries were committed before `.gitattributes` existed,
+migrate them once so they become LFS objects:
+
+```bash
+git add --renormalize . && git commit -m "migrate binaries to LFS"
+```
+
+## Deploy steps
+
+1. **Create the Space** — on huggingface.co: *New → Space → Docker → Blank*.
+
+2. **Push a single orphan snapshot to the Space.** The branch *history* still
+   contains the > 10 MiB raw `.xiidm` from older commits, which HF would reject,
+   so push **one squashed commit** of the current tree (binaries ride along via
+   LFS — no need to delete them anymore):
+
+   ```bash
+   git lfs install                                                    # once
+   git remote add space https://huggingface.co/spaces/<user>/<space>  # once
+
+   git checkout --orphan hf-deploy
+   cp deploy/huggingface/README.md README.md   # HF needs the frontmatter at root
+   git add -A
+   git commit -m "Deploy Co-Study4Grid game"
+   git log --oneline hf-deploy                  # MUST be a single commit
+   git -c protocol.version=0 push -f space hf-deploy:main
+   git checkout -f claude/cool-bell-783agy
+   git branch -D hf-deploy
+   ```
+
+   (`protocol.version=0` works around a `fatal: expected 'acknowledgments'`
+   negotiation error some networks hit against HF.) HuggingFace reads the root
+   `Dockerfile` + the README frontmatter and builds; the first build is long
+   (heavy scientific wheels), later builds reuse layers.
+
+3. **Play** — open the Space. It boots straight into the game shell (the
+   `VITE_GAME_MODE=1` build flag); the default session is the three European
+   reference studies (Medium difficulty). Build without that flag for the bare
+   workspace.
+
+## Test the image locally first (recommended)
+
+```bash
+docker build -t costudy4grid-game .
+docker run --rm -p 7860:7860 costudy4grid-game
+# → open http://localhost:7860
+```
+
+The build has been validated end to end: the frontend bundle, the full
+scientific stack (`pypowsybl`, `ExpertOp4Grid`, `grid2op`, `pandapower`,
+`lightsim2grid`), backend import (42 routes), uvicorn on `:7860`, same-origin
+SPA + `/api/models`, and the bundled fr225_400 grid loading via pypowsybl all
+work. Image is ~370 MB.
+
+Notes if you reproduce the build:
+
+- The recommender is installed with `--no-deps` on purpose — its own dependency
+  tree is self-conflicting (`numpy>=2` vs its transitive `pypowsybl2grid`'s
+  `numpy==1.26.4`). The working runtime deps come from `pip install .` +
+  `overrides.txt`. This mirrors CI.
+- If `docker pull` of the base images hits Docker Hub's anonymous rate limit,
+  either `docker login` or point the daemon at a pull-through mirror
+  (`/etc/docker/daemon.json`: `{"registry-mirrors": ["https://mirror.gcr.io"]}`)
+  and restart it.
+- If a dependency lacks a prebuilt wheel on the build host, add `build-essential`
+  to the `apt-get install` line in the runtime stage and rebuild.
+
+## Caveat: one active study per instance
+
+`network_service` and `recommender_service` are module-level singletons holding
+one study's state, so a single Space is effectively **single-tenant**. Two
+players hitting the same Space concurrently will clobber each other's network
+load. For a public competition, prefer **Duplicate this Space** per player, or
+refactor the backend to be session-scoped before a shared multi-player launch.

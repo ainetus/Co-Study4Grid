@@ -99,6 +99,18 @@ body {
   transition: all 0.2s;
 }
 
+.game-app-host {
+  position: fixed;
+  top: 56px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+.game-app-host > div {
+  height: 100% !important;
+}
+
 .modal-tab.active {
   border-bottom-color: var(--color-brand);
   color: var(--color-brand);
