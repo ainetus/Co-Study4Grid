@@ -91,11 +91,18 @@ Co-Study4Grid/
 │       │                          # — extracted from VisualizationPanel)
 │       │                          # + modals/ (SettingsModal, ReloadSessionModal,
 │       │                          #            ConfirmationDialog)
+│       ├── game/                  # Timed, scored Game Mode (0.8.0; active only
+│       │                          # with ?game=1) — GameShell / useGameSession /
+│       │                          # gameBridge / GameConfigScreen / GameHud /
+│       │                          # GameResults / scoring / gameLog / presets /
+│       │                          # types. See docs/features/game-mode-codabench.md
 │       └── utils/                 # svgUtils (barrel re-exporting utils/svg/*),
 │                                  # svgPatch (DOM-recycling patch applier),
 │                                  # overloadHighlights, sessionUtils, interactionLogger,
 │                                  # popoverPlacement, mergeAnalysisResult, actionTypes
 │                                  # (classifyActionType + DEFAULT_ACTION_OVERVIEW_FILTERS),
+│                                  # inspectables (filterInspectables — match an element
+│                                  # by its displayed name, not just its raw id),
 │                                  # fileRegistry (structure regression guard)
 │           └── svg/               # PR #104 decomposition — idMap, metadataIndex,
 │                                  # svgBoost, fitRect, deltaVisuals, actionPinData,
@@ -112,7 +119,10 @@ Co-Study4Grid/
 ├── docs/                      # Design docs — organized into features/, performance/
 │                              # (+ history/), architecture/, proposals/, data/.
 │                              # See `docs/README.md` for the index.
-├── data/                      # Sample grids: bare_env_small_grid_test, pypsa_eur_fr400
+├── data/                      # Sample grids: bare_env_small_grid_test, pypsa_eur_fr400,
+│                              # pypsa_eur_fr225_400 (France 225/400 kV — its large
+│                              # network ships compressed as network.xiidm.zip,
+│                              # auto-decompressed by network_service on load)
 ├── benchmarks/                # Perf scripts (bench_load_study, _bench_common)
 ├── Overflow_Graph/            # Generated PDFs (created at runtime)
 ├── overrides.txt              # Pinned versions for transitive Python deps
@@ -125,10 +135,20 @@ Co-Study4Grid/
 │                              # `code_quality_report.py`, `profile_diagram_perf.py`,
 │                              # `test_code_quality_report.py`,
 │                              # `test_estimation_vs_simulation_small_grid.py`,
-│                              # and `pypsa_eur/` (full PyPSA-EUR → XIIDM pipeline
-│                              # with its own pytest coverage)
+│                              # `pypsa_eur/` (full PyPSA-EUR → XIIDM pipeline
+│                              # with its own pytest coverage), and `game_mode/`
+│                              # (`e2e_game_session.py` — real-backend Game Mode
+│                              # replay + Codabench scoring)
+├── Dockerfile                 # Single-container HuggingFace Docker Space image —
+│                              # same-origin SPA + FastAPI on :7860, game mode on
+├── .dockerignore
+├── deploy/                    # HuggingFace Space README + step-by-step SETUP.md
+├── config.default.json        # Bundled first-run settings (fr225_400 grid +
+│                              # per-action-type recommender minima)
 ├── .editorconfig              # Cross-editor indent / EOL defaults
 ├── .env.example               # Template for backend env vars (CORS, …)
+├── .gitattributes             # Git LFS tracking for *.zip / *.png / *.jpg(eg)
+│                              # (HuggingFace Space git endpoint requires LFS)
 └── .gitignore                 # Excludes __pycache__/, *.pyc, *.pyo, node_modules/
 ```
 
@@ -146,6 +166,8 @@ Co-Study4Grid/
 | `docs/features/adding-action-type.md` | Cross-cutting checklist for adding/upgrading a remedial-action type (lib → backend → frontend → save/log/reload triad → regression specs) |
 | `docs/features/interaction-logging.md` | Replay-ready event log contract |
 | `docs/features/sld-topology-edit.md` | Interactive SLD topology edit → manual action card |
+| `docs/features/game-mode-codabench.md` | Timed, scored Game Mode (`?game=1`) + Codabench benchmark bundle |
+| `deploy/huggingface/` | HuggingFace Docker Space deployment (Space README + `SETUP.md`) |
 
 ## Tech Stack
 
@@ -381,12 +403,15 @@ NAD/SLD payloads:
 
 ## Notes for AI Assistants
 
-- The backend API base URL is hardcoded to `http://localhost:8000` in `frontend/src/api.ts`
+- The backend API base URL defaults to `http://127.0.0.1:8000` in `frontend/src/api.ts` (`API_BASE_URL`), overridable at build time via `VITE_API_BASE_URL` — set it to `""` for **same-origin** hosting where the backend serves the SPA (the HuggingFace Docker Space), so requests become relative `/api/...`
 - CORS is wide-open by default (`allow_origins=["*"]`) but configurable via the `CORS_ALLOWED_ORIGINS` env var (PR #104, see `.env.example`)
 - **Frontend architecture (Phase 2 hook extraction, PR #109)**: `App.tsx` is the state orchestration hub; it must NOT contain large inline JSX blocks. Extracted presentational components live in `components/` and `components/modals/`; cross-cutting state pipelines live in `hooks/` (notably `useContingencyFetch` and `useDiagramHighlights`). When adding new UI sections, create a new component file (or hook for stateful pipelines) and wire it in `App.tsx`.
 - **`useSettings` hook**: Exposes a `SettingsState` object with all settings fields + setters. This is passed wholesale to `SettingsModal` to avoid excessive prop drilling. Adding a new setting means: (1) add to `useSettings.ts`, (2) add to `SettingsModal.tsx`. No manual standalone mirror is required — the legacy hand-maintained file has been decommissioned and the auto-generated bundle inherits from the React source automatically.
 - **Standalone bundle (auto-generated)**: `npm run build:standalone` in `frontend/` produces `frontend/dist-standalone/standalone.html` — a single-file HTML with React + CSS inlined via `vite-plugin-singlefile`. This is the canonical distribution artifact replacing the former `standalone_interface.html`. The legacy file remains on disk as `standalone_interface_legacy.html` (tracked as a frozen snapshot — do NOT edit).
-- **CI pipelines**: GitHub Actions (`.github/workflows/code-quality.yml`, `parity.yml`) and CircleCI (`.circleci/config.yml`) both run the code-quality gate, ruff, and the parity scripts. No Dockerfile / containerization.
+- **Online deployment (HuggingFace Docker Space, 0.8.0)**: `Dockerfile` builds the SPA with `VITE_API_BASE_URL=""` + `VITE_GAME_MODE=1` and serves it **same-origin** with the FastAPI backend on port 7860. `main.py` optionally mounts the built SPA via `COSTUDY4GRID_FRONTEND_DIST` (mounted LAST, after every `/api/*` and `/results/*` route; inert when the dist is absent, so local dev is unaffected). One Space instance serves one player (module-level singletons). See `deploy/huggingface/`.
+- **Game Mode (0.8.0)**: a timed, scored session shell in `frontend/src/game/`, **additive and inert unless `?game=1`** — `main.tsx` mounts `GameShell` instead of `App`; App integration is three `gameBridge.isGameMode()`-guarded touch points. See `docs/features/game-mode-codabench.md`.
+- **Binary assets via Git LFS + transparent network decompression (0.8.0)**: `.gitattributes` tracks `*.zip` / `*.png` / `*.jpg` via Git LFS (the HuggingFace Space git endpoint rejects non-LFS binaries); the large France 225/400 kV grid ships as `network.xiidm.zip` and `network_service._resolve_network_file` / `_extract_network_zip` decompress it transparently on load.
+- **CI pipelines**: GitHub Actions (`.github/workflows/code-quality.yml`, `parity.yml`, `test.yml`) and CircleCI (`.circleci/config.yml`) run the code-quality gate, ruff, the pytest + Vitest suites, and the parity scripts. The backend test installs **always track the latest `expert_op4grid_recommender`** (`>=0.2.4` floor + `--no-cache-dir`, so a fresh index resolves to the newest release); the `Dockerfile` pins the same floor to keep the deployed recommender consistent with CI.
 - Root `.gitignore` excludes `__pycache__/`, `*.pyc`, `*.pyo`; `frontend/.gitignore` handles frontend build artifacts
 - Integration helpers and parity scripts live under `scripts/`. They are NOT part of the pytest suite — invoke them directly. The PyPSA-EUR pipeline scripts under `scripts/pypsa_eur/` DO carry pytest coverage (`test_build_pipeline.py`, `test_calibrate_thermal_limits.py`, `test_generate_n1_overloads.py`, `test_regenerate_grid_layout.py`).
 - `overrides.txt` contains pinned versions for transitive Python dependencies that need to be forced to specific versions

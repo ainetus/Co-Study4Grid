@@ -174,6 +174,14 @@ transitively by `useDiagrams` + the App-integration suite.
 | `specConformance.test.ts` | Layer-4 spec contracts for interaction-log events |
 | `userObservableInvariants.test.ts` | Runtime Vitest twin of `scripts/check_invariants.py` |
 
+### Game Mode (`frontend/src/game/*.test.ts`)
+
+`scoring.test.ts` (scoring formula + log/CSV export — the twin lock against
+the Codabench Python scorer), `presets.test.ts`, and `useGameSession.test.ts`
+cover the timed-session state machine. The real-backend replay lives in
+`scripts/game_mode/e2e_game_session.py` (not part of the Vitest suite; needs
+pypowsybl + `expert_op4grid_recommender`).
+
 ## Common Testing Patterns
 
 ### Backend

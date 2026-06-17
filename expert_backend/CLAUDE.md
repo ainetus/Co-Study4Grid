@@ -22,7 +22,10 @@ expert_backend/
 ├── services/
 │   ├── __init__.py
 │   ├── network_service.py         # NetworkService singleton — pypowsybl Network
-│   │                              # loading, branch / VL / nominal-voltage queries
+│   │                              # loading (transparently decompresses a zipped
+│   │                              # network via _resolve_network_file /
+│   │                              # _extract_network_zip), branch / VL / nominal-
+│   │                              # voltage queries
 │   ├── recommender_service.py     # RecommenderService singleton — orchestrates
 │   │                              # analysis. Composes the three mixins below.
 │   ├── diagram_mixin.py           # NAD/SLD orchestrator — delegates pure
@@ -243,6 +246,13 @@ Session & user config:
 OS pickers & static:
 - `GET  /api/pick-path?type=file|dir` — spawns a tkinter subprocess.
 - Static mount at `/results/pdf/` → `Overflow_Graph/`.
+- **Optional same-origin SPA mount (0.8.0)**: when `COSTUDY4GRID_FRONTEND_DIST`
+  (default `frontend/dist/`) holds an `index.html`, the built React app is
+  mounted at `/` via `StaticFiles(html=True)`. Mounted **last** so every
+  `/api/*` and `/results/*` route declared above keeps priority over the
+  catch-all; inert when the dist is absent, so local dev is unaffected. This
+  lets the HuggingFace Docker Space serve UI + API from one uvicorn process
+  (port 7860). See `deploy/huggingface/` + the root `Dockerfile`.
 
 ## Streaming responses (NDJSON)
 

@@ -9,17 +9,20 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 _Nothing yet._
 
-## [0.8.0] — 2026-06-15
+## [0.8.0] — 2026-06-17
 
 Feature-rich release that broadens the **remedial-action vocabulary**
 (generation redispatch, GST estimation for injection actions, interactive
-SLD topology editing) and consolidates the **operator UI** (light / dark
-theme, a shared Action-Filter ring strip, a readability-first collapsible
-sidebar, a tiered notice pill, and a per-stage execution-time breakdown).
-Paired with [`expert_op4grid_recommender`](https://github.com/marota/Expert_op4grid_recommender)
-**0.2.4**; from this release on, CI always tests against the **latest
-published recommender release** rather than a pinned version (see
-`.github/workflows/test.yml` / `.circleci/config.yml`).
+SLD topology editing), consolidates the **operator UI** (light / dark theme,
+a shared Action-Filter ring strip, a readability-first collapsible sidebar,
+a tiered notice pill, a per-stage execution-time breakdown, inspect-by-name),
+and ships two **new ways to run the tool**: a timed, scored **Game Mode**
+(`?game=1`, Codabench-ready) and a one-container **online deployment**
+(HuggingFace Docker Space, same-origin SPA + backend). Paired with
+[`expert_op4grid_recommender`](https://github.com/marota/Expert_op4grid_recommender)
+**0.2.4** (the GST / superposition tests require it); from this release on, CI
+always tracks the latest published recommender release rather than a pinned
+version (see `.github/workflows/test.yml` / `.circleci/config.yml`).
 
 ### Generalized Superposition Theorem (GST) for combined-pair estimation
 
@@ -362,6 +365,84 @@ button in the header and persisted across reloads:
   active).
 
 ---
+
+### Game Mode + Codabench benchmark
+
+A timed, scored wrapper around the study workspace, **additive and inert
+unless `?game=1`** is set on the frontend URL. A *session* is an ordered
+list of *studies* (grid state + N-1 contingency); the player must remediate
+each one with **at most 3 actions** before a per-study timer expires, then
+advances. Results export a `game_session.json` that a
+[Codabench](https://www.codabench.org/) competition scores and ranks.
+
+- **`frontend/src/game/`** — `GameShell` (config → playing → results state
+  machine, hosts the unchanged `<App/>` under a fixed HUD), `useGameSession`,
+  `gameBridge` (a decoupling singleton mirroring `interactionLogger`: App
+  registers a study loader + publishes the physical snapshot, the shell
+  drives loads / reads results / enforces the action cap), `GameConfigScreen`,
+  `GameHud`, `GameResults`, `scoring` (twin of the Python scorer:
+  `60·R + 25·R·A + 15·R·T`), `gameLog`, `presets` (curated **solvable**
+  fr225_400 contingencies), `types`.
+- **App integration** — three touch points, all guarded by
+  `gameBridge.isGameMode()`: `loadGameStudy`, a publish effect pushing
+  `{ baselineMaxRho, chosenActions }`, and a cap on `wrappedActionFavorite`.
+- **`scripts/game_mode/e2e_game_session.py`** — drives the real backend over
+  the preset studies with a greedy operator and scores the session with the
+  Codabench scorer (also verifies every preset stays winnable).
+- Full contract in
+  [`docs/features/game-mode-codabench.md`](docs/features/game-mode-codabench.md).
+
+### Online deployment — HuggingFace Docker Space
+
+A one-container image that serves the **frontend SPA same-origin** with the
+FastAPI backend, so the tool runs as a hosted online game with nothing to
+install:
+
+- **`Dockerfile`** (+ `.dockerignore`) — multi-stage build: `npm run build`
+  with `VITE_API_BASE_URL=""` (relative `/api/...`) and `VITE_GAME_MODE=1`
+  (boots into the game shell), then a Python runtime serving API + built SPA +
+  bundled sample grids on port 7860.
+- **`main.py`** — optional `StaticFiles` mount of the built SPA
+  (`COSTUDY4GRID_FRONTEND_DIST`), mounted **last** so every `/api/*` and
+  `/results/*` route keeps priority over the catch-all; inert when the dist
+  isn't present (local dev unaffected).
+- **`api.ts`** — `VITE_API_BASE_URL` now selects same-origin (built) vs the
+  standalone `http://127.0.0.1:8000` backend (dev / Vitest).
+- **Overflow viewer served same-origin** (`overflow_overlay.py`, `main.py`)
+  and `pinGlyph.js` shipped to the image so the iframe overlay never 500s
+  when it's missing.
+- Space README + step-by-step setup under
+  [`deploy/huggingface/`](deploy/huggingface/). One running Space serves one
+  player at a time (module-level singletons); duplicate the Space for more.
+
+### Inspect elements by their displayed name
+
+The bottom-of-tab **Inspect** field (and the Remedial-action overview search)
+now match the **human-readable name drawn on the diagram** (e.g.
+`LESQUIVE 400kV`), not just the raw element id. `utils/inspectables.ts`
+(`filterInspectables`) is shared by every inspect surface (N / N-1 / action
+tabs + overview) so they stay in lock-step, and the overview and tab inspect
+fields were unified onto one component.
+
+### Binary assets via Git LFS + transparent network decompression
+
+- **Git LFS** (`.gitattributes`) tracks `*.zip` / `*.png` / `*.jpg` /
+  `*.jpeg` so the repo can be pushed to a HuggingFace Space (whose git
+  endpoint rejects non-LFS binaries). The 166 k-line PyPSA-EUR France
+  `network.xiidm` is now shipped **compressed** as `network.xiidm.zip`.
+- **`network_service`** transparently resolves and decompresses a zipped
+  network on load (`_resolve_network_file` / `_extract_network_zip`): an
+  explicit `*.zip` path, a missing `foo.xiidm` whose sibling `foo.xiidm.zip`
+  exists, or a directory holding only a `.zip` all Just Work — the extracted
+  `.xiidm` is cached next to the archive (temp-dir fallback when read-only).
+
+### Shipped config defaults
+
+`config.default.json` is now bundled and seeds first-run settings: the
+fr225_400 France grid + action catalogue, per-action-type recommender minima
+(incl. `min_redispatch`), `n_prioritized_actions`, monitoring factor, and the
+pre-existing-overload threshold — so a fresh checkout (and the deployed Space)
+opens on a working study.
 
 ### Polish & fixes
 
