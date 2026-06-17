@@ -6,7 +6,12 @@
 # This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study. 
 
 import pypowsybl.network as pn
+import logging
 import os
+import tempfile
+import zipfile
+
+logger = logging.getLogger(__name__)
 
 class NetworkService:
     def __init__(self):
@@ -95,7 +100,71 @@ class NetworkService:
             )
         return self._load_vl_map
 
+    def _extract_network_zip(self, zip_path: str) -> str:
+        """Extract the first .xiidm/.xml inside ``zip_path`` and return its
+        path. Extraction targets the zip's own directory so the result is
+        cached for subsequent loads; if that directory is read-only, fall
+        back to a temp dir.
+        """
+        with zipfile.ZipFile(zip_path) as zf:
+            members = [n for n in zf.namelist()
+                       if n.lower().endswith(('.xiidm', '.xml'))]
+            if not members:
+                raise FileNotFoundError(
+                    f"No .xiidm or .xml file found inside {zip_path}")
+            member = members[0]
+            out_name = os.path.basename(member)
+            out_dir = os.path.dirname(os.path.abspath(zip_path))
+            out_path = os.path.join(out_dir, out_name)
+            if os.path.isfile(out_path):
+                return out_path  # already decompressed — reuse
+            data = zf.read(member)
+            try:
+                with open(out_path, 'wb') as f:
+                    f.write(data)
+            except OSError:
+                tmp_dir = tempfile.mkdtemp(prefix='cs4g_net_')
+                out_path = os.path.join(tmp_dir, out_name)
+                with open(out_path, 'wb') as f:
+                    f.write(data)
+            logger.info("Decompressed %s -> %s", zip_path, out_path)
+            return out_path
+
+    def _resolve_network_file(self, network_path: str) -> str:
+        """Resolve a network path to a loadable file, transparently
+        decompressing a zip when the path is (or only exists as) a ``.zip``.
+
+        Handles: an explicit ``*.zip`` path; a missing ``foo.xiidm`` whose
+        sibling ``foo.xiidm.zip`` exists; and a directory that holds only a
+        ``.zip`` archive.
+        """
+        if network_path.lower().endswith('.zip') and os.path.isfile(network_path):
+            return self._extract_network_zip(network_path)
+
+        if os.path.isfile(network_path):
+            return network_path
+
+        if os.path.isdir(network_path):
+            has_net = any(f.endswith(('.xiidm', '.xml'))
+                          for f in os.listdir(network_path))
+            if not has_net:
+                zips = [f for f in os.listdir(network_path) if f.endswith('.zip')]
+                if zips:
+                    return self._extract_network_zip(
+                        os.path.join(network_path, zips[0]))
+            return network_path
+
+        # Missing path: try a sibling/companion .zip (e.g. the shipped
+        # ``network.xiidm.zip`` for a ``network.xiidm`` request).
+        for candidate in (network_path + '.zip',
+                          os.path.splitext(network_path)[0] + '.zip'):
+            if os.path.isfile(candidate):
+                return self._extract_network_zip(candidate)
+
+        return network_path
+
     def load_network(self, network_path: str):
+        network_path = self._resolve_network_file(network_path)
         if not os.path.exists(network_path):
             raise FileNotFoundError(f"Network file/directory not found: {network_path}")
         
