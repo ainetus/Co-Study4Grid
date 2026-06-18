@@ -30,7 +30,7 @@ Thresholds (see also CONTRIBUTING.md):
 | `any` / `as any` annotations in frontend      |   0   |
 | `@ts-ignore` / `-expect-error` / `-nocheck`  |   0   |
 | `as unknown as` casts (ratchet)              |  12   |
-| `Record<string, unknown>` usages (ratchet)   |  46   |
+| `Record<string, unknown>` usages (ratchet)   |  45   |
 | Hex color literals outside tokens.{css,ts}   |   0   |
 
 Scope: the backend scan now covers ALL of `expert_backend/` except
@@ -119,7 +119,7 @@ FRONTEND_HEX_LITERAL_MAX = 0
 # Ratchets — frozen at the current count (see module docstring). Weak
 # typing surface; lowering is welcome, raising is a regression.
 FRONTEND_WEAK_CAST_MAX = 12       # `as unknown as` (was 19; SVG-DOM casts simplified)
-FRONTEND_RECORD_UNKNOWN_MAX = 46  # `Record<string, unknown>`
+FRONTEND_RECORD_UNKNOWN_MAX = 45  # `Record<string, unknown>` (most are legit flexible payloads)
 # `App.tsx` is the state-orchestration hub by design, but gets a
 # generous *bounded* ceiling rather than a blanket exemption — so it
 # can't grow without bound. `utils/**` modules are gated by the

@@ -99,7 +99,7 @@ The gate enforces (full table in
   `@ts-expect-error` / `@ts-nocheck` in frontend sources
 - **Ratcheted** (frozen at today's count, may only go down): backend
   `# noqa` / `# type: ignore` (**3**), `as unknown as` casts (**12**),
-  `Record<string, unknown>` usages (**46**)
+  `Record<string, unknown>` usages (**45**)
 - **No hex color literals** in frontend source. The ceiling is zero —
   every colour must come from a named token. Define new colours in
   [`frontend/src/styles/tokens.css`](./frontend/src/styles/tokens.css)

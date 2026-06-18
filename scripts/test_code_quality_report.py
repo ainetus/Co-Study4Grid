@@ -108,7 +108,7 @@ def test_build_report_against_repo_root():
     assert report.backend.lint_suppressions <= 3
     assert report.backend.functions_missing_return <= 60
     assert report.frontend.weak_casts <= 12
-    assert report.frontend.record_str_unknown <= 46
+    assert report.frontend.record_str_unknown <= 45
     # Return-annotation accounting is internally consistent.
     assert report.backend.functions_annotatable > 0
     assert 0 <= report.backend.functions_missing_return <= report.backend.functions_annotatable
