@@ -1303,5 +1303,37 @@ bottom-up (in `services/analysis/`, `services/diagram/`,
 delegators and mypy can actually check them. Offline suite byte-identical
 (624 passed); no runtime touched.
 
+---
+
+## 22. Tracked for next release — target #4 (decompose ceiling-riders)
+
+Target **#4** from the §19 review (decompose the files riding their
+size/complexity ceilings) was deliberately deferred — it is structural
+work, not a gate tweak, and should be scheduled deliberately rather than
+done under deadline when a feature PR trips the gate.
+
+It is now **traced as a proposal** with the full investigation captured:
+[`docs/proposals/decompose-ceiling-riders.md`](../proposals/decompose-ceiling-riders.md).
+That doc lists every ceiling-rider with its current margin, a concrete
+extraction candidate per target, a priority order (tightest margin
+first), and acceptance criteria.
+
+Headline margins at hand-off (ceiling − current):
+
+- **`simulation_mixin.py` 1110/1150 (+40)** — tightest module; it grew
+  this session (the annotation imports), so it is the first to act on.
+  Extract the superposition slice.
+- **`VisualizationPanel.tsx` 1407/1450 (+43)** — tightest frontend file.
+- **`_run_analysis_step2_with_model` 226/240 (+14)** — tightest function.
+- **`update_config` CC 35 / `_narrow_context…` nest 7** — tightest
+  complexity (+3 CC / +1 nest).
+- `overflow_overlay.py` (1055) — move the 924-line template f-string to
+  external assets; high leverage and retires a gate exemption.
+- `App.tsx` (1982/2100) — already scoped as Option 3 in
+  `frontend/CLAUDE.md`.
+
+Also surfaced in `CHANGELOG.md` `[Unreleased]` so it is bound to the
+next release.
+
 
 

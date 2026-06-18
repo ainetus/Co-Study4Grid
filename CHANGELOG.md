@@ -7,7 +7,20 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-_Nothing yet._
+### Internal / maintainability
+
+- **Code-quality gate hardened** — mypy now gates at 0 (via a
+  `TYPE_CHECKING` shared-state base for the recommender mixins), plus
+  frontend + backend test-coverage floors and backend cyclomatic-
+  complexity / nesting / return-annotation ratchets. See
+  `docs/architecture/code-quality-analysis.md` §§17–21.
+- **Planned — decompose the "ceiling-rider" hot files.** Several modules /
+  components now ride their (tightened) size/complexity ceilings with thin
+  margins: `simulation_mixin.py` (1110/1150), `VisualizationPanel.tsx`
+  (1407/1450), `_run_analysis_step2_with_model` (226/240). Investigated and
+  scoped per target in
+  [`docs/proposals/decompose-ceiling-riders.md`](docs/proposals/decompose-ceiling-riders.md)
+  so the splits land deliberately rather than under gate pressure.
 
 ## [0.8.0] — 2026-06-17
 
