@@ -9,7 +9,7 @@ Co-Study4Grid supports **saving** and **reloading** full analysis sessions:
 
 ### What is saved
 
-- **`session.json`** — all inputs, outputs, user decisions, combined action pairs, per-action enrichment details (`load_shedding_details` / `curtailment_details` / `pst_details` / `lines_overloaded_after`), the **active recommender model** that produced the suggestions (`analysis.active_model`, mirrored at `configuration.model`), and — when available — the per-element sidebar sticky-header loading ratios (`n_overloads_rho` / `n1_overloads_rho`).
+- **`session.json`** — all inputs, outputs, user decisions, combined action pairs, per-action enrichment details (`load_shedding_details` / `curtailment_details` / `redispatch_details` / `pst_details` / `lines_overloaded_after`), the **active recommender model** that produced the suggestions (`analysis.active_model`, mirrored at `configuration.model`), and — when available — the per-element sidebar sticky-header loading ratios (`n_overloads_rho` / `n1_overloads_rho`).
 - **`interaction_log.json`** — timestamped log of every user interaction, suitable for automated session replay (see [docs/features/interaction-logging.md](interaction-logging.md))
 - **`<overflow>.html`** — a copy of the interactive overflow graph viewer (when an analysis has been run). Legacy sessions saved before the HTML switch contain `<overflow>.pdf` instead; reload handles both transparently.
 
@@ -78,7 +78,7 @@ Settings → gear icon → Paths tab → Output Folder Path
 4. **Monitored-line set + computed-pair cache** — `useSession` calls `POST /api/restore-analysis-context` with the saved `lines_we_care_about` and `computed_pairs` so any subsequent simulate-action uses the SAME monitored-line policy as the original study instead of the backend default. Wrapped in try/catch so an offline backend does not abort the reload.
 5. **N-1 diagram fetch** — `restoringSessionRef.current = true` is set before `setSelectedBranch(disconnected_element)` so the N-1 effect in `App.tsx` bypasses its `hasAnalysisState()` short-circuit (the restored actions would otherwise cause the effect to skip the fetch, leaving the N-1 tab blank and the N-1 Overloads panel empty). `clearContingencyState()` is also skipped on restore so the just-restored actions / overloads / result survive. Active-tab switching is suppressed so the user lands on whichever tab the VisualizationPanel default resolves to given the restored state.
 6. **Overflow graph PDF** is restored (backend copies the PDF from the session folder back to `Overflow_Graph/` if missing, so the iframe URL resolves)
-7. **Action cards** are displayed with their saved data — rho values, status tags, **and all enrichment fields** (`load_shedding_details`, `curtailment_details`, `pst_details`, `lines_overloaded_after`) so the PST / load-shedding / curtailment editor cards render their inputs populated and the Remedial Action tab draws its post-action overload halos
+7. **Action cards** are displayed with their saved data — rho values, status tags, **and all enrichment fields** (`load_shedding_details`, `curtailment_details`, `redispatch_details`, `pst_details`, `lines_overloaded_after`) so the PST / load-shedding / curtailment / redispatch editor cards render their inputs populated and the Remedial Action tab draws its post-action overload halos
 8. **Combined pairs** are restored in the Combine Actions modal. Estimation-only combined entries (`"act_a+act_b"` with `is_estimated: true` and no manual simulation) are filtered out of the top-level `actions` map but survive under `combined_actions`.
 9. **Action status flags** (`is_selected`, `is_suggested`, `is_rejected`, `is_manually_simulated`) are partitioned back into the four `Set<string>` state variables used by the Selected / Rejected / Manual buckets.
 10. **No action card is active** initially — no re-simulation until the user clicks one
@@ -114,6 +114,8 @@ Some pieces of in-memory state are deliberately ephemeral and will reset on relo
     "min_pst": 1.0,
     "min_load_shedding": 2.5,
     "min_renewable_curtailment_actions": 1.25,
+    "min_redispatch": 1.0,
+    "allowed_action_types": [],
     "n_prioritized_actions": 10,
     "lines_monitoring_path": "/data/monitoring.csv",
     "monitoring_factor": 0.95,
@@ -179,6 +181,9 @@ Some pieces of in-memory state are deliberately ephemeral and will reset on relo
         "curtailment_details": [
           { "gen_name": "WIND_1", "voltage_level_id": "VL_2", "curtailed_mw": 7.5 }
         ],
+        "redispatch_details": [
+          { "gen_name": "GEN_3", "voltage_level_id": "VL_3", "delta_mw": -6.0, "target_mw": 42.0, "direction": "down" }
+        ],
         "pst_details": [
           { "pst_name": "PST_A", "tap_position": 5, "low_tap": -16, "high_tap": 16 }
         ],
@@ -226,6 +231,7 @@ All settings active when the analysis was run. Matches the fields sent to `POST 
 | `min_pst` | Minimum PST actions threshold |
 | `min_load_shedding` | Minimum load-shedding actions threshold (PR #73/#78 — new `loads_p` format) |
 | `min_renewable_curtailment_actions` | Minimum renewable-curtailment actions threshold (PR #73/#78 — new `gens_p` format) |
+| `allowed_action_types` | *(optional)* The "Restrict to action types" recommender control — the subset of action families the recommender is allowed to propose. An **empty array** means all families are enabled (no restriction); a non-empty subset restricts the recommender to only those types. Persisted in the snapshot and restored on reload (and backed up for Settings-cancel). Mirrors `SettingsState.allowedActionTypes`. Defaults to `[]`. |
 | `model` | *(optional)* Registry key of the recommender model selected at save time. Captures **what the operator picked** in the Settings → Recommender tab — useful for replay agents that want to reproduce the same model selection before re-running analysis. Defaults to `"expert"`. See [docs/backend/recommender_models.md](../backend/recommender_models.md). |
 | `compute_overflow_graph` | *(optional)* Whether the Compute Overflow Graph toggle was ON at save time. Locked-on for models with `requires_overflow_graph=true`; opt-in for the others. |
 
@@ -312,10 +318,11 @@ Each action entry mirrors the `ActionDetail` type plus a `status` object:
 | `lines_overloaded_after` | Overloaded lines remaining **after** the action is applied — drives the post-action overload halos on the Remedial Action NAD / SLD tab (PR #83). |
 | `load_shedding_details` | Per-load MW values for the load-shedding editor card. Array of `{ load_name, voltage_level_id, shedded_mw }` (PR #73). |
 | `curtailment_details` | Per-generator MW values for the renewable-curtailment editor card. Array of `{ gen_name, voltage_level_id, curtailed_mw }` (PR #73). |
+| `redispatch_details` | Per-generator values for the redispatch editor card — sibling of `curtailment_details`. Array of `{ gen_name, voltage_level_id, delta_mw, target_mw, direction }`: `delta_mw` is the **signed** MW change (`> 0` raises, `< 0` lowers), `target_mw` the resulting production magnitude, `direction` is `"up"` / `"down"`. May also carry optional `current_mw` / `max_raise_mw` / `max_lower_mw` bounds. |
 | `pst_details` | PST editor state: array of `{ pst_name, tap_position, low_tap, high_tap }`. `low_tap` / `high_tap` may be `null` if the network manager did not expose bounds (PR #78). |
 | `origin` | *(optional)* Provenance of the action card — `"user"` (the operator simulated it themselves via the manual search / "Make a first guess") or a recommender model id (`"expert"`, `"random_overflow"`, … — the `active_model` that produced / scored it; this also covers an unsimulated pin the operator materialised). Distinct from the `is_manually_simulated` status flag, which also flips `true` when the operator merely *stars* a recommender suggestion. Surfaced as the "Source" row in the unfolded action card. Legacy dumps that predate the field get an `origin` **derived on reload** from the status flags + `analysis.active_model` (`is_manually_simulated` → `"user"`, else `is_suggested` → `active_model`). |
 
-> **Why the enrichment fields matter on reload:** the PST / load-shedding / curtailment editor cards read directly from `pst_details` / `load_shedding_details` / `curtailment_details` to populate their inputs, and the Remedial Action tab uses `lines_overloaded_after` to clone the post-action overload halos. Before PR #83, these four fields were written to `session.json` but silently dropped on reload, which left the editor cards empty and wiped the overload halos until the user re-ran analysis. They are now restored in full by `handleRestoreSession`.
+> **Why the enrichment fields matter on reload:** the PST / load-shedding / curtailment / redispatch editor cards read directly from `pst_details` / `load_shedding_details` / `curtailment_details` / `redispatch_details` to populate their inputs, and the Remedial Action tab uses `lines_overloaded_after` to clone the post-action overload halos. Before PR #83, these fields were written to `session.json` but silently dropped on reload, which left the editor cards empty and wiped the overload halos until the user re-ran analysis. `redispatch_details` later hit the exact same "save-drop" trap (written by `buildSessionResult` but dropped on the reload path) until it was wired through `handleRestoreSession` alongside the others. They are now restored in full.
 
 ### Action `status` tags
 
@@ -449,7 +456,7 @@ chain, step-by-step plug-in guide, troubleshooting):
    - **Updates `committedNetworkPathRef.current`** to the restored `network_path`
    - Fetches branches, voltage levels, nominal voltages **and the base diagram** in parallel
    - **Calls `api.restoreAnalysisContext(...)`** to re-push `lines_we_care_about` + `computed_pairs` into the backend service (wrapped in try/catch — failures log a warning but let the reload complete)
-   - Rebuilds each `ActionDetail` from its `SavedActionEntry`, **including** `lines_overloaded_after`, `load_shedding_details`, `curtailment_details`, `pst_details` and `origin`. Estimation-only combined entries (`id.includes('+') && is_estimated && !is_manually_simulated`) are filtered out of the top-level actions map but kept under `combined_actions`.
+   - Rebuilds each `ActionDetail` from its `SavedActionEntry`, **including** `lines_overloaded_after`, `load_shedding_details`, `curtailment_details`, `redispatch_details`, `pst_details` and `origin`. Estimation-only combined entries (`id.includes('+') && is_estimated && !is_manually_simulated`) are filtered out of the top-level actions map but kept under `combined_actions`.
    - **Re-attaches `analysis.active_model` + `analysis.compute_overflow_graph` onto the live `result`** so the "Suggestions produced by &lt;model&gt;" reminder below the Suggested Actions tab header survives the reload — previously both were saved but never restored onto `result`, so the reminder vanished. For legacy dumps whose action entries predate the `origin` field, an `origin` is derived here from the status flags + `active_model` (`is_manually_simulated` → `"user"`, else `is_suggested` → `active_model`).
    - Partitions action status flags into `selectedActionIds` / `rejectedActionIds` / `manuallyAddedIds` / `suggestedByRecommenderIds`
    - **Sets `restoringSessionRef.current = true` BEFORE `setSelectedBranch(...)`** so the N-1 fetch effect in `App.tsx` can tell "session restore" from "user changed contingency", bypass its `hasAnalysisState()` short-circuit, skip `clearContingencyState()` (which would wipe the just-restored state), and avoid forcing an active-tab switch. The ref is reset to `false` the moment the effect consumes it.
@@ -508,7 +515,7 @@ A `makeCtx()` / `makeSession()` fixture pair makes each test self-contained:
 - A `session_reloaded` interaction event is recorded with the session name
 - Empty `outputFolderPath` short-circuits the call: no API requests, no setters, ref untouched
 - Backend errors surface via `ctx.setError`; the ref is left empty on failure
-- **Enrichment field round-trip:** a `captureRestoredResult()` helper replays the functional `setResult` updater against a `null` previous state and asserts `load_shedding_details`, `curtailment_details`, `pst_details` and `lines_overloaded_after` all land on the restored `ActionDetail`
+- **Enrichment field round-trip:** a `captureRestoredResult()` helper replays the functional `setResult` updater against a `null` previous state and asserts `load_shedding_details`, `curtailment_details`, `redispatch_details`, `pst_details` and `lines_overloaded_after` all land on the restored `ActionDetail`
 - **Recommender model restore:** `analysis.active_model` + `analysis.compute_overflow_graph` are re-attached onto the live `result` (regression guard for the vanished "Suggestions produced by &lt;model&gt;" reminder)
 - **Action origin restore:** a saved `origin` is restored verbatim; legacy entries that predate the field get an `origin` derived from the status flags + `analysis.active_model` (`is_manually_simulated` → `"user"`, else `is_suggested` → `active_model`)
 - Action status flags partition correctly into the four `Set<string>` state updates

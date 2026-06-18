@@ -19,14 +19,16 @@ from the code.
 
 ```
 ┌─────────────────── Co-Study4Grid React frontend ─────────────────────┐
-│ VisualizationPanel: toolbar gets a 📌 Pins toggle. Disabled until    │
-│ Step 2 has streamed actions; default OFF. When ON, builds            │
-│ OverflowPin[] from result.actions + n1MetaIndex + vlToSubstation     │
-│ + overviewFilters and posts them to the iframe.                      │
+│ VisualizationPanel + App: build OverflowPin[] from result.actions +  │
+│ n1MetaIndex + vlToSubstation + overviewFilters and post them to the  │
+│ iframe. The pins on/off state lives in `overflowPinsEnabled` (default │
+│ OFF); the canonical toggle is now INSIDE the iframe (§6.9 / §7.3) —   │
+│ the former 📌 Pins toolbar button was retired (0.8.0).               │
 └─────────────────────┬─────────────────────────────────────────────┬──┘
                       │ window.postMessage                          │
         cs4g:pins ▼   │   ▲ cs4g:pin-clicked                       │
         cs4g:filters ▼│   ▲ cs4g:pin-double-clicked                 │
+                      │   ▲ cs4g:overflow-pins-toggled              │
                       │   ▲ cs4g:overflow-filter-changed            │
                       │   ▲ cs4g:overflow-layer-toggled             │
                       │   ▲ cs4g:overflow-node-double-clicked       │
@@ -60,8 +62,9 @@ Phase split:
   `alphaDeesp` get the source-of-truth tagging.
 - **Phase B (Co-Study4Grid backend)** — overflow HTML serving, the
   overlay injector, the geo transform.
-- **Phase C (Co-Study4Grid frontend)** — toolbar toggle, pin
-  payload, popover, message routing, filter sync.
+- **Phase C (Co-Study4Grid frontend)** — pin payload, popover,
+  message routing (incl. the in-iframe pins toggle via
+  `cs4g:overflow-pins-toggled`), filter sync.
 
 ---
 
@@ -236,6 +239,13 @@ For each edge group in the SVG:
 
 ## 5. Overlay injection
 
+> **Same-origin serving (0.8.0).** The overflow-graph HTML is served
+> **same-origin** with the backend (via the dynamic
+> `GET /results/pdf/{filename}` route in `main.py`), so the iframe
+> works in the one-container HuggingFace Docker Space as well as in
+> local dev. `pinGlyph.js` is shipped alongside the backend in that
+> image, so `inject_overlay` never 500s on a missing shared module.
+
 `expert_backend/services/overflow_overlay.py:inject_overlay(html)`
 splices a single `<style>` + `<script>` block (with deterministic
 `id` attributes) before the closing `</body>` tag. Idempotent — a
@@ -403,9 +413,17 @@ action variant.
 
 ### 6.9 Pins toggle UI
 
-The toolbar exposes a single `📌 Pins` button (matching the `🏷 VL`
-toggle visual) with `aria-pressed`, brand-soft fill when active,
-`disabled` until step-2 actions exist.
+**The standalone `📌 Pins` toolbar button in `VisualizationPanel`
+was retired in 0.8.0.** The canonical pins on/off toggle now lives
+**inside the iframe**, in the header of the "Action pins filters"
+section (📌 + checkbox). That section is always visible — see §7.3 —
+so the operator can enable pins before any have been requested; when
+the toggle is off the section dims its remaining inputs.
+
+Flipping the in-iframe toggle posts `cs4g:overflow-pins-toggled
+{ enabled }` up to the parent, which flips `overflowPinsEnabled` and
+re-broadcasts the pin payload + on/off state via the existing
+`cs4g:pins` envelope so the iframe UI re-syncs.
 
 State + posting:
 - `App.tsx` owns `overflowPinsEnabled: boolean` (default `false`),
@@ -416,8 +434,10 @@ State + posting:
   (memoised; gated on `overviewFilters?.showUnsimulated`), and
   `allOverflowPins = [...overflowPins, ...overflowUnsimulatedPins]`
   which is the actual payload posted to the iframe.
-- `VisualizationPanel` posts `cs4g:pins` on every relevant change
-  (after the `cs4g:overlay-ready` handshake).
+- `VisualizationPanel` posts `cs4g:pins` (payload + on/off state) on
+  every relevant change, after the `cs4g:overlay-ready` handshake,
+  AND in response to a `cs4g:overflow-pins-toggled` message from the
+  iframe.
 
 ### 6.10 Un-simulated pin layer
 
@@ -751,8 +771,8 @@ parent React app, where they're recorded by `interactionLogger`
 | `cs4g:overflow-select-all-layers`  | `overflow_select_all_layers`     | `visible`                   |
 | `cs4g:overflow-node-double-clicked`| `overflow_node_double_clicked`   | `name`                      |
 | `cs4g:overflow-filter-changed`     | `overview_filter_changed`        | `kind: 'overflow_iframe'`   |
-| (parent toolbar)                   | `overflow_pins_toggled`          | `enabled`                   |
-| (parent toolbar)                   | `overflow_layout_mode_toggled`   | `to`                        |
+| `cs4g:overflow-pins-toggled`       | `overflow_pins_toggled`          | `enabled`                   |
+| (parent layout control)            | `overflow_layout_mode_toggled`   | `to`                        |
 
 Parent-only emitter:
 - `overflow_pin_double_clicked` is logged only when
@@ -780,7 +800,7 @@ enforce these field sets.
 | `frontend/src/utils/svg/actionPinRender.ts` | Action Overview NAD pin renderer; calls the shared `createPinGlyph`. |
 | `frontend/src/utils/svg/overflowPinPayload.ts` | `buildOverflowPinPayload` + `buildOverflowUnsimulatedPinPayload` — anchor priority, filter application, and unsimulated-pin payload (with multi-line `title`). |
 | `frontend/src/utils/svg/actionPinData.ts` | Exports the shared `buildUnsimulatedPinTitle(id, scoreInfo)` helper consumed by both the Action Overview and the overflow unsimulated payload builder. |
-| `frontend/src/components/VisualizationPanel.tsx` | Toolbar `📌 Pins` toggle, iframe ref + message router, popover state, filter rebroadcast. |
+| `frontend/src/components/VisualizationPanel.tsx` | Iframe ref + message router (incl. `cs4g:overflow-pins-toggled`), popover state, pin payload + on/off rebroadcast via `cs4g:pins`. The standalone `📌 Pins` toolbar button was retired in 0.8.0. |
 | `frontend/src/components/SldOverlay.tsx` | Sub-tab visibility logic (`actionDiagram` OR `vlOverlay.actionId`). |
 | `frontend/src/hooks/useSldOverlay.ts` | `handleVlDoubleClick(actionId, vlName, forceTab?)` — forceTab path used by the pin double-click. |
 | `frontend/src/App.tsx` | Wires `overflowPinsEnabled`, `overflowPins`, `handlePinPreview`, `handleOverflowPinDoubleClick`, `overviewFilters` flow. |
@@ -878,7 +898,8 @@ Manual smoke (small grid):
 2. Open Overflow Analysis tab — verify three layer sections plus a
    Select-all / Unselect-all row above them, dim-instead-of-hide
    behaviour.
-3. Toggle `📌 Pins` → action pins appear:
+3. Toggle pins **on** from the iframe's "Action pins filters" header
+   (📌 checkbox; the old toolbar button is gone) → action pins appear:
    - line actions at edge midpoints, VL actions on substations,
    - severity colours match the Action Overview palette,
    - `📌 N` counter in the new "Action pins filters" section reflects

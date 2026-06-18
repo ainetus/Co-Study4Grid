@@ -238,7 +238,7 @@ Hypotheses in step 2:
 - The reassessment phase **does not** mutate the candidate ranking —
   it only enriches each action with `max_rho`, `rho_after`,
   `is_rho_reduction`, `is_islanded`, `n_components`, `non_convergence`,
-  plus type-specific details for LS / curtail / PST.
+  plus type-specific details for LS / curtail / redispatch / PST.
 - `compute_combined_pairs` uses the **superposition theorem** on the
   per-line rho impacts. It is an estimate, not a full re-simulation
   — see [`docs/features/combined-actions.md`](../features/combined-actions.md)
@@ -321,9 +321,10 @@ When to flip the UI checkbox off:
 `POST /api/simulate-manual-action {action_id, disconnected_elements, action_content?, lines_overloaded?, target_mw?, target_tap?}`
 
 Used when the operator stars an action that wasn't in the prioritized
-list, or applies an LS / curtail / PST action with an explicit
-setpoint. Detailed flow in `SimulationMixin.simulate_manual_action`
-(orchestrator) + `simulation_helpers.py` (14 pure helpers).
+list, or applies an LS / curtail / redispatch / PST action with an
+explicit setpoint. Detailed flow in
+`SimulationMixin.simulate_manual_action` (orchestrator) +
+`simulation_helpers.py` (14 pure helpers).
 
 Pipeline:
 
@@ -335,8 +336,12 @@ Pipeline:
    - Split combined ids (`action1+action2+…`).
    - Inject restored topology entries from `action_content` if any
      (session reload path).
-   - Build dynamic LS / curtail / PST / reconnect actions if the id
-     is not already in `_dict_action` (heuristic action generation).
+   - Build dynamic LS / curtail / redispatch / PST / reconnect actions
+     if the id is not already in `_dict_action` (heuristic action
+     generation). Redispatch is an **injection** action (signed
+     `set_gen_p` delta — raise *or* lower a dispatchable generator,
+     setpoint via `compute_redispatch_setpoint`), distinct from
+     curtailment, which only reduces generation to a target MW.
 4. **Pick the obs**: prefers `_analysis_context.obs_simu_defaut` to
    keep numerical alignment with step 1 and the library's
    `compute_superposition`. Falls back to a fresh
@@ -412,6 +417,16 @@ Hypotheses:
   action simulation via `simulate_manual_action` if either member is
   missing from `_last_result` — same `_analysis_context` re-use
   semantics as § 5.
+- **Injection-action pairs are now estimable.** Pairs that mix a
+  topology action with an **injection** action (load shedding,
+  curtailment, redispatch) — previously simulation-only — are handled
+  through the **Generalized Superposition Theorem (GST)** path. The
+  backend tags each member via
+  `simulation_helpers.is_injection_action(action_id, dict_action,
+  classifier)` and forwards `act1_is_injection` / `act2_is_injection`
+  to the library's `compute_combined_pair_gst` (plumbed through
+  `compute_combined_pair_superposition`); the injection action is
+  returned with `beta = 1.0`.
 
 The full math + caveats are documented at
 [`docs/features/combined-actions.md`](../features/combined-actions.md)

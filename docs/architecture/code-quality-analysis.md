@@ -977,5 +977,97 @@ client-generation tooling.
   the documented test-pollution failures are isolated (same 19
   pre-existing failures as the §13 baseline; no new regressions).
 
+---
+
+## 16. Delta — 2026-06-17 (0.8.0)
+
+The 0.8.0 cycle broadened the feature surface (redispatch action
+type, GST-estimable injection pairs, interactive SLD topology edit,
+light/dark theme, Game Mode, the HuggingFace Docker deployment)
+while keeping every ceiling green. The structural changes that
+matter for this audit:
+
+### 16.1 Diagram-mixin decomposition — landed
+
+The §14.8 / §15.1 watch item on the diagram patch pipeline is
+**resolved by extraction**, not by an exemption. ``diagram_mixin.py``
+shed two helper packages:
+
+- ``services/diagram/action_patch.py`` (new) — the entire
+  ``/api/action-variant-diagram-patch`` pipeline (~510 LoC): the
+  280-line ``get_action_variant_diagram_patch`` orchestrator, its
+  three patch helpers (``compute_vl_topology_diff``,
+  ``extract_vl_subtrees_with_edges``,
+  ``get_disconnected_branches_from_snapshot``) and three private
+  helpers. ``_compute_vl_topology_diff`` /
+  ``_get_disconnected_branches_from_snapshot`` stay re-exported as
+  static methods on ``DiagramMixin`` so ``test_diagram_patch_helpers.py``
+  passes unchanged.
+- ``services/diagram/obs_prewarm.py`` (new) — the post-contingency
+  observation pre-warm helper (``build_prewarmed_obs``) that drives
+  ``_cached_obs_n1`` so ``run_analysis_step1`` can skip the redundant
+  load flow.
+
+Result: ``diagram_mixin.py`` **1220 → 769 lines** (-451, 37 %), a
+431-line buffer below the ``BACKEND_MODULE_MAX`` 1200 ceiling. The
+``get_action_variant_diagram_patch`` ``BACKEND_FUNCTION_EXEMPTIONS``
+entry from §15.1 moves with the function to the new module. New
+coverage: ``test_obs_prewarm_for_step1.py`` (9 tests),
+``test_action_patch_module.py`` (16 tests).
+
+### 16.2 New frontend module — ``src/game/``
+
+Game Mode (a timed, scored session wrapper) lands as a **self-
+contained ``frontend/src/game/`` package** rather than as additions
+to ``App.tsx``. It is **additive and inert unless ``?game=1``**: the
+App integration is three ``gameBridge.isGameMode()``-guarded touch
+points, so the orchestration hub stays at its existing altitude and
+the analysis engine is untouched. The decoupling singleton
+(``gameBridge``) mirrors the established ``interactionLogger`` pattern,
+keeping the dependency direction one-way (game → App via a registered
+loader, never App → game).
+
+### 16.3 Surface growth held to the established patterns
+
+The new capabilities reuse existing extension seams instead of
+widening hot files:
+
+- **Redispatch action type** threads through the same per-type
+  dispatchers the other action families use
+  (``mw_start_scoring.classify_action_type`` +
+  ``mw_start_redispatch``, ``action_enrichment.compute_redispatch_details``,
+  ``simulation_helpers.compute_redispatch_setpoint``) — no new
+  god-function, each helper stays well under the 250-line ceiling.
+- **Light / dark theme** is a **token swap, not per-component
+  overrides**: it re-points the ``styles/tokens.{css,ts}`` custom
+  properties, so the ``FRONTEND_HEX_LITERAL_MAX = 0`` rule (§14) keeps
+  holding — no theme-specific hex literals leaked into components.
+- **Recommender action-type restriction** is plumbed end-to-end
+  (``useSettings`` → ``SettingsModal`` → ``POST /api/config`` →
+  ``config.ALLOWED_ACTION_TYPES``) through the existing settings /
+  save / reload / replay paths.
+
+### 16.4 CI / supply-chain note
+
+From 0.8.0 the backend test installs **track the latest published
+``expert_op4grid_recommender``** (``>=0.2.4`` floor + ``--no-cache-dir``)
+rather than a pinned version, so a fresh index resolves to the newest
+release on every run (``.github/workflows/test.yml`` /
+``.circleci/config.yml``); the ``Dockerfile`` pins the same floor to
+keep the deployed recommender consistent with CI. The new HuggingFace
+Docker deployment adds an **optional** same-origin SPA mount in
+``main.py`` (``COSTUDY4GRID_FRONTEND_DIST``, mounted last, inert when
+absent — local dev / the test suite are unaffected) and Git LFS
+tracking for ``*.zip`` / ``*.png`` / ``*.jpg`` binaries (the Space git
+endpoint rejects non-LFS binaries; the France 225/400 kV
+``network.xiidm`` now ships compressed).
+
+### 16.5 Verdict
+
+No ceiling regressed; the one outstanding backend-module watch item
+(the diagram patch pipeline) was retired by extraction. The feature
+breadth of 0.8.0 was absorbed through existing decomposition,
+token, and bridge patterns rather than by growing the hot files.
+
 
 

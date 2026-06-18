@@ -1,6 +1,6 @@
-# Renewable Curtailment, Load Shedding & PST Actions — Implementation Status
+# Renewable Curtailment, Load Shedding, Redispatching & PST Actions — Implementation Status
 
-This document describes the implementation of renewable curtailment, load shedding, and **Phase Shifting Transformer (PST)** actions in Co-Study4Grid. It covers the power reduction format (`set_load_p`/`set_gen_p`) introduced in [Expert_op4grid_recommender PR #74](https://github.com/marota/Expert_op4grid_recommender/pull/74), as well as PST tap actions and their integration with the superposition estimation engine.
+This document describes the implementation of renewable curtailment, load shedding, **redispatching**, and **Phase Shifting Transformer (PST)** actions in Co-Study4Grid. It covers the power reduction format (`set_load_p`/`set_gen_p`) introduced in [Expert_op4grid_recommender PR #74](https://github.com/marota/Expert_op4grid_recommender/pull/74), as well as PST tap actions and their integration with the superposition estimation engine.
 
 ## 1. Action Format Evolution
 
@@ -48,11 +48,13 @@ The recommender library now provides explicit metadata on power reduction action
 ### Configuration
 - `config.MIN_LOAD_SHEDDING` (int): Minimum number of load shedding actions to recommend.
 - `config.MIN_RENEWABLE_CURTAILMENT_ACTIONS` (int): Minimum number of curtailment actions to recommend.
+- `config.MIN_REDISPATCH` (int): Minimum number of redispatching actions to recommend.
 
 ### Action Classification
 `ActionClassifier` classifies actions as:
 - `"load_shedding"` / `"load_power_reduction"` — actions that reduce load consumption
 - `"renewable_curtailment"` / `"gen_power_reduction"` / `"open_gen"` — actions that reduce renewable generation
+- `"gen_redispatch"` — actions that raise or lower a dispatchable generator (signed `set_gen_p` delta)
 
 ### Recommendation Results
 The analysis output includes:
@@ -233,7 +235,65 @@ When `target_mw` is provided for an action already in `_dict_action`:
 - Default value: the total shedded/curtailed MW from the current simulation result
 - The action card updates in-place with the new simulation results
 
-## 7. PST (Phase Shifting Transformer) Actions
+## 7. Redispatching
+
+Redispatching is the third member of the injection-action family. Like
+curtailment it changes a generator's active-power setpoint through the
+`set_gen_p` format and keeps the unit electrically connected — but where
+curtailment only **reduces** renewable generation to a target MW,
+redispatching raises **or** lowers a *dispatchable* generator by an
+editable **signed** delta (default `±10 MW`, floored at 0).
+
+### Action Format
+
+```python
+# Redispatch — set the generator to its current output ± a signed delta
+{"set_gen_p": {"GEN_1": 110.0}}
+# Topology: gens_p = {"GEN_1": 110.0}
+```
+
+The encoded value is the new production magnitude (pypowsybl
+`target_p` convention, production-positive). A positive delta raises
+the unit, a negative one lowers it; the resulting setpoint is never
+below 0. Action IDs are prefixed `redispatch_`.
+
+### Configuration
+
+- `config.MIN_REDISPATCH` (int) — minimum number of redispatching
+  actions to recommend (alongside `MIN_LOAD_SHEDDING` /
+  `MIN_RENEWABLE_CURTAILMENT_ACTIONS`).
+- `config.REDISPATCH_DEFAULT_DELTA_MW` — the default signed delta
+  (`±10 MW`) used when the operator hasn't entered one.
+
+### Setpoint computation
+
+`compute_redispatch_setpoint(gen_name, delta_mw, obs_n1, default_delta_mw=10.0)`
+(`services/simulation_helpers.py`) returns `max(0, current_mw + delta)`,
+working in production-positive magnitude. Unlike
+`compute_reduction_setpoint` (which *subtracts* a reduction from the
+current output), it *adds* the signed delta. It falls back to the
+default delta when no delta is supplied or the generator cannot be
+located on the observation.
+
+### Redispatch Details
+
+`compute_redispatch_details` (`services/analysis/action_enrichment.py`)
+attaches per-generator details to `redispatch_`-prefixed actions:
+`{gen_name, voltage_level_id, delta_mw, target_mw, direction, ...}`,
+where `delta_mw` is the signed change (`> 0` = raise, `< 0` = lower),
+`target_mw` the resulting production magnitude, and `direction` either
+`"up"` or `"down"`. The delta is computed against the encoded
+`set_gen_p` target (not the post-load-flow output) so slack
+redistribution can't mislead the operator about the intended increment.
+
+### Frontend
+
+Redispatching gets its own `'redispatch'` filter token, an
+`ActionTypeIcon` up/down-arrow glyph, and an editable **signed**-delta
+MW input + Re-simulate control (cloned from the curtailment editor but
+allowing negative values).
+
+## 8. PST (Phase Shifting Transformer) Actions
 
 PST actions change the tap position of a phase-shifting transformer to redirect power flows and relieve overloads. Unlike topology actions (switching, coupling) or power reduction actions (curtailment, load shedding), PST actions modify a continuous parameter.
 
@@ -300,7 +360,7 @@ When a user manually simulates `pst_tap_<name>_inc<N>`, the backend:
 3. Computes `new_tap = current_tap + N` (clamped to valid range)
 4. Creates topology: `{"pst_tap": {"<name>": new_tap}}`
 
-## 8. PST Actions in Superposition Estimation
+## 9. PST Actions in Superposition Estimation
 
 PST tap changes require special handling in the superposition theorem because they don't disconnect/reconnect elements. The standard no-op detection (comparing line status arrays) fails for PSTs.
 
@@ -343,7 +403,7 @@ When a PST tap is re-simulated at a different position:
 2. All combined pairs containing this PST action are re-estimated via `refreshCombinedEstimations()`
 3. The superposition formula uses the updated observation for the new betas computation
 
-## 9. Monitoring Consistency (Estimation vs Simulation)
+## 10. Monitoring Consistency (Estimation vs Simulation)
 
 The superposition estimation (`compute_superposition`) and the full simulation (`simulate_manual_action`) must use the **same set of monitored lines** for `max_rho` computation. Inconsistency leads to the estimation and simulation reporting different worst-case lines.
 
@@ -402,7 +462,7 @@ The superposition formula `rho_combined = |(1-β₁-β₂)·ρ_N1 + β₁·ρ_ac
 
 Estimation picks CANTEY761 as worst; simulation picks .BIESL61PRAGN. Both are correct within the linear approximation error band.
 
-## 10. Testing
+## 11. Testing
 
 ### Backend (`expert_backend/tests/`)
 

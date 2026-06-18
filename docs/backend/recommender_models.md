@@ -32,7 +32,7 @@ Three models are registered at startup (`expert_backend/recommenders/__init__.py
 
 | name             | label                              | requires_overflow_graph | params_spec                                                              |
 |------------------|------------------------------------|-------------------------|--------------------------------------------------------------------------|
-| `expert`         | Expert system                      | `True`                  | Every legacy knob (`n_prioritized_actions`, `min_line_*`, `ignore_reconnections`, ...). |
+| `expert`         | Expert system                      | `True`                  | Every legacy knob (`n_prioritized_actions`, `min_line_*`, the per-action-type minima `min_load_shedding` / `min_renewable_curtailment_actions` / `min_redispatch` / `min_pst`, `ignore_reconnections`, ...). |
 | `random`         | Random                             | `False`                 | Just `n_prioritized_actions`.                                            |
 | `random_overflow`| Random (post overflow analysis)    | `True`                  | Just `n_prioritized_actions`.                                            |
 
@@ -170,6 +170,21 @@ class ConfigRequest(BaseModel):
 
 Defaults match the legacy expert behaviour, so existing clients keep
 working.
+
+### Restricting the proposed action families (`allowed_action_types`)
+
+`POST /api/config` also accepts an `allowed_action_types` list, driven
+by the **"Restrict to action types"** control in Settings →
+Recommender. It is plumbed through to `config.ALLOWED_ACTION_TYPES`:
+
+- **Empty / unset** — the recommender proposes every action family
+  (the previous, unrestricted behaviour).
+- **A non-empty subset** (any of `reco` / `close` / `open` / `disco` /
+  `pst` / `ls` / `rc` / `redispatch`) — the recommender proposes
+  **only** actions of those families.
+
+This narrows the candidate pool the active model sees, independently of
+the per-family `min_*` minima above.
 
 ### `GET /api/models`
 

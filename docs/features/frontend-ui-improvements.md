@@ -7,6 +7,17 @@
 > hand-maintained `standalone_interface.html` has been decommissioned.  
 > **Date**: 2026-04-01
 
+> **Note (historical)**: this is an early UI-improvements plan. Several
+> of these items have since been **superseded or extended** by later
+> work — notably the shared **Action Filter rings** strip (severity +
+> action-type + Max-loading, replacing the per-surface category toggles
+> here), the **collapsible readability sidebar**, the tiered **Notices
+> pill + DiagramLegend**, and **light / dark theme** (all 0.8.0). For
+> current behavior see [`docs/README.md`](../README.md), the relevant
+> feature docs (e.g. [`dark-mode.md`](dark-mode.md)) and the
+> [`CHANGELOG`](../../CHANGELOG.md). The content below is preserved as
+> the original plan of record.
+
 ---
 
 ## Table of Contents
