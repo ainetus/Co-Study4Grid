@@ -27,8 +27,8 @@ jobs:
             pip install --no-deps --no-cache-dir "expert_op4grid_recommender>=0.2.4"
       - run:
           name: Run Pytest
-          # Coverage is REPORT-ONLY (no fail-under floor yet — see
-          # docs/architecture/code-quality-analysis.md §18).
+          # Coverage GATES at fail_under=72 (pyproject [tool.coverage.report]).
+          # See docs/architecture/code-quality-analysis.md §20.
           command: pytest --cov=expert_backend --cov-report=xml --cov-report=term-missing
       - store_artifacts:
           path: coverage.xml

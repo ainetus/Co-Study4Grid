@@ -127,10 +127,12 @@ disallow_untyped_defs = false
 module = "expert_backend.recommenders._service_integration"
 disable_error_code = ["method-assign"]
 
-# --- coverage (REPORT-ONLY — no fail-under floor yet) -----------------------
-# Backend coverage is reported as an artifact, not gated. A `--cov-fail-under`
-# ratchet should be set from the first green CI run (the suite cannot be
-# measured offline — several tests need the real recommender). See §18.
+# --- coverage (GATED) -------------------------------------------------------
+# Floor read off the first green CI run (backend was 78% on the no-graphviz
+# job, 849 passed). `fail_under` sits 6 points below at 72 so a routine PR
+# passes but coverage can't erode; ratchet up as it climbs. Enforced wherever
+# `pytest --cov` runs (CI test jobs); can't be measured offline (the real
+# recommender is needed). See §20.
 [tool.coverage.run]
 source = ["expert_backend"]
 omit = [
@@ -138,5 +140,8 @@ omit = [
     "expert_backend/test_backend.py",
     "expert_backend/install_graphviz.py",
 ]
+
+[tool.coverage.report]
+fail_under = 72
 
 

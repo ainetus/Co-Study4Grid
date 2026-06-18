@@ -1257,5 +1257,20 @@ backend functions to annotate (mypy will verify), the 46
 `Record<string,unknown>` to model, target **#4** (decompose the
 ceiling-riders), and the backend coverage floor once CI yields a number.
 
+---
+
+## 20. Delta — 2026-06-18 (backend coverage floor)
+
+The first green CI run after §19 produced the number §18.4 was waiting
+for: the backend no-graphviz job reported **78%** (`TOTAL 4771 1063
+78%`, 849 passed). So the backend coverage floor is now **set and
+gating** — `pyproject.toml [tool.coverage.report] fail_under = 72` (6
+points below the baseline, same margin philosophy as the frontend
+floor), enforced wherever `pytest --cov` runs (both CI pipelines).
+
+Both coverage halves now gate (frontend §19, backend here); the only
+remaining "advisory → gating" promotions from the §18 staging are
+complete. Ratchet the floors up as coverage climbs.
+
 
 

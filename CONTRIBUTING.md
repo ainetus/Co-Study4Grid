@@ -116,12 +116,13 @@ is how we protect the hard-won reductions documented in
 **mypy gates the build.** The shared-state base
 ([`expert_backend/services/_recommender_state.py`](./expert_backend/services/_recommender_state.py))
 makes the mixin composition type-check cleanly, so mypy sits at 0 and any
-new type error fails CI. **Frontend test coverage gates** too — a floor
-in `frontend/vite.config.ts` (`coverage.thresholds`) that
-`npm run test:coverage` enforces. **Backend coverage** stays report-only
-(`pytest --cov`) until a floor is read off a green CI run — it can't be
-measured offline (several tests need the real recommender). All are wired
-into the GitHub Actions + CircleCI pipelines; see §19 of the analysis doc.
+new type error fails CI. **Test coverage gates** on both ends: frontend
+via `frontend/vite.config.ts` (`coverage.thresholds`, enforced by
+`npm run test:coverage`) and backend via `pyproject.toml`
+(`[tool.coverage.report] fail_under = 72`, enforced by `pytest --cov`).
+Both floors sit a few points below the measured baseline — raise them as
+coverage climbs, don't lower them. All are wired into the GitHub Actions +
+CircleCI pipelines; see §§19–20 of the analysis doc.
 
 ## Commit & PR conventions
 

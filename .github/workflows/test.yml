@@ -35,8 +35,8 @@ jobs:
           # co_study4grid's own dependencies).
           pip install --no-deps --no-cache-dir "expert_op4grid_recommender>=0.2.4"
       - name: Run Pytest (excluding graphviz-dependent tests)
-        # Coverage is REPORT-ONLY (no --cov-fail-under floor yet — see
-        # docs/architecture/code-quality-analysis.md §18).
+        # Coverage GATES at fail_under=72 (pyproject [tool.coverage.report]).
+        # See docs/architecture/code-quality-analysis.md §20.
         run: >-
           pytest --ignore=expert_backend/tests/test_overflow_html_dim_logic.py
           --cov=expert_backend --cov-report=xml --cov-report=term-missing
