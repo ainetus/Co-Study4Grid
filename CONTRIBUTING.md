@@ -90,6 +90,8 @@ The gate enforces (full table in
 - Backend modules stay under **1150 lines** (the "god-object" ceiling);
   functions under **240**. The scan covers all of `expert_backend/`
   except the test suite and the setup-time / ad-hoc scripts.
+- Backend functions also stay under **cyclomatic complexity 38** and
+  **nesting depth 8** (computed from the AST — no external tool).
 - Frontend components stay under **1450 lines** (`utils/**` under
   **1000**); `App.tsx`, the orchestration hub, has a bounded **2100**
   ceiling rather than a blanket exemption.
@@ -110,6 +112,12 @@ The gate enforces (full table in
 Lower the thresholds — don't raise them. Tightening the gate
 is how we protect the hard-won reductions documented in
 [`docs/architecture/code-quality-analysis.md`](./docs/architecture/code-quality-analysis.md).
+
+Two checks run in CI but are **advisory** (they do not gate the build):
+**mypy** (non-blocking — the mixin composition makes a hard gate noisy)
+and **test coverage** (`pytest --cov` + `npm run test:coverage`,
+report-only until a baseline floor is set). Both are wired into the
+GitHub Actions + CircleCI pipelines; see §18 of the analysis doc.
 
 ## Commit & PR conventions
 

@@ -1145,5 +1145,67 @@ headroom: `simulation_mixin.py` (1100 / 1150) and
 edit to either should come with an extraction. Reporter unit tests
 grew from 7 to **13** (new detector + scoping coverage).
 
+---
+
+## 18. Delta — 2026-06-18 (new measurement dimensions)
+
+Adds axes beyond line counts. Two are dependency-free and **gated**;
+two are introduced as **non-blocking foundations** because a hard gate
+today would be either noisy (mypy) or set blind (coverage).
+
+### 18.1 Cyclomatic complexity + nesting depth — gated, AST-native
+
+Per-function McCabe complexity and max block-nesting are computed from
+the AST the reporter already parses — **no external dependency** (the
+`radon` quality-extra is now optional, kept only for ad-hoc `radon cc`).
+Both are reported (top-5 each) and gated:
+
+| Metric | Ceiling | Current non-exempt max | Exemption |
+|--------|--------:|-----------------------:|-----------|
+| Cyclomatic complexity | **38** | 35 (`recommender_service.update_config`) | `overflow_geo_transform.transform_html` (49 — lxml transform, already size-exempt) |
+| Nesting depth | **8** | 7 (`analysis_mixin._narrow_context_to_selected_overloads`) | `sanitize.sanitize_for_json` (9 — recursion shape) |
+
+Ratchets: lower over time; new offenders are not welcome.
+
+### 18.2 Logical (code) lines — reported
+
+Non-blank, non-comment counts now sit alongside raw LoC — backend
+**8,919 / 11,596**, frontend **18,619 / 25,238**. The gated ceilings
+stay on raw LoC; code-lines are context (a dense 600-line module reads
+differently from one that is half blanks and docstrings). The counter
+is a deliberately simple heuristic, not a tokenizer.
+
+### 18.3 mypy — advisory (non-blocking)
+
+`pyproject [tool.mypy]` (`ignore_missing_imports`, scoped to
+`expert_backend` minus `tests/` + the setup scripts) plus a
+**non-blocking** step in both CI pipelines. Baseline **~69 errors**,
+dominated by `"<Mixin>" has no attribute "_…"` — mypy cannot model the
+deliberate mixin composition (`DiagramMixin` / `AnalysisMixin` /
+`SimulationMixin` all operate on the composed `RecommenderService`
+`self`; the backend guide explicitly says "treat the mixins as one
+class"). A hard gate would be noise. The path to gating is typing the
+mixin surface via `Protocol`s; until then mypy is **visibility**, not a
+gate.
+
+### 18.4 Coverage — report-only
+
+`pytest-cov` (backend, in the `test` extra) and `@vitest/coverage-v8`
+(frontend dev-dep) are wired into both pipelines as **non-blocking**
+reporting + artifacts (`npm run test:coverage` / `pytest --cov`
+locally). There is **no `--cov-fail-under` floor yet**: the backend
+suite cannot be measured offline (several tests need the real
+`expert_op4grid_recommender`), so a floor must be read off the first
+green CI run and then ratcheted — setting one blind would break CI on
+day one.
+
+### 18.5 Verdict
+
+The gate now measures four axes **dependency-free** — size, smells,
+complexity/nesting, weak-typing — each gated or ratcheted. mypy and
+coverage are staged foundations, deliberately non-blocking until they
+can gate without noise (mypy: type the mixin surface) or guesswork
+(coverage: a measured baseline). Reporter unit tests **13 → 16**.
+
 
 

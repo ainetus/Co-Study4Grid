@@ -17,5 +17,14 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: true,
+    // Report-only (no thresholds gate yet — see
+    // docs/architecture/code-quality-analysis.md §18). Run with
+    // `npm run test:coverage`.
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary', 'json', 'html'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/**/*.d.ts'],
+    },
   },
 })

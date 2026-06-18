@@ -42,13 +42,18 @@ dependencies = [
 [project.optional-dependencies]
 test = [
     "pytest",
+    "pytest-cov",
     "httpx",
     "lxml",
     "pandas",
 ]
 quality = [
     "ruff>=0.6",
+    # radon is no longer required by the gate (cyclomatic complexity +
+    # nesting are computed from the AST in scripts/code_quality_report.py);
+    # kept for ad-hoc `radon cc` exploration.
     "radon>=6.0",
+    "mypy>=1.8",
 ]
 
 [project.scripts]
@@ -97,5 +102,33 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "expert_backend/tests/*" = ["F811"]  # pytest fixture redefinitions
 "scripts/*" = []
+
+# --- mypy (ADVISORY — non-blocking) -----------------------------------------
+# mypy runs in CI but does NOT gate the build (continue-on-error / `|| true`).
+# The mixin composition — DiagramMixin / AnalysisMixin / SimulationMixin all
+# operate on the composed RecommenderService `self` — makes per-class checking
+# report many false `attr-defined` errors, so a hard gate would be noise.
+# Baseline ~83 errors; the path to a gate is typing the mixin surface via
+# Protocols. See docs/architecture/code-quality-analysis.md §18.
+[tool.mypy]
+files = ["expert_backend"]
+exclude = '(^|/)(tests/|test_backend\.py|install_graphviz\.py)'
+ignore_missing_imports = true
+warn_unused_configs = true
+# Lenient: advisory visibility, not strictness. Tighten incrementally.
+check_untyped_defs = false
+disallow_untyped_defs = false
+
+# --- coverage (REPORT-ONLY — no fail-under floor yet) -----------------------
+# Backend coverage is reported as an artifact, not gated. A `--cov-fail-under`
+# ratchet should be set from the first green CI run (the suite cannot be
+# measured offline — several tests need the real recommender). See §18.
+[tool.coverage.run]
+source = ["expert_backend"]
+omit = [
+    "expert_backend/tests/*",
+    "expert_backend/test_backend.py",
+    "expert_backend/install_graphviz.py",
+]
 
 

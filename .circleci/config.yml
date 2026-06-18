@@ -27,7 +27,12 @@ jobs:
             pip install --no-deps --no-cache-dir "expert_op4grid_recommender>=0.2.4"
       - run:
           name: Run Pytest
-          command: pytest
+          # Coverage is REPORT-ONLY (no fail-under floor yet — see
+          # docs/architecture/code-quality-analysis.md §18).
+          command: pytest --cov=expert_backend --cov-report=xml --cov-report=term-missing
+      - store_artifacts:
+          path: coverage.xml
+          destination: backend-coverage
 
   test-frontend:
     docker:
@@ -44,6 +49,14 @@ jobs:
           command: |
             cd frontend
             npm run test
+      - run:
+          name: Frontend coverage (report-only — non-blocking)
+          command: |
+            cd frontend
+            npm run test:coverage || true
+      - store_artifacts:
+          path: frontend/coverage
+          destination: frontend-coverage
       - run:
           name: Run Linter
           command: |
@@ -70,6 +83,9 @@ jobs:
       - run:
           name: Reporter unit tests
           command: pytest scripts/test_code_quality_report.py -q
+      - run:
+          name: mypy (advisory — non-blocking)
+          command: mypy || true
       - run:
           name: Generate report artifacts
           command: |

@@ -20,6 +20,8 @@ Thresholds (see also CONTRIBUTING.md):
 | Bare `except Exception: pass` patterns        |   0   |
 | Backend module size (lines)                  | 1150  |
 | Backend function size (lines)                |  240  |
+| Backend function cyclomatic complexity       |   38  |
+| Backend function nesting depth               |    8  |
 | `noqa` / `type: ignore` markers (ratchet)    |   3   |
 | Frontend component size (lines)              | 1450  |
 | `frontend/src/utils/**` module size (lines)  | 1000  |
@@ -42,8 +44,10 @@ still trips the gate. `tokens.css` / `tokens.ts` are the
 token-source-of-truth files, exempt from the hex-literal count.
 
 Two kinds of allowance, kept deliberately small:
-  * Function-size exemptions — the iframe-overlay template f-string
-    and the lxml geo-layout transform. New offenders are not welcome.
+  * Per-function exemptions — the iframe-overlay template f-string and
+    the lxml geo-layout transform (size + complexity), and
+    `sanitize_for_json` (nesting — its depth is the recursion shape).
+    New offenders are not welcome.
   * Ratchets — `as unknown as`, `Record<string, unknown>`, and backend
     lint suppressions exist today in non-trivial, often-legitimate
     counts. The gate FREEZES them at the current level (lowering is
@@ -82,6 +86,21 @@ BACKEND_FUNCTION_EXEMPTIONS = {
 }
 # Ratchets — frozen at the current count (see module docstring).
 BACKEND_LINT_SUPPRESSION_MAX = 3  # `noqa` / `type: ignore` markers
+
+# Cyclomatic complexity (McCabe) + max nesting depth per backend
+# function, computed from the AST — no external dependency. Ratchets
+# toward the current maxima; lower over time, don't raise.
+BACKEND_FUNCTION_CC_MAX = 38       # current non-exempt max 35 (update_config)
+BACKEND_FUNCTION_NESTING_MAX = 8   # current non-exempt max 7
+BACKEND_CC_EXEMPTIONS = {
+    # lxml geo-layout transform — a long flat dispatch, already
+    # function-size-exempt. Decompose to retire.
+    "expert_backend/services/analysis/overflow_geo_transform.py::transform_html",
+}
+BACKEND_NESTING_EXEMPTIONS = {
+    # recursive NumPy→native coercion; the depth is its recursion shape.
+    "expert_backend/services/sanitize.py::sanitize_for_json",
+}
 # Ceiling on hex color literals in frontend source. The
 # token-source-of-truth files (`frontend/src/styles/tokens.css` and
 # `frontend/src/styles/tokens.ts`) are exempt — they ARE the named
@@ -133,12 +152,23 @@ def main() -> int:
             )
     for fn in be.all_functions:
         key = f"{fn.file}::{fn.name}"
-        if key in BACKEND_FUNCTION_EXEMPTIONS:
-            continue
-        if fn.lines > BACKEND_FUNCTION_MAX:
+        if fn.lines > BACKEND_FUNCTION_MAX and key not in BACKEND_FUNCTION_EXEMPTIONS:
             errors.append(
-                f"backend: `{fn.file}::{fn.name}` is {fn.lines} lines "
+                f"backend: `{key}` is {fn.lines} lines "
                 f"(ceiling {BACKEND_FUNCTION_MAX}) — extract helpers"
+            )
+        if fn.complexity > BACKEND_FUNCTION_CC_MAX and key not in BACKEND_CC_EXEMPTIONS:
+            errors.append(
+                f"backend: `{key}` has cyclomatic complexity {fn.complexity} "
+                f"(ceiling {BACKEND_FUNCTION_CC_MAX}) — split branches / extract helpers"
+            )
+        if (
+            fn.max_nesting > BACKEND_FUNCTION_NESTING_MAX
+            and key not in BACKEND_NESTING_EXEMPTIONS
+        ):
+            errors.append(
+                f"backend: `{key}` nesting depth {fn.max_nesting} "
+                f"(ceiling {BACKEND_FUNCTION_NESTING_MAX}) — use guard clauses / extract"
             )
 
     fe = report.frontend

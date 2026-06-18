@@ -118,6 +118,83 @@ def count_lines(path: Path) -> int:
         return 0
 
 
+def count_code_lines(
+    path: Path,
+    line_comments: tuple[str, ...],
+    block: tuple[str, str] | None = None,
+) -> int:
+    """Logical (code) lines: non-blank, non-comment physical lines.
+
+    A deliberately simple heuristic shared by backend (`#`) and frontend
+    (`//` + `/* … */`). It does not strip trailing inline comments or
+    code that shares a line with a closing block comment, so it slightly
+    over-counts — fine for an *informational* metric (the gated ceilings
+    stay on raw `count_lines`). Reported alongside raw LoC so a dense
+    600-line module reads differently from a 600-line file that is half
+    blanks and docstrings.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return 0
+    code = 0
+    in_block = False
+    bstart, bend = block if block else (None, None)
+    for raw in text.splitlines():
+        s = raw.strip()
+        if not s:
+            continue
+        if in_block:
+            if bend and bend in s:
+                in_block = False
+            continue
+        if bstart and s.startswith(bstart):
+            if bend and bend not in s:
+                in_block = True
+            continue
+        if any(s.startswith(c) for c in line_comments):
+            continue
+        code += 1
+    return code
+
+
+# Cyclomatic complexity (McCabe) + max nesting depth, computed from the
+# AST we already parse — no external dependency (radon et al. not
+# required). A function's complexity is 1 + each decision point; nesting
+# is the deepest stack of compound statements.
+_CC_DECISION = (ast.If, ast.For, ast.AsyncFor, ast.While, ast.ExceptHandler,
+                ast.IfExp, ast.Assert)
+_NEST_NODES = (ast.If, ast.For, ast.AsyncFor, ast.While, ast.With,
+               ast.AsyncWith, ast.Try)
+
+
+def _cyclomatic_complexity(fn: ast.AST) -> int:
+    cc = 1
+    for node in ast.walk(fn):
+        if isinstance(node, _CC_DECISION):
+            cc += 1
+        elif isinstance(node, ast.BoolOp):
+            cc += len(node.values) - 1
+        elif isinstance(node, ast.comprehension):
+            cc += 1 + len(node.ifs)
+    return cc
+
+
+def _max_nesting(fn: ast.AST) -> int:
+    best = 0
+
+    def walk(node: ast.AST, depth: int) -> None:
+        nonlocal best
+        for child in ast.iter_child_nodes(node):
+            d = depth + 1 if isinstance(child, _NEST_NODES) else depth
+            if d > best:
+                best = d
+            walk(child, d)
+
+    walk(fn, 0)
+    return best
+
+
 @dataclass
 class FileMetric:
     path: str
@@ -129,6 +206,8 @@ class FunctionMetric:
     file: str
     name: str
     lines: int
+    complexity: int = 1
+    max_nesting: int = 0
 
 
 @dataclass
@@ -136,8 +215,11 @@ class BackendReport:
     modules: list[FileMetric] = field(default_factory=list)
     largest_module: FileMetric | None = None
     longest_functions: list[FunctionMetric] = field(default_factory=list)
+    most_complex: list[FunctionMetric] = field(default_factory=list)
+    deepest_nested: list[FunctionMetric] = field(default_factory=list)
     all_functions: list[FunctionMetric] = field(default_factory=list)
     total_lines: int = 0
+    code_lines: int = 0
     print_calls: int = 0
     traceback_prints: int = 0
     silent_excepts: int = 0
@@ -151,6 +233,7 @@ class FrontendReport:
     components: list[FileMetric] = field(default_factory=list)
     largest_component: FileMetric | None = None
     total_lines: int = 0
+    code_lines: int = 0
     any_types: int = 0
     ts_ignores: int = 0
     weak_casts: int = 0
@@ -249,6 +332,8 @@ def extract_all_functions(path: Path) -> list[FunctionMetric]:
                     file=str(path.relative_to(REPO_ROOT)),
                     name=node.name,
                     lines=length,
+                    complexity=_cyclomatic_complexity(node),
+                    max_nesting=_max_nesting(node),
                 )
             )
     return out
@@ -267,6 +352,7 @@ def scan_backend() -> BackendReport:
         lines = count_lines(path)
         rep.modules.append(FileMetric(path=rel, lines=lines))
         rep.total_lines += lines
+        rep.code_lines += count_code_lines(path, ("#",))
         rep.source_files += 1
 
         try:
@@ -290,6 +376,12 @@ def scan_backend() -> BackendReport:
         rep.largest_module = rep.modules[0]
     rep.all_functions.sort(key=lambda m: m.lines, reverse=True)
     rep.longest_functions = rep.all_functions[:5]
+    rep.most_complex = sorted(
+        rep.all_functions, key=lambda m: m.complexity, reverse=True
+    )[:5]
+    rep.deepest_nested = sorted(
+        rep.all_functions, key=lambda m: m.max_nesting, reverse=True
+    )[:5]
 
     if BACKEND_TEST_ROOT.is_dir():
         rep.test_files = sum(
@@ -305,6 +397,7 @@ def scan_frontend() -> FrontendReport:
         lines = count_lines(path)
         rep.components.append(FileMetric(path=rel, lines=lines))
         rep.total_lines += lines
+        rep.code_lines += count_code_lines(path, ("//",), block=("/*", "*/"))
         rep.source_files += 1
 
         try:
@@ -354,7 +447,8 @@ def to_markdown(report: QualityReport) -> str:
         "## Backend (`expert_backend/`)",
         "",
         f"- Source files (non-test): **{be.source_files}**",
-        f"- Total lines: **{be.total_lines}**",
+        f"- Total lines: **{be.total_lines}** (code lines, excl. blank/comment: "
+        f"**{be.code_lines}**)",
     ]
     if be.largest_module:
         lines.append(
@@ -379,10 +473,37 @@ def to_markdown(report: QualityReport) -> str:
     lines.extend(
         [
             "",
+            "### Most complex functions (cyclomatic)",
+            "",
+            "| File | Function | Complexity | Nesting |",
+            "|------|----------|-----------:|--------:|",
+        ]
+    )
+    for fn in be.most_complex:
+        lines.append(
+            f"| `{fn.file}` | `{fn.name}` | {fn.complexity} | {fn.max_nesting} |"
+        )
+    lines.extend(
+        [
+            "",
+            "### Deepest nesting",
+            "",
+            "| File | Function | Nesting | Complexity |",
+            "|------|----------|--------:|-----------:|",
+        ]
+    )
+    for fn in be.deepest_nested:
+        lines.append(
+            f"| `{fn.file}` | `{fn.name}` | {fn.max_nesting} | {fn.complexity} |"
+        )
+    lines.extend(
+        [
+            "",
             "## Frontend (`frontend/src/`)",
             "",
             f"- Source files (non-test): **{fe.source_files}**",
-            f"- Total lines: **{fe.total_lines}**",
+            f"- Total lines: **{fe.total_lines}** (code lines, excl. blank/comment: "
+            f"**{fe.code_lines}**)",
         ]
     )
     if fe.largest_component:

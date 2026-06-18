@@ -32,6 +32,13 @@ jobs:
       - name: Run reporter unit tests
         run: pytest scripts/test_code_quality_report.py -q
 
+      - name: Run mypy (advisory — non-blocking)
+        # Type errors are surfaced but do NOT gate the build: the mixin
+        # composition makes per-class checking noisy (see pyproject [tool.mypy]
+        # + docs/architecture/code-quality-analysis.md §18).
+        continue-on-error: true
+        run: mypy
+
       - name: Generate report artifacts
         run: |
           python scripts/code_quality_report.py \

@@ -24,10 +24,21 @@ from code_quality_report import (  # noqa: E402
     BACKEND_SUPPRESSION_RE,
     TS_IGNORE_RE,
     _count_python_smells,
+    _cyclomatic_complexity,
+    _max_nesting,
     build_report,
+    count_code_lines,
     iter_backend_modules,
     iter_frontend_sources,
 )
+
+
+def _first_fn(src: str) -> ast.AST:
+    tree = ast.parse(src)
+    return next(
+        n for n in ast.walk(tree)
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+    )
 
 
 def _smells(src: str) -> tuple[int, int, int]:
@@ -97,6 +108,55 @@ def test_build_report_against_repo_root():
     assert report.backend.lint_suppressions <= 3
     assert report.frontend.weak_casts <= 19
     assert report.frontend.record_str_unknown <= 46
+    # Complexity / nesting / code-line metrics are populated and sane.
+    assert report.backend.most_complex and report.backend.deepest_nested
+    assert 0 < report.backend.code_lines < report.backend.total_lines
+    assert 0 < report.frontend.code_lines < report.frontend.total_lines
+    # Per-function complexity / nesting respect the gate ceilings
+    # (transform_html / sanitize_for_json are the documented exemptions).
+    cc_exempt = {
+        "expert_backend/services/analysis/overflow_geo_transform.py::transform_html"
+    }
+    nest_exempt = {"expert_backend/services/sanitize.py::sanitize_for_json"}
+    for fn in report.backend.all_functions:
+        key = f"{fn.file}::{fn.name}"
+        if key not in cc_exempt:
+            assert fn.complexity <= 38, key
+        if key not in nest_exempt:
+            assert fn.max_nesting <= 8, key
+
+
+def test_cyclomatic_complexity_counts_decision_points():
+    src = (
+        "def f(x):\n"
+        "    if x and x > 0:\n"           # If +1, BoolOp(and) +1
+        "        return 1\n"
+        "    for i in range(x):\n"        # For +1
+        "        pass\n"
+        "    return [i for i in range(x) if i]\n"  # comp +1, comp-if +1
+    )
+    assert _cyclomatic_complexity(_first_fn(src)) == 6
+
+
+def test_max_nesting_tracks_deepest_block():
+    src = (
+        "def f(x):\n"
+        "    if x:\n"            # 1
+        "        for i in x:\n"  # 2
+        "            while i:\n"  # 3
+        "                pass\n"
+        "    return x\n"
+    )
+    assert _max_nesting(_first_fn(src)) == 3
+
+
+def test_count_code_lines_excludes_blanks_and_comments(tmp_path):
+    py = tmp_path / "m.py"
+    py.write_text("# header\n\nx = 1\n\n# c\ny = 2\n")
+    assert count_code_lines(py, ("#",)) == 2
+    ts = tmp_path / "m.ts"
+    ts.write_text("// c\nconst a = 1;\n/* block\n still */\nconst b = 2;\n")
+    assert count_code_lines(ts, ("//",), block=("/*", "*/")) == 2
 
 
 def test_any_type_re_catches_as_any_assertion_casts():
