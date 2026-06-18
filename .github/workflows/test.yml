@@ -63,12 +63,10 @@ jobs:
         run: |
           cd frontend
           npm install
-      - name: Run Vitest
-        run: |
-          cd frontend
-          npm run test
-      - name: Run Vitest coverage (report-only — non-blocking)
-        continue-on-error: true
+      - name: Run Vitest + coverage gate
+        # Runs the full suite WITH coverage and enforces the floor in
+        # vite.config.ts (coverage.thresholds). Replaces the plain run —
+        # same tests, plus the gate. See §19.
         run: |
           cd frontend
           npm run test:coverage

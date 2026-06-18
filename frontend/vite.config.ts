@@ -17,14 +17,21 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: true,
-    // Report-only (no thresholds gate yet — see
-    // docs/architecture/code-quality-analysis.md §18). Run with
-    // `npm run test:coverage`.
+    // Coverage floor (ratchet). Thresholds sit a few points below the
+    // measured baseline (stmt 73.7 / branch 70 / func 73.8 / line 76.3) so
+    // a routine PR passes but coverage can't silently erode. Raise as
+    // coverage climbs. Run with `npm run test:coverage`. See §19.
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'json', 'html'],
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/**/*.d.ts'],
+      thresholds: {
+        statements: 70,
+        branches: 65,
+        functions: 70,
+        lines: 73,
+      },
     },
   },
 })

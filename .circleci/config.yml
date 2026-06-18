@@ -45,15 +45,10 @@ jobs:
             cd frontend
             npm install
       - run:
-          name: Run Frontend Tests
+          name: Run Frontend Tests + coverage gate
           command: |
             cd frontend
-            npm run test
-      - run:
-          name: Frontend coverage (report-only — non-blocking)
-          command: |
-            cd frontend
-            npm run test:coverage || true
+            npm run test:coverage
       - store_artifacts:
           path: frontend/coverage
           destination: frontend-coverage
