@@ -17,6 +17,13 @@ Overflow_Graph/
 # Code-quality reports produced by scripts/code_quality_report.py
 reports/
 
+# Test-coverage artifacts (pytest-cov / vitest v8 — report-only, see
+# docs/architecture/code-quality-analysis.md §18)
+coverage.xml
+.coverage
+.coverage.*
+htmlcov/
+
 # Environment overrides (template is tracked as .env.example)
 .env
 
