@@ -62,6 +62,8 @@ from expert_backend.services.analysis.mw_start_scoring import (
     is_na_action_type,
 )
 from expert_backend.services.analysis.pdf_watcher import find_latest_pdf
+from typing import TYPE_CHECKING
+
 from expert_backend.services.sanitize import sanitize_for_json
 from expert_backend.services.simulation_helpers import (
     compute_combined_rho,
@@ -86,7 +88,15 @@ def _upstream_step1_supports_prebuilt_obs() -> bool:
         return False
 
 
-class AnalysisMixin:
+if TYPE_CHECKING:
+    from expert_backend.services._recommender_state import RecommenderState
+
+    _Base = RecommenderState
+else:
+    _Base = object
+
+
+class AnalysisMixin(_Base):
     """Mixin providing contingency analysis and action enrichment methods."""
 
     # ------------------------------------------------------------------
@@ -554,9 +564,9 @@ class AnalysisMixin:
     def run_analysis_step2(
         self,
         selected_overloads: list[str],
-        all_overloads: list[str] = None,
+        all_overloads: list[str] | None = None,
         monitor_deselected: bool = False,
-        additional_lines_to_cut: list[str] = None,
+        additional_lines_to_cut: list[str] | None = None,
     ):
         """Step 2 — PDF emission + action discovery, streaming NDJSON events.
 

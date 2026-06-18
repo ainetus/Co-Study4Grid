@@ -59,6 +59,8 @@ from expert_backend.services.diagram.sld_render import (
     extract_sld_svg_and_metadata,
     extract_vl_switch_states,
 )
+from typing import TYPE_CHECKING
+
 from expert_backend.services.sanitize import sanitize_for_json
 from expert_backend.services.simulation_helpers import canonicalize_action_id
 
@@ -79,7 +81,15 @@ class ActionResultUnavailableError(ValueError):
     """
 
 
-class DiagramMixin:
+if TYPE_CHECKING:
+    from expert_backend.services._recommender_state import RecommenderState
+
+    _Base = RecommenderState
+else:
+    _Base = object
+
+
+class DiagramMixin(_Base):
     """Mixin providing diagram generation and flow analysis methods."""
 
     # ------------------------------------------------------------------

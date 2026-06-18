@@ -84,8 +84,8 @@ jobs:
           name: Reporter unit tests
           command: pytest scripts/test_code_quality_report.py -q
       - run:
-          name: mypy (advisory — non-blocking)
-          command: mypy || true
+          name: mypy (gate)
+          command: mypy
       - run:
           name: Generate report artifacts
           command: |

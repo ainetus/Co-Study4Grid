@@ -53,7 +53,9 @@ quality = [
     # nesting are computed from the AST in scripts/code_quality_report.py);
     # kept for ad-hoc `radon cc` exploration.
     "radon>=6.0",
-    "mypy>=1.8",
+    # Pinned to a minor for CI reproducibility now that mypy GATES the build
+    # (a newer minor could surface new diagnostics and break an unrelated PR).
+    "mypy==1.19.*",
 ]
 
 [project.scripts]
@@ -103,13 +105,12 @@ ignore = [
 "expert_backend/tests/*" = ["F811"]  # pytest fixture redefinitions
 "scripts/*" = []
 
-# --- mypy (ADVISORY — non-blocking) -----------------------------------------
-# mypy runs in CI but does NOT gate the build (continue-on-error / `|| true`).
-# The mixin composition — DiagramMixin / AnalysisMixin / SimulationMixin all
-# operate on the composed RecommenderService `self` — makes per-class checking
-# report many false `attr-defined` errors, so a hard gate would be noise.
-# Baseline ~83 errors; the path to a gate is typing the mixin surface via
-# Protocols. See docs/architecture/code-quality-analysis.md §18.
+# --- mypy (GATING) ----------------------------------------------------------
+# The shared RecommenderService surface is declared in
+# services/_recommender_state.py (a TYPE_CHECKING-only base the mixins inherit
+# at type-check time, `object` at runtime), so per-class checking no longer
+# false-positives on the mixin composition. mypy is clean (0 errors) and now
+# GATES the build in CI. See docs/architecture/code-quality-analysis.md §19.
 [tool.mypy]
 files = ["expert_backend"]
 exclude = '(^|/)(tests/|test_backend\.py|install_graphviz\.py)'
@@ -118,6 +119,13 @@ warn_unused_configs = true
 # Lenient: advisory visibility, not strictness. Tighten incrementally.
 check_untyped_defs = false
 disallow_untyped_defs = false
+
+# The pluggable-model layer deliberately re-binds service methods per active
+# model (its whole job), so `method-assign` is expected there — scope-disable
+# it for that one module rather than sprinkling `# type: ignore`.
+[[tool.mypy.overrides]]
+module = "expert_backend.recommenders._service_integration"
+disable_error_code = ["method-assign"]
 
 # --- coverage (REPORT-ONLY — no fail-under floor yet) -----------------------
 # Backend coverage is reported as an artifact, not gated. A `--cov-fail-under`

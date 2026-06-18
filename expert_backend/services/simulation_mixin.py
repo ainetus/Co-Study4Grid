@@ -23,6 +23,8 @@ from expert_op4grid_recommender.utils.superposition import (
     _identify_action_elements,
 )
 
+from typing import TYPE_CHECKING
+
 from expert_backend.services.sanitize import sanitize_for_json
 from expert_backend.services.simulation_helpers import (
     build_combined_description,
@@ -49,7 +51,15 @@ from expert_backend.services.simulation_helpers import (
 logger = logging.getLogger(__name__)
 
 
-class SimulationMixin:
+if TYPE_CHECKING:
+    from expert_backend.services._recommender_state import RecommenderState
+
+    _Base = RecommenderState
+else:
+    _Base = object
+
+
+class SimulationMixin(_Base):
     """Mixin providing action simulation and superposition methods."""
 
     def get_all_action_ids(self):

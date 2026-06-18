@@ -113,11 +113,13 @@ Lower the thresholds — don't raise them. Tightening the gate
 is how we protect the hard-won reductions documented in
 [`docs/architecture/code-quality-analysis.md`](./docs/architecture/code-quality-analysis.md).
 
-Two checks run in CI but are **advisory** (they do not gate the build):
-**mypy** (non-blocking — the mixin composition makes a hard gate noisy)
-and **test coverage** (`pytest --cov` + `npm run test:coverage`,
-report-only until a baseline floor is set). Both are wired into the
-GitHub Actions + CircleCI pipelines; see §18 of the analysis doc.
+**mypy gates the build.** The shared-state base
+([`expert_backend/services/_recommender_state.py`](./expert_backend/services/_recommender_state.py))
+makes the mixin composition type-check cleanly, so mypy sits at 0 and any
+new type error fails CI. **Test coverage** stays **advisory** (`pytest
+--cov` + `npm run test:coverage`, report-only until a baseline floor is
+set). Both are wired into the GitHub Actions + CircleCI pipelines; see
+§19 of the analysis doc.
 
 ## Commit & PR conventions
 
