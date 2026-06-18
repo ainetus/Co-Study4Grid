@@ -82,13 +82,24 @@ python scripts/code_quality_report.py --output reports/code-quality.json \
 python scripts/check_code_quality.py
 ```
 
-The gate enforces:
+The gate enforces (full table in
+[`scripts/check_code_quality.py`](./scripts/check_code_quality.py)):
 
 - No new `print()` or `traceback.print_exc()` calls in backend sources
 - No new bare `except Exception: pass` patterns
-- Backend modules stay under **1200 lines** (the "god-object" ceiling)
-- Frontend components stay under **1500 lines**
-- No `any` type annotations or `@ts-ignore` in frontend sources
+- Backend modules stay under **1150 lines** (the "god-object" ceiling);
+  functions under **240**. The scan covers all of `expert_backend/`
+  except the test suite and the setup-time / ad-hoc scripts.
+- Backend functions also stay under **cyclomatic complexity 38** and
+  **nesting depth 8** (computed from the AST — no external tool).
+- Frontend components stay under **1450 lines** (`utils/**` under
+  **1000**); `App.tsx`, the orchestration hub, has a bounded **2100**
+  ceiling rather than a blanket exemption.
+- No `any` / `as any` annotations, and no `@ts-ignore` /
+  `@ts-expect-error` / `@ts-nocheck` in frontend sources
+- **Ratcheted** (frozen at today's count, may only go down): backend
+  `# noqa` / `# type: ignore` (**3**), `as unknown as` casts (**12**),
+  `Record<string, unknown>` usages (**45**)
 - **No hex color literals** in frontend source. The ceiling is zero —
   every colour must come from a named token. Define new colours in
   [`frontend/src/styles/tokens.css`](./frontend/src/styles/tokens.css)
@@ -101,6 +112,17 @@ The gate enforces:
 Lower the thresholds — don't raise them. Tightening the gate
 is how we protect the hard-won reductions documented in
 [`docs/architecture/code-quality-analysis.md`](./docs/architecture/code-quality-analysis.md).
+
+**mypy gates the build.** The shared-state base
+([`expert_backend/services/_recommender_state.py`](./expert_backend/services/_recommender_state.py))
+makes the mixin composition type-check cleanly, so mypy sits at 0 and any
+new type error fails CI. **Test coverage gates** on both ends: frontend
+via `frontend/vite.config.ts` (`coverage.thresholds`, enforced by
+`npm run test:coverage`) and backend via `pyproject.toml`
+(`[tool.coverage.report] fail_under = 72`, enforced by `pytest --cov`).
+Both floors sit a few points below the measured baseline — raise them as
+coverage climbs, don't lower them. All are wired into the GitHub Actions +
+CircleCI pipelines; see §§19–20 of the analysis doc.
 
 ## Commit & PR conventions
 

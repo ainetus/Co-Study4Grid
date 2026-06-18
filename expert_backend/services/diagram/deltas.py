@@ -53,7 +53,7 @@ def terminal_aware_delta(after_val: float, before_val: float) -> tuple[float, bo
     else:
         ref_positive = before_val >= 0
 
-    def _signed(val):
+    def _signed(val) -> float:
         if val == 0:
             return 0.0
         same_dir = (val > 0) == ref_positive
@@ -113,7 +113,7 @@ def apply_threshold(deltas: dict[str, float]) -> dict[str, dict]:
     return result
 
 
-def _compute_delta_vectorized(after: np.ndarray, before: np.ndarray):
+def _compute_delta_vectorized(after: np.ndarray, before: np.ndarray) -> tuple:
     """Vectorised equivalent of ``terminal_aware_delta`` over parallel arrays.
 
     Returns ``(delta, flip)`` arrays aligned with the inputs.

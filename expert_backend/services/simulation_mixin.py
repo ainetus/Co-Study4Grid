@@ -23,6 +23,8 @@ from expert_op4grid_recommender.utils.superposition import (
     _identify_action_elements,
 )
 
+from typing import TYPE_CHECKING
+
 from expert_backend.services.sanitize import sanitize_for_json
 from expert_backend.services.simulation_helpers import (
     build_combined_description,
@@ -49,7 +51,15 @@ from expert_backend.services.simulation_helpers import (
 logger = logging.getLogger(__name__)
 
 
-class SimulationMixin:
+if TYPE_CHECKING:
+    from expert_backend.services._recommender_state import RecommenderState
+
+    _Base = RecommenderState
+else:
+    _Base = object
+
+
+class SimulationMixin(_Base):
     """Mixin providing action simulation and superposition methods."""
 
     def get_all_action_ids(self):
@@ -347,7 +357,7 @@ class SimulationMixin:
 
     def _inject_action_content_entries(
         self, action_ids, action_content, recent_actions, voltage_level_id=None
-    ):
+    ) -> None:
         """Inject caller-provided topology dicts into `_dict_action`.
 
         Used on session reload AND on user-built SLD topology edits:
@@ -384,7 +394,7 @@ class SimulationMixin:
                 "[simulate_manual_action] Injected restored action '%s' into dict", aid
             )
 
-    def _fetch_n_and_contingency_observations(self, env, n, disconnected_elements):
+    def _fetch_n_and_contingency_observations(self, env, n, disconnected_elements) -> tuple:
         """Return ``(obs_n, obs_contingency)`` for the current simulation.
 
         Maintains the CALL ORDER (N first, then contingency) that legacy
@@ -419,7 +429,7 @@ class SimulationMixin:
 
     def _create_dynamic_actions_if_needed(
         self, action_ids, recent_actions, obs_n1, nm, target_mw
-    ):
+    ) -> None:
         """Auto-create heuristic actions for redispatch_ / curtail_ / load_shedding_ / pst_tap_ / reco_ prefixes."""
         for aid in action_ids:
             if aid in self._dict_action or aid in recent_actions:
@@ -435,7 +445,7 @@ class SimulationMixin:
             elif aid.startswith("reco_"):
                 self._create_dynamic_reconnection(aid)
 
-    def _create_dynamic_redispatch(self, aid, target_mw, obs_n1):
+    def _create_dynamic_redispatch(self, aid, target_mw, obs_n1) -> None:
         gen_name = aid[len("redispatch_"):]
         default_delta = getattr(config, "REDISPATCH_DEFAULT_DELTA_MW", 10.0)
         # For redispatch, ``target_mw`` is the SIGNED delta (raise > 0 / lower
@@ -467,7 +477,7 @@ class SimulationMixin:
             aid, setpoint,
         )
 
-    def _create_dynamic_curtailment(self, aid, target_mw, obs_n1):
+    def _create_dynamic_curtailment(self, aid, target_mw, obs_n1) -> None:
         gen_name = aid[len("curtail_"):]
         setpoint = compute_reduction_setpoint(gen_name, "gen", target_mw, obs_n1)
         topo = {"gens_p": {gen_name: setpoint}}
@@ -494,7 +504,7 @@ class SimulationMixin:
             aid, setpoint,
         )
 
-    def _create_dynamic_load_shedding(self, aid, target_mw, obs_n1):
+    def _create_dynamic_load_shedding(self, aid, target_mw, obs_n1) -> None:
         load_name = aid[len("load_shedding_"):]
         setpoint = compute_reduction_setpoint(load_name, "load", target_mw, obs_n1)
         topo = {"loads_p": {load_name: setpoint}}
@@ -519,7 +529,7 @@ class SimulationMixin:
             aid, setpoint,
         )
 
-    def _create_dynamic_pst(self, aid, nm):
+    def _create_dynamic_pst(self, aid, nm) -> None:
         parsed = parse_pst_tap_id(aid)
         if not parsed:
             return
@@ -537,7 +547,7 @@ class SimulationMixin:
         self._dict_action[aid] = entry
         logger.info("[simulate_manual_action] Created dynamic PST action '%s'", aid)
 
-    def _create_dynamic_reconnection(self, aid):
+    def _create_dynamic_reconnection(self, aid) -> None:
         line_name = aid[len("reco_"):]
         # Reconnect both ends of the line to bus 1.
         topo = {
@@ -550,7 +560,7 @@ class SimulationMixin:
         self._dict_action[aid] = entry
         logger.info("[simulate_manual_action] Created dynamic reconnection action '%s'", aid)
 
-    def _promote_recent_actions_to_dict(self, action_ids, recent_actions):
+    def _promote_recent_actions_to_dict(self, action_ids, recent_actions) -> None:
         """Promote heuristic actions found on `_last_result.prioritized_actions`
         into `_dict_action` so that target_mw updates can mutate their content.
         """
@@ -584,7 +594,7 @@ class SimulationMixin:
                 aid,
             )
 
-    def _apply_target_mw_updates(self, action_ids, target_mw, obs_n1):
+    def _apply_target_mw_updates(self, action_ids, target_mw, obs_n1) -> None:
         if target_mw is None:
             return
         for aid in action_ids:
@@ -615,7 +625,7 @@ class SimulationMixin:
                         gen_name, sp,
                     )
 
-    def _apply_target_tap_updates(self, action_ids, target_tap, nm):
+    def _apply_target_tap_updates(self, action_ids, target_tap, nm) -> None:
         if target_tap is None:
             return
         for aid in action_ids:
@@ -654,7 +664,7 @@ class SimulationMixin:
         except Exception as e:
             raise ValueError(f"Could not create action from description: {e}")
 
-    def _resolve_action_description_and_content(self, action_id, description_unitaire, topo):
+    def _resolve_action_description_and_content(self, action_id, description_unitaire, topo) -> tuple:
         """Pull description + content from `_dict_action`, reconstructing from
         topology as a fallback. Guarantees `content` is never None — the
         library's rule validator crashes on `content.get("set_bus", {})`.
@@ -680,7 +690,7 @@ class SimulationMixin:
             content = {}
         return description, content
 
-    def _register_action_result(self, action_id, action_data, info_action, obs_simu_action):
+    def _register_action_result(self, action_id, action_data, info_action, obs_simu_action) -> None:
         """Persist the simulated action to `_last_result` and merge into `_dict_action`.
 
         Uses merge (not replace) on `_dict_action` so the library's
@@ -872,7 +882,7 @@ class SimulationMixin:
             all_actions = self._last_result["prioritized_actions"]
         return all_actions
 
-    def _identify_elements_with_pst_fallback(self, action_id, all_actions, classifier, env):
+    def _identify_elements_with_pst_fallback(self, action_id, all_actions, classifier, env) -> tuple:
         """Run `_identify_action_elements` with a PST-content-based fallback
         when it returns empty (PST tap changes don't appear as topology
         switches).
@@ -978,7 +988,7 @@ class SimulationMixin:
         monitoring_factor,
         worsening_threshold,
         num_lines,
-    ):
+    ) -> None:
         """Post-process the library result into scalar max_rho + rho_before/after.
 
         Mirrors the care_mask logic in `compute_action_metrics` so the
@@ -1062,7 +1072,7 @@ class SimulationMixin:
             "is_estimated": True,
         })
 
-    def _log_dict_action_snapshot(self, action1_id, action2_id, all_actions):
+    def _log_dict_action_snapshot(self, action1_id, action2_id, all_actions) -> None:
         """Debug-only: log _dict_action entry keys for a pair (silent in prod)."""
         for aid in (action1_id, action2_id):
             entry = self._dict_action.get(aid) if self._dict_action else None
@@ -1078,7 +1088,7 @@ class SimulationMixin:
 
     def _log_per_line_rho(
         self, action1_id, action2_id, line_idxs1, line_idxs2, obs_start, env, all_actions
-    ):
+    ) -> None:
         """Debug-only: log rho + p_or deltas per identified line index."""
         name_line = list(env.name_line)
         for aid, lidxs in [(action1_id, line_idxs1), (action2_id, line_idxs2)]:

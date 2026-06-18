@@ -22,7 +22,10 @@ expert_backend/
 ├── services/
 │   ├── __init__.py
 │   ├── network_service.py         # NetworkService singleton — pypowsybl Network
-│   │                              # loading, branch / VL / nominal-voltage queries
+│   │                              # loading (transparently decompresses a zipped
+│   │                              # network via _resolve_network_file /
+│   │                              # _extract_network_zip), branch / VL / nominal-
+│   │                              # voltage queries
 │   ├── recommender_service.py     # RecommenderService singleton — orchestrates
 │   │                              # analysis. Composes the three mixins below.
 │   ├── diagram_mixin.py           # NAD/SLD orchestrator — delegates pure
@@ -54,14 +57,19 @@ expert_backend/
 │   ├── analysis_mixin.py          # Two-step orchestrator — delegates pure
 │   │                              # numerics to services/analysis/ helpers
 │   ├── analysis/                  # PR #104 decomposition (ex-analysis_mixin):
-│   │   ├── action_enrichment.py   # - LS / curtail / PST / topology details
+│   │   ├── action_enrichment.py   # - LS / curtail / redispatch / PST / topology
+│   │   │                          #   details (compute_redispatch_details, 0.8.0)
 │   │   ├── mw_start_scoring.py    # - MW-at-start dispatcher + per-type math
+│   │   │                          #   (incl. the `redispatch` classify tag, 0.8.0)
 │   │   ├── analysis_runner.py     # - AC→DC fallback worker, PDF-polling stream
-│   │   └── pdf_watcher.py         # - overflow PDF glob + mtime filter
+│   │   ├── pdf_watcher.py         # - overflow PDF glob + mtime filter
+│   │   └── overflow_geo_transform.py  # - hierarchical → geo SVG transform for
+│   │                              #   /api/regenerate-overflow-graph (0.7.0)
 │   ├── simulation_mixin.py        # Manual-action + superposition orchestrator
-│   ├── simulation_helpers.py      # PR #104 decomposition — 14 stateless
-│   │                              # helpers (setpoint math, PST parsing, care
-│   │                              # mask, metrics, result serialisation, …)
+│   ├── simulation_helpers.py      # PR #104 decomposition — stateless helpers
+│   │                              # (setpoint math incl. redispatch, PST parsing,
+│   │                              # care mask, metrics, result serialisation,
+│   │                              # is_injection_action for the GST path, …)
 │   ├── overflow_overlay.py        # PR #116 (0.7.0) — pin / filter overlay
 │   │                              # injector for the interactive HTML overflow
 │   │                              # viewer. `inject_overlay(html)` grafts the
@@ -238,6 +246,13 @@ Session & user config:
 OS pickers & static:
 - `GET  /api/pick-path?type=file|dir` — spawns a tkinter subprocess.
 - Static mount at `/results/pdf/` → `Overflow_Graph/`.
+- **Optional same-origin SPA mount (0.8.0)**: when `COSTUDY4GRID_FRONTEND_DIST`
+  (default `frontend/dist/`) holds an `index.html`, the built React app is
+  mounted at `/` via `StaticFiles(html=True)`. Mounted **last** so every
+  `/api/*` and `/results/*` route declared above keeps priority over the
+  catch-all; inert when the dist is absent, so local dev is unaffected. This
+  lets the HuggingFace Docker Space serve UI + API from one uvicorn process
+  (port 7860). See `deploy/huggingface/` + the root `Dockerfile`.
 
 ## Streaming responses (NDJSON)
 

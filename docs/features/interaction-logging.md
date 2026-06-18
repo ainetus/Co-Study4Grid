@@ -112,6 +112,16 @@ type InteractionType =
   | 'sld_overlay_opened'           // User double-clicked VL to open SLD
   | 'sld_overlay_tab_changed'      // User switched SLD tab (n / n-1 / action)
   | 'sld_overlay_closed'           // User closed SLD overlay
+  // === Interactive SLD topology edit (→ manual action) ===
+  | 'sld_edit_mode_toggled'        // User toggled the ✎ Manual action edit mode
+  | 'sld_switch_toggled'           // User clicked a switch to stage an open/close
+  | 'sld_maneuver_removed'         // User removed one or more staged maneuvers
+  | 'sld_maneuver_focused'         // User focused a single staged switch (maneuver-list row)
+  | 'sld_edit_reset'               // User dropped every staged change (Reset)
+  | 'sld_topology_simulated'       // User simulated the staged topology → manual-action card
+  // === Sidebar / Contingency ===
+  | 'sidebar_collapsed_toggled'    // User collapsed / expanded the sidebar shell
+  | 'contingency_clear_requested'  // User clicked Clear on the contingency banner
   // === Session Management ===
   | 'session_saved'                // User saved session
   | 'session_reload_modal_opened'  // User opened reload modal
@@ -240,6 +250,26 @@ The Overflow Analysis iframe forwards user gestures to the parent React app via 
 | `sld_overlay_opened` | `{ vl_name: string, action_id: string\|null }` — the currently-selected action ID (may be empty) is always carried through, even when the active tab is N / N-1, so the SLD's internal sub-tab buttons can switch to the action view without a backend lookup error. | Double-click VL node |
 | `sld_overlay_tab_changed` | `{ tab: SldTab, vl_name: string }` — the destination SLD sub-tab. | Click tab in SLD overlay |
 | `sld_overlay_closed` | `{}` | Click close on SLD overlay |
+
+### Interactive SLD Topology Edit
+
+These events drive the interactive SLD switch-edit → manual-action flow. See [`docs/features/sld-topology-edit.md`](sld-topology-edit.md) for the full feature contract.
+
+| Event | Details | Replay Action |
+|-------|---------|---------------|
+| `sld_edit_mode_toggled` | `{ enabled: boolean }` — new state of the SLD-edit mode. Only emitted when the mode actually changes. | Click the `✎ Manual action` button in the SLD header |
+| `sld_switch_toggled` | `{ equipment_id: string }` — the `equipmentId` of the switch the user clicked. Toggles its staged open/closed target; a tap that returns the switch to its baseline drops the staged change. Silently ignored for non-operable / non-baseline switches (no event). | Click an operable switch on the SLD while in edit mode |
+| `sld_maneuver_removed` | `{ equipment_ids: string[] }` — the staged maneuver(s) removed (single `×` → one-element array; **Remove selected (N)** block delete → multiple). | Click `×` on a maneuver row, or check rows → **Remove selected (N)** |
+| `sld_maneuver_focused` | `{ equipment_id: string }` — the single switch now isolated on the diagram (only its outline stays). Emitted only when focusing (not when clearing focus). | Click a maneuver-list row |
+| `sld_edit_reset` | `{}` — no payload; drops every staged change. Emitted only when there was at least one staged change to clear. | Click **Reset** in the SLD edit panel |
+| `sld_topology_simulated` | `{ voltage_level_id: string, switches: Record<string, boolean>, combined_with?: string }` — `switches` is the staged `{ switch_id: target_open }` override map sent to the backend; `combined_with` is the base action id (present only when the edit was done on a post-action SLD, producing a combined card). Wait-point: a manual-action card appears in the Action Feed and the SLD auto-focuses its `action` tab. | Click **Simulate action** in the SLD edit panel |
+
+### Sidebar / Contingency
+
+| Event | Details | Replay Action |
+|-------|---------|---------------|
+| `sidebar_collapsed_toggled` | `{ collapsed: boolean }` — new collapsed state of the sidebar shell (true = shrunk to the 32-px strip). | Click the sidebar collapse / expand caret |
+| `contingency_clear_requested` | `{ had_analysis_state: boolean }` — `true` when analysis state (actions / overloads / result) would be lost by clearing, in which case the gesture routes through the `<ConfirmationDialog type="contingency">` first; `false` clears in place. | Click the **Clear** button on the contingency banner |
 
 ### Session Management
 

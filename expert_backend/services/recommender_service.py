@@ -124,7 +124,7 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
         # its own per-stage timings.
         self._last_step1_time: float | None = None
 
-    def reset(self):
+    def reset(self) -> None:
         """Clear all cached analysis state. Called when loading a new study."""
         # Drain any in-flight NAD prefetch thread BEFORE we tear down the
         # network it depends on. A dangling thread that finishes after
@@ -175,7 +175,7 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
     # Overflow-graph layout (Hierarchical / Geo)
     # ------------------------------------------------------------------
 
-    def _load_layout_coords(self):
+    def _load_layout_coords(self) -> dict:
         """Return ``{substation_id: (x, y)}`` from the cached
         ``grid_layout.json`` DataFrame, or an empty dict when no
         layout file is configured / readable.
@@ -207,7 +207,7 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
     # Base-NAD prefetch (concurrent with update_config's env-setup phase)
     # ------------------------------------------------------------------
 
-    def _drain_pending_base_nad_prefetch(self):
+    def _drain_pending_base_nad_prefetch(self) -> None:
         """Wait for the in-flight NAD prefetch thread to finish and discard
         its result. Called on `reset()` so a still-running prefetch cannot
         leak into the next study by writing into fresh prefetch state."""
@@ -217,7 +217,7 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
             # returns; it has no other blocking I/O.
             thread.join(timeout=60)
 
-    def prefetch_base_nad_async(self):
+    def prefetch_base_nad_async(self) -> None:
         """Kick off base-NAD generation in a background thread.
 
         Designed to be called from `update_config` just before the expensive
@@ -264,7 +264,7 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
         self._prefetched_base_nad_error = None
         self._prefetched_base_nad_event = event
 
-        def _worker():
+        def _worker() -> None:
             try:
                 diagram = self.get_network_diagram()
                 self._prefetched_base_nad = diagram
@@ -304,7 +304,7 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
             raise self._prefetched_base_nad_error
         return self._prefetched_base_nad
 
-    def restore_analysis_context(self, lines_we_care_about, disconnected_elements=None, lines_overloaded=None, computed_pairs=None):
+    def restore_analysis_context(self, lines_we_care_about, disconnected_elements=None, lines_overloaded=None, computed_pairs=None) -> None:
         """Restore analysis context from a saved session.
 
         This sets _analysis_context so that subsequent simulate_manual_action
@@ -332,7 +332,7 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
         """Return saved computed pairs from session restore, or None."""
         return self._saved_computed_pairs
 
-    def update_config(self, settings):
+    def update_config(self, settings) -> None:
         # Update the global config of the package
         path_obj = Path(settings.network_path)
         config.ENV_NAME = path_obj.name
@@ -613,7 +613,7 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
 
         return self._base_network
 
-    def _capture_initial_pst_taps(self, network):
+    def _capture_initial_pst_taps(self, network) -> None:
         """Snapshot all PST tap positions from the freshly-loaded network.
 
         Called once at network load time so the values are guaranteed to be
@@ -799,7 +799,7 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
     # Variant-state guard for analyze/simulate entry points
     # ------------------------------------------------------------------
 
-    def _ensure_n_state_ready(self):
+    def _ensure_n_state_ready(self) -> None:
         """Guarantee the shared pypowsybl Network is positioned on the N
         variant with no background work still touching it.
 
@@ -841,7 +841,7 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
             # message.
             logger.warning(f"[_ensure_n_state_ready] Could not position N variant: {e}")
 
-    def _ensure_contingency_state_ready(self, disconnected_elements):
+    def _ensure_contingency_state_ready(self, disconnected_elements) -> None:
         """Guarantee the shared pypowsybl Network is positioned on the
         contingency variant for ``disconnected_elements`` with no
         background work still touching it.
@@ -894,7 +894,7 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
         )
         return self._simulation_env
 
-    def _get_monitoring_parameters(self, obs):
+    def _get_monitoring_parameters(self, obs) -> tuple:
         """Get monitoring parameters (lines_we_care_about, branches_with_limits)."""
         # 1. Identify branches with permanent limits in pypowsybl
         try:

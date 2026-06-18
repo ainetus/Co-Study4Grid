@@ -197,7 +197,7 @@ The rescaler is driven by a `MutationObserver` on the SVG's `viewBox` attribute,
 
 For each action, the anchor position is resolved in this order:
 
-1. **Load shedding / curtailment** → `voltage_level_id` from the first entry of `load_shedding_details` or `curtailment_details` (direct VL node lookup)
+1. **Load shedding / curtailment / redispatch** → `voltage_level_id` from the first entry of `load_shedding_details`, `curtailment_details`, or (for redispatching) the generator's `voltage_level_id` from `redispatch_details` (direct VL node lookup, same pattern)
 2. **Line / PST target** → mid-point of the edge's two node endpoints (via `getActionTargetLines`)
 3. **Voltage-level target** → node (x, y) coordinate (via `getActionTargetVoltageLevels`)
 4. **Fallback: `max_rho_line`** → mid-point of the line that carries the highest loading after the action
@@ -225,7 +225,7 @@ interface ActionOverviewFilters {
     categories: Record<'green' | 'orange' | 'red' | 'grey', boolean>;
     threshold: number;            // ratio, e.g. 1.5 = 150 %
     showUnsimulated: boolean;
-    actionType: 'all' | 'disco' | 'reco' | 'ls' | 'rc' | 'open' | 'close' | 'pst';
+    actionType: 'all' | 'disco' | 'reco' | 'ls' | 'rc' | 'redispatch' | 'open' | 'close' | 'pst';
     /** Pin-only: hide everything except combined pins + constituents. */
     showCombinedOnly: boolean;
 }
@@ -323,7 +323,7 @@ The fit rectangle is recomputed when `(n1MetaIndex, contingency, overloadedLines
 The overview mounts its own `usePanZoom` instance (independent from the N-1 and action tabs):
 - **Wheel zoom** + **drag pan**: handled by the hook's event listeners, active only when `visible && svgReady`.
 - **Zoom +/−/Fit buttons**: rendered in the bottom-left control cluster. Fit restores the auto-fit rectangle and clears the `lastFocusedRef` so a subsequent asset focus works on the same id.
-- **Inspect search field**: local to the overview. Typing / selecting an equipment id pans and zooms onto it via `computeEquipmentFitRect`. The focus is "consume-once" (mirrors `useDiagrams`'s `lastZoomState` pattern) so wheel-zoom after an asset focus does NOT snap back.
+- **Inspect search field**: local to the overview. Typing / selecting an equipment id pans and zooms onto it via `computeEquipmentFitRect`. The focus is "consume-once" (mirrors `useDiagrams`'s `lastZoomState` pattern) so wheel-zoom after an asset focus does NOT snap back. The search matches an element by its **displayed name** (e.g. `LESQUIVE 400kV`) as well as its raw id, via `utils/inspectables.ts:filterInspectables(items, query, displayName?, limit)` — shared with every other inspect surface so they stay in lock-step.
 
 ### Single-click on a pin → card popover
 

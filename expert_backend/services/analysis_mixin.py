@@ -22,6 +22,7 @@ their dependencies as arguments (observations, network_service,
 pst_tap_info callable).
 """
 
+from collections.abc import Iterator
 import logging
 import os
 import time
@@ -62,6 +63,8 @@ from expert_backend.services.analysis.mw_start_scoring import (
     is_na_action_type,
 )
 from expert_backend.services.analysis.pdf_watcher import find_latest_pdf
+from typing import TYPE_CHECKING, Any
+
 from expert_backend.services.sanitize import sanitize_for_json
 from expert_backend.services.simulation_helpers import (
     compute_combined_rho,
@@ -86,7 +89,15 @@ def _upstream_step1_supports_prebuilt_obs() -> bool:
         return False
 
 
-class AnalysisMixin:
+if TYPE_CHECKING:
+    from expert_backend.services._recommender_state import RecommenderState
+
+    _Base = RecommenderState
+else:
+    _Base = object
+
+
+class AnalysisMixin(_Base):
     """Mixin providing contingency analysis and action enrichment methods."""
 
     # ------------------------------------------------------------------
@@ -155,7 +166,7 @@ class AnalysisMixin:
         """Per-PST tap details with current bounds (delegates to the stateless helper)."""
         return compute_pst_details(action_data, self._pst_tap_info_fn())
 
-    def _is_renewable_gen(self, gen_name, obs=None):
+    def _is_renewable_gen(self, gen_name, obs=None) -> bool:
         """WIND / SOLAR generator check (delegates to the stateless helper)."""
         return is_renewable_gen(gen_name, obs, self._network_service())
 
@@ -396,7 +407,7 @@ class AnalysisMixin:
     # Public entry points — two-step + legacy single-step.
     # ------------------------------------------------------------------
 
-    def run_analysis_step1(self, disconnected_elements):
+    def run_analysis_step1(self, disconnected_elements) -> dict:
         """Step 1 — contingency simulation + overload detection.
 
         ``disconnected_elements`` may be a single string (legacy) or a
@@ -554,10 +565,10 @@ class AnalysisMixin:
     def run_analysis_step2(
         self,
         selected_overloads: list[str],
-        all_overloads: list[str] = None,
+        all_overloads: list[str] | None = None,
         monitor_deselected: bool = False,
-        additional_lines_to_cut: list[str] = None,
-    ):
+        additional_lines_to_cut: list[str] | None = None,
+    ) -> Iterator[Any]:
         """Step 2 — PDF emission + action discovery, streaming NDJSON events.
 
         ``additional_lines_to_cut`` is the operator-supplied set of extra
@@ -915,7 +926,7 @@ class AnalysisMixin:
 
         return context
 
-    def run_analysis(self, disconnected_elements):
+    def run_analysis(self, disconnected_elements) -> Iterator[Any]:
         """Legacy single-step analysis — streams ``pdf`` then ``result`` NDJSON events.
 
         Accepts a single element ID (legacy) or a list of element IDs

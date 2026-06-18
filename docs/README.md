@@ -39,6 +39,7 @@ docs/
 | [`combined-actions.md`](features/combined-actions.md) | Dual-action simulation via superposition (fast) + full sim (exact). |
 | [`state-reset-and-confirmation-dialogs.md`](features/state-reset-and-confirmation-dialogs.md) | State-reset guards when switching contingencies / reloading. |
 | [`actions-topology.md`](features/actions-topology.md) | Action formats + topology algorithms (switch → set_bus, Union-Find cache). |
+| [`sld-topology-edit.md`](features/sld-topology-edit.md) | Interactive SLD topology edit → manual action card: target-topology preview (`/api/sld-topology-preview`), maneuver list, combined-card canonicalisation, six interaction events. |
 | [`curtailment-loadshedding-pst-actions.md`](features/curtailment-loadshedding-pst-actions.md) | Renewable curtailment, load shedding, PST tap actions. |
 | [`adding-action-type.md`](features/adding-action-type.md) | Cross-cutting checklist to integrate / upgrade a remedial-action type (lib → backend → frontend → save/log/reload triad → regression specs). Read before adding a family or touching session persistence. |
 | [`frontend-ui-improvements.md`](features/frontend-ui-improvements.md) | Voltage filter, run-button placement, color codes, always-visible tabs. |
@@ -87,6 +88,7 @@ Unimplemented ideas and rejected designs kept for reference.
 | [`rendering-lod-strategies.md`](proposals/rendering-lod-strategies.md) | **Consolidated** LoD rendering history + current plan. Supersedes `nad_optimization.md`, `network_rendering_profiling_recommendations.md`, and `spatial_lod_architecture_proposal.md`. |
 | [`new-features-brainstorm-mars26.md`](proposals/new-features-brainstorm-mars26.md) | Brainstorm of 12 candidate features (batch N-1, heatmap, Cmd+K, shortcuts, …). French text. |
 | [`ui-design-critique.md`](proposals/ui-design-critique.md) | UI critique (2026-05-01, code + screenshot review): consistency, hierarchy, NAD halo sizing, a11y, ActionCard density. Prioritizes design tokens + ActionCard redesign + halo cap + warning-tier + diagram legend. |
+| [`decompose-ceiling-riders.md`](proposals/decompose-ceiling-riders.md) | **Tracked for next release** (deferred code-quality target #4). Files riding their tightened size/complexity ceilings (`simulation_mixin.py` 1110/1150, `VisualizationPanel.tsx` 1407/1450, …) with current margins + a concrete extraction candidate per target. |
 
 ## Data (`data/`)
 

@@ -46,6 +46,13 @@ Two top-level singletons drive every request:
   on every `POST /api/config`. Exposes high-level read queries
   (`get_disconnectable_elements`, `get_voltage_levels`,
   `get_element_voltage_levels`, `get_generator_type`, ...).
+  On load it transparently resolves and decompresses a **zipped
+  network** (`_resolve_network_file` / `_extract_network_zip`): an
+  explicit `*.zip` path, a missing `foo.xiidm` whose sibling
+  `foo.xiidm.zip` exists, or a directory holding only a `.zip` all
+  Just Work (the large France 225/400 kV grid ships as
+  `network.xiidm.zip`). Consumers point the network path at the
+  `.xiidm` (or the `.zip`) regardless.
 - **`recommender_service`** — owns analysis state (the `_analysis_context`
   dict built by step-1, the `_dict_action` enriched action dictionary,
   the `_last_result`, layout caches). Composed of mixins so each
@@ -214,6 +221,18 @@ The groups, by responsibility:
   `/api/contingency-sld`, `/api/action-variant-sld`,
   `/api/simulate-and-variant-diagram`, `/api/regenerate-overflow-graph`,
   `/results/pdf/{filename}`.
+
+### Optional same-origin SPA hosting (0.8.0)
+
+When `COSTUDY4GRID_FRONTEND_DIST` (default `frontend/dist/`) holds an
+`index.html`, the built React app is mounted at `/` via
+`StaticFiles(html=True)`. The mount is added **last**, after every
+`/api/*` and `/results/*` route, so those keep priority over the
+catch-all; it is inert when the dist is absent, so local dev and the
+test suite are unaffected. This is what lets the HuggingFace Docker
+Space serve UI + API from a single uvicorn process on port 7860 — see
+[`deploy/huggingface/`](../../deploy/huggingface/) and the root
+`Dockerfile`.
 
 ---
 

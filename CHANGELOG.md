@@ -7,6 +7,36 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Internal / maintainability
+
+- **Code-quality gate hardened** — mypy now gates at 0 (via a
+  `TYPE_CHECKING` shared-state base for the recommender mixins), plus
+  frontend + backend test-coverage floors and backend cyclomatic-
+  complexity / nesting / return-annotation ratchets. See
+  `docs/architecture/code-quality-analysis.md` §§17–21.
+- **Planned — decompose the "ceiling-rider" hot files.** Several modules /
+  components now ride their (tightened) size/complexity ceilings with thin
+  margins: `simulation_mixin.py` (1110/1150), `VisualizationPanel.tsx`
+  (1407/1450), `_run_analysis_step2_with_model` (226/240). Investigated and
+  scoped per target in
+  [`docs/proposals/decompose-ceiling-riders.md`](docs/proposals/decompose-ceiling-riders.md)
+  so the splits land deliberately rather than under gate pressure.
+
+## [0.8.0] — 2026-06-17
+
+Feature-rich release that broadens the **remedial-action vocabulary**
+(generation redispatch, GST estimation for injection actions, interactive
+SLD topology editing), consolidates the **operator UI** (light / dark theme,
+a shared Action-Filter ring strip, a readability-first collapsible sidebar,
+a tiered notice pill, a per-stage execution-time breakdown, inspect-by-name),
+and ships two **new ways to run the tool**: a timed, scored **Game Mode**
+(`?game=1`, Codabench-ready) and a one-container **online deployment**
+(HuggingFace Docker Space, same-origin SPA + backend). Paired with
+[`expert_op4grid_recommender`](https://github.com/marota/Expert_op4grid_recommender)
+**0.2.4** (the GST / superposition tests require it); from this release on, CI
+always tracks the latest published recommender release rather than a pinned
+version (see `.github/workflows/test.yml` / `.circleci/config.yml`).
+
 ### Generalized Superposition Theorem (GST) for combined-pair estimation
 
 The combined-pair **estimation** (`POST /api/compute-superposition`, Explore
@@ -73,6 +103,25 @@ with an editable *signed* MW delta (default ±10 MW):
     negative values) + Re-simulate, cloned from the curtailment editor.
   - `components/ActionFeed.tsx` / `api.ts` — `redispatch_details` carried
     through the simulate / re-simulate result pipeline.
+
+### Recommender action-type restriction
+
+A new **Restrict to action types** control in the **Settings →
+Recommender** tab scopes the recommender to a chosen subset of action
+families. None selected = all families (the previous behaviour);
+selecting one or more makes the recommender propose **only** those.
+This addresses the long-standing confusion that setting `Min = 0` on a
+family does **not** exclude it (Min is a floor, not a switch).
+
+- **Frontend**: `allowedActionTypes` threaded through `useSettings`
+  (state, hydrate, persist, `buildConfigRequest`), the `SettingsModal`
+  Recommender tab, the `SettingsBackup` revert-on-cancel path, the
+  session snapshot (`sessionUtils.buildSessionResult`) + restore
+  (`useSession` / `restore-analysis-context`), and the config
+  interaction-log replay payload — so the restriction stays
+  fidelity-complete across Save / Reload and Settings-cancel.
+- **Backend**: `POST /api/config` `allowed_action_types` →
+  `config.ALLOWED_ACTION_TYPES` on the recommender service.
 
 ### Interactive SLD topology edit → manual action card
 
@@ -202,6 +251,25 @@ Full contract + test inventory in
   breakdown](docs/backend/recommender_models.md#execution-time-breakdown)
   and [docs/features/save-results.md § analysis](docs/features/save-results.md#analysis).
 
+### Light / dark theme
+
+A full **dark mode** for the whole interface, toggled from a sun / moon
+button in the header and persisted across reloads:
+
+- **Single source of truth**: every colour resolves from the
+  `src/styles/tokens.{css,ts}` design-token palette, so theming is a
+  token-swap rather than per-component overrides. A `useTheme` hook plus
+  a tiny pre-mount script (run before React hydrates) avoids the
+  first-paint flash; the "soft-background" trap and the full rationale
+  are documented in [`docs/features/dark-mode.md`](docs/features/dark-mode.md).
+- **Diagram + viewer theming**: a legibility pass across the NAD / SLD
+  chrome (flow-value labels, VL-name toggle, inactive tab titles) and
+  the interactive overflow viewer (edges, flow-label chips, the
+  SELECTION box, the Hierarchical / Geo toggle) so the pypowsybl-rendered
+  SVG and the injected overlay stay readable on a dark backdrop.
+- **Tests**: `useTheme` hook, header toggle, and overflow-CSS dark-mode
+  specs.
+
 ### Internal refactor — diagram-mixin decomposition
 
 - **`services/diagram/action_patch.py`** (new): extracted the entire
@@ -310,6 +378,95 @@ Full contract + test inventory in
   active).
 
 ---
+
+### Game Mode + Codabench benchmark
+
+A timed, scored wrapper around the study workspace, **additive and inert
+unless `?game=1`** is set on the frontend URL. A *session* is an ordered
+list of *studies* (grid state + N-1 contingency); the player must remediate
+each one with **at most 3 actions** before a per-study timer expires, then
+advances. Results export a `game_session.json` that a
+[Codabench](https://www.codabench.org/) competition scores and ranks.
+
+- **`frontend/src/game/`** — `GameShell` (config → playing → results state
+  machine, hosts the unchanged `<App/>` under a fixed HUD), `useGameSession`,
+  `gameBridge` (a decoupling singleton mirroring `interactionLogger`: App
+  registers a study loader + publishes the physical snapshot, the shell
+  drives loads / reads results / enforces the action cap), `GameConfigScreen`,
+  `GameHud`, `GameResults`, `scoring` (twin of the Python scorer:
+  `60·R + 25·R·A + 15·R·T`), `gameLog`, `presets` (curated **solvable**
+  fr225_400 contingencies), `types`.
+- **App integration** — three touch points, all guarded by
+  `gameBridge.isGameMode()`: `loadGameStudy`, a publish effect pushing
+  `{ baselineMaxRho, chosenActions }`, and a cap on `wrappedActionFavorite`.
+- **`scripts/game_mode/e2e_game_session.py`** — drives the real backend over
+  the preset studies with a greedy operator and scores the session with the
+  Codabench scorer (also verifies every preset stays winnable).
+- Full contract in
+  [`docs/features/game-mode-codabench.md`](docs/features/game-mode-codabench.md).
+
+### Online deployment — HuggingFace Docker Space
+
+A one-container image that serves the **frontend SPA same-origin** with the
+FastAPI backend, so the tool runs as a hosted online game with nothing to
+install:
+
+- **`Dockerfile`** (+ `.dockerignore`) — multi-stage build: `npm run build`
+  with `VITE_API_BASE_URL=""` (relative `/api/...`) and `VITE_GAME_MODE=1`
+  (boots into the game shell), then a Python runtime serving API + built SPA +
+  bundled sample grids on port 7860.
+- **`main.py`** — optional `StaticFiles` mount of the built SPA
+  (`COSTUDY4GRID_FRONTEND_DIST`), mounted **last** so every `/api/*` and
+  `/results/*` route keeps priority over the catch-all; inert when the dist
+  isn't present (local dev unaffected).
+- **`api.ts`** — `VITE_API_BASE_URL` now selects same-origin (built) vs the
+  standalone `http://127.0.0.1:8000` backend (dev / Vitest).
+- **Overflow viewer served same-origin** (`overflow_overlay.py`, `main.py`)
+  and `pinGlyph.js` shipped to the image so the iframe overlay never 500s
+  when it's missing.
+- Space README + step-by-step setup under
+  [`deploy/huggingface/`](deploy/huggingface/). One running Space serves one
+  player at a time (module-level singletons); duplicate the Space for more.
+
+### Inspect elements by their displayed name
+
+The bottom-of-tab **Inspect** field (and the Remedial-action overview search)
+now match the **human-readable name drawn on the diagram** (e.g.
+`LESQUIVE 400kV`), not just the raw element id. `utils/inspectables.ts`
+(`filterInspectables`) is shared by every inspect surface (N / N-1 / action
+tabs + overview) so they stay in lock-step, and the overview and tab inspect
+fields were unified onto one component.
+
+### Binary assets via Git LFS + transparent network decompression
+
+- **Git LFS** (`.gitattributes`) tracks `*.zip` / `*.png` / `*.jpg` /
+  `*.jpeg` so the repo can be pushed to a HuggingFace Space (whose git
+  endpoint rejects non-LFS binaries). The 166 k-line PyPSA-EUR France
+  `network.xiidm` is now shipped **compressed** as `network.xiidm.zip`.
+- **`network_service`** transparently resolves and decompresses a zipped
+  network on load (`_resolve_network_file` / `_extract_network_zip`): an
+  explicit `*.zip` path, a missing `foo.xiidm` whose sibling `foo.xiidm.zip`
+  exists, or a directory holding only a `.zip` all Just Work — the extracted
+  `.xiidm` is cached next to the archive (temp-dir fallback when read-only).
+
+### Shipped config defaults
+
+`config.default.json` is now bundled and seeds first-run settings: the
+fr225_400 France grid + action catalogue, per-action-type recommender minima
+(incl. `min_redispatch`), `n_prioritized_actions`, monitoring factor, and the
+pre-existing-overload threshold — so a fresh checkout (and the deployed Space)
+opens on a working study.
+
+### Polish & fixes
+
+- **ActionCard header reshuffle** — the severity icon moves to the left
+  of the title and the star / reject controls move to the card header's
+  top-right, so a dense feed reads top-down at a glance.
+- **Overflow info bubble** is no longer clipped behind the visualization
+  panel (sidebar overflow-popover stacking fix).
+- **Step-2 perf** — the action-assessment loop caches the equipment
+  tables it re-reads per action and skips the curtailment recompute for
+  `redispatch_` actions, trimming the per-action cost on large grids.
 
 ## [0.7.5] — 2026-05-12
 
@@ -1246,7 +1403,8 @@ the authoritative reference for pre-0.5.0 work.
 
 ---
 
-[Unreleased]: https://github.com/marota/Co-Study4Grid/compare/0.7.5...HEAD
+[Unreleased]: https://github.com/marota/Co-Study4Grid/compare/0.8.0...HEAD
+[0.8.0]: https://github.com/marota/Co-Study4Grid/releases/tag/0.8.0
 [0.7.5]: https://github.com/marota/Co-Study4Grid/releases/tag/0.7.5
 [0.7.0]: https://github.com/marota/Co-Study4Grid/releases/tag/0.7.0
 [0.6.5]: https://github.com/marota/Co-Study4Grid/releases/tag/0.6.5

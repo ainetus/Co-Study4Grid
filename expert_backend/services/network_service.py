@@ -31,7 +31,7 @@ class NetworkService:
         self._loads_df = None
         self._load_vl_map = None     # load_id -> voltage_level_id
 
-    def _invalidate_equipment_caches(self):
+    def _invalidate_equipment_caches(self) -> None:
         """Drop the cached generator / load tables (called when the Network changes)."""
         self._generators_df = None
         self._gen_vl_map = None
@@ -163,7 +163,7 @@ class NetworkService:
 
         return network_path
 
-    def load_network(self, network_path: str):
+    def load_network(self, network_path: str) -> dict:
         network_path = self._resolve_network_file(network_path)
         if not os.path.exists(network_path):
             raise FileNotFoundError(f"Network file/directory not found: {network_path}")
@@ -197,7 +197,7 @@ class NetworkService:
         self._invalidate_equipment_caches()
         return {"message": "Network loaded successfully", "id": self.network.id}
 
-    def get_disconnectable_elements(self):
+    def get_disconnectable_elements(self) -> list:
         if not self.network:
             raise ValueError("Network not loaded")
 
@@ -213,7 +213,7 @@ class NetworkService:
 
         return sorted(elements)
 
-    def get_element_names(self):
+    def get_element_names(self) -> dict | None:
         """Return {element_id: display_name} for all lines and transformers.
 
         The display name is the pypowsybl ``name`` field when it is set and
@@ -281,7 +281,7 @@ class NetworkService:
 
         return name_map
 
-    def get_monitored_elements(self):
+    def get_monitored_elements(self) -> list:
         """Return the list of element IDs that have at least one permanent operational limit."""
         if not self.network:
             raise ValueError("Network not loaded")
@@ -309,7 +309,7 @@ class NetworkService:
         ids = sorted(permanent_limits['element_id'].unique().tolist())
         return ids
 
-    def get_voltage_levels(self):
+    def get_voltage_levels(self) -> list:
         if not self.network:
             raise ValueError("Network not loaded")
 
@@ -324,7 +324,7 @@ class NetworkService:
             return sorted(voltage_levels.index.tolist())
         return []
 
-    def get_voltage_level_substations(self):
+    def get_voltage_level_substations(self) -> dict:
         """Return ``{vl_id: substation_id}`` for every voltage level.
 
         Used by the frontend to anchor action-overview pins on the
@@ -352,7 +352,7 @@ class NetworkService:
             if sub_id is not None and str(sub_id) != 'nan'
         }
 
-    def get_voltage_level_names(self):
+    def get_voltage_level_names(self) -> dict:
         """Return {vl_id: display_name} for all voltage levels."""
         if not self.network:
             raise ValueError("Network not loaded")
@@ -367,7 +367,7 @@ class NetworkService:
 
         return name_map
 
-    def get_nominal_voltages(self):
+    def get_nominal_voltages(self) -> dict:
         """Return {vl_id: nominal_v_kv} mapping for all voltage levels, snapped to detected grid values.
 
         Optimised path — narrow pypowsybl query + vectorised final dict
@@ -433,7 +433,7 @@ class NetworkService:
             for i in range(len(idx_list))
         }
 
-    def get_element_voltage_levels(self, element_id: str):
+    def get_element_voltage_levels(self, element_id: str) -> list:
         """Resolve an equipment ID (line, transformer, or VL) to its voltage level IDs."""
         if not self.network:
             raise ValueError("Network not loaded")

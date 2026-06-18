@@ -72,7 +72,7 @@ export const applyOverloadedHighlights = (
 
                     try {
                         const elCTM = (el as SVGGraphicsElement).getScreenCTM();
-                        if (!cachedBgCTM) cachedBgCTM = (backgroundLayer as unknown as SVGGraphicsElement).getScreenCTM();
+                        if (!cachedBgCTM) cachedBgCTM = (backgroundLayer as SVGGraphicsElement).getScreenCTM();
                         if (elCTM && cachedBgCTM) {
                             const relativeCTM = cachedBgCTM.inverse().multiply(elCTM);
                             const matrixStr = `matrix(${relativeCTM.a}, ${relativeCTM.b}, ${relativeCTM.c}, ${relativeCTM.d}, ${relativeCTM.e}, ${relativeCTM.f})`;
@@ -334,7 +334,7 @@ export const applyActionTargetHighlights = (
 
             try {
                 const elCTM = (el as SVGGraphicsElement).getScreenCTM();
-                if (!cachedBgCTM) cachedBgCTM = (backgroundLayer as unknown as SVGGraphicsElement).getScreenCTM();
+                if (!cachedBgCTM) cachedBgCTM = (backgroundLayer as SVGGraphicsElement).getScreenCTM();
                 if (elCTM && cachedBgCTM) {
                     const relativeCTM = cachedBgCTM.inverse().multiply(elCTM);
                     const matrixStr = `matrix(${relativeCTM.a}, ${relativeCTM.b}, ${relativeCTM.c}, ${relativeCTM.d}, ${relativeCTM.e}, ${relativeCTM.f})`;
@@ -419,7 +419,7 @@ export const applyContingencyHighlight = (
 
             try {
                 const elCTM = (el as SVGGraphicsElement).getScreenCTM();
-                const bgCTM = (backgroundLayer as unknown as SVGGraphicsElement).getScreenCTM();
+                const bgCTM = (backgroundLayer as SVGGraphicsElement).getScreenCTM();
                 if (elCTM && bgCTM) {
                     const relativeCTM = bgCTM.inverse().multiply(elCTM);
                     const matrixStr = `matrix(${relativeCTM.a}, ${relativeCTM.b}, ${relativeCTM.c}, ${relativeCTM.d}, ${relativeCTM.e}, ${relativeCTM.f})`;

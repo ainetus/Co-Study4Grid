@@ -11,7 +11,7 @@ different model. See [Plug Your Own Recommendation Model](#plug-your-own-recomme
 to extend it.
 
 ![License: MPL 2.0](https://img.shields.io/badge/license-MPL--2.0-blue)
-![Release](https://img.shields.io/badge/release-0.7.5-green)
+![Release](https://img.shields.io/badge/release-0.8.0-green)
 
 ---
 
@@ -22,6 +22,7 @@ to extend it.
 - [Architecture](#architecture)
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
+- [Deployment](#deployment)
 - [European-Wide Studies in Practice](#european-wide-studies-in-practice)
 - [Performance Highlights](#performance-highlights)
 - [Plug Your Own Recommendation Model](#plug-your-own-recommendation-model)
@@ -56,7 +57,7 @@ to extend it.
 - **AC/DC fallback**: analysis runs on the AC load flow and transparently falls back to DC when AC fails to converge.
 - **Prioritized action feed** with search, filter, star / reject, and per-action metadata — severity, MW deltas, rho after action, impacted overloaded lines.
 - **Manual action simulation** from the score table, including a *"Make a first guess"* shortcut when no suggestion is loaded.
-- **Combined actions** (PR #62 family): evaluate pairs of actions via a fast **superposition (beta-coefficient) estimation** or a full exact simulation, through the *Computed Pairs* / *Explore Pairs* modal. See [`docs/features/combined-actions.md`](docs/features/combined-actions.md).
+- **Combined actions** (PR #62 family): evaluate pairs of actions via a fast **superposition (beta-coefficient) estimation** or a full exact simulation, through the *Computed Pairs* / *Explore Pairs* modal. The **Generalized Superposition Theorem (GST)** extends the fast estimate to pairs that mix a topology action with an **injection** action (load shedding, curtailment, redispatch), so those pairs are now estimable rather than simulation-only. See [`docs/features/combined-actions.md`](docs/features/combined-actions.md).
 - **Full remedial action catalog**:
   - Topological switches and bus reconfiguration
   - **Phase Shifting Transformer (PST)** tap adjustment with tap-start / target columns, re-simulation, and superposition fallback (PR #78)
@@ -75,7 +76,7 @@ to extend it.
 - **Four synchronized tabs** — *Network N*, *Contingency N-1*, *Remedial Action*, *Overflow Analysis* — rendered as pypowsybl Network-Area Diagrams (NAD) with flow-delta overlays. A **Flow ↔ Impacts** view-mode switch on every NAD recolours the branches by post-contingency Δ-rho (orange = newly more loaded, blue = offloaded, grey = unchanged), so the operator reads *cause* of the constraint, not just loading.
 - **Interactive overflow analysis** (PRs #116, #122–#127): the legacy static PDF is replaced by a same-origin HTML viewer with a layer-toggle sidebar (Constrained path, Red-loop, Overloads, Hubs, Reconnectable, Production / Consumption nodes, flow polarities), a hierarchical ↔ geographic layout switch backed by a per-study cache, and a double-click → SLD drill-down on any node. Stackable filters answer the operator's reading of *"if I block my constraint, where does the flow re-report itself?"* directly on the graph. See [`docs/features/interactive-overflow-analysis.md`](docs/features/interactive-overflow-analysis.md).
 - **Action pin overview** (PR #105 + #116): the post-contingency NAD doubles as a Google-Maps-style overview where every remedial action becomes a coloured pin anchored on the grid asset it targets. Pins reflect triage decisions (gold star = selected, red cross = rejected, dashed-curve = simulated combined pair, dimmed-dashed `?` = scored-but-unsimulated). The same pin overlay is mirrored on top of the interactive overflow viewer, kept in lock-step via `postMessage` so a single-click anywhere previews the action card and a double-click drills into the SLD or kicks off a manual simulation. See [`docs/features/action-overview-diagram.md`](docs/features/action-overview-diagram.md).
-- **Single-Line Diagrams (SLD)** for voltage levels in N, N-1, and post-action states, with persistent highlight of impacted switches and coupling breakers (PR #63).
+- **Single-Line Diagrams (SLD)** for voltage levels in N, N-1, and post-action states, with persistent highlight of impacted switches and coupling breakers (PR #63). An **✎ Manual action** mode lets the operator click breakers to stage a target topology — a live preview re-renders the SLD with the staged switches applied (topological colouring, no load flow) before turning the maneuver into a manual action card. See [`docs/features/sld-topology-edit.md`](docs/features/sld-topology-edit.md).
 - **Robust highlighting**: contingencies, overloads and impacted assets are drawn as clone-based halos that survive pan, zoom, SLD overlay, and action-target dimming.
 - **Auto-zoom** on contingency, newly overloaded line, or action target; pinned sticky feed summary and overload-click to jump to the N-1 tab (PR #88).
 - **Zoom-tier level-of-detail** (PR #76): labels, nodes and flow arrows are dynamically boosted proportional to `sqrt(diagramSize / referenceSize)`, so large grids remain legible at any zoom.
@@ -100,7 +101,7 @@ Co-Study4Grid is built around the operator's ability to triage hundreds of remed
 - **Pin-driven workflow**: single-click a pin → `ActionCardPopover` opens anchored on the pin (no tab switch); double-click → drills into the SLD overlay for that voltage level; double-click an unsimulated pin → kicks off a manual simulation through `simulate_manual_action`. Same gesture grammar on the Action Overview NAD, the overflow viewer, and the Action Feed cards.
 - **Simulate any action on demand** — from three surfaces: (1) the **action-score table** in the *Manual Selection* dropdown (every scored-but-not-yet-simulated action becomes a one-click `Simulate` row, with editable target setpoints for load-shedding / curtailment / PST and a *"Make a first guess"* shortcut when no analysis is loaded yet); (2) the **un-simulated pin layer** on both the Action Overview NAD and the overflow viewer (dimmed dashed pins, double-click triggers the same code path); (3) any **manual action ID** typed into the dropdown's free-text field. Reconnection (`reco_*`) and load-shedding / curtailment / PST actions are auto-built on the fly when missing from the dictionary, so the operator can compose mixed disconnect + reconnect studies without editing the action JSON.
 - **Combined-action explorer** (PRs #62, #114): the *Computed Pairs* / *Explore Pairs* modal proposes pairs sorted by predicted `target_max_rho`, runs fast superposition first, and offers a one-click full simulation when the operator wants ground truth — load shedding and curtailment can mix freely with topology actions. The estimation-vs-simulation columns sit side by side, so the operator can sweep the modal to find the best pair and validate the superposition prediction with a single click.
-- **Inspect search field** (PR #116) on every viz tab: type any branch / VL / load / generator ID and the view auto-focuses + halos the asset, with focused sub-diagrams a click away.
+- **Inspect search field** (PR #116) on every viz tab: type any branch / VL / load / generator **id _or_ its displayed name** (e.g. `LESQUIVE 400kV`) and the view auto-focuses + halos the asset, with focused sub-diagrams a click away. The same name-aware search backs the Remedial-action overview, so an element is reachable by the label the operator actually sees.
 - **Detachable tabs** (PR #86): pop any visualization tab into a second browser window for dual-monitor studies, with per-window pan/zoom, tie/untie, and automatic reattach. The detached window inherits the same filter and pin state.
 - **Tiered notice system + diagram legend** (PR #122): the sidebar `Notices` pill ranks issues by severity (info / warning / critical) and the new `DiagramLegend` sits inside the Visualization panel so colour codes are always one glance away — no scrolling through docs to recall what a halo means.
 - **Progressive-disclosure ActionCard** (PR #121): severity icons drive a glanceable card summary; topology / load-shed / curtailment details collapse by default and expand on demand, so a feed of 50 actions still fits one screen.
@@ -120,11 +121,15 @@ Co-Study4Grid is built around the operator's ability to triage hundreds of remed
 - **Persistent user config**: paths, recommender parameters and UI preferences persist across sessions through a user-writable config file outside the repo (PR #59).
 - **Confirmation dialogs** before destructive state resets (switching network, applying settings on an active study) so operators never lose work by accident.
 
+### Game Mode (`?game=1`)
+- **Timed, scored contingency game** layered over the exact same workspace, opt-in via the `?game=1` URL flag (or a `VITE_GAME_MODE=1` build). A *session* is an ordered list of *studies* (grid state + N-1 outage); remediate each one with **≤ 3 actions** before the per-study timer expires, then advance. Results export a `game_session.json` for [Codabench](https://www.codabench.org/) scoring + ranking, and the in-browser scorer (`60·R + 25·R·A + 15·R·T`) is a unit-test-locked twin of the Codabench Python scorer. The feature is additive and inert unless `?game=1` is set. See [`docs/features/game-mode-codabench.md`](docs/features/game-mode-codabench.md).
+
 ### Frontend engineering
 - **React 19 + TypeScript 5.9 + Vite 7**, strict mode (`noUnusedLocals`, `noUnusedParameters`).
 - **Phase 1 refactor** (PR #74): `App.tsx` reduced from ~2100 lines to a pure state-orchestration hub; UI split into focused presentational components under `components/` and `components/modals/`.
 - **Phase 2 hook extraction** (PR #109): `useContingencyFetch` (svgPatch fast-path + `/api/contingency-diagram` fallback) and `useDiagramHighlights` (per-tab SVG highlight pipeline) extracted out of `App.tsx`; sidebar moved into dedicated `AppSidebar` / `SidebarSummary` / `StatusToasts` components.
 - **SVG DOM recycling** (PR #108): `utils/svgPatch.ts` clones the mounted N-state SVG and patches only per-branch deltas on N-1 / action tab switches — **~80 % faster** tab switching on the ~12 MB French NAD (full benches in [`CHANGELOG.md`](CHANGELOG.md) 0.6.5).
+- **Design tokens + light / dark theme** (PRs #120, #157): every colour / spacing / radius value lives in a single `src/styles/tokens.{css,ts}` palette (the code-quality gate enforces zero hex literals outside it), which makes the **dark mode** toggle a token swap rather than a per-component rewrite. The theme persists across reloads and a legibility pass covers the pypowsybl NAD / SLD chrome and the interactive overflow viewer. See [`docs/features/dark-mode.md`](docs/features/dark-mode.md).
 - **Code-quality gate** (PR #104): CI enforces zero `print()` / bare except / `any` / `@ts-ignore`, module-size ceilings, and publishes a full Markdown metrics report to each run's workflow summary.
 - **React ErrorBoundary** wrapping the app root (PR #82) to contain crashes.
 - **Vitest + React Testing Library** unit tests co-located as `*.test.tsx` — ~1000 specs.
@@ -189,17 +194,23 @@ Co-Study4Grid/
 │       ├── utils/                   # svgUtils (barrel) + svg/* submodules,
 │       │                            # svgPatch, actionTypes, sessionUtils,
 │       │                            # interactionLogger, mergeAnalysisResult, …
-│       └── components/              # Header, ActionFeed, VisualizationPanel,
-│                                    # OverloadPanel, CombinedActionsModal,
-│                                    # AppSidebar, SidebarSummary, StatusToasts,
-│                                    # NoticesPanel, DiagramLegend,
-│                                    # ActionTypeFilterChips, modals/, …
+│       ├── components/              # Header, ActionFeed, VisualizationPanel,
+│       │                            # CombinedActionsModal, AppSidebar,
+│       │                            # SidebarSummary, NoticesPanel, DiagramLegend,
+│       │                            # ActionFilterRings, SldEditPanel, modals/, …
+│       └── game/                    # Timed, scored Game Mode (?game=1, 0.8.0):
+│                                    # GameShell / useGameSession / gameBridge /
+│                                    # scoring / presets / …
 ├── standalone_interface_legacy.html # DECOMMISSIONED frozen snapshot (do not edit)
 ├── docs/                        # features/, performance/, architecture/,
 │                                # proposals/, data/  +  backend/ (README.md,
 │                                # recommender_models.md)
 ├── benchmarks/                  # Offline micro-benches (warm / cold timings)
-├── scripts/                     # Parity + quality gates + PyPSA-EUR pipeline
+├── scripts/                     # Parity + quality gates + PyPSA-EUR pipeline +
+│                                # game_mode/ (Codabench replay)
+├── deploy/huggingface/          # HuggingFace Docker Space README + SETUP.md
+├── Dockerfile                   # Single-container same-origin SPA + API image
+├── config.default.json          # Bundled first-run settings (fr225_400 grid)
 └── Overflow_Graph/              # Generated PDF output directory (created at runtime)
 ```
 
@@ -213,6 +224,10 @@ See [`CLAUDE.md`](CLAUDE.md) for a deep dive into the architecture and conventio
 - **Node.js 18+** and **npm**
 - **Graphviz** (`dot` binary on `PATH`) — required by the overflow-graph
   rendering pipeline (pydot → `dot`). See step 1 below.
+- **Git LFS** — binary assets (sample-grid `*.zip`, screenshots) are stored
+  via Git LFS. Run `git lfs install` before cloning (or `git lfs pull`
+  afterwards) so the bundled France 225/400 kV `network.xiidm.zip` resolves
+  to the real archive rather than a pointer file.
 
 All Python dependencies (`pypowsybl`, `expert_op4grid_recommender`,
 `grid2op`, `pandapower`, `lightsim2grid`, `fastapi`, `uvicorn`, `pydot`,
@@ -308,6 +323,39 @@ Open the Vite dev-server URL shown in the terminal (typically `http://localhost:
 7. To try a different recommender, hit **Clear** under the Suggested Actions tab header (keeps your starred / rejected / manually-added actions), pick a model in the dropdown above Analyze & Suggest, and re-run.
 8. Detach any visualization tab (`⧉`) onto a second screen for dual-monitor studies.
 9. Hit **Save Results** to export the full session (including the active recommender model under `analysis.active_model`); **Reload Session** restores it exactly, without re-simulating anything.
+
+---
+
+## Deployment
+
+Co-Study4Grid can run as a **single-container online game** — the React
+SPA is built same-origin and served by the FastAPI backend from one
+process, so there is nothing to install client-side.
+
+- **`Dockerfile`** (build context = repo root): a multi-stage build that
+  compiles the SPA with `VITE_API_BASE_URL=""` (relative `/api/...`) and
+  `VITE_GAME_MODE=1` (boots into [Game Mode](#game-mode-game1)), then runs a
+  Python image serving the API, the built SPA, and the bundled sample grids
+  on port `7860`.
+
+  ```bash
+  docker build -t costudy4grid .
+  docker run -p 7860:7860 costudy4grid   # → http://localhost:7860
+  ```
+
+- **HuggingFace Docker Space**: the [`deploy/huggingface/`](deploy/huggingface/)
+  folder holds the Space `README.md` (front-matter + how-to-play) and a
+  step-by-step [`SETUP.md`](deploy/huggingface/SETUP.md). Because the backend
+  keeps a **single active study** in module-level singletons, one Space
+  instance serves **one player at a time** — use *Duplicate this Space* for
+  more.
+
+- **Same-origin hosting elsewhere**: point `COSTUDY4GRID_FRONTEND_DIST` at a
+  `vite build` output and the backend mounts it at `/` (after every `/api/*`
+  / `/results/*` route). Binary assets (sample-grid archives, screenshots)
+  are tracked with **Git LFS** (`.gitattributes`) because the HuggingFace
+  git endpoint rejects non-LFS binaries; the large France 225/400 kV grid
+  ships compressed as `network.xiidm.zip` and is auto-decompressed on load.
 
 ---
 
@@ -825,7 +873,7 @@ layers of automated checks (`scripts/check_standalone_parity.py`,
 
 ### Data Formats
 
-- **Network files**: `.xiidm` (loaded by pypowsybl)
+- **Network files**: `.xiidm` (loaded by pypowsybl) — may be shipped **zipped** (`.xiidm.zip`); the backend decompresses transparently on load (handy for Git LFS / size-limited hosts)
 - **Action definitions**: `.json` mapping action IDs to descriptions, supporting topology, PST, `set_load_p`, and `set_gen_p` formats
 - **Network layouts**: `grid_layout.json` with node-ID → `[x, y]` coordinates
 - **Generated outputs**: PDF overflow graphs in `Overflow_Graph/`
@@ -835,7 +883,7 @@ layers of automated checks (`scripts/check_standalone_parity.py`,
 
 ## Changelog
 
-See [`CHANGELOG.md`](CHANGELOG.md) for the list of changes per release. The current release is **0.7.5**.
+See [`CHANGELOG.md`](CHANGELOG.md) for the list of changes per release. The current release is **0.8.0**.
 
 ---
 

@@ -90,15 +90,15 @@ Configuration in `frontend/vite.config.ts` (Vitest plugin).
 |------|-------------|
 | `test_superposition_accuracy.py` | Superposition vs simulation discrepancy detection |
 | `test_superposition_filtering_regression.py` | Max rho filtering for heavily loaded lines |
-| `test_superposition_service.py` | On-demand superposition computation |
+| `test_superposition_service.py` | On-demand superposition computation, incl. the **GST** cases for injection-action pairs (topology+injection, injection-first, injection+injection, `is_injection_action`) — 0.8.0 |
 | `test_superposition_monitoring_consistency.py` | Monitoring alignment between estimation and simulation |
 | `test_pst_combined_actions.py` | PST tap + combined action simulation, topology preservation, fast_mode protection |
 
 #### PR #104 decomposition — extracted helper packages
 | File | Description |
 |------|-------------|
-| `test_simulation_helpers.py` | 66 tests for the stateless helpers extracted from `simulate_manual_action` + `compute_superposition` |
-| `test_analysis_helpers.py` | 68 tests for `services/analysis/` (MW-start, action enrichment, PDF watcher, analysis runner) |
+| `test_simulation_helpers.py` | Tests for the stateless helpers extracted from `simulate_manual_action` + `compute_superposition` (incl. `compute_redispatch_setpoint` + `is_injection_action`, 0.8.0) |
+| `test_analysis_helpers.py` | Tests for `services/analysis/` (MW-start, action enrichment incl. redispatch details, PDF watcher, analysis runner) |
 | `test_diagram_helpers.py` | 39 tests for `services/diagram/` (layout cache, NAD params, NAD render, SLD render, overloads, flows, deltas) |
 | `test_diagram_mixin.py` | Orchestrator-level coverage for `DiagramMixin` after the decomposition |
 | `test_diagram_patch_helpers.py` | Patch-endpoint delta math (`/api/n1-diagram-patch`, `/api/action-variant-diagram-patch`) — PR #108. Drives the static-method wrappers on `DiagramMixin` (`_compute_vl_topology_diff`, `_get_disconnected_branches_from_snapshot`) that delegate to `services/diagram/action_patch.py`. |
@@ -140,19 +140,22 @@ sanity).
 ### Components (`frontend/src/components/**/*.test.tsx`)
 
 Every presentational component has a colocated test file —
-`ActionCard`, `ActionCardPopover`, `ActionFeed`, `ActionOverviewDiagram`,
-`ActionSearchDropdown`, `ActionTypeFilterChips`, `CombinedActionsModal`,
-`ComputedPairsTable`, `DetachableTabHost`, `ErrorBoundary`,
-`ExplorePairsTab`, `Header`, `MemoizedSvgContainer`, `OverloadPanel`,
-`SldOverlay`, `VisualizationPanel`, plus the three modals
+`ActionCard`, `ActionCardPopover`, `ActionFeed`, `ActionFilterRings`,
+`ActionOverviewDiagram`, `ActionSearchDropdown`, `ActionTypeIcon`,
+`AdditionalLinesPicker`, `AppSidebar`, `CombinedActionsModal`,
+`ComputedPairsTable`, `DetachableTabHost`, `DiagramLegend`,
+`ErrorBoundary`, `ExplorePairsTab`, `Header`, `MemoizedSvgContainer`,
+`NoticesPanel`, `OverloadPanel`, `SeverityIcon`, `SidebarSummary`,
+`SldEditPanel`, `SldOverlay`, `VisualizationPanel`, plus the three modals
 (`SettingsModal`, `ReloadSessionModal`, `ConfirmationDialog`).
 
 ### Hooks (`frontend/src/hooks/*.test.ts[x]`)
 
 One test file per hook — `useActions`, `useAnalysis`, `useDetachedTabs`,
-`useDiagramHighlights`, `useDiagrams`, `usePanZoom`, `useSession`,
-`useSettings`, `useSldOverlay`, `useTiedTabsSync`. `useContingencyFetch` is
-covered transitively by `useDiagrams` + the App-integration suite.
+`useDiagramHighlights`, `useDiagrams`, `useOverflowIframe`, `usePanZoom`,
+`useSession`, `useSettings`, `useSldOverlay`, `useSldTopologyEdit`,
+`useTheme`, `useTiedTabsSync`. `useContingencyFetch` is covered
+transitively by `useDiagrams` + the App-integration suite.
 
 ### Utilities (`frontend/src/utils/**/*.test.ts`)
 
@@ -170,6 +173,14 @@ covered transitively by `useDiagrams` + the App-integration suite.
 | `fileRegistry.test.ts` | Structure-regression guard — fails if an expected source file disappears |
 | `specConformance.test.ts` | Layer-4 spec contracts for interaction-log events |
 | `userObservableInvariants.test.ts` | Runtime Vitest twin of `scripts/check_invariants.py` |
+
+### Game Mode (`frontend/src/game/*.test.ts`)
+
+`scoring.test.ts` (scoring formula + log/CSV export — the twin lock against
+the Codabench Python scorer), `presets.test.ts`, and `useGameSession.test.ts`
+cover the timed-session state machine. The real-backend replay lives in
+`scripts/game_mode/e2e_game_session.py` (not part of the Vitest suite; needs
+pypowsybl + `expert_op4grid_recommender`).
 
 ## Common Testing Patterns
 

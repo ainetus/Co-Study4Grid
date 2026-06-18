@@ -32,6 +32,12 @@ jobs:
       - name: Run reporter unit tests
         run: pytest scripts/test_code_quality_report.py -q
 
+      - name: Run mypy (gate)
+        # GATES the build: the shared-state base (services/_recommender_state.py)
+        # makes the mixin composition type-check cleanly, so mypy is at 0 and
+        # any new type error fails CI (see pyproject [tool.mypy] + §19).
+        run: mypy
+
       - name: Generate report artifacts
         run: |
           python scripts/code_quality_report.py \

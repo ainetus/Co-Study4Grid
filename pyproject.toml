@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "co_study4grid"
-version = "0.7.5"
+version = "0.8.0"
 authors = [
     { name="RTE", email="rte@rte-france.com" },
 ]
@@ -42,13 +42,20 @@ dependencies = [
 [project.optional-dependencies]
 test = [
     "pytest",
+    "pytest-cov",
     "httpx",
     "lxml",
     "pandas",
 ]
 quality = [
     "ruff>=0.6",
+    # radon is no longer required by the gate (cyclomatic complexity +
+    # nesting are computed from the AST in scripts/code_quality_report.py);
+    # kept for ad-hoc `radon cc` exploration.
     "radon>=6.0",
+    # Pinned to a minor for CI reproducibility now that mypy GATES the build
+    # (a newer minor could surface new diagnostics and break an unrelated PR).
+    "mypy==1.19.*",
 ]
 
 [project.scripts]
@@ -97,5 +104,44 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "expert_backend/tests/*" = ["F811"]  # pytest fixture redefinitions
 "scripts/*" = []
+
+# --- mypy (GATING) ----------------------------------------------------------
+# The shared RecommenderService surface is declared in
+# services/_recommender_state.py (a TYPE_CHECKING-only base the mixins inherit
+# at type-check time, `object` at runtime), so per-class checking no longer
+# false-positives on the mixin composition. mypy is clean (0 errors) and now
+# GATES the build in CI. See docs/architecture/code-quality-analysis.md §19.
+[tool.mypy]
+files = ["expert_backend"]
+exclude = '(^|/)(tests/|test_backend\.py|install_graphviz\.py)'
+ignore_missing_imports = true
+warn_unused_configs = true
+# Lenient: advisory visibility, not strictness. Tighten incrementally.
+check_untyped_defs = false
+disallow_untyped_defs = false
+
+# The pluggable-model layer deliberately re-binds service methods per active
+# model (its whole job), so `method-assign` is expected there — scope-disable
+# it for that one module rather than sprinkling `# type: ignore`.
+[[tool.mypy.overrides]]
+module = "expert_backend.recommenders._service_integration"
+disable_error_code = ["method-assign"]
+
+# --- coverage (GATED) -------------------------------------------------------
+# Floor read off the first green CI run (backend was 78% on the no-graphviz
+# job, 849 passed). `fail_under` sits 6 points below at 72 so a routine PR
+# passes but coverage can't erode; ratchet up as it climbs. Enforced wherever
+# `pytest --cov` runs (CI test jobs); can't be measured offline (the real
+# recommender is needed). See §20.
+[tool.coverage.run]
+source = ["expert_backend"]
+omit = [
+    "expert_backend/tests/*",
+    "expert_backend/test_backend.py",
+    "expert_backend/install_graphviz.py",
+]
+
+[tool.coverage.report]
+fail_under = 72
 
 

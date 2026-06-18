@@ -1,13 +1,13 @@
 # Code Quality & Maintainability Analysis
 
 **Date:** 2026-04-11
-**Last updated:** 2026-05-05
+**Last updated:** 2026-06-18
 **Scope:** Full repository diagnostic — backend, frontend, repo structure, security, testing
 
 > **Continuous reporting (new 2026-04-20):**
 > - `python scripts/code_quality_report.py` — metrics dump (JSON + Markdown)
 > - `python scripts/check_code_quality.py` — CI gate (non-zero exit on regression)
-> - Unit-tested in `scripts/test_code_quality_report.py` (7 tests, part of the pytest suite)
+> - Unit-tested in `scripts/test_code_quality_report.py` (13 tests, part of the pytest suite)
 > - Runs in CI: `.github/workflows/code-quality.yml` + `.circleci/config.yml`
 >   (jobs `gate` / `code-quality`). Also uploads a report artifact.
 > - See [CONTRIBUTING.md](../../CONTRIBUTING.md#code-quality-checks)
@@ -20,7 +20,7 @@
 | Dimension | Grade | Status | Notes |
 |-----------|-------|--------|-------|
 | **TypeScript correctness** | **A** | — | Zero compiler errors, zero lint warnings, strict mode |
-| **Test suite** | **A+** | **Improved** | 560+ frontend tests, 42 backend test files, 7 quality-reporter tests |
+| **Test suite** | **A+** | **Improved** | 560+ frontend tests, 53 backend test files, 13 quality-reporter tests |
 | **Documentation** | **A** | — | CLAUDE.md refreshed, `CONTRIBUTING.md` added, 17 docs/ |
 | **Frontend architecture** | **B+** | **Improved** | Oversized components split into focused subcomponents |
 | **Backend architecture** | **B+** | **Fixed** | Split into 5 focused modules (was one 3,151-line monolith) |
@@ -335,7 +335,7 @@ Three shipped surfaces keep the metrics above honest over time:
 - `.circleci/config.yml` — mirrors the above under a `code-quality`
   job added to the `test-workflow` workflow.
 - `pytest.ini` — includes `scripts/test_code_quality_report.py` so
-  the gate logic has its own unit-test coverage (7 tests).
+  the gate logic has its own unit-test coverage (13 tests).
 
 ---
 
@@ -976,6 +976,364 @@ client-generation tooling.
 - ``python -m pytest expert_backend/tests`` — 674 / 674 pass when
   the documented test-pollution failures are isolated (same 19
   pre-existing failures as the §13 baseline; no new regressions).
+
+---
+
+## 16. Delta — 2026-06-17 (0.8.0)
+
+The 0.8.0 cycle broadened the feature surface (redispatch action
+type, GST-estimable injection pairs, interactive SLD topology edit,
+light/dark theme, Game Mode, the HuggingFace Docker deployment)
+while keeping every ceiling green. The structural changes that
+matter for this audit:
+
+### 16.1 Diagram-mixin decomposition — landed
+
+The §14.8 / §15.1 watch item on the diagram patch pipeline is
+**resolved by extraction**, not by an exemption. ``diagram_mixin.py``
+shed two helper packages:
+
+- ``services/diagram/action_patch.py`` (new) — the entire
+  ``/api/action-variant-diagram-patch`` pipeline (~510 LoC): the
+  280-line ``get_action_variant_diagram_patch`` orchestrator, its
+  three patch helpers (``compute_vl_topology_diff``,
+  ``extract_vl_subtrees_with_edges``,
+  ``get_disconnected_branches_from_snapshot``) and three private
+  helpers. ``_compute_vl_topology_diff`` /
+  ``_get_disconnected_branches_from_snapshot`` stay re-exported as
+  static methods on ``DiagramMixin`` so ``test_diagram_patch_helpers.py``
+  passes unchanged.
+- ``services/diagram/obs_prewarm.py`` (new) — the post-contingency
+  observation pre-warm helper (``build_prewarmed_obs``) that drives
+  ``_cached_obs_n1`` so ``run_analysis_step1`` can skip the redundant
+  load flow.
+
+Result: ``diagram_mixin.py`` **1220 → 769 lines** (-451, 37 %), a
+431-line buffer below the ``BACKEND_MODULE_MAX`` 1200 ceiling. The
+``get_action_variant_diagram_patch`` ``BACKEND_FUNCTION_EXEMPTIONS``
+entry from §15.1 moves with the function to the new module. New
+coverage: ``test_obs_prewarm_for_step1.py`` (9 tests),
+``test_action_patch_module.py`` (16 tests).
+
+### 16.2 New frontend module — ``src/game/``
+
+Game Mode (a timed, scored session wrapper) lands as a **self-
+contained ``frontend/src/game/`` package** rather than as additions
+to ``App.tsx``. It is **additive and inert unless ``?game=1``**: the
+App integration is three ``gameBridge.isGameMode()``-guarded touch
+points, so the orchestration hub stays at its existing altitude and
+the analysis engine is untouched. The decoupling singleton
+(``gameBridge``) mirrors the established ``interactionLogger`` pattern,
+keeping the dependency direction one-way (game → App via a registered
+loader, never App → game).
+
+### 16.3 Surface growth held to the established patterns
+
+The new capabilities reuse existing extension seams instead of
+widening hot files:
+
+- **Redispatch action type** threads through the same per-type
+  dispatchers the other action families use
+  (``mw_start_scoring.classify_action_type`` +
+  ``mw_start_redispatch``, ``action_enrichment.compute_redispatch_details``,
+  ``simulation_helpers.compute_redispatch_setpoint``) — no new
+  god-function, each helper stays well under the 250-line ceiling.
+- **Light / dark theme** is a **token swap, not per-component
+  overrides**: it re-points the ``styles/tokens.{css,ts}`` custom
+  properties, so the ``FRONTEND_HEX_LITERAL_MAX = 0`` rule (§14) keeps
+  holding — no theme-specific hex literals leaked into components.
+- **Recommender action-type restriction** is plumbed end-to-end
+  (``useSettings`` → ``SettingsModal`` → ``POST /api/config`` →
+  ``config.ALLOWED_ACTION_TYPES``) through the existing settings /
+  save / reload / replay paths.
+
+### 16.4 CI / supply-chain note
+
+From 0.8.0 the backend test installs **track the latest published
+``expert_op4grid_recommender``** (``>=0.2.4`` floor + ``--no-cache-dir``)
+rather than a pinned version, so a fresh index resolves to the newest
+release on every run (``.github/workflows/test.yml`` /
+``.circleci/config.yml``); the ``Dockerfile`` pins the same floor to
+keep the deployed recommender consistent with CI. The new HuggingFace
+Docker deployment adds an **optional** same-origin SPA mount in
+``main.py`` (``COSTUDY4GRID_FRONTEND_DIST``, mounted last, inert when
+absent — local dev / the test suite are unaffected) and Git LFS
+tracking for ``*.zip`` / ``*.png`` / ``*.jpg`` binaries (the Space git
+endpoint rejects non-LFS binaries; the France 225/400 kV
+``network.xiidm`` now ships compressed).
+
+### 16.5 Verdict
+
+No ceiling regressed; the one outstanding backend-module watch item
+(the diagram patch pipeline) was retired by extraction. The feature
+breadth of 0.8.0 was absorbed through existing decomposition,
+token, and bridge patterns rather than by growing the hot files.
+
+---
+
+## 17. Delta — 2026-06-18 (metrics revision)
+
+A pass over the gate **itself** rather than the code it measures —
+closing measurement blind spots, adding detectors, ratcheting
+already-measured-but-ungated smells, and tightening ceilings that had
+accumulated headroom. The live numbers remain auto-generated by
+`scripts/code_quality_report.py`; the before/after figures in the
+historical deltas above are point-in-time snapshots from when each
+decomposition landed and are intentionally **not** rewritten.
+
+### 17.1 Coverage gap closed — `recommenders/` was never scanned
+
+The backend scan rooted at `main.py` + `services/` only. Widening it
+to all of `expert_backend/` (minus the `tests/` suite, the ad-hoc
+`test_backend.py`, and the setup-time `install_graphviz.py`) revealed
+that the entire **`expert_backend/recommenders/`** package — the
+pluggable model registry behind `/api/models` (8 files, ~1,200 LoC) —
+had **zero** gate coverage. It is clean on the smell axes
+(`print`/`traceback`/silent-except all 0) but had been invisible to
+the gate; its largest function (`_run_analysis_step2_with_model`,
+**226** lines) is now the binding non-exempt backend function.
+
+### 17.2 New detectors + scoping fix
+
+- **`as any`** assertion casts now count toward the `any` gate (was a
+  blind spot — only annotation positions were caught). Currently 0.
+- **`@ts-expect-error` / `@ts-nocheck`** join `@ts-ignore` as gated
+  type-suppressions (all three silence the checker). The 4 legitimate
+  uses live in `src/test/setup.ts`, which is now correctly excluded —
+  the frontend scan skips the `src/test/` infra dir, not just
+  `*.test.*` files, so test scaffolding no longer counts as product
+  source.
+- **`# noqa` / `# type: ignore`** in backend source are now reported.
+
+### 17.3 Ratchets — freeze, don't big-bang
+
+Three smells exist today in small, often-legitimate counts. Rather
+than force an immediate cleanup (or ignore them), the gate freezes
+them at the current level — lowering is welcome, raising is a
+regression:
+
+| Smell | Frozen at | Notes |
+|-------|----------:|-------|
+| `as unknown as` casts | **19** | DOM/SVG boundary casts, mostly in `actionPinRender` / `highlights` / `ActionFeed` |
+| `Record<string, unknown>` | **46** | JSON-ish payload typing; prefer named interfaces going forward |
+| backend `# noqa` / `# type: ignore` | **3** | all justified inline (`F401` re-exports, one logged `BLE001`) |
+
+### 17.4 Ceilings tightened; `App.tsx` bounded not exempt
+
+Headroom had accumulated, so ceilings were ratcheted toward the
+current maxima (the doc's standing "lowering is welcome" policy):
+
+| Ceiling | Was | Now | Current max |
+|---------|----:|----:|------------:|
+| Backend module | 1200 | **1150** | 1100 (`simulation_mixin.py`) |
+| Backend function | 250 | **240** | 226 (`_run_analysis_step2_with_model`) |
+| Frontend component | 1500 | **1450** | 1407 (`VisualizationPanel.tsx`) |
+| `frontend/src/utils/**` | 2000 | **1000** | 592 (`actionPinRender.ts`) |
+| `App.tsx` hub | *exempt* | **2100** | 1982 |
+
+`App.tsx` traded its blanket size exemption for a generous *bounded*
+ceiling — "the orchestration hub" is a reason for a higher bar, not an
+infinite one. The dead `diagram_mixin::get_action_variant_diagram_patch`
+function-size exemption (retired in §16.1, now 9 lines) was removed
+from the allowlist.
+
+### 17.5 Watch items
+
+The two tightest margins are deliberate locks, not comfortable
+headroom: `simulation_mixin.py` (1100 / 1150) and
+`_run_analysis_step2_with_model` (226 / 240). The next substantive
+edit to either should come with an extraction. Reporter unit tests
+grew from 7 to **13** (new detector + scoping coverage).
+
+---
+
+## 18. Delta — 2026-06-18 (new measurement dimensions)
+
+Adds axes beyond line counts. Two are dependency-free and **gated**;
+two are introduced as **non-blocking foundations** because a hard gate
+today would be either noisy (mypy) or set blind (coverage).
+
+### 18.1 Cyclomatic complexity + nesting depth — gated, AST-native
+
+Per-function McCabe complexity and max block-nesting are computed from
+the AST the reporter already parses — **no external dependency** (the
+`radon` quality-extra is now optional, kept only for ad-hoc `radon cc`).
+Both are reported (top-5 each) and gated:
+
+| Metric | Ceiling | Current non-exempt max | Exemption |
+|--------|--------:|-----------------------:|-----------|
+| Cyclomatic complexity | **38** | 35 (`recommender_service.update_config`) | `overflow_geo_transform.transform_html` (49 — lxml transform, already size-exempt) |
+| Nesting depth | **8** | 7 (`analysis_mixin._narrow_context_to_selected_overloads`) | `sanitize.sanitize_for_json` (9 — recursion shape) |
+
+Ratchets: lower over time; new offenders are not welcome.
+
+### 18.2 Logical (code) lines — reported
+
+Non-blank, non-comment counts now sit alongside raw LoC — backend
+**8,919 / 11,596**, frontend **18,619 / 25,238**. The gated ceilings
+stay on raw LoC; code-lines are context (a dense 600-line module reads
+differently from one that is half blanks and docstrings). The counter
+is a deliberately simple heuristic, not a tokenizer.
+
+### 18.3 mypy — advisory (non-blocking)
+
+`pyproject [tool.mypy]` (`ignore_missing_imports`, scoped to
+`expert_backend` minus `tests/` + the setup scripts) plus a
+**non-blocking** step in both CI pipelines. Baseline **~69 errors**,
+dominated by `"<Mixin>" has no attribute "_…"` — mypy cannot model the
+deliberate mixin composition (`DiagramMixin` / `AnalysisMixin` /
+`SimulationMixin` all operate on the composed `RecommenderService`
+`self`; the backend guide explicitly says "treat the mixins as one
+class"). A hard gate would be noise. The path to gating is typing the
+mixin surface via `Protocol`s; until then mypy is **visibility**, not a
+gate.
+
+### 18.4 Coverage — report-only
+
+`pytest-cov` (backend, in the `test` extra) and `@vitest/coverage-v8`
+(frontend dev-dep) are wired into both pipelines as **non-blocking**
+reporting + artifacts (`npm run test:coverage` / `pytest --cov`
+locally). There is **no `--cov-fail-under` floor yet**: the backend
+suite cannot be measured offline (several tests need the real
+`expert_op4grid_recommender`), so a floor must be read off the first
+green CI run and then ratcheted — setting one blind would break CI on
+day one.
+
+### 18.5 Verdict
+
+The gate now measures four axes **dependency-free** — size, smells,
+complexity/nesting, weak-typing — each gated or ratcheted. mypy and
+coverage are staged foundations, deliberately non-blocking until they
+can gate without noise (mypy: type the mixin surface) or guesswork
+(coverage: a measured baseline). Reporter unit tests **13 → 16**.
+
+---
+
+## 19. Revision — 2026-06-18 (acting on the review)
+
+A measured code-quality revision (full scorecard below) and the
+improvement targets it produced — implemented bar one. The two
+"staged foundations" from §18 were the headline opportunities, and
+both got promoted from advisory to gating here.
+
+### 19.1 Scorecard (measured)
+
+| Dimension | Grade | Evidence |
+|-----------|-------|----------|
+| Backend smell hygiene | A+ | print/traceback/silent all **0**; 3 suppressions, all justified |
+| Frontend strictness surface | A | **0** `any`/`as any`, **0** ts-suppressions, **0** hex |
+| Quality tooling / gate | A | size + smells + complexity/nesting + weak-typing, all dependency-free |
+| Module / function size | B+ | App.tsx 1982/2100, simulation_mixin 1100/1150, overflow_overlay 1055 ride ceilings |
+| Cyclomatic complexity | B+ | hotspots: transform_html CC49, update_config CC35, _narrow_context CC30/nest7 |
+| Test coverage | B | frontend **73.7% stmt / 76.3% line** (now gated); backend unmeasured |
+| Frontend weak typing | B→B+ | `as unknown as` 19 → **12**; `Record<string,unknown>` **46** |
+| Backend type safety | C+→B | mypy **69 → 0, now gating**; return annotations, missing **112 → 86** |
+
+### 19.2 Targets and outcomes
+
+| # | Target | Outcome |
+|---|--------|---------|
+| 1 | Type the mixin surface | `services/_recommender_state.py` — a `TYPE_CHECKING`-only base the three mixins inherit (`object` at runtime, no MRO/behaviour change). mypy **69 → 0**, flipped to **gating** (pinned `mypy==1.19.*`). |
+| 2 | Fix the 3 real type bugs | `run_analysis_step2` `list[str]` defaults → `\| None` (×2); `_cached_obs_n1_elements` Optional mismatch resolved by the shared declaration. |
+| 3 | Return-annotation coverage | 26 void fns annotated `-> None` (libcst codemod, mypy-verified); reporter metric + **missing-return ratchet at 86** (was 112). 80 value-returning + 6 generators remain the ratchet-down target. |
+| 5 | Coverage floor | **Frontend now gates** on `vite.config.ts` thresholds (70/65/70/73, below the 73.7/70/73.8/76.3 baseline). **Backend** stays report-only — unmeasurable offline; floor to be read off the first green CI run. |
+| 6 | Frontend weak typing | 7 over-cautious SVG-DOM `as unknown as` casts simplified to plain downcasts (type-only, tsc+eslint clean); **weak-cast ratchet 19 → 12**. |
+| 4 | Decompose ceiling-riders | **Deferred** (explicitly out of scope this round). simulation_mixin / App.tsx / VisualizationPanel / the CC hotspots remain the size-and-complexity targets. |
+
+### 19.3 Net effect on the gate
+
+Two axes graduated from advisory to **gating**: mypy (0 errors,
+enforced by the shared-state base) and frontend coverage (a measured
+floor). New ratchets/metrics: backend missing-return annotations (86),
+plus the tightened `as unknown as` ratchet (12). Every change was
+validated locally — mypy clean, tsc + eslint clean, the offline backend
+suite byte-identical (no runtime touched), and `npm run test:coverage`
+green against the new floor.
+
+### 19.4 What's next (unchanged from the review)
+
+The remaining type-debt is now *visible and bounded*: 80 value-returning
+backend functions to annotate (mypy will verify), the 46
+`Record<string,unknown>` to model, target **#4** (decompose the
+ceiling-riders), and the backend coverage floor once CI yields a number.
+
+---
+
+## 20. Delta — 2026-06-18 (backend coverage floor)
+
+The first green CI run after §19 produced the number §18.4 was waiting
+for: the backend no-graphviz job reported **78%** (`TOTAL 4771 1063
+78%`, 849 passed). So the backend coverage floor is now **set and
+gating** — `pyproject.toml [tool.coverage.report] fail_under = 72` (6
+points below the baseline, same margin philosophy as the frontend
+floor), enforced wherever `pytest --cov` runs (both CI pipelines).
+
+Both coverage halves now gate (frontend §19, backend here); the only
+remaining "advisory → gating" promotions from the §18 staging are
+complete. Ratchet the floors up as coverage climbs.
+
+---
+
+## 21. Delta — 2026-06-18 (return annotations, ratchet-down)
+
+Continuing §19's #3, the missing-return ratchet dropped **86 → 60** —
+26 functions annotated with **concrete, mypy-verified** types:
+
+- A conservative AST codemod annotated the *shape-clear* ones (where
+  every value-return agrees): 6 `tuple`, 4 generators → `Iterator[Any]`,
+  2 `dict`, plus `| None` where there's an explicit bare return.
+- A second hand-built pass added the unambiguous literal returns:
+  `network_service` list/dict getters, `deltas._signed` → `float`,
+  `_load_layout_coords` → `dict`, the `is_renewable` predicates → `bool`.
+
+An attempt with the `infer-types` tool was **reverted**: it annotated
+75 in one shot but introduced 37 mypy errors — wrong `-> None` on
+value-returning methods, over-broad unions that broke unpacking — and
+even its "passing" annotations couldn't be trusted (untyped deps let
+wrong types through as `Any`). The conservative route is slower but
+every annotation is correct.
+
+**Why it stopped at 60, not 0:** the residual 60 are `return helper(…)`
+/ `return self._x` delegations to **untyped** pypowsybl / recommender
+helpers, so their honest type is `Any`. Padding them `-> Any` would push
+the metric to 100% while mypy verifies nothing — gaming it. The
+principled path to lowering the ratchet further is typing the **helpers**
+bottom-up (in `services/analysis/`, `services/diagram/`,
+`simulation_helpers.py`), after which concrete types flow up to these
+delegators and mypy can actually check them. Offline suite byte-identical
+(624 passed); no runtime touched.
+
+---
+
+## 22. Tracked for next release — target #4 (decompose ceiling-riders)
+
+Target **#4** from the §19 review (decompose the files riding their
+size/complexity ceilings) was deliberately deferred — it is structural
+work, not a gate tweak, and should be scheduled deliberately rather than
+done under deadline when a feature PR trips the gate.
+
+It is now **traced as a proposal** with the full investigation captured:
+[`docs/proposals/decompose-ceiling-riders.md`](../proposals/decompose-ceiling-riders.md).
+That doc lists every ceiling-rider with its current margin, a concrete
+extraction candidate per target, a priority order (tightest margin
+first), and acceptance criteria.
+
+Headline margins at hand-off (ceiling − current):
+
+- **`simulation_mixin.py` 1110/1150 (+40)** — tightest module; it grew
+  this session (the annotation imports), so it is the first to act on.
+  Extract the superposition slice.
+- **`VisualizationPanel.tsx` 1407/1450 (+43)** — tightest frontend file.
+- **`_run_analysis_step2_with_model` 226/240 (+14)** — tightest function.
+- **`update_config` CC 35 / `_narrow_context…` nest 7** — tightest
+  complexity (+3 CC / +1 nest).
+- `overflow_overlay.py` (1055) — move the 924-line template f-string to
+  external assets; high leverage and retires a gate exemption.
+- `App.tsx` (1982/2100) — already scoped as Option 3 in
+  `frontend/CLAUDE.md`.
+
+Also surfaced in `CHANGELOG.md` `[Unreleased]` so it is bound to the
+next release.
 
 
 

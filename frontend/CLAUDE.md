@@ -27,14 +27,22 @@ frontend/
 ├── tsconfig.node.json        # Vite/config TypeScript config
 ├── public/
 └── src/
-    ├── main.tsx              # React entry (StrictMode)
+    ├── main.tsx              # React entry (StrictMode). Mounts GameShell
+    │                         # instead of App when ?game=1 (gameBridge.isGameMode())
     ├── App.tsx               # State orchestration hub (~1400 lines)
     ├── App.*.test.tsx        # App-level integration tests by domain
     ├── App.css / index.css   # Global + app styles
-    ├── api.ts                # Axios HTTP client (single object literal)
+    ├── api.ts                # Axios HTTP client. API_BASE_URL =
+    │                         # VITE_API_BASE_URL ?? http://127.0.0.1:8000 — set to
+    │                         # "" for same-origin (Docker Space) hosting
     ├── api.test.ts
     ├── types.ts              # All TypeScript interfaces (one file)
     ├── test/setup.ts         # Vitest global setup (jest-dom matchers)
+    ├── game/                 # Timed, scored Game Mode (0.8.0; active only with
+    │                         # ?game=1). GameShell / useGameSession / gameBridge /
+    │                         # GameConfigScreen / GameHud / GameResults / scoring /
+    │                         # gameLog / presets / types. See the Game Mode section
+    │                         # below + docs/features/game-mode-codabench.md
     ├── hooks/                # Custom hooks owning a slice of state
     │   ├── useSettings.ts          # All settings + setters → SettingsState
     │   ├── useActions.ts           # Action selection / favorite / reject
@@ -52,14 +60,22 @@ frontend/
     │   ├── useTiedTabsSync.ts      # Mirror viewBox between detached + main
     │   ├── useContingencyFetch.ts           # N-1 diagram fetch (svgPatch fast-path
     │   │                           # + full /api/contingency-diagram fallback)
-    │   └── useDiagramHighlights.ts # Per-tab SVG highlight pipeline
-    │                               # (overload halos, contingency highlight,
-    │                               # action targets, delta visuals) + the
-    │                               # per-tab Flow/Impacts view-mode state
+    │   ├── useDiagramHighlights.ts # Per-tab SVG highlight pipeline
+    │   │                           # (overload halos, contingency highlight,
+    │   │                           # action targets, delta visuals) + the
+    │   │                           # per-tab Flow/Impacts view-mode state
+    │   ├── useOverflowIframe.ts    # Interactive overflow viewer: iframe
+    │   │                           # lifecycle, layer toggles, hierarchical ↔
+    │   │                           # geo switch, postMessage bridge, pin overlay
+    │   └── useTheme.ts             # Light/dark theme toggle + persistence
+    │                               # (0.8.0; see docs/features/dark-mode.md)
     ├── components/           # Presentational components (no API calls)
     │   ├── Header.tsx, ActionFeed.tsx, OverloadPanel.tsx,
     │   ├── VisualizationPanel.tsx, ActionCard.tsx, ActionCardPopover.tsx,
     │   ├── ActionOverviewDiagram.tsx, ActionSearchDropdown.tsx,
+    │   ├── ActionTypeIcon.tsx, SeverityIcon.tsx,   # action-type + severity
+    │   │                               # pictograms (shared by cards / rings / pins)
+    │   ├── DiagramLegend.tsx, AdditionalLinesPicker.tsx,
     │   ├── ActionFilterRings.tsx       # Shared sidebar strip: severity ring
     │   │                               # (4 colour-coded pictogram toggles
     │   │                               # with single-click toggle + double-
@@ -131,6 +147,9 @@ frontend/
         │                              # by every filter UI surface (PR #109)
         ├── overloadHighlights.ts      # N-1 overload classification
         ├── popoverPlacement.ts        # Pin-popover positioning
+        ├── inspectables.ts            # filterInspectables — match an element by its
+        │                              # displayed name OR raw id; shared by every
+        │                              # inspect surface (N / N-1 / action + overview)
         ├── sessionUtils.ts            # buildSessionResult snapshot
         ├── interactionLogger.ts       # Singleton replay-ready event log
         ├── mergeAnalysisResult.ts     # Merge step1 + step2 fields
@@ -145,7 +164,8 @@ frontend/
 `App.tsx` is the **state orchestration hub** — it instantiates the
 custom hooks (`useSettings`, `useActions`, `useAnalysis`,
 `useDiagrams`, `useSession`, `useDetachedTabs`, `useTiedTabsSync`,
-`useContingencyFetch`, `useDiagramHighlights`), wires them together, and
+`useContingencyFetch`, `useDiagramHighlights`, `useOverflowIframe`,
+`useSldTopologyEdit`, `useTheme`), wires them together, and
 routes state into presentational components. It MUST NOT contain
 large inline JSX blocks — when adding UI sections, create a new
 component under `components/` or `components/modals/` and pass
@@ -338,6 +358,42 @@ When adding a new gesture:
    the gesture site.
 3. For async (start/complete) pairs, capture the correlation_id
    from `record()` and pass it to `recordCompletion()`.
+
+## Game Mode (`?game=1`)
+
+`src/game/` is a timed, scored wrapper around the study workspace,
+**additive and inert unless `?game=1`** is on the URL (or the build sets
+`VITE_GAME_MODE=1`). `main.tsx` mounts `<GameShell>` instead of `<App>` when
+`gameBridge.isGameMode()` is true; otherwise the bare workspace renders
+exactly as before.
+
+- **`gameBridge.ts`** is the decoupling singleton (mirrors
+  `interactionLogger`): `App` registers a study loader and publishes its
+  physical snapshot `{ baselineMaxRho, chosenActions }`; `GameShell` /
+  `useGameSession` drive study loads, read results, and enforce the
+  ≤ 3-action cap — so **`App.tsx` keeps only three `isGameMode()`-guarded
+  touch points** (`loadGameStudy`, the publish effect, and the
+  star-cap on `wrappedActionFavorite`) and never imports game internals.
+- **`scoring.ts`** is the in-browser twin of the Codabench Python scorer
+  (`60·R + 25·R·A + 15·R·T`), locked to it by unit tests on both sides —
+  edit the two together.
+- **`presets.ts`** lists curated **solvable** fr225_400 contingencies; keep
+  them winnable (the `scripts/game_mode/e2e_game_session.py` backend replay
+  verifies `can_proceed=True`).
+
+When you touch the workspace, do NOT special-case game mode inside
+components — route it through `gameBridge` so the bare app stays oblivious.
+Full contract: [`docs/features/game-mode-codabench.md`](../docs/features/game-mode-codabench.md).
+
+## Deployment build (same-origin SPA)
+
+`api.ts` reads `API_BASE_URL = import.meta.env.VITE_API_BASE_URL ??
+'http://127.0.0.1:8000'`. The `Dockerfile` builds with `VITE_API_BASE_URL=""`
+(relative `/api/...`) and `VITE_GAME_MODE=1`, and the FastAPI backend serves
+the built `dist/` same-origin (see `expert_backend/CLAUDE.md` → static SPA
+mount). Local dev and the Vitest suite leave the env unset, so they keep
+hitting the standalone backend at `:8000`. Don't hardcode the origin
+anywhere — always go through `API_BASE_URL`.
 
 ## Testing (Vitest + React Testing Library)
 

@@ -755,3 +755,102 @@ Correctif :
 | ActionCard progressive disclosure + cap halo      | #121                | 28/04      |
 | Tier warning system + NoticesPanel + legend       | #122                | 29/04-03/05|
 | Fix occlusion popover Notices (portal)            | `fix-notice-panel-…`| 03/05      |
+
+## 6. Élargissement du périmètre — 0.8.0 (17/06/2026)
+
+Après la consolidation UX de 0.6.5+ et l'intégration des modèles de
+recommandation enfichables en 0.7.5 (appariée à
+`expert_op4grid_recommender` 0.2.2), la 0.8.0 (appariée à 0.2.4)
+n'optimise plus l'existant : elle **élargit le périmètre** sur trois
+axes — le vocabulaire d'actions, la consolidation de l'UI opérateur,
+et deux nouvelles façons de lancer l'outil. À partir de cette release,
+la CI suit en continu la **dernière** version publiée du recommender
+(plancher `>=0.2.4`) plutôt qu'une version épinglée.
+
+### 6.1. Élargissement du vocabulaire d'actions
+
+- **Redispatching** de bout en bout : nouveau type d'action
+  (monter / descendre un groupe dispatchable) calqué sur le pipeline
+  curtailment mais avec un delta MW **signé** éditable (±10 MW par
+  défaut). Plomberie complète : tag `redispatch` dans
+  `mw_start_scoring`, `compute_redispatch_details` /
+  `compute_redispatch_setpoint` côté backend, filtre + glyphe + éditeur
+  de carte côté frontend.
+- **GST pour les paires à action d'injection** : l'estimation de paire
+  combinée (`POST /api/compute-superposition`, onglet *Explore Pairs*)
+  branche le théorème de superposition généralisé de la librairie
+  (`compute_combined_pair_gst`) pour couvrir les paires impliquant une
+  action d'injection (délestage, curtailment, redispatch) — plus
+  seulement les actions de topologie. `is_injection_action` côté backend
+  garde la classification en phase avec la librairie ; les bannières
+  *« ne peut être combiné pour estimation »* disparaissent de l'UI.
+- **Édition interactive de topologie SLD** : un nouveau geste construit
+  une action remédiale en cliquant des organes de coupure sur un Single
+  Line Diagram (miroir de `manoeuvre_ihm` dans le recommender). Bouton
+  `✎ Manual action`, preview de topologie cible débouncée
+  (`POST /api/sld-topology-preview`, sans load flow), liste de manœuvres
+  interactive (`SldEditPanel`), support des actions combinées et six
+  nouveaux évènements de log. Contrat complet :
+  [`../features/sld-topology-edit.md`](../features/sld-topology-edit.md).
+
+### 6.2. Consolidation de l'UI opérateur
+
+- **Thème clair / sombre** : un dark mode complet, basculé depuis le
+  header et persisté. Le thème est un **swap de tokens**, pas une série
+  d'overrides par composant — le hook `useTheme` re-pointe les variables
+  de `styles/tokens.{css,ts}`, avec un script pré-montage pour éviter le
+  flash de premier rendu et une passe de lisibilité sur le chrome
+  NAD / SLD et le viewer d'overflow. Voir
+  [`../features/dark-mode.md`](../features/dark-mode.md).
+- **Bande de rings de filtre d'action partagée** (`<ActionFilterRings>`)
+  dans la sidebar : remplace les toggles de catégorie inline, les pills
+  `All` / `None` et la rangée de chips de type d'action qui
+  s'empilaient sur l'en-tête de l'Action Overview et dans chaque modal.
+  Pictogrammes de sévérité colorés + pictogrammes de type d'action +
+  spinner *Max-loading* ; toutes les surfaces (Action Feed, Action
+  Overview, Manual Selection, Combine Actions, pins de l'Overflow
+  Analysis) consomment le même état `ActionOverviewFilters`.
+- **Sidebar pliable « readability-first »** : la carte « Select
+  Contingency » et le feed « Remedial Actions » basculent ensemble au
+  moment où une contingence est validée (la sidebar ne montre que
+  l'affordance pertinente), un bouton `Clear` rouge sur la bande
+  sticky, une bulle d'info pour les surcharges, et un prop `collapsed`
+  qui réduit la coque à une bande de 32 px (les rings montent alors dans
+  la rangée d'onglets du `VisualizationPanel`).
+- **Pill *Notices* à étages** : la pile (jusqu'à cinq) de bannières
+  jaunes superposées est remplacée par un unique pill `⚠ Notices N` dans
+  l'en-tête de sidebar, déroulant un panneau de notices. Le pin 📌 de
+  l'iframe d'overflow migre dans l'en-tête *Action pins filters*
+  (le bouton de toolbar autonome est retiré ; nouvel envelope
+  `cs4g:overflow-pins-toggled`).
+
+### 6.3. Deux nouvelles façons de lancer l'outil
+
+- **Game Mode** (`frontend/src/game/`) : un wrapper de session
+  chronométré et scoré autour du workspace d'étude, **additif et inerte
+  sauf si `?game=1`**. Une *session* est une liste ordonnée d'*études*
+  (état réseau + contingence N-1) ; le joueur doit remédier chacune avec
+  **au plus 3 actions** avant l'expiration d'un timer. L'intégration à
+  `App` se réduit à trois points de contact gardés par
+  `gameBridge.isGameMode()` ; les résultats exportent un
+  `game_session.json` qu'une compétition **Codabench** score et classe.
+  Contrat complet :
+  [`../features/game-mode-codabench.md`](../features/game-mode-codabench.md).
+- **Déploiement en ligne — HuggingFace Docker Space** : une image
+  mono-conteneur qui sert la **SPA frontend en same-origin** avec le
+  backend FastAPI (port 7860), pour faire tourner l'outil comme un jeu
+  hébergé sans rien à installer. Build multi-stage (`VITE_API_BASE_URL=""`
+  + `VITE_GAME_MODE=1`), mount `StaticFiles` **optionnel** dans `main.py`
+  (`COSTUDY4GRID_FRONTEND_DIST`, monté en dernier, inerte si absent — le
+  dev local n'est pas affecté), viewer d'overflow servi same-origin avec
+  `pinGlyph.js` embarqué. Les binaires (dont la grille France 225/400 kV,
+  désormais livrée compressée en `network.xiidm.zip`) passent par Git LFS
+  car l'endpoint git du Space rejette les binaires non-LFS. Setup pas à
+  pas sous [`../../deploy/huggingface/`](../../deploy/huggingface/).
+
+> **Bilan de la phase 0.8.0** : le moteur d'analyse reste stable ; la
+> croissance fonctionnelle est absorbée par les coutures d'extension
+> déjà en place (dispatchers par type d'action, tokens de thème, bridge
+> de découplage `gameBridge`) plutôt que par l'élargissement des fichiers
+> chauds — `diagram_mixin.py` est même repassé sous son plafond
+> (1220 → 769 lignes) par extraction de `action_patch.py` + `obs_prewarm.py`.

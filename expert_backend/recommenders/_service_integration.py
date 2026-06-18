@@ -26,6 +26,8 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Iterator
+from typing import Any
 
 from expert_backend.recommenders.registry import build_recommender
 from expert_backend.services.model_selection_mixin import ModelSelectionMixin
@@ -96,7 +98,7 @@ def _run_analysis_step2_with_model(
     all_overloads=None,
     monitor_deselected=False,
     additional_lines_to_cut=None,
-):
+) -> Iterator[Any]:
     """Generator yielding ``pdf`` and ``result`` NDJSON events.
 
     Drop-in replacement for ``AnalysisMixin.run_analysis_step2``. Same

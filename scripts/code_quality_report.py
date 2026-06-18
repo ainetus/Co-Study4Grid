@@ -35,21 +35,34 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-BACKEND_ROOTS = [
-    REPO_ROOT / "expert_backend" / "main.py",
-    REPO_ROOT / "expert_backend" / "services",
-]
-BACKEND_TEST_ROOT = REPO_ROOT / "expert_backend" / "tests"
+BACKEND_ROOT = REPO_ROOT / "expert_backend"
+BACKEND_TEST_ROOT = BACKEND_ROOT / "tests"
+# Backend Python deliberately OUTSIDE the runtime code-quality gate.
+# `test_backend.py` is an ad-hoc integration script (not pytest), and
+# `install_graphviz.py` is a setup-time installer invoked from setup.py
+# that legitimately prints install progress to the console. Everything
+# else under `expert_backend/` (incl. `__init__.py` and any future
+# top-level module) is now scanned — previously only `main.py` +
+# `services/` were, which let smells in sibling modules slip past unseen.
+BACKEND_EXCLUDED_NAMES = {"test_backend.py", "install_graphviz.py"}
 FRONTEND_SRC_ROOT = REPO_ROOT / "frontend" / "src"
 
 # Frontend regex patterns — TS/TSX parsing is out of scope so we
 # scan source text directly. Python smells are parsed through `ast`
 # (see `_count_python_smells`) to avoid false positives from string
 # literals and comments.
-ANY_TYPE_RE = re.compile(r":\s*any\b|<\s*any\s*>|\bany\[\]")
-TS_IGNORE_RE = re.compile(r"@ts-ignore")
+# `: any`, `<any>`, `any[]`, and `as any`. The last (assertion casts)
+# was previously a blind spot — only annotation positions were caught.
+ANY_TYPE_RE = re.compile(r":\s*any\b|<\s*any\s*>|\bany\[\]|\bas\s+any\b")
+# `@ts-ignore` plus its equivalents `@ts-expect-error` / `@ts-nocheck`
+# — all three suppress the type checker, so they are gated together.
+TS_IGNORE_RE = re.compile(r"@ts-(?:ignore|expect-error|nocheck)\b")
 AS_UNKNOWN_RE = re.compile(r"as\s+unknown\s+as\b")
 RECORD_STR_UNK_RE = re.compile(r"Record<string,\s*unknown>")
+# Backend lint / type suppressions ("noqa" / "type: ignore" markers).
+# Often legitimate (a re-exported import, a logged broad except) so they
+# are reported + ratcheted rather than hard-zeroed.
+BACKEND_SUPPRESSION_RE = re.compile(r"#\s*(?:noqa|type:\s*ignore)")
 # Hex color literals: #RGB, #RGBA, #RRGGBB, #RRGGBBAA. Excludes HTML
 # numeric entities like `&#9881;` via the negative lookbehind.
 # Token-source-of-truth files are exempt from the count (see
@@ -98,11 +111,92 @@ def _count_python_smells(tree: ast.AST) -> tuple[int, int, int]:
     return prints, tracebacks, silent
 
 
+def _pct(num: int, denom: int) -> int:
+    return round(100 * num / denom) if denom else 0
+
+
 def count_lines(path: Path) -> int:
     try:
         return sum(1 for _ in path.open("r", encoding="utf-8"))
     except OSError:
         return 0
+
+
+def count_code_lines(
+    path: Path,
+    line_comments: tuple[str, ...],
+    block: tuple[str, str] | None = None,
+) -> int:
+    """Logical (code) lines: non-blank, non-comment physical lines.
+
+    A deliberately simple heuristic shared by backend (`#`) and frontend
+    (`//` + `/* … */`). It does not strip trailing inline comments or
+    code that shares a line with a closing block comment, so it slightly
+    over-counts — fine for an *informational* metric (the gated ceilings
+    stay on raw `count_lines`). Reported alongside raw LoC so a dense
+    600-line module reads differently from a 600-line file that is half
+    blanks and docstrings.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return 0
+    code = 0
+    in_block = False
+    bstart, bend = block if block else (None, None)
+    for raw in text.splitlines():
+        s = raw.strip()
+        if not s:
+            continue
+        if in_block:
+            if bend and bend in s:
+                in_block = False
+            continue
+        if bstart and s.startswith(bstart):
+            if bend and bend not in s:
+                in_block = True
+            continue
+        if any(s.startswith(c) for c in line_comments):
+            continue
+        code += 1
+    return code
+
+
+# Cyclomatic complexity (McCabe) + max nesting depth, computed from the
+# AST we already parse — no external dependency (radon et al. not
+# required). A function's complexity is 1 + each decision point; nesting
+# is the deepest stack of compound statements.
+_CC_DECISION = (ast.If, ast.For, ast.AsyncFor, ast.While, ast.ExceptHandler,
+                ast.IfExp, ast.Assert)
+_NEST_NODES = (ast.If, ast.For, ast.AsyncFor, ast.While, ast.With,
+               ast.AsyncWith, ast.Try)
+
+
+def _cyclomatic_complexity(fn: ast.AST) -> int:
+    cc = 1
+    for node in ast.walk(fn):
+        if isinstance(node, _CC_DECISION):
+            cc += 1
+        elif isinstance(node, ast.BoolOp):
+            cc += len(node.values) - 1
+        elif isinstance(node, ast.comprehension):
+            cc += 1 + len(node.ifs)
+    return cc
+
+
+def _max_nesting(fn: ast.AST) -> int:
+    best = 0
+
+    def walk(node: ast.AST, depth: int) -> None:
+        nonlocal best
+        for child in ast.iter_child_nodes(node):
+            d = depth + 1 if isinstance(child, _NEST_NODES) else depth
+            if d > best:
+                best = d
+            walk(child, d)
+
+    walk(fn, 0)
+    return best
 
 
 @dataclass
@@ -116,6 +210,10 @@ class FunctionMetric:
     file: str
     name: str
     lines: int
+    complexity: int = 1
+    max_nesting: int = 0
+    has_return_annotation: bool = False
+    is_dunder: bool = False
 
 
 @dataclass
@@ -123,11 +221,17 @@ class BackendReport:
     modules: list[FileMetric] = field(default_factory=list)
     largest_module: FileMetric | None = None
     longest_functions: list[FunctionMetric] = field(default_factory=list)
+    most_complex: list[FunctionMetric] = field(default_factory=list)
+    deepest_nested: list[FunctionMetric] = field(default_factory=list)
     all_functions: list[FunctionMetric] = field(default_factory=list)
     total_lines: int = 0
+    code_lines: int = 0
     print_calls: int = 0
     traceback_prints: int = 0
     silent_excepts: int = 0
+    lint_suppressions: int = 0
+    functions_annotatable: int = 0
+    functions_missing_return: int = 0
     test_files: int = 0
     source_files: int = 0
 
@@ -137,6 +241,7 @@ class FrontendReport:
     components: list[FileMetric] = field(default_factory=list)
     largest_component: FileMetric | None = None
     total_lines: int = 0
+    code_lines: int = 0
     any_types: int = 0
     ts_ignores: int = 0
     weak_casts: int = 0
@@ -154,13 +259,27 @@ class QualityReport:
 
 
 def iter_backend_modules() -> list[Path]:
+    if not BACKEND_ROOT.is_dir():
+        return []
     files: list[Path] = []
-    for root in BACKEND_ROOTS:
-        if root.is_file():
-            files.append(root)
-        elif root.is_dir():
-            files.extend(p for p in root.rglob("*.py") if "__pycache__" not in p.parts)
+    for p in BACKEND_ROOT.rglob("*.py"):
+        parts = p.relative_to(BACKEND_ROOT).parts
+        if "__pycache__" in parts or "tests" in parts:
+            continue
+        if p.name in BACKEND_EXCLUDED_NAMES:
+            continue
+        files.append(p)
     return sorted(files)
+
+
+def _is_frontend_test_path(p: Path) -> bool:
+    """True for test files (`*.test.*`) and the `src/test/` infra dir.
+
+    Test infrastructure (e.g. `src/test/setup.ts`, which carries the
+    `@ts-expect-error` mocks) is not product source and must not count
+    toward component LoC or the type-suppression gates.
+    """
+    return ".test." in p.name or "test" in p.relative_to(FRONTEND_SRC_ROOT).parts
 
 
 def iter_frontend_sources() -> list[Path]:
@@ -170,7 +289,7 @@ def iter_frontend_sources() -> list[Path]:
     for p in FRONTEND_SRC_ROOT.rglob("*"):
         if p.suffix not in {".ts", ".tsx"}:
             continue
-        if ".test." in p.name:
+        if _is_frontend_test_path(p):
             continue
         files.append(p)
     return sorted(files)
@@ -190,7 +309,7 @@ def iter_frontend_styled_sources() -> list[Path]:
     for p in FRONTEND_SRC_ROOT.rglob("*"):
         if p.suffix not in {".ts", ".tsx", ".css"}:
             continue
-        if ".test." in p.name:
+        if _is_frontend_test_path(p):
             continue
         files.append(p)
     return sorted(files)
@@ -216,11 +335,16 @@ def extract_all_functions(path: Path) -> list[FunctionMetric]:
             start = node.lineno
             end = getattr(node, "end_lineno", start) or start
             length = max(0, end - start + 1)
+            name = node.name
             out.append(
                 FunctionMetric(
                     file=str(path.relative_to(REPO_ROOT)),
-                    name=node.name,
+                    name=name,
                     lines=length,
+                    complexity=_cyclomatic_complexity(node),
+                    max_nesting=_max_nesting(node),
+                    has_return_annotation=node.returns is not None,
+                    is_dunder=name.startswith("__") and name.endswith("__"),
                 )
             )
     return out
@@ -239,6 +363,7 @@ def scan_backend() -> BackendReport:
         lines = count_lines(path)
         rep.modules.append(FileMetric(path=rel, lines=lines))
         rep.total_lines += lines
+        rep.code_lines += count_code_lines(path, ("#",))
         rep.source_files += 1
 
         try:
@@ -253,6 +378,7 @@ def scan_backend() -> BackendReport:
         rep.print_calls += prints
         rep.traceback_prints += tracebacks
         rep.silent_excepts += silent
+        rep.lint_suppressions += len(BACKEND_SUPPRESSION_RE.findall(src))
 
         rep.all_functions.extend(extract_all_functions(path))
 
@@ -261,6 +387,17 @@ def scan_backend() -> BackendReport:
         rep.largest_module = rep.modules[0]
     rep.all_functions.sort(key=lambda m: m.lines, reverse=True)
     rep.longest_functions = rep.all_functions[:5]
+    rep.most_complex = sorted(
+        rep.all_functions, key=lambda m: m.complexity, reverse=True
+    )[:5]
+    rep.deepest_nested = sorted(
+        rep.all_functions, key=lambda m: m.max_nesting, reverse=True
+    )[:5]
+    annotatable = [f for f in rep.all_functions if not f.is_dunder]
+    rep.functions_annotatable = len(annotatable)
+    rep.functions_missing_return = sum(
+        1 for f in annotatable if not f.has_return_annotation
+    )
 
     if BACKEND_TEST_ROOT.is_dir():
         rep.test_files = sum(
@@ -276,6 +413,7 @@ def scan_frontend() -> FrontendReport:
         lines = count_lines(path)
         rep.components.append(FileMetric(path=rel, lines=lines))
         rep.total_lines += lines
+        rep.code_lines += count_code_lines(path, ("//",), block=("/*", "*/"))
         rep.source_files += 1
 
         try:
@@ -325,7 +463,8 @@ def to_markdown(report: QualityReport) -> str:
         "## Backend (`expert_backend/`)",
         "",
         f"- Source files (non-test): **{be.source_files}**",
-        f"- Total lines: **{be.total_lines}**",
+        f"- Total lines: **{be.total_lines}** (code lines, excl. blank/comment: "
+        f"**{be.code_lines}**)",
     ]
     if be.largest_module:
         lines.append(
@@ -337,6 +476,11 @@ def to_markdown(report: QualityReport) -> str:
             f"- `print(` calls in source: **{be.print_calls}**",
             f"- `traceback.print_exc()` calls: **{be.traceback_prints}**",
             f"- Bare `except Exception: pass` patterns: **{be.silent_excepts}**",
+            f"- `# noqa` / `# type: ignore` suppressions (ratcheted): **{be.lint_suppressions}**",
+            f"- Return-annotation coverage: **{be.functions_annotatable - be.functions_missing_return}"
+            f"/{be.functions_annotatable}** "
+            f"({_pct(be.functions_annotatable - be.functions_missing_return, be.functions_annotatable)}%) "
+            f"— missing **{be.functions_missing_return}** (ratcheted)",
             "",
             "### Top-5 longest functions",
             "",
@@ -349,10 +493,37 @@ def to_markdown(report: QualityReport) -> str:
     lines.extend(
         [
             "",
+            "### Most complex functions (cyclomatic)",
+            "",
+            "| File | Function | Complexity | Nesting |",
+            "|------|----------|-----------:|--------:|",
+        ]
+    )
+    for fn in be.most_complex:
+        lines.append(
+            f"| `{fn.file}` | `{fn.name}` | {fn.complexity} | {fn.max_nesting} |"
+        )
+    lines.extend(
+        [
+            "",
+            "### Deepest nesting",
+            "",
+            "| File | Function | Nesting | Complexity |",
+            "|------|----------|--------:|-----------:|",
+        ]
+    )
+    for fn in be.deepest_nested:
+        lines.append(
+            f"| `{fn.file}` | `{fn.name}` | {fn.max_nesting} | {fn.complexity} |"
+        )
+    lines.extend(
+        [
+            "",
             "## Frontend (`frontend/src/`)",
             "",
             f"- Source files (non-test): **{fe.source_files}**",
-            f"- Total lines: **{fe.total_lines}**",
+            f"- Total lines: **{fe.total_lines}** (code lines, excl. blank/comment: "
+            f"**{fe.code_lines}**)",
         ]
     )
     if fe.largest_component:

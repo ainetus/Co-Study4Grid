@@ -178,6 +178,17 @@ Output: data/pypsa_eur_fr400/
 
 
 
+> **Shipped compressed (0.8.0).** For the large France 225/400 kV grid
+> the generated `network.xiidm` is committed **compressed** as
+> `network.xiidm.zip` via Git LFS (the HuggingFace Space git endpoint
+> requires LFS for binaries). `network_service` auto-decompresses it on
+> load, so consumers point the network path at the `.xiidm` (or the
+> `.zip`) and it Just Works — see
+> [`../backend/README.md`](../backend/README.md) (`_resolve_network_file`
+> / `_extract_network_zip`).
+
+
+
 ### How to run
 
 
