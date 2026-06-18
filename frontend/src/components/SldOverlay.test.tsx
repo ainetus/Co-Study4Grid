@@ -876,6 +876,142 @@ describe('SldOverlay', () => {
             expect(after).toMatch(/useLayoutEffect\s*\(/);
             expect(after).not.toMatch(/^\s*useEffect\s*\(/m);
         });
+    });
+
+    // =====================================================================
+    // Switch-click targeting (interactive SLD topology edit).
+    //
+    // pypowsybl draws breaker / disconnector glyphs as small squares, so
+    // the operator reported having to click several times "around" a
+    // switch before it toggled. The click handler now (a) keeps the
+    // pixel-perfect hit fast-path, (b) snaps to the closest editable
+    // switch within a screen-px radius on a near-miss, and (c) ignores
+    // the trailing click of a pan-drag. The body cursor is the standard
+    // arrow (not a hand) while editing.
+    // =====================================================================
+    describe('switch-click targeting (edit mode)', () => {
+        const buildEditOverlay = (): VlOverlay => ({
+            vlName: 'VL_400',
+            actionId: null,
+            svg:
+                '<svg xmlns="http://www.w3.org/2000/svg">'
+                + '<g id="sw_1"><rect width="6" height="6"/></g>'
+                + '</svg>',
+            sldMetadata: JSON.stringify({
+                nodes: [{ id: 'sw_1', equipmentId: 'SWITCH_A' }],
+            }),
+            loading: false,
+            error: null,
+            tab: 'contingency' as SldTab,
+            switch_states: { SWITCH_A: false },
+        });
+
+        it('toggles a switch on a pixel-perfect click (exact hit)', () => {
+            const onSwitchClick = vi.fn();
+            const { container } = render(
+                <SldOverlay
+                    {...defaultProps}
+                    vlOverlay={buildEditOverlay()}
+                    editMode
+                    onEditModeChange={vi.fn()}
+                    onSwitchClick={onSwitchClick}
+                />,
+            );
+            fireEvent.click(container.querySelector('#sw_1')!);
+            expect(onSwitchClick).toHaveBeenCalledWith('SWITCH_A');
+        });
+
+        it('snaps to the nearest switch on a near-miss click', () => {
+            const onSwitchClick = vi.fn();
+            const { container } = render(
+                <SldOverlay
+                    {...defaultProps}
+                    vlOverlay={buildEditOverlay()}
+                    editMode
+                    onEditModeChange={vi.fn()}
+                    onSwitchClick={onSwitchClick}
+                />,
+            );
+            // jsdom returns an all-zero rect by default; give the switch
+            // a real box so the distance maths has something to chew on.
+            const sw = container.querySelector('#sw_1')! as Element;
+            sw.getBoundingClientRect = () =>
+                ({ left: 100, top: 100, right: 106, bottom: 106, width: 6, height: 6, x: 100, y: 100, toJSON: () => ({}) }) as DOMRect;
+
+            // Click 5px to the right of the glyph — a miss, but well
+            // within the snap radius.
+            const body = screen.getByTestId('sld-overlay-body');
+            fireEvent.click(body, { clientX: 111, clientY: 103 });
+            expect(onSwitchClick).toHaveBeenCalledWith('SWITCH_A');
+        });
+
+        it('does not toggle when the near-miss click is outside the snap radius', () => {
+            const onSwitchClick = vi.fn();
+            const { container } = render(
+                <SldOverlay
+                    {...defaultProps}
+                    vlOverlay={buildEditOverlay()}
+                    editMode
+                    onEditModeChange={vi.fn()}
+                    onSwitchClick={onSwitchClick}
+                />,
+            );
+            const sw = container.querySelector('#sw_1')! as Element;
+            sw.getBoundingClientRect = () =>
+                ({ left: 100, top: 100, right: 106, bottom: 106, width: 6, height: 6, x: 100, y: 100, toJSON: () => ({}) }) as DOMRect;
+
+            // 200px away — far outside the 26px snap radius.
+            const body = screen.getByTestId('sld-overlay-body');
+            fireEvent.click(body, { clientX: 300, clientY: 300 });
+            expect(onSwitchClick).not.toHaveBeenCalled();
+        });
+
+        it('uses the arrow cursor (not a hand) while editing, grab otherwise', () => {
+            const { rerender } = render(
+                <SldOverlay
+                    {...defaultProps}
+                    vlOverlay={buildEditOverlay()}
+                    editMode={false}
+                    onEditModeChange={vi.fn()}
+                    onSwitchClick={vi.fn()}
+                />,
+            );
+            expect(screen.getByTestId('sld-overlay-body')).toHaveStyle({ cursor: 'grab' });
+
+            rerender(
+                <SldOverlay
+                    {...defaultProps}
+                    vlOverlay={buildEditOverlay()}
+                    editMode
+                    onEditModeChange={vi.fn()}
+                    onSwitchClick={vi.fn()}
+                />,
+            );
+            expect(screen.getByTestId('sld-overlay-body')).toHaveStyle({ cursor: 'default' });
+        });
+    });
+
+    describe('Impacts delta persistence across pan/re-render (regression) — continued', () => {
+        const buildDeltaOverlay = (): VlOverlay => ({
+            vlName: 'VL_400',
+            actionId: 'act-1',
+            svg:
+                '<svg xmlns="http://www.w3.org/2000/svg">'
+                + '<g class="sld-extern-cell">'
+                + '<g id="feeder-lineA"></g>'
+                + '<g class="sld-active-power"><text class="sld-label">100</text></g>'
+                + '</g>'
+                + '</svg>',
+            sldMetadata: JSON.stringify({
+                feederInfos: [{ id: 'feeder-lineA', equipmentId: 'LINE_A' }],
+            }),
+            loading: false,
+            error: null,
+            tab: 'action' as SldTab,
+            flow_deltas: {
+                LINE_A: { delta: 5.5, category: 'positive', flip_arrow: false },
+            },
+        });
 
         it('delta classes survive a sequence of pan-driven rerenders without ever vanishing', () => {
             // Behavioural complement to the source-inspection test

@@ -100,6 +100,11 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
     onSwitchRemoveMany,
 }) => {
     const overlayBodyRef = useRef<HTMLDivElement>(null);
+    // True once a press-drag has moved the pointer beyond a small slop
+    // radius — used to tell a deliberate switch click apart from a
+    // pan gesture that happens to end near a breaker (both fire a
+    // trailing `click` event).
+    const panMovedRef = useRef(false);
     // When a target-topology preview is showing, the backend already
     // drew the switches in target state with topological colouring, so
     // the client-side delta / highlight / toggle-paint passes (which
@@ -938,9 +943,28 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
         }
         const editableSwitches = vlOverlay.switch_states;
 
+        // SVG ids that resolve to an editable switch — the candidate set
+        // for the near-miss snap below.
+        const editableSvgIds: string[] = [];
+        for (const [svgId, equip] of svgToEquip) {
+            if (equip in editableSwitches) editableSvgIds.push(svgId);
+        }
+
+        // Generous click target: pypowsybl draws breaker / disconnector
+        // glyphs as small squares, so requiring a pixel-perfect hit made
+        // the operator click several times around the object. When the
+        // pointer doesn't land squarely on a switch we snap to the
+        // closest editable one within this radius (screen px).
+        const SNAP_PX = 26;
+
         const onClick = (ev: MouseEvent) => {
+            // A drag-to-pan also ends in a `click`; only a (near-)
+            // stationary press should toggle a switch.
+            if (panMovedRef.current) return;
             const target = ev.target as Element | null;
             if (!target) return;
+
+            // Exact hit: pointer landed on the switch glyph or a child.
             let cur: Element | null = target;
             while (cur && cur !== container) {
                 if (cur.id) {
@@ -953,6 +977,33 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
                     }
                 }
                 cur = cur.parentElement;
+            }
+
+            // Near-miss: snap to the closest editable switch within
+            // SNAP_PX. Resolve elements fresh on each click — a pan
+            // reconciliation can replace the inner SVG nodes, so cached
+            // references would go stale.
+            const elMap = new Map<string, Element>();
+            container.querySelectorAll('[id]').forEach(el => elMap.set(el.id, el));
+            let bestEquip: string | null = null;
+            let bestDist = SNAP_PX;
+            for (const svgId of editableSvgIds) {
+                const el = elMap.get(svgId);
+                if (!el) continue;
+                const rect = el.getBoundingClientRect();
+                if (rect.width === 0 && rect.height === 0) continue;
+                const dx = Math.max(rect.left - ev.clientX, 0, ev.clientX - rect.right);
+                const dy = Math.max(rect.top - ev.clientY, 0, ev.clientY - rect.bottom);
+                const dist = Math.hypot(dx, dy);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    bestEquip = svgToEquip.get(svgId) ?? null;
+                }
+            }
+            if (bestEquip) {
+                ev.stopPropagation();
+                ev.preventDefault();
+                onSwitchClick(bestEquip);
             }
         };
         container.addEventListener('click', onClick, true);
@@ -995,10 +1046,16 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
     const startOverlayPan = (e: React.MouseEvent) => {
         if (e.button !== 0) return;
         e.preventDefault();
+        panMovedRef.current = false;
         const ownerWindow = (e.currentTarget as HTMLElement).ownerDocument.defaultView ?? window;
         const x0 = e.clientX, y0 = e.clientY;
         const tx0 = overlayTransform.tx, ty0 = overlayTransform.ty;
-        const onMove = (ev: MouseEvent) => setOverlayTransform(prev => ({ ...prev, tx: tx0 + ev.clientX - x0, ty: ty0 + ev.clientY - y0 }));
+        const onMove = (ev: MouseEvent) => {
+            if (Math.abs(ev.clientX - x0) > 3 || Math.abs(ev.clientY - y0) > 3) {
+                panMovedRef.current = true;
+            }
+            setOverlayTransform(prev => ({ ...prev, tx: tx0 + ev.clientX - x0, ty: ty0 + ev.clientY - y0 }));
+        };
         const onUp = () => { ownerWindow.removeEventListener('mousemove', onMove); ownerWindow.removeEventListener('mouseup', onUp); };
         ownerWindow.addEventListener('mousemove', onMove);
         ownerWindow.addEventListener('mouseup', onUp);
@@ -1097,7 +1154,8 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
             {/* Body — pan/zoom canvas */}
             <div
                 ref={overlayBodyRef}
-                style={{ flex: 1, overflow: 'hidden', minHeight: 0, cursor: 'grab', userSelect: 'none', position: 'relative' }}
+                data-testid="sld-overlay-body"
+                style={{ flex: 1, overflow: 'hidden', minHeight: 0, cursor: editMode ? 'default' : 'grab', userSelect: 'none', position: 'relative' }}
                 onMouseDown={startOverlayPan}
             >
                 {vlOverlay.loading && (
