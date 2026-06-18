@@ -273,7 +273,7 @@ class DiagramMixin(_Base):
         finally:
             n.set_working_variant(original_variant)
 
-    def _cache_obs_for_variant(self, n, variant_id: str, disconnected_elements):
+    def _cache_obs_for_variant(self, n, variant_id: str, disconnected_elements) -> None:
         """Pre-warm ``_cached_obs_n1*`` so ``run_analysis_step1`` skips
         a redundant contingency LF. Thin wrapper around
         ``build_prewarmed_obs`` (no-op when no env is reachable)."""
@@ -808,7 +808,7 @@ class DiagramMixin(_Base):
             cont_network.set_working_variant(original_variant)
         return cont_flows, cont_assets
 
-    def _attach_flow_deltas_vs_base(self, diagram: dict, n_contingency_network, voltage_level_ids):
+    def _attach_flow_deltas_vs_base(self, diagram: dict, n_contingency_network, voltage_level_ids) -> None:
         """Populate ``flow_deltas`` / ``reactive_flow_deltas`` / ``asset_deltas`` on ``diagram``.
 
         ``n_contingency_network`` MUST already be positioned on the

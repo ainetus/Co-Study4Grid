@@ -31,7 +31,7 @@ class NetworkService:
         self._loads_df = None
         self._load_vl_map = None     # load_id -> voltage_level_id
 
-    def _invalidate_equipment_caches(self):
+    def _invalidate_equipment_caches(self) -> None:
         """Drop the cached generator / load tables (called when the Network changes)."""
         self._generators_df = None
         self._gen_vl_map = None

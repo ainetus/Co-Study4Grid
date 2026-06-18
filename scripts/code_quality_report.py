@@ -111,6 +111,10 @@ def _count_python_smells(tree: ast.AST) -> tuple[int, int, int]:
     return prints, tracebacks, silent
 
 
+def _pct(num: int, denom: int) -> int:
+    return round(100 * num / denom) if denom else 0
+
+
 def count_lines(path: Path) -> int:
     try:
         return sum(1 for _ in path.open("r", encoding="utf-8"))
@@ -208,6 +212,8 @@ class FunctionMetric:
     lines: int
     complexity: int = 1
     max_nesting: int = 0
+    has_return_annotation: bool = False
+    is_dunder: bool = False
 
 
 @dataclass
@@ -224,6 +230,8 @@ class BackendReport:
     traceback_prints: int = 0
     silent_excepts: int = 0
     lint_suppressions: int = 0
+    functions_annotatable: int = 0
+    functions_missing_return: int = 0
     test_files: int = 0
     source_files: int = 0
 
@@ -327,13 +335,16 @@ def extract_all_functions(path: Path) -> list[FunctionMetric]:
             start = node.lineno
             end = getattr(node, "end_lineno", start) or start
             length = max(0, end - start + 1)
+            name = node.name
             out.append(
                 FunctionMetric(
                     file=str(path.relative_to(REPO_ROOT)),
-                    name=node.name,
+                    name=name,
                     lines=length,
                     complexity=_cyclomatic_complexity(node),
                     max_nesting=_max_nesting(node),
+                    has_return_annotation=node.returns is not None,
+                    is_dunder=name.startswith("__") and name.endswith("__"),
                 )
             )
     return out
@@ -382,6 +393,11 @@ def scan_backend() -> BackendReport:
     rep.deepest_nested = sorted(
         rep.all_functions, key=lambda m: m.max_nesting, reverse=True
     )[:5]
+    annotatable = [f for f in rep.all_functions if not f.is_dunder]
+    rep.functions_annotatable = len(annotatable)
+    rep.functions_missing_return = sum(
+        1 for f in annotatable if not f.has_return_annotation
+    )
 
     if BACKEND_TEST_ROOT.is_dir():
         rep.test_files = sum(
@@ -461,6 +477,10 @@ def to_markdown(report: QualityReport) -> str:
             f"- `traceback.print_exc()` calls: **{be.traceback_prints}**",
             f"- Bare `except Exception: pass` patterns: **{be.silent_excepts}**",
             f"- `# noqa` / `# type: ignore` suppressions (ratcheted): **{be.lint_suppressions}**",
+            f"- Return-annotation coverage: **{be.functions_annotatable - be.functions_missing_return}"
+            f"/{be.functions_annotatable}** "
+            f"({_pct(be.functions_annotatable - be.functions_missing_return, be.functions_annotatable)}%) "
+            f"— missing **{be.functions_missing_return}** (ratcheted)",
             "",
             "### Top-5 longest functions",
             "",

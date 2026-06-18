@@ -106,8 +106,12 @@ def test_build_report_against_repo_root():
     assert report.frontend.ts_ignores == 0
     # Ratcheted smells stay at or below their frozen ceilings.
     assert report.backend.lint_suppressions <= 3
+    assert report.backend.functions_missing_return <= 86
     assert report.frontend.weak_casts <= 19
     assert report.frontend.record_str_unknown <= 46
+    # Return-annotation accounting is internally consistent.
+    assert report.backend.functions_annotatable > 0
+    assert 0 <= report.backend.functions_missing_return <= report.backend.functions_annotatable
     # Complexity / nesting / code-line metrics are populated and sane.
     assert report.backend.most_complex and report.backend.deepest_nested
     assert 0 < report.backend.code_lines < report.backend.total_lines
