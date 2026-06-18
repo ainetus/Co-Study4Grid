@@ -175,7 +175,7 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
     # Overflow-graph layout (Hierarchical / Geo)
     # ------------------------------------------------------------------
 
-    def _load_layout_coords(self):
+    def _load_layout_coords(self) -> dict:
         """Return ``{substation_id: (x, y)}`` from the cached
         ``grid_layout.json`` DataFrame, or an empty dict when no
         layout file is configured / readable.
@@ -894,7 +894,7 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
         )
         return self._simulation_env
 
-    def _get_monitoring_parameters(self, obs):
+    def _get_monitoring_parameters(self, obs) -> tuple:
         """Get monitoring parameters (lines_we_care_about, branches_with_limits)."""
         # 1. Identify branches with permanent limits in pypowsybl
         try:

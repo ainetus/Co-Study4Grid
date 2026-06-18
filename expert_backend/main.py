@@ -6,6 +6,8 @@
 # This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
 import gzip
+from collections.abc import Iterator
+from typing import Any
 import json as json_module
 import logging
 import os
@@ -616,7 +618,7 @@ from fastapi.responses import StreamingResponse
 import json
 @app.post("/api/run-analysis")
 async def run_analysis(request: AnalysisRequest) -> StreamingResponse:
-    def event_generator():
+    def event_generator() -> Iterator[Any]:
         try:
             for event in recommender_service.run_analysis(request.disconnected_elements):
                 if event.get("pdf_path"):
@@ -640,7 +642,7 @@ async def run_analysis_step1(request: AnalysisRequest) -> dict:
 
 @app.post("/api/run-analysis-step2")
 async def run_analysis_step2(request: AnalysisStep2Request) -> StreamingResponse:
-    def event_generator():
+    def event_generator() -> Iterator[Any]:
         try:
             for event in recommender_service.run_analysis_step2(
                 request.selected_overloads,
@@ -901,7 +903,7 @@ class SimulateAndVariantDiagramRequest(BaseModel):
 
 @app.post("/api/simulate-and-variant-diagram")
 async def simulate_and_variant_diagram(request: SimulateAndVariantDiagramRequest) -> StreamingResponse:
-    def event_generator():
+    def event_generator() -> Iterator[Any]:
         try:
             sim_result = recommender_service.simulate_manual_action(
                 request.action_id, request.disconnected_elements,

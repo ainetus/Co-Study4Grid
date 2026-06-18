@@ -770,7 +770,7 @@ class DiagramMixin(_Base):
                 )
         return actions
 
-    def _lf_status_for_variant(self, network, variant_id: str, disconnected_elements):
+    def _lf_status_for_variant(self, network, variant_id: str, disconnected_elements) -> tuple:
         """Return ``(converged, lf_status)`` for ``variant_id``.
 
         Prefers the cached status from ``_get_contingency_variant``

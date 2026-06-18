@@ -323,7 +323,7 @@ def compute_curtailment_details(
     :func:`is_renewable_gen` helper when not provided.
     """
     if is_renewable_fn is None:
-        def is_renewable_fn(gen_name, obs):
+        def is_renewable_fn(gen_name, obs) -> bool:
             return is_renewable_gen(gen_name, obs, network_service)
 
     action_obj = action_data.get("action")

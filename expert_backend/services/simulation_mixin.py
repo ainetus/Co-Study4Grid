@@ -394,7 +394,7 @@ class SimulationMixin(_Base):
                 "[simulate_manual_action] Injected restored action '%s' into dict", aid
             )
 
-    def _fetch_n_and_contingency_observations(self, env, n, disconnected_elements):
+    def _fetch_n_and_contingency_observations(self, env, n, disconnected_elements) -> tuple:
         """Return ``(obs_n, obs_contingency)`` for the current simulation.
 
         Maintains the CALL ORDER (N first, then contingency) that legacy
@@ -664,7 +664,7 @@ class SimulationMixin(_Base):
         except Exception as e:
             raise ValueError(f"Could not create action from description: {e}")
 
-    def _resolve_action_description_and_content(self, action_id, description_unitaire, topo):
+    def _resolve_action_description_and_content(self, action_id, description_unitaire, topo) -> tuple:
         """Pull description + content from `_dict_action`, reconstructing from
         topology as a fallback. Guarantees `content` is never None — the
         library's rule validator crashes on `content.get("set_bus", {})`.
@@ -882,7 +882,7 @@ class SimulationMixin(_Base):
             all_actions = self._last_result["prioritized_actions"]
         return all_actions
 
-    def _identify_elements_with_pst_fallback(self, action_id, all_actions, classifier, env):
+    def _identify_elements_with_pst_fallback(self, action_id, all_actions, classifier, env) -> tuple:
         """Run `_identify_action_elements` with a PST-content-based fallback
         when it returns empty (PST tap changes don't appear as topology
         switches).

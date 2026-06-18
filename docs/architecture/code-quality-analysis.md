@@ -1272,5 +1272,36 @@ Both coverage halves now gate (frontend §19, backend here); the only
 remaining "advisory → gating" promotions from the §18 staging are
 complete. Ratchet the floors up as coverage climbs.
 
+---
+
+## 21. Delta — 2026-06-18 (return annotations, ratchet-down)
+
+Continuing §19's #3, the missing-return ratchet dropped **86 → 60** —
+26 functions annotated with **concrete, mypy-verified** types:
+
+- A conservative AST codemod annotated the *shape-clear* ones (where
+  every value-return agrees): 6 `tuple`, 4 generators → `Iterator[Any]`,
+  2 `dict`, plus `| None` where there's an explicit bare return.
+- A second hand-built pass added the unambiguous literal returns:
+  `network_service` list/dict getters, `deltas._signed` → `float`,
+  `_load_layout_coords` → `dict`, the `is_renewable` predicates → `bool`.
+
+An attempt with the `infer-types` tool was **reverted**: it annotated
+75 in one shot but introduced 37 mypy errors — wrong `-> None` on
+value-returning methods, over-broad unions that broke unpacking — and
+even its "passing" annotations couldn't be trusted (untyped deps let
+wrong types through as `Any`). The conservative route is slower but
+every annotation is correct.
+
+**Why it stopped at 60, not 0:** the residual 60 are `return helper(…)`
+/ `return self._x` delegations to **untyped** pypowsybl / recommender
+helpers, so their honest type is `Any`. Padding them `-> Any` would push
+the metric to 100% while mypy verifies nothing — gaming it. The
+principled path to lowering the ratchet further is typing the **helpers**
+bottom-up (in `services/analysis/`, `services/diagram/`,
+`simulation_helpers.py`), after which concrete types flow up to these
+delegators and mypy can actually check them. Offline suite byte-identical
+(624 passed); no runtime touched.
+
 
 

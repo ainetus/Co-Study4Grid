@@ -23,7 +23,7 @@ Thresholds (see also CONTRIBUTING.md):
 | Backend function cyclomatic complexity       |   38  |
 | Backend function nesting depth               |    8  |
 | `noqa` / `type: ignore` markers (ratchet)    |   3   |
-| Backend functions missing return ann (ratchet)| 86   |
+| Backend functions missing return ann (ratchet)| 60   |
 | Frontend component size (lines)              | 1450  |
 | `frontend/src/utils/**` module size (lines)  | 1000  |
 | `App.tsx` hub size (lines)                    | 2100  |
@@ -89,7 +89,11 @@ BACKEND_FUNCTION_EXEMPTIONS = {
 BACKEND_LINT_SUPPRESSION_MAX = 3  # `noqa` / `type: ignore` markers
 # Functions missing a return annotation. Freeze + ratchet down: new
 # functions must be annotated (mypy gates that the annotation is correct).
-BACKEND_MISSING_RETURN_MAX = 86
+# The residual ~60 delegate to untyped pypowsybl / recommender helpers, so
+# their honest type is `Any` — left unannotated rather than padded with
+# `-> Any` (which would inflate this metric without mypy verifying anything).
+# Lowering further means typing those helpers bottom-up first.
+BACKEND_MISSING_RETURN_MAX = 60
 
 # Cyclomatic complexity (McCabe) + max nesting depth per backend
 # function, computed from the AST — no external dependency. Ratchets
