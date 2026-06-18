@@ -107,7 +107,7 @@ def test_build_report_against_repo_root():
     # Ratcheted smells stay at or below their frozen ceilings.
     assert report.backend.lint_suppressions <= 3
     assert report.backend.functions_missing_return <= 86
-    assert report.frontend.weak_casts <= 19
+    assert report.frontend.weak_casts <= 12
     assert report.frontend.record_str_unknown <= 46
     # Return-annotation accounting is internally consistent.
     assert report.backend.functions_annotatable > 0

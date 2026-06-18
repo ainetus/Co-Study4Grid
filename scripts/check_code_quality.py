@@ -29,7 +29,7 @@ Thresholds (see also CONTRIBUTING.md):
 | `App.tsx` hub size (lines)                    | 2100  |
 | `any` / `as any` annotations in frontend      |   0   |
 | `@ts-ignore` / `-expect-error` / `-nocheck`  |   0   |
-| `as unknown as` casts (ratchet)              |  19   |
+| `as unknown as` casts (ratchet)              |  12   |
 | `Record<string, unknown>` usages (ratchet)   |  46   |
 | Hex color literals outside tokens.{css,ts}   |   0   |
 
@@ -114,7 +114,7 @@ BACKEND_NESTING_EXEMPTIONS = {
 FRONTEND_HEX_LITERAL_MAX = 0
 # Ratchets — frozen at the current count (see module docstring). Weak
 # typing surface; lowering is welcome, raising is a regression.
-FRONTEND_WEAK_CAST_MAX = 19       # `as unknown as`
+FRONTEND_WEAK_CAST_MAX = 12       # `as unknown as` (was 19; SVG-DOM casts simplified)
 FRONTEND_RECORD_UNKNOWN_MAX = 46  # `Record<string, unknown>`
 # `App.tsx` is the state-orchestration hub by design, but gets a
 # generous *bounded* ceiling rather than a blanket exemption — so it

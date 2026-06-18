@@ -98,7 +98,7 @@ The gate enforces (full table in
 - No `any` / `as any` annotations, and no `@ts-ignore` /
   `@ts-expect-error` / `@ts-nocheck` in frontend sources
 - **Ratcheted** (frozen at today's count, may only go down): backend
-  `# noqa` / `# type: ignore` (**3**), `as unknown as` casts (**19**),
+  `# noqa` / `# type: ignore` (**3**), `as unknown as` casts (**12**),
   `Record<string, unknown>` usages (**46**)
 - **No hex color literals** in frontend source. The ceiling is zero —
   every colour must come from a named token. Define new colours in

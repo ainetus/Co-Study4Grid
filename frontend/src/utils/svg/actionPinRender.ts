@@ -77,7 +77,7 @@ export const applyActionOverviewHighlights = (
     // contiguous pass (no DOM writes in between, avoiding layout thrashing).
     let layerCTM: DOMMatrix | null = null;
     try {
-        layerCTM = (layer as unknown as SVGGraphicsElement).getScreenCTM?.() ?? null;
+        layerCTM = (layer as SVGGraphicsElement).getScreenCTM?.() ?? null;
     } catch { /* jsdom */ }
 
     const prepared: { clone: SVGGraphicsElement; transform: string | null }[] = [];
@@ -187,7 +187,7 @@ export const rescaleActionOverviewPins = (container: HTMLElement | null) => {
             if (containerW > 0) {
                 pxPerSvgUnit = containerW / parts[2];
             } else {
-                const ctm = (svg as unknown as SVGGraphicsElement).getScreenCTM?.();
+                const ctm = (svg as SVGGraphicsElement).getScreenCTM?.();
                 if (ctm) pxPerSvgUnit = ctm.a;
             }
             viewBoxMax = Math.max(parts[2], parts[3]);
@@ -397,7 +397,7 @@ const renderCombinedPin = (
     g.setAttribute('class', 'nad-action-overview-pin nad-combined-action-pin');
     g.setAttribute('transform', `translate(${cp.x} ${cp.y})`);
     g.setAttribute('data-action-id', cp.pairId);
-    (g as unknown as SVGGElement).style.cursor = 'pointer';
+    (g as SVGGElement).style.cursor = 'pointer';
 
     const body = document.createElementNS(SVG_NS, 'g');
     body.setAttribute('class', 'nad-action-overview-pin-body');
@@ -498,7 +498,7 @@ const renderUnsimulatedPin = (
     g.setAttribute('data-action-id', pin.id);
     g.setAttribute('data-unsimulated', 'true');
     g.setAttribute('opacity', '0.5');
-    (g as unknown as SVGGElement).style.cursor = 'pointer';
+    (g as SVGGElement).style.cursor = 'pointer';
 
     const body = document.createElementNS(SVG_NS, 'g');
     body.setAttribute('class', 'nad-action-overview-pin-body');
