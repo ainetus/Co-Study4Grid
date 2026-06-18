@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import './App.css';
 import VisualizationPanel from './components/VisualizationPanel';
 import ActionFeed from './components/ActionFeed';
+import AntennaNotice from './components/AntennaNotice';
 import Header from './components/Header';
 import AppSidebar from './components/AppSidebar';
 import StatusToasts from './components/StatusToasts';
@@ -1807,6 +1808,9 @@ function App() {
           onOverviewFiltersChange={setOverviewFilters}
           hasActions={Object.keys(result?.actions || {}).length > 0}
         >
+          {sidebarSwitchedToFeed && result?.antenna_meta && (
+            <AntennaNotice meta={result.antenna_meta} />
+          )}
           {sidebarSwitchedToFeed && (
           <ActionFeed
             actions={result?.actions || {}}

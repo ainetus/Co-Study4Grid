@@ -102,6 +102,13 @@ def _build_overlay_block() -> str:
      This file only adds interactive affordances (cursor / opacity). */
   .cs4g-pin {{ pointer-events: auto; cursor: pointer; }}
 
+  /* Hide the synthetic upstream "grid source" node (and its edge) that the
+     recommender injects into an islanded-pocket ("antenne") overflow graph to
+     anchor the constrained path's amont side. It is a modelling artifact, not
+     a real substation, so it must not show in the viewer. */
+  .node[data-name="__GRID_SOURCE__"],
+  .edge[data-attr-name="__GRID_SOURCE__"] {{ display: none; }}
+
   /* ``ACTION PINS FILTERS`` section appended at the BOTTOM of the
      iframe's sidebar. The section is ALWAYS visible (it carries the
      pins on/off toggle, so it must be reachable before any pin has

@@ -733,6 +733,10 @@ class AnalysisMixin(_Base):
                 "lines_overloaded": results["lines_overloaded_names"],
                 "pre_existing_overloads": results.get("pre_existing_overloads", []),
                 "combined_actions": results.get("combined_actions", {}),
+                # Present only for the islanded-pocket (antenna) case: describes
+                # the disconnected radial zone + its net direction so the UI can
+                # flag that recommendations are injection-only. None otherwise.
+                "antenna_meta": results.get("antenna_meta"),
                 "lines_we_care_about": list(lines_we_care_about) if lines_we_care_about is not None else None,
                 "active_model": (
                     self.get_active_model_name()
