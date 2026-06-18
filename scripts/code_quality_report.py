@@ -35,21 +35,34 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-BACKEND_ROOTS = [
-    REPO_ROOT / "expert_backend" / "main.py",
-    REPO_ROOT / "expert_backend" / "services",
-]
-BACKEND_TEST_ROOT = REPO_ROOT / "expert_backend" / "tests"
+BACKEND_ROOT = REPO_ROOT / "expert_backend"
+BACKEND_TEST_ROOT = BACKEND_ROOT / "tests"
+# Backend Python deliberately OUTSIDE the runtime code-quality gate.
+# `test_backend.py` is an ad-hoc integration script (not pytest), and
+# `install_graphviz.py` is a setup-time installer invoked from setup.py
+# that legitimately prints install progress to the console. Everything
+# else under `expert_backend/` (incl. `__init__.py` and any future
+# top-level module) is now scanned — previously only `main.py` +
+# `services/` were, which let smells in sibling modules slip past unseen.
+BACKEND_EXCLUDED_NAMES = {"test_backend.py", "install_graphviz.py"}
 FRONTEND_SRC_ROOT = REPO_ROOT / "frontend" / "src"
 
 # Frontend regex patterns — TS/TSX parsing is out of scope so we
 # scan source text directly. Python smells are parsed through `ast`
 # (see `_count_python_smells`) to avoid false positives from string
 # literals and comments.
-ANY_TYPE_RE = re.compile(r":\s*any\b|<\s*any\s*>|\bany\[\]")
-TS_IGNORE_RE = re.compile(r"@ts-ignore")
+# `: any`, `<any>`, `any[]`, and `as any`. The last (assertion casts)
+# was previously a blind spot — only annotation positions were caught.
+ANY_TYPE_RE = re.compile(r":\s*any\b|<\s*any\s*>|\bany\[\]|\bas\s+any\b")
+# `@ts-ignore` plus its equivalents `@ts-expect-error` / `@ts-nocheck`
+# — all three suppress the type checker, so they are gated together.
+TS_IGNORE_RE = re.compile(r"@ts-(?:ignore|expect-error|nocheck)\b")
 AS_UNKNOWN_RE = re.compile(r"as\s+unknown\s+as\b")
 RECORD_STR_UNK_RE = re.compile(r"Record<string,\s*unknown>")
+# Backend lint / type suppressions ("noqa" / "type: ignore" markers).
+# Often legitimate (a re-exported import, a logged broad except) so they
+# are reported + ratcheted rather than hard-zeroed.
+BACKEND_SUPPRESSION_RE = re.compile(r"#\s*(?:noqa|type:\s*ignore)")
 # Hex color literals: #RGB, #RGBA, #RRGGBB, #RRGGBBAA. Excludes HTML
 # numeric entities like `&#9881;` via the negative lookbehind.
 # Token-source-of-truth files are exempt from the count (see
@@ -128,6 +141,7 @@ class BackendReport:
     print_calls: int = 0
     traceback_prints: int = 0
     silent_excepts: int = 0
+    lint_suppressions: int = 0
     test_files: int = 0
     source_files: int = 0
 
@@ -154,13 +168,27 @@ class QualityReport:
 
 
 def iter_backend_modules() -> list[Path]:
+    if not BACKEND_ROOT.is_dir():
+        return []
     files: list[Path] = []
-    for root in BACKEND_ROOTS:
-        if root.is_file():
-            files.append(root)
-        elif root.is_dir():
-            files.extend(p for p in root.rglob("*.py") if "__pycache__" not in p.parts)
+    for p in BACKEND_ROOT.rglob("*.py"):
+        parts = p.relative_to(BACKEND_ROOT).parts
+        if "__pycache__" in parts or "tests" in parts:
+            continue
+        if p.name in BACKEND_EXCLUDED_NAMES:
+            continue
+        files.append(p)
     return sorted(files)
+
+
+def _is_frontend_test_path(p: Path) -> bool:
+    """True for test files (`*.test.*`) and the `src/test/` infra dir.
+
+    Test infrastructure (e.g. `src/test/setup.ts`, which carries the
+    `@ts-expect-error` mocks) is not product source and must not count
+    toward component LoC or the type-suppression gates.
+    """
+    return ".test." in p.name or "test" in p.relative_to(FRONTEND_SRC_ROOT).parts
 
 
 def iter_frontend_sources() -> list[Path]:
@@ -170,7 +198,7 @@ def iter_frontend_sources() -> list[Path]:
     for p in FRONTEND_SRC_ROOT.rglob("*"):
         if p.suffix not in {".ts", ".tsx"}:
             continue
-        if ".test." in p.name:
+        if _is_frontend_test_path(p):
             continue
         files.append(p)
     return sorted(files)
@@ -190,7 +218,7 @@ def iter_frontend_styled_sources() -> list[Path]:
     for p in FRONTEND_SRC_ROOT.rglob("*"):
         if p.suffix not in {".ts", ".tsx", ".css"}:
             continue
-        if ".test." in p.name:
+        if _is_frontend_test_path(p):
             continue
         files.append(p)
     return sorted(files)
@@ -253,6 +281,7 @@ def scan_backend() -> BackendReport:
         rep.print_calls += prints
         rep.traceback_prints += tracebacks
         rep.silent_excepts += silent
+        rep.lint_suppressions += len(BACKEND_SUPPRESSION_RE.findall(src))
 
         rep.all_functions.extend(extract_all_functions(path))
 
@@ -337,6 +366,7 @@ def to_markdown(report: QualityReport) -> str:
             f"- `print(` calls in source: **{be.print_calls}**",
             f"- `traceback.print_exc()` calls: **{be.traceback_prints}**",
             f"- Bare `except Exception: pass` patterns: **{be.silent_excepts}**",
+            f"- `# noqa` / `# type: ignore` suppressions (ratcheted): **{be.lint_suppressions}**",
             "",
             "### Top-5 longest functions",
             "",

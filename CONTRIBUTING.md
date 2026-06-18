@@ -82,13 +82,22 @@ python scripts/code_quality_report.py --output reports/code-quality.json \
 python scripts/check_code_quality.py
 ```
 
-The gate enforces:
+The gate enforces (full table in
+[`scripts/check_code_quality.py`](./scripts/check_code_quality.py)):
 
 - No new `print()` or `traceback.print_exc()` calls in backend sources
 - No new bare `except Exception: pass` patterns
-- Backend modules stay under **1200 lines** (the "god-object" ceiling)
-- Frontend components stay under **1500 lines**
-- No `any` type annotations or `@ts-ignore` in frontend sources
+- Backend modules stay under **1150 lines** (the "god-object" ceiling);
+  functions under **240**. The scan covers all of `expert_backend/`
+  except the test suite and the setup-time / ad-hoc scripts.
+- Frontend components stay under **1450 lines** (`utils/**` under
+  **1000**); `App.tsx`, the orchestration hub, has a bounded **2100**
+  ceiling rather than a blanket exemption.
+- No `any` / `as any` annotations, and no `@ts-ignore` /
+  `@ts-expect-error` / `@ts-nocheck` in frontend sources
+- **Ratcheted** (frozen at today's count, may only go down): backend
+  `# noqa` / `# type: ignore` (**3**), `as unknown as` casts (**19**),
+  `Record<string, unknown>` usages (**46**)
 - **No hex color literals** in frontend source. The ceiling is zero —
   every colour must come from a named token. Define new colours in
   [`frontend/src/styles/tokens.css`](./frontend/src/styles/tokens.css)

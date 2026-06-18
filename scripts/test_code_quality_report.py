@@ -19,7 +19,15 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from code_quality_report import _count_python_smells, build_report  # noqa: E402
+from code_quality_report import (  # noqa: E402
+    ANY_TYPE_RE,
+    BACKEND_SUPPRESSION_RE,
+    TS_IGNORE_RE,
+    _count_python_smells,
+    build_report,
+    iter_backend_modules,
+    iter_frontend_sources,
+)
 
 
 def _smells(src: str) -> tuple[int, int, int]:
@@ -85,6 +93,55 @@ def test_build_report_against_repo_root():
     assert report.backend.silent_excepts == 0
     assert report.frontend.any_types == 0
     assert report.frontend.ts_ignores == 0
+    # Ratcheted smells stay at or below their frozen ceilings.
+    assert report.backend.lint_suppressions <= 3
+    assert report.frontend.weak_casts <= 19
+    assert report.frontend.record_str_unknown <= 46
+
+
+def test_any_type_re_catches_as_any_assertion_casts():
+    # `as any` (assertion cast) was a blind spot — only annotation
+    # positions used to be caught.
+    assert ANY_TYPE_RE.search("const x = y as any;")
+    assert ANY_TYPE_RE.search("function f(a: any) {}")
+    assert ANY_TYPE_RE.search("const xs: any[] = [];")
+    assert ANY_TYPE_RE.search("const g: Foo<any> = h;")
+    # `any` as a substring of an identifier must not match.
+    assert not ANY_TYPE_RE.search("const company = 1;")
+
+
+def test_ts_ignore_re_catches_expect_error_and_nocheck():
+    assert TS_IGNORE_RE.search("// @ts-ignore")
+    assert TS_IGNORE_RE.search("// @ts-expect-error: not in global types")
+    assert TS_IGNORE_RE.search("// @ts-nocheck")
+    assert not TS_IGNORE_RE.search("// eslint-disable-next-line")
+
+
+def test_backend_suppression_re_catches_noqa_and_type_ignore():
+    assert BACKEND_SUPPRESSION_RE.search("import x  # noqa: F401")
+    assert BACKEND_SUPPRESSION_RE.search("z = w()  # type: ignore[arg-type]")
+    assert not BACKEND_SUPPRESSION_RE.search("# an ordinary comment")
+
+
+def test_backend_scan_covers_recommenders_but_not_setup_scripts():
+    """The widened scan reaches `expert_backend/recommenders/` (gated for
+    the first time) while keeping setup-time / ad-hoc scripts and the test
+    suite out of scope."""
+    mods = {str(p) for p in iter_backend_modules()}
+    assert any(f"recommenders{Path('/').as_posix()}" in m.replace("\\", "/")
+               for m in mods), "recommenders/ package should now be scanned"
+    assert not any(m.endswith("install_graphviz.py") for m in mods)
+    assert not any(m.endswith("test_backend.py") for m in mods)
+    assert all("/tests/" not in m.replace("\\", "/") for m in mods)
+
+
+def test_frontend_scan_excludes_test_infra():
+    """Test files and the `src/test/` infra dir (which carries the
+    `@ts-expect-error` mocks) are not counted as product source."""
+    srcs = {str(p).replace("\\", "/") for p in iter_frontend_sources()}
+    assert srcs
+    assert all("/test/" not in s for s in srcs)
+    assert all(".test." not in s for s in srcs)
 
 
 def test_all_functions_populated():
