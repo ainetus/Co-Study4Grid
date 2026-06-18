@@ -1,7 +1,7 @@
 # Code Quality & Maintainability Analysis
 
 **Date:** 2026-04-11
-**Last updated:** 2026-05-05
+**Last updated:** 2026-06-18
 **Scope:** Full repository diagnostic — backend, frontend, repo structure, security, testing
 
 > **Continuous reporting (new 2026-04-20):**
@@ -1206,6 +1206,56 @@ complexity/nesting, weak-typing — each gated or ratcheted. mypy and
 coverage are staged foundations, deliberately non-blocking until they
 can gate without noise (mypy: type the mixin surface) or guesswork
 (coverage: a measured baseline). Reporter unit tests **13 → 16**.
+
+---
+
+## 19. Revision — 2026-06-18 (acting on the review)
+
+A measured code-quality revision (full scorecard below) and the
+improvement targets it produced — implemented bar one. The two
+"staged foundations" from §18 were the headline opportunities, and
+both got promoted from advisory to gating here.
+
+### 19.1 Scorecard (measured)
+
+| Dimension | Grade | Evidence |
+|-----------|-------|----------|
+| Backend smell hygiene | A+ | print/traceback/silent all **0**; 3 suppressions, all justified |
+| Frontend strictness surface | A | **0** `any`/`as any`, **0** ts-suppressions, **0** hex |
+| Quality tooling / gate | A | size + smells + complexity/nesting + weak-typing, all dependency-free |
+| Module / function size | B+ | App.tsx 1982/2100, simulation_mixin 1100/1150, overflow_overlay 1055 ride ceilings |
+| Cyclomatic complexity | B+ | hotspots: transform_html CC49, update_config CC35, _narrow_context CC30/nest7 |
+| Test coverage | B | frontend **73.7% stmt / 76.3% line** (now gated); backend unmeasured |
+| Frontend weak typing | B→B+ | `as unknown as` 19 → **12**; `Record<string,unknown>` **46** |
+| Backend type safety | C+→B | mypy **69 → 0, now gating**; return annotations, missing **112 → 86** |
+
+### 19.2 Targets and outcomes
+
+| # | Target | Outcome |
+|---|--------|---------|
+| 1 | Type the mixin surface | `services/_recommender_state.py` — a `TYPE_CHECKING`-only base the three mixins inherit (`object` at runtime, no MRO/behaviour change). mypy **69 → 0**, flipped to **gating** (pinned `mypy==1.19.*`). |
+| 2 | Fix the 3 real type bugs | `run_analysis_step2` `list[str]` defaults → `\| None` (×2); `_cached_obs_n1_elements` Optional mismatch resolved by the shared declaration. |
+| 3 | Return-annotation coverage | 26 void fns annotated `-> None` (libcst codemod, mypy-verified); reporter metric + **missing-return ratchet at 86** (was 112). 80 value-returning + 6 generators remain the ratchet-down target. |
+| 5 | Coverage floor | **Frontend now gates** on `vite.config.ts` thresholds (70/65/70/73, below the 73.7/70/73.8/76.3 baseline). **Backend** stays report-only — unmeasurable offline; floor to be read off the first green CI run. |
+| 6 | Frontend weak typing | 7 over-cautious SVG-DOM `as unknown as` casts simplified to plain downcasts (type-only, tsc+eslint clean); **weak-cast ratchet 19 → 12**. |
+| 4 | Decompose ceiling-riders | **Deferred** (explicitly out of scope this round). simulation_mixin / App.tsx / VisualizationPanel / the CC hotspots remain the size-and-complexity targets. |
+
+### 19.3 Net effect on the gate
+
+Two axes graduated from advisory to **gating**: mypy (0 errors,
+enforced by the shared-state base) and frontend coverage (a measured
+floor). New ratchets/metrics: backend missing-return annotations (86),
+plus the tightened `as unknown as` ratchet (12). Every change was
+validated locally — mypy clean, tsc + eslint clean, the offline backend
+suite byte-identical (no runtime touched), and `npm run test:coverage`
+green against the new floor.
+
+### 19.4 What's next (unchanged from the review)
+
+The remaining type-debt is now *visible and bounded*: 80 value-returning
+backend functions to annotate (mypy will verify), the 46
+`Record<string,unknown>` to model, target **#4** (decompose the
+ceiling-riders), and the backend coverage floor once CI yields a number.
 
 
 
