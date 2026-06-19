@@ -7,6 +7,7 @@
 
 import { interactionLogger } from '../../utils/interactionLogger';
 import type { SettingsState } from '../../hooks/useSettings';
+import { useSmoothPanZoom } from '../../utils/smoothPanZoom';
 import { colors } from '../../styles/tokens';
 import { ACTION_TYPE_FILTER_TOKENS, ACTION_TYPE_LABELS } from '../../utils/actionTypes';
 import type { ActionTypeKind } from '../../utils/actionTypes';
@@ -17,6 +18,9 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
+  // Pure client rendering preference (localStorage, not backend config) —
+  // read from its own singleton rather than SettingsState.
+  const { enabled: smoothPanZoom, setEnabled: setSmoothPanZoom } = useSmoothPanZoom();
   const {
     isSettingsOpen,
     settingsTab, setSettingsTab,
@@ -386,6 +390,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
                 </div>
                 <div style={{ fontSize: '0.75rem', color: colors.textTertiary, fontStyle: 'italic', marginLeft: '26px' }}>
                   Disable voltage control in pypowsybl for faster simulations (may affect convergence)
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px', background: colors.surfaceMuted, borderRadius: '4px', border: `1px solid ${colors.borderSubtle}` }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <input
+                    type="checkbox" id="smoothPanZoom" checked={smoothPanZoom}
+                    onChange={e => setSmoothPanZoom(e.target.checked)}
+                    style={{ width: '16px', height: '16px' }}
+                    data-testid="smooth-pan-zoom-toggle"
+                  />
+                  <label htmlFor="smoothPanZoom" style={{ fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer' }}>Smooth pan/zoom (GPU)</label>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: colors.textTertiary, fontStyle: 'italic', marginLeft: '26px' }}>
+                  Pan/zoom the diagram with a GPU-composited transform instead of repainting it each frame. Much smoother on large grids with a hardware-accelerated browser; leave OFF on software-rendered / remote-desktop / VDI sessions, where it can stutter. Applies on the next gesture.
                 </div>
               </div>
             </div>

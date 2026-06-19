@@ -329,6 +329,19 @@ plus `overviewPz` for the Action overview map). The
 `useTiedTabsSync` hook mirrors viewBox changes from the active tab
 to any "tied" detached tab.
 
+Pan/zoom fluidity on large grids has two levers (see
+`docs/performance/history/interaction-paint-culling.md`):
+- **Default — interaction paint culling.** While a gesture is active
+  (`usePanZoom` adds `.svg-interacting`), `App.css` hides the expensive
+  `<foreignObject>` VL labels + `.nad-edge-infos` so each viewBox-repaint
+  frame is cheaper. GPU-independent; safe everywhere.
+- **Opt-in — "Smooth pan/zoom (GPU)"** (`utils/smoothPanZoom.ts`, a
+  localStorage singleton read by `usePanZoom` at gesture start; toggle in
+  Settings → Configurations, default OFF). Replaces the per-frame viewBox
+  rewrite with a compositor-only CSS transform, baking back on settle.
+  Much smoother on GPU; OFF by default because it regresses on
+  software/VDI rendering.
+
 ## Detached tabs
 
 `useDetachedTabs` opens diagram tabs in popup windows

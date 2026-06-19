@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, type RefObject } from 'react';
 import type { ViewBox } from '../types';
+import { isSmoothPanZoomEnabled } from '../utils/smoothPanZoom';
 
 /**
  * Custom Hook for SVG Pan/Zoom via viewBox manipulation.
@@ -29,6 +30,42 @@ const computeZoomTier = (current: ViewBox, original: ViewBox): ZoomTier => {
     if (ratio > 0.5) return 'overview';
     if (ratio > 0.15) return 'region';
     return 'detail';
+};
+
+/**
+ * Element-local affine for a viewBox under `preserveAspectRatio="xMidYMid
+ * meet"` (what pypowsybl emits). Returns the uniform scale `a` and offset
+ * `(cx, cy)` such that a user-space point `u` renders at element-local
+ * pixel `(a*u.x + cx, a*u.y + cy)`. Used by the opt-in smooth-pan/zoom path.
+ */
+const meetLocal = (vb: ViewBox, W: number, H: number) => {
+    const a = Math.min(W / vb.w, H / vb.h);
+    return { a, cx: (W - a * vb.w) / 2 - a * vb.x, cy: (H - a * vb.h) / 2 - a * vb.y };
+};
+
+/**
+ * CSS transform (with `transform-origin: 0 0`) for the <svg> element that
+ * makes a diagram baked at viewBox `base` render pixel-identically to
+ * viewBox `target`. The opt-in "Smooth pan/zoom (GPU)" mode applies this
+ * during a gesture so the compositor translates/scales the already-
+ * rasterised SVG layer instead of repainting ~100k DOM nodes per frame,
+ * then bakes `target` into the viewBox attribute on settle. Returns null on
+ * degenerate input so the caller falls back to a direct viewBox write.
+ *
+ * Derivation: with both states on the same element + meet rule, the
+ * element-local maps are similarities `L(u) = a·u + c`. The transform
+ * `T(p) = s·p + t` must satisfy `T(L_base(u)) = L_target(u)` for all u,
+ * giving `s = a_t / a_b` and `t = c_t − s·c_b`.
+ */
+const interactionTransform = (base: ViewBox, target: ViewBox, W: number, H: number): string | null => {
+    if (!(W > 0 && H > 0 && base.w > 0 && base.h > 0 && target.w > 0 && target.h > 0)) return null;
+    const lb = meetLocal(base, W, H);
+    const lt = meetLocal(target, W, H);
+    const s = lt.a / lb.a;
+    const tx = lt.cx - s * lb.cx;
+    const ty = lt.cy - s * lb.cy;
+    if (!Number.isFinite(s) || !Number.isFinite(tx) || !Number.isFinite(ty)) return null;
+    return `translate(${tx}px, ${ty}px) scale(${s})`;
 };
 
 export const usePanZoom = (
@@ -61,6 +98,17 @@ export const usePanZoom = (
     const currentTierRef = useRef<ZoomTier | null>(null);
     const originalVbRef = useRef<ViewBox | null>(null);
 
+    // Opt-in "Smooth pan/zoom (GPU)" state. `smoothRef` snapshots the
+    // preference at gesture start so the whole gesture is consistent;
+    // `baseVbRef` is the viewBox baked on the DOM when the gesture began
+    // and `baseSizeRef` the element's untransformed CSS size — both feed
+    // the per-frame CSS transform. `interactingRef` marks that a transform
+    // is live and must be baked back into the viewBox on settle.
+    const smoothRef = useRef(false);
+    const interactingRef = useRef(false);
+    const baseVbRef = useRef<ViewBox | null>(null);
+    const baseSizeRef = useRef<{ w: number; h: number } | null>(null);
+
 
     // Toggle interaction class on container to disable pointer-events on SVG children
     const setInteracting = (interacting: boolean) => {
@@ -87,6 +135,16 @@ export const usePanZoom = (
             Number.isFinite(vb.w) && Number.isFinite(vb.h);
         if (svg && vbIsFinite) {
             svg.setAttribute('viewBox', `${vb!.x} ${vb!.y} ${vb!.w} ${vb!.h}`);
+            // A concrete viewBox is the settled source of truth — drop any
+            // leftover smooth-mode interaction transform so the bake is
+            // exact and programmatic writes (zoom buttons, tab sync, load,
+            // tied tabs) reset it. Inert in the default path (transform is
+            // never set), so it costs nothing there. `style?.` guards the
+            // jsdom case where DOMParser'd SVG nodes lack a style object.
+            if (svg.style?.transform) {
+                svg.style.transform = '';
+                svg.style.willChange = '';
+            }
         } else if (vb && !vbIsFinite) {
             // Trace the upstream caller so we can pinpoint which path
             // (handleZoomToElement, useTabSync, useTiedTabsSync, an
@@ -139,6 +197,7 @@ export const usePanZoom = (
             // not on programmatic zoom which uses setViewBoxPublic instead.
             originalVbRef.current = initialViewBox;
             currentTierRef.current = null; // force re-evaluation
+            interactingRef.current = false; // a new diagram cancels any pending bake
             viewBoxRef.current = initialViewBox;
             applyViewBox(initialViewBox);
             setViewBox(initialViewBox);
@@ -149,6 +208,9 @@ export const usePanZoom = (
     // Sync DOM viewBox BEFORE paint when tab becomes active — prevents
     // one frame of stale viewBox on tab switch.
     useLayoutEffect(() => {
+        // A tab switch ends any in-flight smooth-mode gesture; applyViewBox
+        // re-bakes the settled viewBox and clears the transform.
+        interactingRef.current = false;
         if (!active || !viewBoxRef.current) return;
         applyViewBox(viewBoxRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -170,6 +232,55 @@ export const usePanZoom = (
             return ctm;
         };
 
+        // --- Opt-in smooth-pan/zoom (GPU compositing) helpers ---
+        // Snapshot the baked viewBox + element size so each gesture frame
+        // can be expressed as a CSS transform relative to it.
+        const beginInteraction = () => {
+            if (interactingRef.current) return;
+            const svg = svgElRef.current;
+            if (!svg || !viewBoxRef.current) return;
+            const rect = svg.getBoundingClientRect();
+            baseVbRef.current = { ...viewBoxRef.current };
+            baseSizeRef.current = { w: svg.clientWidth || rect.width, h: svg.clientHeight || rect.height };
+            if (svg.style) {
+                svg.style.transformOrigin = '0 0';
+                svg.style.willChange = 'transform';
+            }
+            interactingRef.current = true;
+        };
+
+        // Render `vb` via a compositor-only CSS transform — no viewBox
+        // rewrite, so no full vector repaint. Keeps viewBoxRef in lockstep
+        // so the wheel/drag math and the final bake stay exact, and
+        // invalidates the CTM cache so the next getScreenCTM reflects
+        // base+transform = the live mapping. Falls back to a viewBox write
+        // if anything is missing or the transform is degenerate.
+        const applyInteractionFrame = (vb: ViewBox) => {
+            const svg = svgElRef.current;
+            const base = baseVbRef.current;
+            const size = baseSizeRef.current;
+            const t = (svg && base && size) ? interactionTransform(base, vb, size.w, size.h) : null;
+            if (!svg || !t) {
+                viewBoxRef.current = vb;
+                applyViewBox(vb);
+                return;
+            }
+            viewBoxRef.current = vb;
+            svg.style.transform = t;
+            ctmCacheRef.current = null;
+        };
+
+        // Bake the live viewBox back onto the SVG (single repaint at the
+        // settled position; applyViewBox clears the transform) and sync
+        // React state. Safe to call in the default path — it just commits.
+        const endInteraction = () => {
+            if (interactingRef.current) {
+                interactingRef.current = false;
+                if (viewBoxRef.current) applyViewBox(viewBoxRef.current);
+            }
+            commitViewBox();
+        };
+
         const handleWheel = (e: WheelEvent) => {
             if (!activeRef.current || !viewBoxRef.current) return;
             e.preventDefault();
@@ -179,8 +290,11 @@ export const usePanZoom = (
             pendingWheelScale.current *= scaleFactor;
             pendingWheelCursor.current = { x: e.clientX, y: e.clientY };
 
-            // Mark as interacting
+            // Mark as interacting. Snapshot the smooth-mode preference for
+            // the whole gesture and, when on, capture the transform base.
+            smoothRef.current = isSmoothPanZoomEnabled();
             setInteracting(true);
+            if (smoothRef.current) beginInteraction();
 
             // Schedule rAF if not already queued
             if (!wheelRafId.current) {
@@ -210,16 +324,21 @@ export const usePanZoom = (
                         h: vb.h * accumulatedScale,
                     };
 
-                    viewBoxRef.current = newVb;
-                    applyViewBox(newVb);
+                    if (smoothRef.current) {
+                        applyInteractionFrame(newVb);
+                    } else {
+                        viewBoxRef.current = newVb;
+                        applyViewBox(newVb);
+                    }
                 });
             }
 
             // Debounced commit: sync to React after scrolling stops
             if (wheelTimerId.current) clearTimeout(wheelTimerId.current);
             wheelTimerId.current = setTimeout(() => {
+                if (smoothRef.current) endInteraction();
+                else commitViewBox();
                 setInteracting(false);
-                commitViewBox();
             }, 150);
         };
 
@@ -243,7 +362,13 @@ export const usePanZoom = (
 
                 const svg = svgElRef.current;
                 if (!svg) return;
-                const screenW = svg.getBoundingClientRect().width;
+                // In smooth mode the SVG carries a CSS transform, so use the
+                // transform-independent layout width (clientWidth) for the
+                // user-per-pixel scale. The default path keeps the original
+                // getBoundingClientRect().width for byte-identical behaviour.
+                const screenW = smoothRef.current
+                    ? (svg.clientWidth || svg.getBoundingClientRect().width)
+                    : svg.getBoundingClientRect().width;
                 const vb = viewBoxRef.current!;
                 const scale = vb.w / screenW;
 
@@ -252,8 +377,12 @@ export const usePanZoom = (
                     x: vb.x - dx * scale,
                     y: vb.y - dy * scale,
                 };
-                viewBoxRef.current = newVb;
-                applyViewBox(newVb);
+                if (smoothRef.current) {
+                    applyInteractionFrame(newVb);
+                } else {
+                    viewBoxRef.current = newVb;
+                    applyViewBox(newVb);
+                }
             });
         };
 
@@ -264,7 +393,6 @@ export const usePanZoom = (
 
         const handleMouseUp = () => {
             isDragging.current = false;
-            setInteracting(false);
             if (rafId.current) {
                 cancelAnimationFrame(rafId.current);
                 rafId.current = null;
@@ -274,14 +402,20 @@ export const usePanZoom = (
                 activeDragWindow.removeEventListener('mouseup', handleMouseUp);
                 activeDragWindow = null;
             }
-            commitViewBox(); // Sync to React state on drag end
+            // Bake the smooth-mode transform back to viewBox (and commit);
+            // the default path just commits to React state on drag end.
+            if (smoothRef.current) endInteraction();
+            else commitViewBox();
+            setInteracting(false);
         };
 
         const handleMouseDown = (e: MouseEvent) => {
             if (!activeRef.current || !viewBoxRef.current) return;
             isDragging.current = true;
             startPoint.current = { x: e.clientX, y: e.clientY, pendingX: e.clientX, pendingY: e.clientY };
+            smoothRef.current = isSmoothPanZoomEnabled();
             setInteracting(true);
+            if (smoothRef.current) beginInteraction();
 
             // Resolve the element's CURRENT owner window per-drag rather
             // than capturing it at effect-bind time. This is critical for
@@ -311,6 +445,14 @@ export const usePanZoom = (
             if (wheelTimerId.current) clearTimeout(wheelTimerId.current);
             if (rafId.current) cancelAnimationFrame(rafId.current);
             if (wheelRafId.current) cancelAnimationFrame(wheelRafId.current);
+            // Drop any in-flight smooth-mode transform so a re-bind / tab
+            // teardown never leaves a stale transform on the SVG.
+            interactingRef.current = false;
+            const svgEl = svgElRef.current;
+            if (svgEl && svgEl.style?.transform) {
+                svgEl.style.transform = '';
+                svgEl.style.willChange = '';
+            }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [active, initialViewBox]);

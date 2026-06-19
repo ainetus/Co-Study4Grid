@@ -138,13 +138,31 @@ PW_CHROME=/path/to/chrome node bench_pan_zoom.mjs
 Requires a local Playwright + Chromium (not wired into CI — the browser
 download host is outside the CI egress allowlist). See its README.
 
-## GPU follow-up (deferred)
+## Approach A as an opt-in toggle (shipped)
 
 Approach A (transform compositing) is the only path to genuinely smooth
-(~60 fps) pan/zoom on this grid size, but only with GPU compositing. A safe
-way to offer it: an **off-by-default** "Smooth pan/zoom (GPU)" setting that
-swaps the per-frame `applyViewBox` for the transform path, leaving the
-culling default untouched for software/VDI sessions. It needs tuning and
-validation on real GPU hardware (raster-scale / `will-change` management,
-re-raster hitch during zoom bursts), which the headless benchmark
-environment cannot do — hence deferred rather than shipped.
+(~60 fps) pan/zoom on this grid size, but only with GPU compositing. It now
+ships as an **off-by-default** "Smooth pan/zoom (GPU)" setting (Settings →
+Configurations) so GPU-desktop operators can opt in while the safe default
+(viewBox repaint + culling) protects software/VDI sessions.
+
+- Preference singleton: `frontend/src/utils/smoothPanZoom.ts`
+  (`isSmoothPanZoomEnabled()` for the hot path + `useSmoothPanZoom()` for the
+  toggle, localStorage-persisted, mirroring `useTheme`; logs
+  `smooth_pan_zoom_toggled`).
+- `usePanZoom` reads the preference once at gesture start (`smoothRef`). When
+  on, each wheel/drag frame is rendered with `interactionTransform(base,
+  target)` — the `xMidYMid meet` ↔ CSS-transform map — and `endInteraction()`
+  bakes the live viewBox back on settle (`applyViewBox` clears the transform).
+  The default path is byte-identical when the toggle is off.
+- The transform math is exact: a headless check across a spread of zoom/pan
+  states found **max 0.002 px** screen-position error between
+  `interactionTransform` and a direct viewBox set, so the settle-bake is
+  seamless (no visible jump).
+
+Caveat carried over from the investigation: on GPU the win is large, but the
+absolute speedup and the zoom-burst re-raster hitch depend on the browser's
+raster-scale / `will-change` behaviour, which only real GPU hardware can
+exercise — hence opt-in, not default. The headless benchmark here cannot
+measure the GPU benefit (no GPU); it only proved correctness and that the
+default-path culling is safe everywhere.

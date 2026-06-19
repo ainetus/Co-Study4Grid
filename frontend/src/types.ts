@@ -627,7 +627,8 @@ export type InteractionType =
     | 'session_reloaded'
     | 'sidebar_collapsed_toggled'
     | 'contingency_clear_requested'
-    | 'theme_toggled';
+    | 'theme_toggled'
+    | 'smooth_pan_zoom_toggled';
 
 export interface InteractionLogEntry {
     seq: number;
