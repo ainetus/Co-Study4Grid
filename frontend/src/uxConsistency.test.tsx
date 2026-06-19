@@ -250,6 +250,37 @@ describe('UX consistency — Recommendation #3 (halo cap at zoom)', () => {
 });
 
 // ------------------------------------------------------------------
+// Interaction-time paint culling (pan/zoom fluidity, CSS contract)
+// ------------------------------------------------------------------
+
+describe('UX consistency — interaction paint culling', () => {
+    // While a pan/zoom gesture is active, usePanZoom adds `.svg-interacting`
+    // to the container. The CSS culls the two most expensive paint element
+    // classes (HTML VL labels + edge-info flow values) for that window so
+    // the per-frame viewBox repaint stays cheaper on large grids (measured
+    // ~1.5x faster pan / ~1.7x faster zoom on the 5247-VL European grid in
+    // a software-rendered headless benchmark; larger expected on GPU).
+    // Guard the rule so a refactor that drops it fails here rather than
+    // silently regressing fluidity. See
+    // docs/performance/history/interaction-paint-culling.md.
+    const readCss = () => readFileSync(resolve(__dirname, 'App.css'), 'utf-8');
+
+    it('hides the edge-info flow group during active interaction', () => {
+        expect(readCss()).toMatch(
+            /\.svg-container\.svg-interacting\s+\.nad-edge-infos[^{]*{[^}]*display:\s*none/s,
+        );
+    });
+
+    it('hides the HTML voltage-level labels during active interaction', () => {
+        // At least one of the pypowsybl VL-label foreignObject shapes
+        // must be culled under `.svg-interacting`.
+        expect(readCss()).toMatch(
+            /\.svg-container\.svg-interacting\s+(?:foreignObject\.nad-text-nodes|\.nad-text-nodes|\.nad-vl-nodes\s+foreignObject)[^{]*{[^}]*display:\s*none/s,
+        );
+    });
+});
+
+// ------------------------------------------------------------------
 // Recommendation #4 — Tier the warning system
 // ------------------------------------------------------------------
 

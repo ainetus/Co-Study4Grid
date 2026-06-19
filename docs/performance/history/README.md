@@ -41,6 +41,7 @@ manual-action simulation.
 | File | Topic |
 |------|-------|
 | [`svg-tab-unmount.md`](svg-tab-unmount.md) | `visibility:hidden` → `display:none` on inactive SVG tabs (600k → 200k live nodes). |
+| [`interaction-paint-culling.md`](interaction-paint-culling.md) | Cull `<foreignObject>` labels + edge-infos during active pan/zoom (`.svg-interacting`): ~1.5–1.7x cheaper frames. Rejects the CSS-transform compositing trick (software/VDI regression). |
 
 ## Rejected / Experimental
 
