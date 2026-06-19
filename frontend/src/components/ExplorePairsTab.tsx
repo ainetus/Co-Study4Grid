@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
-import React from 'react';
+import React, { useState } from 'react';
 import type { CombinedAction, AnalysisResult } from '../types';
 import { colors } from '../styles/tokens';
 
@@ -41,9 +41,24 @@ interface ExplorePairsTabProps {
     monitoringFactor: number;
     onEstimate: () => void;
     onSimulate: () => void;
-    onSimulateSingle: (actionId: string) => void;
+    /** Simulate a single action from a row. ``targetMw`` carries the
+     *  edited injection setpoint: the target shed / curtail amount for
+     *  load-shedding / curtailment, or the signed delta for redispatch.
+     *  Left undefined for non-injection rows (and injection rows whose
+     *  input is blank, which fall back to the recommender default). */
+    onSimulateSingle: (actionId: string, targetMw?: number) => void;
     displayName?: (id: string) => string;
 }
+
+/** Injection action types whose MW setpoint is editable before
+ *  simulating: load shedding (target shed amount), renewable
+ *  curtailment (target curtail amount) and redispatch (signed delta). */
+const classifyInjection = (type: string): 'ls_rc' | 'redispatch' | null => {
+    const t = type.toLowerCase();
+    if (t.includes('redispatch')) return 'redispatch';
+    if (t.includes('load_shedding') || t.includes('renewable_curtailment') || t.includes('curtail')) return 'ls_rc';
+    return null;
+};
 
 const ExplorePairsTab: React.FC<ExplorePairsTabProps> = ({
     scoredActionsList,
@@ -64,6 +79,10 @@ const ExplorePairsTab: React.FC<ExplorePairsTabProps> = ({
     onSimulateSingle,
     displayName = (id: string) => id,
 }) => {
+    // Per-row editable injection setpoint (target MW for LS/curtailment,
+    // signed delta for redispatch), keyed by action id. Drives both the
+    // input value and the MW passed to onSimulateSingle.
+    const [editMw, setEditMw] = useState<Record<string, string>>({});
     return (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
             {/* Selection Chips Header */}
@@ -120,6 +139,26 @@ const ExplorePairsTab: React.FC<ExplorePairsTabProps> = ({
                                             const isSelected = selectedIds.has(actionId);
                                             const simResult = sessionSimResults[actionId] || (analysisResult?.actions?.[actionId]?.rho_after ? analysisResult.actions[actionId] : null);
 
+                                            // Injection rows (LS / curtailment / redispatch) expose an
+                                            // editable MW setpoint: the target shed / curtail amount, or
+                                            // the signed redispatch delta. Default to the simulated value
+                                            // when the action has already been computed.
+                                            const injectionKind = classifyInjection(type);
+                                            const computedDetail = analysisResult?.actions?.[actionId];
+                                            const storedMw = injectionKind === 'redispatch'
+                                                ? (computedDetail?.redispatch_details?.[0]?.delta_mw ?? null)
+                                                : injectionKind === 'ls_rc'
+                                                    ? (computedDetail?.load_shedding_details?.[0]?.shedded_mw
+                                                        ?? computedDetail?.curtailment_details?.[0]?.curtailed_mw
+                                                        ?? null)
+                                                    : null;
+                                            const effectiveMwStr = editMw[actionId] ?? (storedMw != null ? storedMw.toFixed(1) : '');
+                                            const resolveTargetMw = (): number | undefined => {
+                                                if (!injectionKind || effectiveMwStr === '') return undefined;
+                                                const v = parseFloat(effectiveMwStr);
+                                                return Number.isNaN(v) ? undefined : v;
+                                            };
+
                                             return (
                                                 <tr
                                                     key={actionId}
@@ -131,9 +170,26 @@ const ExplorePairsTab: React.FC<ExplorePairsTabProps> = ({
                                                         <input type="checkbox" checked={isSelected} readOnly style={{ cursor: 'pointer' }} />
                                                     </td>
                                                     <td style={{ fontWeight: 'bold', fontSize: '12px' }}>{actionId}</td>
-                                                    <td style={{ width: '65px', textAlign: 'right', fontFamily: 'monospace', fontSize: '11px', color: mwStart == null ? colors.textTertiary : colors.textPrimary }}>
-                                                        {mwStart != null ? `${mwStart.toFixed(1)}` : 'N/A'}
-                                                    </td>
+                                                    {injectionKind ? (
+                                                        <td onClick={(e) => e.stopPropagation()} style={{ width: '72px', textAlign: 'right', paddingRight: '4px' }}>
+                                                            <input
+                                                                data-testid={`explore-mw-${actionId}`}
+                                                                type="number"
+                                                                step={0.1}
+                                                                min={injectionKind === 'ls_rc' ? 0 : undefined}
+                                                                max={injectionKind === 'ls_rc' ? (mwStart ?? undefined) : undefined}
+                                                                placeholder={injectionKind === 'redispatch' ? 'Δ' : (mwStart != null ? mwStart.toFixed(1) : '0')}
+                                                                title={injectionKind === 'redispatch' ? 'Signed redispatch increment (MW): raise > 0, lower < 0.' : 'Target MW to shed / curtail.'}
+                                                                value={effectiveMwStr}
+                                                                onChange={(e) => setEditMw(prev => ({ ...prev, [actionId]: e.target.value }))}
+                                                                style={{ width: '64px', fontSize: '11px', fontFamily: 'monospace', padding: '2px 4px', border: `1px solid ${injectionKind === 'redispatch' ? colors.info : colors.border}`, borderRadius: '3px', textAlign: 'right' }}
+                                                            />
+                                                        </td>
+                                                    ) : (
+                                                        <td style={{ width: '72px', textAlign: 'right', fontFamily: 'monospace', fontSize: '11px', color: mwStart == null ? colors.textTertiary : colors.textPrimary }}>
+                                                            {mwStart != null ? `${mwStart.toFixed(1)}` : 'N/A'}
+                                                        </td>
+                                                    )}
                                                     <td style={{ width: '60px', textAlign: 'right' }}>
                                                         <span className="metric-badge metric-score" style={{ transform: 'scale(0.9)', display: 'inline-block' }}>
                                                             {score.toFixed(2)}
@@ -156,7 +212,7 @@ const ExplorePairsTab: React.FC<ExplorePairsTabProps> = ({
                                                     </td>
                                                     <td onClick={(e) => e.stopPropagation()} style={{ width: '100px', textAlign: 'right', paddingRight: '12px' }}>
                                                         <button
-                                                            onClick={() => onSimulateSingle(actionId)}
+                                                            onClick={() => onSimulateSingle(actionId, resolveTargetMw())}
                                                             disabled={simulating}
                                                             style={{
                                                                 padding: '3px 10px',

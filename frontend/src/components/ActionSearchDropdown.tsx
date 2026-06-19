@@ -387,7 +387,11 @@ const ScoreTable: React.FC<ScoreTableProps> = ({
 
                 const isLsOrRcType = type === 'load_shedding' || type.includes('load_shedding') || type === 'renewable_curtailment' || type.includes('renewable_curtailment');
                 const isPstType = type === 'pst_tap_change' || type.includes('pst');
-                const hasEditableColumn = isLsOrRcType || isPstType;
+                // Redispatch edits a SIGNED delta (raise > 0 / lower < 0) rather
+                // than an absolute target, so it gets its own editable column
+                // distinct from the load-shedding / curtailment "Target MW" one.
+                const isRedispatchType = type === 'redispatch' || type.includes('redispatch');
+                const hasEditableColumn = isLsOrRcType || isPstType || isRedispatchType;
                 const tapStartMap = isPstType ? (typeData as { tap_start?: Record<string, { pst_name: string; tap: number; low_tap: number | null; high_tap: number | null } | null> }).tap_start : undefined;
                 return (
                     <div key={type} style={{ marginBottom: '8px' }}>
@@ -420,6 +424,7 @@ const ScoreTable: React.FC<ScoreTableProps> = ({
                                     <th style={{ textAlign: 'right', padding: '4px 6px', width: '10%' }}>Score</th>
                                     <th style={{ textAlign: 'right', padding: '4px 6px', width: '10%' }}>{isPstType ? 'Tap Start' : 'MW Start'}</th>
                                     {isLsOrRcType && <th style={{ textAlign: 'right', padding: '4px 6px', width: '12%' }}>Target MW</th>}
+                                    {isRedispatchType && <th style={{ textAlign: 'right', padding: '4px 6px', width: '12%' }} title="Signed redispatch increment (MW): raise > 0, lower < 0.">Δ MW</th>}
                                     {isPstType && <th style={{ textAlign: 'right', padding: '4px 6px', width: '12%' }}>Target Tap</th>}
                                     <th
                                         style={{ textAlign: 'right', padding: '4px 6px', width: '16%' }}
@@ -449,6 +454,21 @@ const ScoreTable: React.FC<ScoreTableProps> = ({
                                     // Only re-simulate if the user has actually edited the value and it differs from the stored one.
                                     const userEditedMw = mwEditVal !== undefined && (storedMw == null || parseFloat(mwEditVal) !== storedMw);
                                     const canResimulate = isLsOrRcType && isComputed && isValidTarget && userEditedMw;
+                                    // Redispatch: the editable value is the SIGNED delta (raise > 0 /
+                                    // lower < 0), defaulting to the simulated delta_mw and bounded by
+                                    // the generator's headroom in its current direction — mirrors the
+                                    // action card's redispatch editor.
+                                    const rdDetail = isRedispatchType && isComputed ? actions[item.actionId]?.redispatch_details?.[0] : undefined;
+                                    const storedDelta = rdDetail?.delta_mw ?? null;
+                                    const effectiveDeltaStr = mwEditVal ?? (storedDelta != null ? storedDelta.toFixed(1) : '');
+                                    const parsedDelta = effectiveDeltaStr !== '' ? parseFloat(effectiveDeltaStr) : null;
+                                    const rdMinDelta = rdDetail ? (rdDetail.direction === 'up' ? 0 : (rdDetail.max_lower_mw != null ? -rdDetail.max_lower_mw : undefined)) : undefined;
+                                    const rdMaxDelta = rdDetail ? (rdDetail.direction === 'up' ? (rdDetail.max_raise_mw ?? undefined) : 0) : undefined;
+                                    const isValidDelta = parsedDelta !== null && !isNaN(parsedDelta)
+                                        && (rdMinDelta == null || parsedDelta >= rdMinDelta)
+                                        && (rdMaxDelta == null || parsedDelta <= rdMaxDelta);
+                                    const userEditedDelta = mwEditVal !== undefined && (storedDelta == null || parseFloat(mwEditVal) !== storedDelta);
+                                    const canResimulateRd = isRedispatchType && isComputed && isValidDelta && userEditedDelta;
                                     const actionParams = isPstType ? typeData.params?.[item.actionId] : undefined;
                                     const previousTap = actionParams
                                         ? (actionParams['previous tap'] ?? actionParams['previous_tap'] ?? actionParams['previousTap'] ??
@@ -486,19 +506,25 @@ const ScoreTable: React.FC<ScoreTableProps> = ({
                                                     onResimulate(item.actionId, parsedTarget!);
                                                     return;
                                                 }
+                                                if (canResimulateRd) {
+                                                    onResimulate(item.actionId, parsedDelta!);
+                                                    return;
+                                                }
                                                 if (canResimTap) {
                                                     onResimulateTap(item.actionId, parsedTap!);
                                                     return;
                                                 }
                                                 if (isComputed) return;
-                                                const mw = isLsOrRcType && isValidTarget ? parsedTarget! : undefined;
+                                                const mw = isLsOrRcType && isValidTarget ? parsedTarget!
+                                                    : isRedispatchType && isValidDelta ? parsedDelta!
+                                                        : undefined;
                                                 const tap = isPstType && isValidTap ? parsedTap! : undefined;
                                                 onAddAction(item.actionId, mw, tap);
                                             }}
                                             style={{
                                                 borderBottom: `1px solid ${colors.borderSubtle}`,
-                                                cursor: (simulating || resimulating) ? 'wait' : (isComputed && !canResimulate && !canResimTap) ? 'not-allowed' : 'pointer',
-                                                color: (isComputed && !canResimulate && !canResimTap) ? colors.textTertiary : 'inherit',
+                                                cursor: (simulating || resimulating) ? 'wait' : (isComputed && !canResimulate && !canResimulateRd && !canResimTap) ? 'not-allowed' : 'pointer',
+                                                color: (isComputed && !canResimulate && !canResimulateRd && !canResimTap) ? colors.textTertiary : 'inherit',
                                                 opacity: (simulating === item.actionId || resimulating === item.actionId) ? 0.7 : 1,
                                                 background: (simulating === item.actionId || resimulating === item.actionId) ? colors.brandSoft : 'transparent',
                                             }}>
@@ -579,6 +605,30 @@ const ScoreTable: React.FC<ScoreTableProps> = ({
                                                             fontFamily: 'monospace',
                                                             padding: '2px 4px',
                                                             border: `1px solid ${colors.border}`,
+                                                            borderRadius: '3px',
+                                                            textAlign: 'right',
+                                                        }}
+                                                    />
+                                                </td>
+                                            )}
+                                            {isRedispatchType && (
+                                                <td style={{ padding: '2px 4px', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                                                    <input
+                                                        data-testid={`delta-mw-${item.actionId}`}
+                                                        type="number"
+                                                        min={rdMinDelta}
+                                                        max={rdMaxDelta}
+                                                        step={0.1}
+                                                        placeholder="Δ"
+                                                        value={effectiveDeltaStr}
+                                                        onChange={(e) => onCardEditMwChange(item.actionId, e.target.value)}
+                                                        title={rdDetail ? `Max ${rdDetail.direction === 'up' ? 'raise' : 'lower'}: ${(rdDetail.direction === 'up' ? rdDetail.max_raise_mw : rdDetail.max_lower_mw)?.toFixed(0) ?? '—'} MW` : undefined}
+                                                        style={{
+                                                            width: '60px',
+                                                            fontSize: '11px',
+                                                            fontFamily: 'monospace',
+                                                            padding: '2px 4px',
+                                                            border: `1px solid ${colors.info}`,
                                                             borderRadius: '3px',
                                                             textAlign: 'right',
                                                         }}

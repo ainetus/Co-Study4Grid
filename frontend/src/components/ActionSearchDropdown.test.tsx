@@ -378,6 +378,118 @@ describe('ActionSearchDropdown', () => {
         });
     });
 
+    // Redispatch actions edit a SIGNED delta (raise > 0 / lower < 0), not an
+    // absolute target. They get a dedicated "Δ MW" column in the score table,
+    // mirroring the editable increment already shown on the action card.
+    describe('Redispatch delta column', () => {
+        const redispatchScores = {
+            redispatch: { scores: { redispatch_G1: 1.0 }, params: {} },
+        };
+        const scoredRedispatch = [
+            { type: 'redispatch', actionId: 'redispatch_G1', score: 1.0, mwStart: 14.3 },
+        ];
+        const computedRedispatch: Record<string, ActionDetail> = {
+            redispatch_G1: {
+                description_unitaire: 'redispatch G1',
+                rho_before: null,
+                rho_after: null,
+                max_rho: 0.8,
+                max_rho_line: 'LINE_A',
+                is_rho_reduction: true,
+                redispatch_details: [
+                    { gen_name: 'G1', voltage_level_id: 'VL1', delta_mw: 10.0, target_mw: 24.3, direction: 'up', current_mw: 14.3, max_raise_mw: 30.0, max_lower_mw: 14.3 },
+                ],
+            },
+        };
+
+        it('renders the Δ MW header and an editable delta input for redispatch rows', () => {
+            render(
+                <ActionSearchDropdown
+                    {...defaultProps}
+                    scoredActionsList={scoredRedispatch}
+                    actionScores={redispatchScores}
+                    actions={{}}
+                />,
+            );
+            expect(screen.getByText('Δ MW')).toBeInTheDocument();
+            expect(screen.getByTestId('delta-mw-redispatch_G1')).toBeInTheDocument();
+        });
+
+        it('populates the delta input with the simulated delta_mw for computed actions', () => {
+            render(
+                <ActionSearchDropdown
+                    {...defaultProps}
+                    scoredActionsList={scoredRedispatch}
+                    actionScores={redispatchScores}
+                    actions={computedRedispatch}
+                />,
+            );
+            const input = screen.getByTestId('delta-mw-redispatch_G1') as HTMLInputElement;
+            expect(input.value).toBe('10.0');
+        });
+
+        it('leaves the delta input empty for non-computed redispatch rows', () => {
+            render(
+                <ActionSearchDropdown
+                    {...defaultProps}
+                    scoredActionsList={scoredRedispatch}
+                    actionScores={redispatchScores}
+                    actions={{}}
+                />,
+            );
+            const input = screen.getByTestId('delta-mw-redispatch_G1') as HTMLInputElement;
+            expect(input.value).toBe('');
+        });
+
+        it('forwards delta edits through onCardEditMwChange', () => {
+            const onCardEditMwChange = vi.fn();
+            render(
+                <ActionSearchDropdown
+                    {...defaultProps}
+                    scoredActionsList={scoredRedispatch}
+                    actionScores={redispatchScores}
+                    actions={{}}
+                    onCardEditMwChange={onCardEditMwChange}
+                />,
+            );
+            fireEvent.change(screen.getByTestId('delta-mw-redispatch_G1'), { target: { value: '-5' } });
+            expect(onCardEditMwChange).toHaveBeenCalledWith('redispatch_G1', '-5');
+        });
+
+        it('adds a non-computed redispatch action with the typed delta as target MW', () => {
+            const onAddAction = vi.fn();
+            render(
+                <ActionSearchDropdown
+                    {...defaultProps}
+                    scoredActionsList={scoredRedispatch}
+                    actionScores={redispatchScores}
+                    actions={{}}
+                    cardEditMw={{ redispatch_G1: '8' }}
+                    onAddAction={onAddAction}
+                />,
+            );
+            // Click the row (not the input) to add the action.
+            fireEvent.click(screen.getByTestId('score-redispatch_G1'));
+            expect(onAddAction).toHaveBeenCalledWith('redispatch_G1', 8, undefined);
+        });
+
+        it('re-simulates a computed redispatch action when the delta is edited', () => {
+            const onResimulate = vi.fn();
+            render(
+                <ActionSearchDropdown
+                    {...defaultProps}
+                    scoredActionsList={scoredRedispatch}
+                    actionScores={redispatchScores}
+                    actions={computedRedispatch}
+                    cardEditMw={{ redispatch_G1: '15' }}
+                    onResimulate={onResimulate}
+                />,
+            );
+            fireEvent.click(screen.getByTestId('score-redispatch_G1'));
+            expect(onResimulate).toHaveBeenCalledWith('redispatch_G1', 15);
+        });
+    });
+
     // Regression: once "Analyze & Suggest" has produced action scores,
     // applying a type filter may filter the score list down to zero.
     // Previously the dropdown silently fell back to the full network

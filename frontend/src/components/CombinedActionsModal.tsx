@@ -332,7 +332,7 @@ const CombinedActionsModal: React.FC<Props> = ({
         setSelectedIds(newSet);
     };
 
-    const handleSimulate = async (actionId?: string) => {
+    const handleSimulate = async (actionId?: string, targetMw?: number) => {
         const idToSimulate = actionId ? (actionId.includes('+') ? canonicalizeId(actionId) : actionId) : Array.from(selectedIds).sort().join('+');
         if (!idToSimulate || !disconnectedElement || disconnectedElement.length === 0) return;
 
@@ -359,7 +359,10 @@ const CombinedActionsModal: React.FC<Props> = ({
         setError(null);
         try {
             const actualLinesOverloaded = (linesOverloaded && linesOverloaded.length > 0) ? linesOverloaded : null;
-            const result = await api.simulateManualAction(idToSimulate, disconnectedElement, actionContent, actualLinesOverloaded);
+            // ``targetMw`` is only supplied for single injection-action rows
+            // (Explore Pairs): the target shed / curtail amount, or the signed
+            // redispatch delta. Combined-pair simulations leave it undefined.
+            const result = await api.simulateManualAction(idToSimulate, disconnectedElement, actionContent, actualLinesOverloaded, targetMw ?? null);
             const feedback: SimulationFeedback = {
                 max_rho: result.max_rho,
                 max_rho_line: result.max_rho_line,
