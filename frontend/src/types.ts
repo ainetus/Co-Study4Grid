@@ -197,6 +197,26 @@ export interface AnalysisResult {
     // overhead. Difference vs. the sum of the per-stage timings above
     // is the "transit" overhead.
     wall_clock_time?: number;
+    // Present only when the contingency islands a radial ("antenne")
+    // pocket: the overflow graph is a synthetic downstream graph of the
+    // disconnected zone and recommendations are injection-only (load
+    // shedding / curtailment / redispatch). Null/absent otherwise.
+    antenna_meta?: AntennaMeta | null;
+}
+
+// Describes the disconnected radial pocket of an islanded-contingency
+// ("antenne") analysis. Mirrors the recommender's antenna_meta dict.
+export interface AntennaMeta {
+    constraint_line_name: string;
+    root_sub_name: string;
+    antenna_sub_names: string[];
+    n_subs: number;
+    total_prod_mw: number;
+    total_load_mw: number;
+    net_mw: number;
+    // "producer" (net export → curtailment / redispatch-down) or
+    // "consumer" (net import → load shedding / redispatch-up).
+    direction: 'producer' | 'consumer';
 }
 
 export interface BranchResponse {

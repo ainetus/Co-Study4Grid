@@ -125,6 +125,47 @@ class TestOverloadFiltering:
 
     @patch("expert_backend.services.analysis_mixin.run_analysis_step2_graph")
     @patch("expert_backend.services.analysis_mixin.run_analysis_step2_discovery")
+    def test_run_analysis_step2_antenna_mode_none_kept_ids(self, mock_run_discovery, mock_run_graph, service):
+        """Antenna (islanded-pocket) mode: lines_overloaded_ids_kept is None.
+
+        When the contingency breaks the grid apart, upstream
+        run_analysis_step1 returns a full context but with
+        lines_overloaded_ids_kept=None (the island guard keeps no
+        overloads for the standard graph; a synthetic downstream graph
+        is built instead). The step-2 narrow helper must preserve None
+        rather than crash with 'NoneType' object is not iterable.
+        """
+        mock_run_graph.side_effect = lambda ctx: ctx
+        mock_run_discovery.return_value = {
+            "prioritized_actions": {},
+            "action_scores": {},
+            "lines_overloaded_names": ["L1", "L2"],
+        }
+
+        service._analysis_context = {
+            "env": MagicMock(),
+            "lines_overloaded_names": ["L1", "L2"],
+            "lines_overloaded_ids": [0, 1],
+            "lines_overloaded_ids_kept": None,
+            "antenna_mode": True,
+            "lines_we_care_about": {"L1", "L2", "L3"},
+        }
+
+        # Must not raise.
+        list(service.run_analysis_step2(
+            selected_overloads=["L1"],
+            all_overloads=["L1", "L2"],
+            monitor_deselected=False,
+        ))
+
+        # None is preserved so the upstream antenna path still dispatches,
+        # while the operator's selection narrows the rest of the context.
+        assert service._analysis_context["lines_overloaded_ids_kept"] is None
+        assert service._analysis_context["lines_overloaded_names"] == ["L1"]
+        assert service._analysis_context["lines_overloaded_ids"] == [0]
+
+    @patch("expert_backend.services.analysis_mixin.run_analysis_step2_graph")
+    @patch("expert_backend.services.analysis_mixin.run_analysis_step2_discovery")
     def test_run_analysis_step2_handles_invalid_names_in_selection(self, mock_run_discovery, mock_run_graph, service):
         """Verify that invalid names in selected_overloads are ignored."""
         mock_run_graph.side_effect = lambda ctx: ctx

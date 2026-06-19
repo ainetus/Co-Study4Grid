@@ -45,6 +45,14 @@ class TestInjectOverlay:
         assert 0 < style_at < body_close
         assert 0 < script_at < body_close
 
+    def test_synthetic_grid_source_node_is_hidden(self) -> None:
+        # The recommender injects a synthetic "__GRID_SOURCE__" upstream node
+        # into an islanded-pocket ("antenne") overflow graph. It is a modelling
+        # artifact and must be hidden by the viewer overlay CSS.
+        out = inject_overlay(_BASE_HTML)
+        assert '.node[data-name="__GRID_SOURCE__"]' in out
+        assert '.edge[data-attr-name="__GRID_SOURCE__"]' in out
+
     def test_pin_message_listener_is_injected(self) -> None:
         out = inject_overlay(_BASE_HTML)
         assert "cs4g:pins" in out

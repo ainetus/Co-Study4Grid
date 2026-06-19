@@ -733,6 +733,10 @@ class AnalysisMixin(_Base):
                 "lines_overloaded": results["lines_overloaded_names"],
                 "pre_existing_overloads": results.get("pre_existing_overloads", []),
                 "combined_actions": results.get("combined_actions", {}),
+                # Present only for the islanded-pocket (antenna) case: describes
+                # the disconnected radial zone + its net direction so the UI can
+                # flag that recommendations are injection-only. None otherwise.
+                "antenna_meta": results.get("antenna_meta"),
                 "lines_we_care_about": list(lines_we_care_about) if lines_we_care_about is not None else None,
                 "active_model": (
                     self.get_active_model_name()
@@ -837,8 +841,19 @@ class AnalysisMixin(_Base):
         new_ids = [original_ids[i] for i in selected_indices]
         context["lines_overloaded_ids"] = new_ids
 
-        original_kept = set(context["lines_overloaded_ids_kept"])
-        context["lines_overloaded_ids_kept"] = [idx for idx in new_ids if idx in original_kept]
+        original_kept_raw = context.get("lines_overloaded_ids_kept")
+        if original_kept_raw is None:
+            # Antenna (islanded-pocket) mode: the island guard kept no
+            # overloads for the standard overflow graph, so upstream
+            # leaves ``lines_overloaded_ids_kept`` as None and drives a
+            # synthetic downstream graph instead (``antenna_mode=True``;
+            # ``run_analysis_step2_graph`` dispatches to the antenna path
+            # before ever reading this key). Preserve None — narrowing the
+            # operator's selection must not fabricate a kept-list.
+            context["lines_overloaded_ids_kept"] = None
+        else:
+            original_kept = set(original_kept_raw)
+            context["lines_overloaded_ids_kept"] = [idx for idx in new_ids if idx in original_kept]
         context["lines_overloaded_names"] = [all_names[i] for i in selected_indices]
 
         if not monitor_deselected and all_overloads:
