@@ -331,4 +331,118 @@ describe('ExplorePairsTab', () => {
         expect(screen.getByText('act2')).toBeInTheDocument();
         expect(screen.getByText('act3')).toBeInTheDocument();
     });
+
+    // Injection actions (load shedding / curtailment / redispatch) expose an
+    // editable MW setpoint per row so the operator can tune the target shed
+    // amount or the signed redispatch delta before simulating — parity with
+    // the manual-selection table and the action card.
+    describe('editable injection setpoint', () => {
+        const injectionList = [
+            { actionId: 'load_shedding_L1', score: 22, type: 'load_shedding', mwStart: 22.0 },
+            { actionId: 'redispatch_G1', score: 1.0, type: 'redispatch', mwStart: 14.3 },
+        ];
+        const injectionAnalysis: AnalysisResult = {
+            actions: {
+                redispatch_G1: {
+                    description_unitaire: 'redispatch G1', max_rho: 0.9, rho_before: [0.9], rho_after: [0.8],
+                    max_rho_line: 'L1', is_rho_reduction: true,
+                    redispatch_details: [{ gen_name: 'G1', voltage_level_id: 'VL1', delta_mw: 10.0, target_mw: 24.3, direction: 'up', current_mw: 14.3, max_raise_mw: 30.0, max_lower_mw: 14.3 }],
+                },
+            },
+            lines_overloaded: [], message: 'done', dc_fallback: false, pdf_path: null, pdf_url: null,
+        };
+
+        it('renders an editable input for load-shedding and redispatch rows', () => {
+            render(<ExplorePairsTab {...defaultProps} scoredActionsList={injectionList} analysisResult={injectionAnalysis} />);
+            expect(screen.getByTestId('explore-mw-load_shedding_L1')).toBeInTheDocument();
+            expect(screen.getByTestId('explore-mw-redispatch_G1')).toBeInTheDocument();
+        });
+
+        it('defaults the redispatch input to the simulated delta_mw', () => {
+            render(<ExplorePairsTab {...defaultProps} scoredActionsList={injectionList} analysisResult={injectionAnalysis} />);
+            const input = screen.getByTestId('explore-mw-redispatch_G1') as HTMLInputElement;
+            expect(input.value).toBe('10.0');
+        });
+
+        it('does not render an editable input for non-injection (disco/reco) rows', () => {
+            render(<ExplorePairsTab {...defaultProps} />);
+            expect(screen.queryByTestId('explore-mw-act1')).not.toBeInTheDocument();
+            expect(screen.queryByTestId('explore-mw-act2')).not.toBeInTheDocument();
+        });
+
+        it('passes the edited target MW to onSimulateSingle when the row button is clicked', () => {
+            const onSimulateSingle = vi.fn();
+            render(<ExplorePairsTab {...defaultProps} scoredActionsList={injectionList} analysisResult={injectionAnalysis} onSimulateSingle={onSimulateSingle} />);
+            fireEvent.change(screen.getByTestId('explore-mw-load_shedding_L1'), { target: { value: '12' } });
+            // The LS action is untested → button reads "Simulate".
+            const row = screen.getByText('load_shedding_L1').closest('tr')!;
+            fireEvent.click(within(row).getByText('Simulate'));
+            expect(onSimulateSingle).toHaveBeenCalledWith('load_shedding_L1', 12);
+        });
+
+        it('passes undefined target MW for a non-injection row (recommender default)', () => {
+            const onSimulateSingle = vi.fn();
+            render(<ExplorePairsTab {...defaultProps} onSimulateSingle={onSimulateSingle} />);
+            // act1 (disco) is pre-simulated in the mock → button reads "Re-run".
+            const row = screen.getByText('act1').closest('tr')!;
+            fireEvent.click(within(row).getByText('Re-run'));
+            expect(onSimulateSingle).toHaveBeenCalledWith('act1', undefined);
+        });
+
+        it('renders an editable input for curtailment rows and defaults to curtailed_mw', () => {
+            const curtailList = [
+                { actionId: 'curtail_G1', score: 3.0, type: 'renewable_curtailment', mwStart: 18.0 },
+            ];
+            const curtailAnalysis: AnalysisResult = {
+                actions: {
+                    curtail_G1: {
+                        description_unitaire: 'curtail G1', max_rho: 0.7, rho_before: [0.8], rho_after: [0.7],
+                        max_rho_line: 'L1', is_rho_reduction: true,
+                        curtailment_details: [{ gen_name: 'G1', voltage_level_id: 'VL2', curtailed_mw: 8.5 }],
+                    },
+                },
+                lines_overloaded: [], message: 'done', dc_fallback: false, pdf_path: null, pdf_url: null,
+            };
+            render(<ExplorePairsTab {...defaultProps} scoredActionsList={curtailList} analysisResult={curtailAnalysis} />);
+            const input = screen.getByTestId('explore-mw-curtail_G1') as HTMLInputElement;
+            expect(input.value).toBe('8.5');
+        });
+
+        it('passes the edited curtailment target MW to onSimulateSingle', () => {
+            const onSimulateSingle = vi.fn();
+            const curtailList = [
+                { actionId: 'curtail_G1', score: 3.0, type: 'renewable_curtailment', mwStart: 18.0 },
+            ];
+            const curtailAnalysis: AnalysisResult = {
+                actions: {},
+                lines_overloaded: [], message: 'done', dc_fallback: false, pdf_path: null, pdf_url: null,
+            };
+            render(<ExplorePairsTab {...defaultProps} scoredActionsList={curtailList} analysisResult={curtailAnalysis} onSimulateSingle={onSimulateSingle} />);
+            fireEvent.change(screen.getByTestId('explore-mw-curtail_G1'), { target: { value: '5.5' } });
+            const row = screen.getByText('curtail_G1').closest('tr')!;
+            fireEvent.click(within(row).getByText('Simulate'));
+            expect(onSimulateSingle).toHaveBeenCalledWith('curtail_G1', 5.5);
+        });
+
+        it('uses the stored delta_mw when no user edit has been made (redispatch)', () => {
+            const onSimulateSingle = vi.fn();
+            render(<ExplorePairsTab {...defaultProps} scoredActionsList={injectionList} analysisResult={injectionAnalysis} onSimulateSingle={onSimulateSingle} />);
+            const row = screen.getByText('redispatch_G1').closest('tr')!;
+            fireEvent.click(within(row).getByText('Re-run'));
+            expect(onSimulateSingle).toHaveBeenCalledWith('redispatch_G1', 10.0);
+        });
+
+        it('leaves the LS input empty when no simulation result exists yet', () => {
+            const lsList = [
+                { actionId: 'load_shedding_L1', score: 22, type: 'load_shedding', mwStart: 22.0 },
+            ];
+            const emptyAnalysis: AnalysisResult = {
+                actions: {},
+                lines_overloaded: [], message: 'done', dc_fallback: false, pdf_path: null, pdf_url: null,
+            };
+            render(<ExplorePairsTab {...defaultProps} scoredActionsList={lsList} analysisResult={emptyAnalysis} />);
+            const input = screen.getByTestId('explore-mw-load_shedding_L1') as HTMLInputElement;
+            expect(input.value).toBe('');
+        });
+    });
 });

@@ -83,6 +83,8 @@ the allowed families and an empty list keeps all.
 
 ### 3.3 Rendering
 - `components/ActionCard.tsx` (+ popover): render `<type>_details` (editor / headroom display).
+- `components/ActionSearchDropdown.tsx` (Manual Selection score table): if the action is injection-based (LS, curtailment, redispatch), add an editable MW column. Redispatch uses a signed "Δ MW" column; LS/curtailment use the existing "Target MW" column. Edits sync through `cardEditMw` / `onCardEditMwChange`.
+- `components/ExplorePairsTab.tsx` (Explore Pairs tab in Combine mode): injection rows render an editable MW input with type-aware bounds. The edited value is forwarded as `targetMw` to `onSimulateSingle` → `CombinedActionsModal.handleSimulate` → `api.simulateManualAction`.
 - `utils/svg/*` / `svgUtils`: if the card supports zoom-to-asset, extract the VL id from `<type>_details` like the other families.
 
 ### 3.4 Settings plumbing (`hooks/useSettings.ts` + `components/modals/SettingsModal.tsx`)

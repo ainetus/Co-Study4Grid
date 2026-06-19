@@ -463,6 +463,88 @@ describe('CombinedActionsModal', () => {
         });
     });
 
+    // The Explore Pairs tab now exposes editable MW inputs for injection
+    // actions. When the user edits the target MW and clicks Simulate, the
+    // value must reach api.simulateManualAction as the 5th argument.
+    describe('targetMw threading through Explore Pairs', () => {
+        it('passes the edited injection target MW to api.simulateManualAction', async () => {
+            const resultWithLS: AnalysisResult = {
+                ...mockAnalysisResult,
+                actions: {
+                    ...mockAnalysisResult.actions,
+                    'load_shedding_L1': {
+                        description_unitaire: 'shed L1', max_rho: 0.6,
+                        rho_before: [0.8], rho_after: [0.6], max_rho_line: 'L1',
+                        is_rho_reduction: true,
+                        load_shedding_details: [{ load_name: 'L1', voltage_level_id: 'VL1', shedded_mw: 5.0 }],
+                    },
+                },
+                action_scores: {
+                    'load_shedding': { scores: { 'load_shedding_L1': 5 }, mw_start: { 'load_shedding_L1': 22.0 } },
+                },
+            };
+            const simRes = {
+                action_id: 'load_shedding_L1',
+                description_unitaire: 'shed L1',
+                rho_before: [0.8],
+                rho_after: [0.5],
+                max_rho: 0.5,
+                max_rho_line: 'L1',
+                is_rho_reduction: true,
+                non_convergence: null,
+                lines_overloaded: [],
+            } as unknown as SimulateResult;
+            vi.mocked(api.simulateManualAction).mockResolvedValue(simRes);
+
+            render(<CombinedActionsModal {...defaultProps} analysisResult={resultWithLS} />);
+            fireEvent.click(getExploreTab());
+
+            const input = screen.getByTestId('explore-mw-load_shedding_L1') as HTMLInputElement;
+            fireEvent.change(input, { target: { value: '12' } });
+
+            const row = screen.getByText('load_shedding_L1').closest('tr')!;
+            fireEvent.click(within(row).getByText('Re-run'));
+
+            await waitFor(() => {
+                const calls = vi.mocked(api.simulateManualAction).mock.calls;
+                expect(calls.length).toBe(1);
+                expect(calls[0][0]).toBe('load_shedding_L1');
+                expect(calls[0][4]).toBe(12);
+            });
+        });
+
+        it('passes null (not undefined) when no targetMw is specified for a combined pair', async () => {
+            const simRes = {
+                action_id: 'act1+act2',
+                description_unitaire: 'Combined',
+                rho_before: [0.8],
+                rho_after: [0.73],
+                max_rho: 0.73,
+                max_rho_line: 'L3',
+                is_rho_reduction: true,
+                non_convergence: null,
+                lines_overloaded: [],
+                is_estimated: false,
+            } as unknown as SimulateResult;
+            vi.mocked(api.simulateManualAction).mockResolvedValue(simRes);
+
+            render(<CombinedActionsModal {...defaultProps} />);
+            fireEvent.click(getExploreTab());
+            fireEvent.click(screen.getByText('act1'));
+            fireEvent.click(screen.getByText('act2'));
+
+            const simButton = await screen.findByText('Simulate Combined');
+            fireEvent.click(simButton);
+
+            await waitFor(() => {
+                const calls = vi.mocked(api.simulateManualAction).mock.calls;
+                expect(calls.length).toBe(1);
+                expect(calls[0][0]).toContain('+');
+                expect(calls[0][4]).toBeNull();
+            });
+        });
+    });
+
     // Bugs 6 & 7: simulations triggered from the modal must
     //   (1) land in the correct bucket (single → Suggested via
     //       onSimulateSingleAction; combined pair → Selected via
