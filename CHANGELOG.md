@@ -7,6 +7,28 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Editable MW setpoint in Manual Selection and Explore Pairs tables
+
+Injection-based remedial actions (redispatch, load shedding, curtailment)
+now expose **editable MW columns** in two previously static table surfaces:
+
+- **Manual Selection score table** (`ActionSearchDropdown`): redispatch rows
+  render a "Δ MW" column with a signed-delta input (mirroring the ActionCard
+  editor), clamped to `[-max_lower_mw, +max_raise_mw]`. Computed rows
+  default to the simulated `delta_mw`; non-computed rows start empty. Edits
+  sync through the shared `cardEditMw` state so the ActionCard and the
+  score-table row stay in lock-step. Row clicks add (with typed delta as
+  `target_mw`) or re-simulate (when the delta differs from the stored value).
+- **Explore Pairs tab** (`ExplorePairsTab`): all injection rows (LS,
+  curtailment, redispatch) now render an editable MW input. LS/curtailment
+  inputs are bounded `[0, mwStart]`; redispatch inputs use signed-delta
+  bounds. The per-row Simulate button forwards the edited value as
+  `targetMw` to `api.simulateManualAction` via `CombinedActionsModal`.
+
+No backend changes required — the existing `target_mw` parameter on
+`POST /api/simulate-manual-action` already handles signed deltas for
+redispatch and absolute targets for LS/curtailment.
+
 ### Internal / maintainability
 
 - **Code-quality gate hardened** — mypy now gates at 0 (via a

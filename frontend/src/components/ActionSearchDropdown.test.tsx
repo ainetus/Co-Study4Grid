@@ -488,6 +488,46 @@ describe('ActionSearchDropdown', () => {
             fireEvent.click(screen.getByTestId('score-redispatch_G1'));
             expect(onResimulate).toHaveBeenCalledWith('redispatch_G1', 15);
         });
+
+        it('accepts a negative delta for a lower-direction redispatch action', () => {
+            const lowerRedispatch: Record<string, ActionDetail> = {
+                redispatch_G1: {
+                    description_unitaire: 'redispatch G1 lower',
+                    rho_before: null,
+                    rho_after: null,
+                    max_rho: 0.8,
+                    max_rho_line: 'LINE_A',
+                    is_rho_reduction: true,
+                    redispatch_details: [
+                        { gen_name: 'G1', voltage_level_id: 'VL1', delta_mw: -5.0, target_mw: 9.3, direction: 'down', current_mw: 14.3, max_raise_mw: 30.0, max_lower_mw: 14.3 },
+                    ],
+                },
+            };
+            render(
+                <ActionSearchDropdown
+                    {...defaultProps}
+                    scoredActionsList={scoredRedispatch}
+                    actionScores={redispatchScores}
+                    actions={lowerRedispatch}
+                />,
+            );
+            const input = screen.getByTestId('delta-mw-redispatch_G1') as HTMLInputElement;
+            expect(input.value).toBe('-5.0');
+        });
+
+        it('mirrors cardEditMw value in the delta input (overriding stored delta)', () => {
+            render(
+                <ActionSearchDropdown
+                    {...defaultProps}
+                    scoredActionsList={scoredRedispatch}
+                    actionScores={redispatchScores}
+                    actions={computedRedispatch}
+                    cardEditMw={{ redispatch_G1: '-3' }}
+                />,
+            );
+            const input = screen.getByTestId('delta-mw-redispatch_G1') as HTMLInputElement;
+            expect(input.value).toBe('-3');
+        });
     });
 
     // Regression: once "Analyze & Suggest" has produced action scores,

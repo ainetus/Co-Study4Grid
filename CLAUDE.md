@@ -69,7 +69,9 @@ Co-Study4Grid/
 │       │                          # manual action, 0.8.0) / useTheme (light/dark theme
 │       │                          # toggle + persistence, 0.8.0)
 │       ├── components/            # Header, ActionFeed, ActionCard, ActionCardPopover,
-│       │                          # ActionSearchDropdown, ActionTypeFilterChips,
+│       │                          # ActionSearchDropdown (editable Δ MW column
+│       │                          # for redispatch in score table),
+│       │                          # ActionTypeFilterChips,
 │       │                          # ActionFilterRings (shared severity + action-type +
 │       │                          # Max-loading ring strip, 0.8.0), ActionTypeIcon /
 │       │                          # SeverityIcon (action-type + severity pictograms),

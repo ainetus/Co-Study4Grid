@@ -98,7 +98,13 @@ frontend/
     │   │                               # Manual dismiss only — no auto-
     │   │                               # hide on analysis lifecycle.
     │   ├── CombinedActionsModal.tsx, ComputedPairsTable.tsx,
-    │   ├── DetachableTabHost.tsx, ErrorBoundary.tsx, ExplorePairsTab.tsx,
+    │   ├── ExplorePairsTab.tsx        # Explore Pairs tab: editable MW
+    │   │                           # setpoint for injection rows (LS,
+    │   │                           # curtailment, redispatch) — local
+    │   │                           # editMw state, per-row input with
+    │   │                           # type-aware bounds, threaded to
+    │   │                           # onSimulateSingle as targetMw
+    │   ├── DetachableTabHost.tsx, ErrorBoundary.tsx,
     │   ├── MemoizedSvgContainer.tsx, SldOverlay.tsx,
     │   ├── SldEditPanel.tsx        # Interactive maneuver list under
     │   │                           # the SLD overlay — focus on row

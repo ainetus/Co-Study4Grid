@@ -388,5 +388,61 @@ describe('ExplorePairsTab', () => {
             fireEvent.click(within(row).getByText('Re-run'));
             expect(onSimulateSingle).toHaveBeenCalledWith('act1', undefined);
         });
+
+        it('renders an editable input for curtailment rows and defaults to curtailed_mw', () => {
+            const curtailList = [
+                { actionId: 'curtail_G1', score: 3.0, type: 'renewable_curtailment', mwStart: 18.0 },
+            ];
+            const curtailAnalysis: AnalysisResult = {
+                actions: {
+                    curtail_G1: {
+                        description_unitaire: 'curtail G1', max_rho: 0.7, rho_before: [0.8], rho_after: [0.7],
+                        max_rho_line: 'L1', is_rho_reduction: true,
+                        curtailment_details: [{ gen_name: 'G1', voltage_level_id: 'VL2', curtailed_mw: 8.5 }],
+                    },
+                },
+                lines_overloaded: [], message: 'done', dc_fallback: false, pdf_path: null, pdf_url: null,
+            };
+            render(<ExplorePairsTab {...defaultProps} scoredActionsList={curtailList} analysisResult={curtailAnalysis} />);
+            const input = screen.getByTestId('explore-mw-curtail_G1') as HTMLInputElement;
+            expect(input.value).toBe('8.5');
+        });
+
+        it('passes the edited curtailment target MW to onSimulateSingle', () => {
+            const onSimulateSingle = vi.fn();
+            const curtailList = [
+                { actionId: 'curtail_G1', score: 3.0, type: 'renewable_curtailment', mwStart: 18.0 },
+            ];
+            const curtailAnalysis: AnalysisResult = {
+                actions: {},
+                lines_overloaded: [], message: 'done', dc_fallback: false, pdf_path: null, pdf_url: null,
+            };
+            render(<ExplorePairsTab {...defaultProps} scoredActionsList={curtailList} analysisResult={curtailAnalysis} onSimulateSingle={onSimulateSingle} />);
+            fireEvent.change(screen.getByTestId('explore-mw-curtail_G1'), { target: { value: '5.5' } });
+            const row = screen.getByText('curtail_G1').closest('tr')!;
+            fireEvent.click(within(row).getByText('Simulate'));
+            expect(onSimulateSingle).toHaveBeenCalledWith('curtail_G1', 5.5);
+        });
+
+        it('uses the stored delta_mw when no user edit has been made (redispatch)', () => {
+            const onSimulateSingle = vi.fn();
+            render(<ExplorePairsTab {...defaultProps} scoredActionsList={injectionList} analysisResult={injectionAnalysis} onSimulateSingle={onSimulateSingle} />);
+            const row = screen.getByText('redispatch_G1').closest('tr')!;
+            fireEvent.click(within(row).getByText('Re-run'));
+            expect(onSimulateSingle).toHaveBeenCalledWith('redispatch_G1', 10.0);
+        });
+
+        it('leaves the LS input empty when no simulation result exists yet', () => {
+            const lsList = [
+                { actionId: 'load_shedding_L1', score: 22, type: 'load_shedding', mwStart: 22.0 },
+            ];
+            const emptyAnalysis: AnalysisResult = {
+                actions: {},
+                lines_overloaded: [], message: 'done', dc_fallback: false, pdf_path: null, pdf_url: null,
+            };
+            render(<ExplorePairsTab {...defaultProps} scoredActionsList={lsList} analysisResult={emptyAnalysis} />);
+            const input = screen.getByTestId('explore-mw-load_shedding_L1') as HTMLInputElement;
+            expect(input.value).toBe('');
+        });
     });
 });
