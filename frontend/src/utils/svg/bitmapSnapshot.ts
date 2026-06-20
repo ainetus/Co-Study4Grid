@@ -165,3 +165,91 @@ export const createNadSnapshotCanvas = async (
     const clone = buildSnapshotSvg(liveSvg, opts);
     return rasterizeSvgToCanvas(clone, opts.width, opts.height, opts.dpr);
 };
+
+// ---------------------------------------------------------------------------
+// Cached / deferred path (keeps the gesture start responsive)
+// ---------------------------------------------------------------------------
+// Serialising the 9 MB / ~100k-node NAD costs ~250-300 ms on the main thread —
+// far too much to run inside the mousedown handler (it froze the pan start).
+// So we (1) serialise ONCE per diagram state and cache the string (this is the
+// viewBox-independent part), (2) re-build only the cheap `<svg>` header +
+// inlined <style> per gesture, and (3) decode off the main thread via
+// createImageBitmap. The caller pre-warms the cache on idle and invalidates it
+// via a MutationObserver, so a gesture's snapshot is usually a cheap string
+// compose + an off-thread decode.
+
+/**
+ * Serialise an FO-stripped clone of the live SVG to a string (the expensive,
+ * viewBox-independent part — cache this and re-use across gestures until the
+ * DOM changes). No width/viewBox/style baked in — `composeSnapshotMarkup` adds
+ * those per gesture.
+ */
+export const serializeStrippedSvg = (liveSvg: SVGSVGElement): string => {
+    const clone = liveSvg.cloneNode(true) as SVGSVGElement;
+    clone.querySelectorAll('foreignObject').forEach(n => n.remove());
+    if (clone.style) { clone.style.transform = ''; clone.style.willChange = ''; clone.style.visibility = ''; }
+    return new XMLSerializer().serializeToString(clone);
+};
+
+/**
+ * Cheap per-gesture step: take the cached serialisation and override the root
+ * `<svg>` width/height/viewBox/data-zoom-tier (preserving its namespaces) and
+ * inject the highlight CSS — without re-serialising the body.
+ */
+export const composeSnapshotMarkup = (serialized: string, opts: SnapshotOptions): string => {
+    const m = serialized.match(/<svg\b[^>]*>/);
+    if (!m) return serialized;
+    let open = m[0];
+    const setAttr = (s: string, name: string, val: string | number): string =>
+        new RegExp(`\\b${name}="[^"]*"`).test(s)
+            ? s.replace(new RegExp(`\\b${name}="[^"]*"`), `${name}="${val}"`)
+            : s.replace(/^<svg\b/, `<svg ${name}="${val}"`);
+    open = setAttr(open, 'width', opts.width);
+    open = setAttr(open, 'height', opts.height);
+    open = setAttr(open, 'viewBox', `${opts.baseVb.x} ${opts.baseVb.y} ${opts.baseVb.w} ${opts.baseVb.h}`);
+    open = setAttr(open, 'preserveAspectRatio', 'xMidYMid meet');
+    if (opts.zoomTier) open = setAttr(open, 'data-zoom-tier', opts.zoomTier);
+    const styleTag = opts.css ? `<style>${opts.css}</style>` : '';
+    return serialized.replace(/<svg\b[^>]*>/, open + styleTag);
+};
+
+/**
+ * Rasterise an SVG markup string onto a dpr-scaled canvas. Prefers
+ * `createImageBitmap` (off-main-thread decode → no jank); falls back to an
+ * `<Image>` blob decode where it's unavailable / rejects (e.g. older Safari).
+ */
+export const rasterizeMarkupToCanvas = async (
+    markup: string, width: number, height: number, dpr: number,
+): Promise<HTMLCanvasElement> => {
+    const blob = new Blob([markup], { type: 'image/svg+xml;charset=utf-8' });
+    let source: CanvasImageSource | null = null;
+    let bitmap: ImageBitmap | null = null;
+    let url: string | null = null;
+    if (typeof createImageBitmap === 'function') {
+        try { bitmap = await createImageBitmap(blob); source = bitmap; } catch { source = null; }
+    }
+    if (!source) {
+        url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.width = width; img.height = height;
+        await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error('snapshot image decode failed'));
+            img.src = url as string;
+        });
+        source = img;
+    }
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(width * dpr));
+        canvas.height = Math.max(1, Math.round(height * dpr));
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('no 2d context for snapshot');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.drawImage(source, 0, 0, width, height);
+        return canvas;
+    } finally {
+        if (url) URL.revokeObjectURL(url);
+        if (bitmap) bitmap.close();
+    }
+};

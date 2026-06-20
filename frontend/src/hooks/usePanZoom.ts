@@ -8,7 +8,12 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, type RefObject } from 'react';
 import type { ViewBox } from '../types';
 import { getSmoothPanZoomMode, type PanZoomMode } from '../utils/smoothPanZoom';
-import { createNadSnapshotCanvas, collectHighlightCss } from '../utils/svg/bitmapSnapshot';
+import {
+    collectHighlightCss,
+    serializeStrippedSvg,
+    composeSnapshotMarkup,
+    rasterizeMarkupToCanvas,
+} from '../utils/svg/bitmapSnapshot';
 
 /**
  * Custom Hook for SVG Pan/Zoom via viewBox manipulation.
@@ -138,6 +143,12 @@ export const usePanZoom = (
     // Generation token: bumped on every begin/teardown so a slow async raster
     // from a settled gesture can't mount a stale bitmap into a later gesture.
     const bitmapTokenRef = useRef(0);
+    // Cached serialisation of the FO-stripped live SVG (the ~250ms expensive,
+    // viewBox-INDEPENDENT part of a bitmap snapshot). Pre-warmed on idle and
+    // invalidated when the SVG DOM changes, so a gesture's snapshot becomes a
+    // cheap header re-compose + an off-thread decode instead of the 250ms
+    // main-thread serialize that froze the pan start.
+    const snapshotSerializedRef = useRef<string | null>(null);
 
 
     // Toggle interaction class on container to disable pointer-events on SVG children
@@ -216,6 +227,31 @@ export const usePanZoom = (
         if (svg?.style && svg.style.visibility === 'hidden') svg.style.visibility = '';
     }, []);
 
+    // Pre-warm the serialisation cache (bitmap mode only) so the NEXT gesture's
+    // snapshot skips the heavy serialize. Runs on idle — off any gesture.
+    const prewarmSnapshot = useCallback(() => {
+        const svg = svgElRef.current;
+        // Never serialise mid-gesture (it would freeze a frame); a later settle /
+        // observer schedule warms it. Skip if already warm or not in bitmap mode.
+        if (!svg || interactingRef.current || snapshotSerializedRef.current != null
+            || getSmoothPanZoomMode() !== 'bitmap') return;
+        try { snapshotSerializedRef.current = serializeStrippedSvg(svg); } catch { /* ignore */ }
+    }, []);
+
+    const scheduleSnapshotPrewarm = useCallback(() => {
+        if (getSmoothPanZoomMode() !== 'bitmap') return;
+        if (typeof requestIdleCallback === 'function') {
+            requestIdleCallback(() => prewarmSnapshot(), { timeout: 1500 });
+        } else {
+            setTimeout(() => prewarmSnapshot(), 200);
+        }
+    }, [prewarmSnapshot]);
+
+    const invalidateSnapshotCache = useCallback(() => {
+        snapshotSerializedRef.current = null;
+        scheduleSnapshotPrewarm();
+    }, [scheduleSnapshotPrewarm]);
+
     // Flush ref -> React state for downstream consumers. Skip the state
     // update (and the React re-render it triggers) when the settled viewBox
     // is byte-identical to the last committed one — e.g. a drag that returns
@@ -259,6 +295,7 @@ export const usePanZoom = (
             currentTierRef.current = null; // force re-evaluation
             interactingRef.current = false; // a new diagram cancels any pending bake
             teardownBitmap(); // drop any in-flight bitmap overlay for the old diagram
+            invalidateSnapshotCache(); // the SVG content changed — re-warm later
             viewBoxRef.current = initialViewBox;
             applyViewBox(initialViewBox);
             setViewBox(initialViewBox);
@@ -273,10 +310,26 @@ export const usePanZoom = (
         // re-bakes the settled viewBox and clears the transform.
         interactingRef.current = false;
         teardownBitmap();
+        invalidateSnapshotCache();
         if (!active || !viewBoxRef.current) return;
         applyViewBox(viewBoxRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [active]);
+
+    // Invalidate the bitmap serialisation cache when the live SVG's CONTENT
+    // changes (highlight halos / flow-delta classes + the clones they add),
+    // so a snapshot never bakes stale visuals. viewBox attribute writes are NOT
+    // observed (attributeFilter excludes them), so per-frame pans don't churn
+    // the cache. Cheap when idle; only fires on real highlight mutations.
+    useEffect(() => {
+        const svg = svgElRef.current;
+        if (!svg || typeof MutationObserver === 'undefined') return;
+        scheduleSnapshotPrewarm();
+        const obs = new MutationObserver(() => invalidateSnapshotCache());
+        obs.observe(svg, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+        return () => obs.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [active, initialViewBox]);
 
     // Stable event registration — re-registers when active tab changes
     // OR when the diagram loads (initialViewBox changes).
@@ -333,11 +386,12 @@ export const usePanZoom = (
         };
 
         // --- Opt-in BITMAP mode helpers (rasterise once, transform the bitmap) ---
-        // Capture the base viewBox + element size, then kick off an ASYNC raster
-        // of the live NAD to a dpr-scaled canvas. The canvas is mounted (and the
-        // live SVG hidden) only once the raster finishes; until then frames fall
-        // through to a viewBox write, so the gesture starts on the default path
-        // and upgrades to compositor-only the moment the bitmap is ready.
+        // Capture the base viewBox + element size, then build the bitmap OFF the
+        // gesture handler. The gesture pans via the viewBox fallback from frame 1
+        // (responsive); the bitmap only mounts when ready. If the serialisation
+        // cache is COLD (the ~250ms expensive part), this gesture stays on the
+        // fallback and we warm the cache on idle — so the START is NEVER frozen;
+        // the bitmap engages from the next gesture once warm.
         const beginBitmapInteraction = () => {
             if (interactingRef.current) return;
             // Clean a canvas left mounted by a previous gesture whose deferred
@@ -358,34 +412,50 @@ export const usePanZoom = (
             const view = container.ownerDocument.defaultView ?? window;
             const dpr = view.devicePixelRatio || 1;
             const zoomTier = container.getAttribute('data-zoom-tier');
-            let css = '';
-            try { css = collectHighlightCss(container.ownerDocument); } catch { /* ignore */ }
-            createNadSnapshotCanvas(svg, { baseVb, width: w, height: h, zoomTier, css, dpr })
-                .then((canvas) => {
-                    // Gesture may have settled / a new diagram may have loaded /
-                    // the mode may have changed while the raster ran (token bump).
-                    if (token !== bitmapTokenRef.current || !interactingRef.current
-                        || modeRef.current !== 'bitmap' || bitmapCanvasRef.current) return;
-                    canvas.style.position = 'absolute';
-                    canvas.style.left = '0';
-                    canvas.style.top = '0';
-                    canvas.style.width = `${w}px`;
-                    canvas.style.height = `${h}px`;
-                    canvas.style.transformOrigin = '0 0';
-                    canvas.style.willChange = 'transform';
-                    canvas.style.pointerEvents = 'none';
-                    container.appendChild(canvas);
-                    bitmapCanvasRef.current = canvas;
-                    svg.style.visibility = 'hidden';
-                    bitmapReadyRef.current = true;
-                    // Jump straight to the current frame (no flash of base view).
-                    const live = viewBoxRef.current;
-                    if (live) {
-                        const t = interactionTransform(baseVb, live, w, h);
-                        if (t) canvas.style.transform = t;
-                    }
-                })
-                .catch(() => { /* raster failed → stay on the viewBox fallback */ });
+
+            const build = () => {
+                if (token !== bitmapTokenRef.current || !interactingRef.current || modeRef.current !== 'bitmap') return;
+                const live = svgElRef.current;
+                if (!live) return;
+                const serialized = snapshotSerializedRef.current;
+                if (serialized == null) {
+                    // Cold cache: don't freeze this gesture serialising 9MB on the
+                    // main thread — stay on the viewBox fallback and warm for next.
+                    scheduleSnapshotPrewarm();
+                    return;
+                }
+                let css = '';
+                try { css = collectHighlightCss(container.ownerDocument); } catch { /* ignore */ }
+                const markup = composeSnapshotMarkup(serialized, { baseVb, width: w, height: h, zoomTier, css });
+                rasterizeMarkupToCanvas(markup, w, h, dpr)
+                    .then((canvas) => {
+                        // Gesture may have settled / a new diagram may have loaded /
+                        // the mode may have changed while the (off-thread) decode ran.
+                        if (token !== bitmapTokenRef.current || !interactingRef.current
+                            || modeRef.current !== 'bitmap' || bitmapCanvasRef.current) return;
+                        canvas.style.position = 'absolute';
+                        canvas.style.left = '0';
+                        canvas.style.top = '0';
+                        canvas.style.width = `${w}px`;
+                        canvas.style.height = `${h}px`;
+                        canvas.style.transformOrigin = '0 0';
+                        canvas.style.willChange = 'transform';
+                        canvas.style.pointerEvents = 'none';
+                        container.appendChild(canvas);
+                        bitmapCanvasRef.current = canvas;
+                        live.style.visibility = 'hidden';
+                        bitmapReadyRef.current = true;
+                        // Jump straight to the current frame (no flash of base view).
+                        const cur = viewBoxRef.current;
+                        if (cur) {
+                            const t = interactionTransform(baseVb, cur, w, h);
+                            if (t) canvas.style.transform = t;
+                        }
+                    })
+                    .catch(() => { /* raster failed → stay on the viewBox fallback */ });
+            };
+            // Defer off the mousedown/wheel handler so the first frame paints.
+            setTimeout(build, 0);
         };
 
         // Per-frame: keep viewBoxRef in lockstep (the wheel/drag math + the
@@ -444,6 +514,9 @@ export const usePanZoom = (
                 // shorten the 150ms cull/debounce window — only the hint.
                 const svg = svgElRef.current;
                 if (svg?.style) svg.style.willChange = '';
+                // Re-warm the serialisation cache off the gesture (idle) so the
+                // next bitmap gesture is fast. No-op if already warm / not bitmap.
+                scheduleSnapshotPrewarm();
             }
             commitViewBox();
         };

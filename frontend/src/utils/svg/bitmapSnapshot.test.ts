@@ -5,7 +5,12 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { describe, it, expect } from 'vitest';
-import { buildSnapshotSvg, collectHighlightCss } from './bitmapSnapshot';
+import {
+    buildSnapshotSvg,
+    collectHighlightCss,
+    serializeStrippedSvg,
+    composeSnapshotMarkup,
+} from './bitmapSnapshot';
 
 const makeSvg = (inner: string): SVGSVGElement => {
     const doc = new DOMParser().parseFromString(
@@ -44,6 +49,39 @@ describe('buildSnapshotSvg', () => {
         expect(style).toBeTruthy();
         expect(style!.textContent).toContain('--signal-overload');
         expect(clone.firstElementChild?.tagName.toLowerCase()).toBe('style');
+    });
+});
+
+describe('serializeStrippedSvg + composeSnapshotMarkup (cached path)', () => {
+    it('serializeStrippedSvg strips foreignObjects and keeps the body, leaving the live SVG intact', () => {
+        const svg = makeSvg(
+            '<foreignObject><div xmlns="http://www.w3.org/1999/xhtml">L</div></foreignObject>'
+            + '<path class="nad-active" d="M0,0"/>',
+        );
+        const s = serializeStrippedSvg(svg);
+        expect(s).not.toContain('foreignObject');
+        expect(s).toContain('nad-active');
+        expect(svg.querySelectorAll('foreignObject').length).toBe(1);
+    });
+
+    it('composeSnapshotMarkup overrides geometry + injects style, preserving namespaces + body', () => {
+        const serialized = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="50" height="50">'
+            + '<path class="nad-overloaded" d="M0,0"/></svg>';
+        const out = composeSnapshotMarkup(serialized, {
+            baseVb: { x: 1, y: 2, w: 30, h: 40 }, width: 800, height: 600,
+            zoomTier: 'detail', css: '.nad-overloaded{stroke:red}',
+        });
+        expect(out).toContain('viewBox="1 2 30 40"');
+        expect(out).toContain('width="800"');
+        expect(out).toContain('height="600"');
+        expect(out).toContain('data-zoom-tier="detail"');
+        expect(out).toContain('xmlns="http://www.w3.org/2000/svg"'); // namespace preserved
+        expect(out).toContain('<style>.nad-overloaded{stroke:red}</style>');
+        expect(out).toContain('class="nad-overloaded"'); // body preserved
+        // re-compose to a different viewBox reuses the same body (cache reuse)
+        const out2 = composeSnapshotMarkup(serialized, { baseVb: { x: 9, y: 9, w: 9, h: 9 }, width: 10, height: 10 });
+        expect(out2).toContain('viewBox="9 9 9 9"');
+        expect(out2).toContain('class="nad-overloaded"');
     });
 });
 

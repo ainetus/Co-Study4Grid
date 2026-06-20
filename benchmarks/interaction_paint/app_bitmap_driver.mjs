@@ -17,7 +17,11 @@ const log=(...a)=>console.error(...a);
 await evalJs(`
 window.__setInput=(sel,val)=>{const el=document.querySelector(sel);if(!el)return 'no';const s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;s.call(el,val);el.dispatchEvent(new Event('input',{bubbles:true}));return el.value;};
 window.__btn=(txt)=>{const b=[...document.querySelectorAll('button')].find(b=>b.textContent.trim()===txt);if(b){b.click();return true;}return false;};
-window.__summarize=(a)=>{if(!a.length)return null;const s=a.slice().sort((x,y)=>x-y);const n=s.length,mean=a.reduce((p,v)=>p+v,0)/n;const pct=p=>s[Math.min(n-1,Math.floor(p*n))];const drop=a.filter(d=>d>14).length;return{frames:n,median:+pct(0.5).toFixed(2),p95:+pct(0.95).toFixed(2),fps_median:+(1000/pct(0.5)).toFixed(1),dropPct:+(100*drop/n).toFixed(1)};};
+window.__summarize=(a)=>{if(!a.length)return null;const s=a.slice().sort((x,y)=>x-y);const n=s.length,mean=a.reduce((p,v)=>p+v,0)/n;const pct=p=>s[Math.min(n-1,Math.floor(p*n))];const drop=a.filter(d=>d>14).length;return{frames:n,median:+pct(0.5).toFixed(2),p95:+pct(0.95).toFixed(2),max:+s[n-1].toFixed(0),fps_median:+(1000/pct(0.5)).toFixed(1),dropPct:+(100*drop/n).toFixed(1)};};
+window.__canvasMounted=()=>!!document.querySelector('.svg-container canvas');
+// first-frame latency: time from mousedown to the first rAF frame (a sync
+// serialize freeze would make this large).
+window.__downToFirstFrame=()=>new Promise(resolve=>{const c=[...document.querySelectorAll('.svg-container')].find(e=>e.offsetParent!==null&&e.querySelector('svg'));if(!c)return resolve(-1);const r=c.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;const t0=performance.now();c.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,clientX:cx,clientY:cy,button:0}));window.dispatchEvent(new MouseEvent('mousemove',{bubbles:true,clientX:cx+5,clientY:cy,button:0}));requestAnimationFrame(()=>{const dt=performance.now()-t0;window.dispatchEvent(new MouseEvent('mousemove',{bubbles:true,clientX:cx+10,clientY:cy,button:0}));setTimeout(()=>window.dispatchEvent(new MouseEvent('mouseup',{bubbles:true,clientX:cx+10,clientY:cy,button:0})),50);resolve(+dt.toFixed(1));});});
 window.__dragPan=(d)=>new Promise(resolve=>{const c=[...document.querySelectorAll('.svg-container')].find(e=>e.offsetParent!==null&&e.querySelector('svg'));if(!c)return resolve({error:'no-container'});const r=c.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;c.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,clientX:cx,clientY:cy,button:0}));const iv=[];let last=performance.now();const t0=last;function f(now){iv.push(now-last);last=now;const e=now-t0,t=e/d,dx=Math.sin(t*Math.PI*4)*250;window.dispatchEvent(new MouseEvent('mousemove',{bubbles:true,clientX:cx+dx,clientY:cy,button:0}));if(e<d)requestAnimationFrame(f);else{window.dispatchEvent(new MouseEvent('mouseup',{bubbles:true,clientX:cx+dx,clientY:cy,button:0}));iv.shift();resolve(window.__summarize(iv));}}requestAnimationFrame(f);});
 window.__setMode=async(mode)=>{window.__btn('⚙');await new Promise(r=>setTimeout(r,400));window.__btn('Configurations');await new Promise(r=>setTimeout(r,300));const sel=document.querySelector('[data-testid=pan-zoom-mode-select]');if(!sel)return'NO-SELECT';const s=Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype,'value').set;s.call(sel,mode);sel.dispatchEvent(new Event('change',{bubbles:true}));const ls=localStorage.getItem('cs4g-smooth-pan-zoom');if(!window.__btn('✕')){const fb=[...document.querySelectorAll('button')].find(b=>/cancel|close/i.test(b.textContent));if(fb)fb.click();}await new Promise(r=>setTimeout(r,400));return ls;};
 'ok';`);
@@ -40,12 +44,17 @@ const out = {};
 for (const mode of ['off', 'gpu', 'bitmap']) {
   const ls = await evalJs(`window.__setMode('${mode}')`, true);
   await sleep(400);
-  // two gestures: the first primes the bitmap raster, the second is the steady state.
-  await evalJs(`window.__dragPan(1500)`, true);
+  // mousedown→first-frame latency (a sync serialize freeze would spike this).
+  const firstFrameMs = await evalJs(`window.__downToFirstFrame()`, true);
   await sleep(300);
+  // prime gesture (warms the bitmap serialisation cache on idle), then pause so
+  // the idle prewarm completes, then measure the steady state.
+  await evalJs(`window.__dragPan(1500)`, true);
+  await sleep(2500);
   const pan = await evalJs(`window.__dragPan(2500)`, true);
-  out[mode] = { ls, pan };
-  log(mode, 'ls=' + ls, JSON.stringify(pan));
+  const canvasMounted = await evalJs(`window.__canvasMounted()`);
+  out[mode] = { ls, firstFrameMs, canvasMounted, pan };
+  log(mode, 'ls=' + ls, 'firstFrameMs=' + firstFrameMs, 'canvas=' + canvasMounted, JSON.stringify(pan));
 }
 console.log(JSON.stringify(out));
 process.exit(0);
