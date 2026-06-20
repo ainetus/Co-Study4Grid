@@ -168,11 +168,23 @@ export const usePanZoom = (
         }
     }, [svgRef]);
 
-    // Flush ref -> React state for downstream consumers
+    // Flush ref -> React state for downstream consumers. Skip the state
+    // update (and the React re-render it triggers) when the settled viewBox
+    // is byte-identical to the last committed one — e.g. a drag that returns
+    // to its origin or a wheel burst that nets back to the same frame. The DOM
+    // is settled independently by applyViewBox, so the guard is purely a
+    // redundant-render saver. Mirrors the equality guard in setViewBoxPublic.
     const commitViewBox = () => {
-        if (viewBoxRef.current) {
-            setViewBox({ ...viewBoxRef.current });
-        }
+        const vb = viewBoxRef.current;
+        if (!vb) return;
+        setViewBox(prev => {
+            if (prev &&
+                prev.x === vb.x && prev.y === vb.y &&
+                prev.w === vb.w && prev.h === vb.h) {
+                return prev;
+            }
+            return { ...vb };
+        });
     };
 
     // Cache SVG element when container content changes.
@@ -277,6 +289,16 @@ export const usePanZoom = (
             if (interactingRef.current) {
                 interactingRef.current = false;
                 if (viewBoxRef.current) applyViewBox(viewBoxRef.current);
+                // The gesture is over — drop the `will-change: transform`
+                // compositor-layer hint now so we don't hold a promoted
+                // multi-MB layer through the wheel-commit debounce gap or
+                // between gestures. applyViewBox already clears it when a
+                // transform was live on settle, but clear unconditionally to
+                // also cover the frame(s) where applyInteractionFrame fell back
+                // to a direct viewBox write (no transform set). This does NOT
+                // shorten the 150ms cull/debounce window — only the hint.
+                const svg = svgElRef.current;
+                if (svg?.style) svg.style.willChange = '';
             }
             commitViewBox();
         };
