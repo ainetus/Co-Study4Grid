@@ -340,6 +340,9 @@ export const usePanZoom = (
         // and upgrades to compositor-only the moment the bitmap is ready.
         const beginBitmapInteraction = () => {
             if (interactingRef.current) return;
+            // Clean a canvas left mounted by a previous gesture whose deferred
+            // reveal hasn't fired yet (token bump cancels that pending reveal).
+            teardownBitmap();
             const svg = svgElRef.current;
             const container = svgRef.current;
             if (!svg || !container || !viewBoxRef.current) return;
@@ -406,10 +409,31 @@ export const usePanZoom = (
         const endInteraction = () => {
             if (interactingRef.current) {
                 interactingRef.current = false;
-                // Bitmap mode: drop the canvas overlay + un-hide the live SVG
-                // BEFORE baking the viewBox onto it (no-op for default / GPU).
-                teardownBitmap();
-                if (viewBoxRef.current) applyViewBox(viewBoxRef.current);
+                if (bitmapCanvasRef.current) {
+                    // BITMAP settle. Bake the target viewBox onto the STILL-HIDDEN
+                    // live SVG first (it repaints behind the bitmap), then keep the
+                    // bitmap on top for ~2 frames before revealing the SVG + dropping
+                    // the canvas. Revealing immediately would expose the SVG layer's
+                    // STALE base-zoom paint for the ~50ms vector repaint — the
+                    // "ghost halo" the operator sees on a fast zoom. The token guard
+                    // cancels this deferred reveal if a new gesture starts first
+                    // (beginBitmapInteraction tears the canvas down up-front).
+                    if (viewBoxRef.current) applyViewBox(viewBoxRef.current);
+                    const token = ++bitmapTokenRef.current;
+                    const reveal = () => {
+                        if (token !== bitmapTokenRef.current) return; // superseded
+                        const sv = svgElRef.current;
+                        if (sv?.style) sv.style.visibility = '';
+                        const c = bitmapCanvasRef.current;
+                        if (c) { c.style.transform = ''; c.style.willChange = ''; c.remove(); }
+                        bitmapCanvasRef.current = null;
+                        bitmapReadyRef.current = false;
+                    };
+                    requestAnimationFrame(() => requestAnimationFrame(reveal));
+                } else if (viewBoxRef.current) {
+                    // default / GPU: single bake at the settled position.
+                    applyViewBox(viewBoxRef.current);
+                }
                 // The gesture is over — drop the `will-change: transform`
                 // compositor-layer hint now so we don't hold a promoted
                 // multi-MB layer through the wheel-commit debounce gap or
