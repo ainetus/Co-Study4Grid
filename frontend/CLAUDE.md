@@ -353,8 +353,8 @@ halos are screen-space (`vector-effect: non-scaling-stroke`), so their
 `stroke-width` is rendered px. `usePanZoom.applyViewBox` writes a
 **continuous** `--nad-halo-w` CSS var on the container from the zoom
 ratio (`computeHaloWidthPx`): thin (~24px — a clean trace of the
-branch) across the whole zoomed-in range, growing toward a prominent
-~120px marker only past the overview boundary, with **no `data-zoom-tier`
+branch) across the whole zoomed-in range, growing toward a still-modest
+~50px marker only past the overview boundary, with **no `data-zoom-tier`
 step** (the old discrete 24px-vs-120px snap looked jarring + coarse at
 deep zoom). App.css binds `stroke-width: var(--nad-halo-w, 24px)` on the
 three halo classes (thin default if JS hasn't set it). The var is only

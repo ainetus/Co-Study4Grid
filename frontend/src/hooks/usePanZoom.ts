@@ -45,7 +45,7 @@ const computeZoomTier = (current: ViewBox, original: ViewBox): ZoomTier => {
 // boundary, so a contingency stays visible on the full-extent view. Continuous
 // at ratio = 0.5 — no jarring snap at a tier boundary.
 const HALO_MIN_PX = 24;
-const HALO_MAX_PX = 120;
+const HALO_MAX_PX = 50;
 const computeHaloWidthPx = (current: ViewBox, original: ViewBox): number => {
     const ratio = current.w / original.w;
     if (ratio <= 0.5) return HALO_MIN_PX;
