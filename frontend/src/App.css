@@ -277,16 +277,19 @@ circle.nad-highlight {
     stroke-linejoin: round !important;
 }
 
-/* At zoomed-in tiers (region + detail) the grid-unit halo strokes
-   above (120 / 150 px in user-space coordinates) cover so much of
-   the network they obscure the very lines they identify. Switch
-   to a screen-space stroke capped at 24px so the halo stays a
-   reading aid instead of a smear. The base
-   `.svg-container svg path { vector-effect: non-scaling-stroke }`
-   rule does NOT apply here because pypowsybl appends its own
-   inline `<style>` block AFTER App.css that re-asserts the
-   default `vector-effect: none` on equipment paths — so we set
-   it !important on the halos themselves. */
+/* Keep the overload / action / contingency halos at their BASE
+   screen-space width (the 120 / 150px set above) at EVERY zoom tier so
+   the glow looks identical from full-extent to deep-zoom — no abrupt
+   shrink at a tier boundary, and it stays a prominent reading aid when
+   zoomed right in. (The old 24px cap here made the high-zoom halo a thin,
+   coarse trace of the branch with a jarring snap at the region boundary.)
+   These rules now only RE-ASSERT `vector-effect: non-scaling-stroke` at
+   the zoomed-in tiers — belt-and-braces against a pypowsybl build that
+   might append an inline `<style>` flipping equipment paths back to
+   `vector-effect: none` (which would let the halo scale into a smear).
+   Current pypowsybl emits no such override, so the base
+   `.svg-container svg path { vector-effect: non-scaling-stroke }` rule
+   already keeps the halo screen-space. */
 [data-zoom-tier="region"] .nad-overloaded path,
 [data-zoom-tier="region"] .nad-overloaded line,
 [data-zoom-tier="region"] .nad-overloaded polyline,
@@ -297,7 +300,6 @@ circle.nad-highlight {
 [data-zoom-tier="detail"] .nad-overloaded polyline,
 [data-zoom-tier="detail"] .nad-overloaded rect,
 [data-zoom-tier="detail"] .nad-overloaded polygon {
-    stroke-width: 24px !important;
     vector-effect: non-scaling-stroke !important;
 }
 
@@ -311,7 +313,6 @@ circle.nad-highlight {
 [data-zoom-tier="detail"] .nad-action-target polyline,
 [data-zoom-tier="detail"] .nad-action-target rect,
 [data-zoom-tier="detail"] .nad-action-target polygon {
-    stroke-width: 24px !important;
     vector-effect: non-scaling-stroke !important;
 }
 
@@ -325,7 +326,6 @@ circle.nad-highlight {
 [data-zoom-tier="detail"] .nad-contingency-highlight polyline,
 [data-zoom-tier="detail"] .nad-contingency-highlight rect,
 [data-zoom-tier="detail"] .nad-contingency-highlight polygon {
-    stroke-width: 24px !important;
     vector-effect: non-scaling-stroke !important;
 }
 

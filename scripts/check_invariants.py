@@ -439,20 +439,22 @@ INVARIANTS: list[Invariant] = [
         standalone={"file_hint": "standalone_interface.html"},
     ),
     Invariant(
-        name="nad_overload_halo_capped_at_zoom",
+        name="nad_overload_halo_non_scaling_at_zoom",
         description=(
-            "Recommendation #3 (cap NAD overload halo): at the "
-            "`region` and `detail` zoom tiers the halo strokes must "
-            "switch to a screen-space `vector-effect: non-scaling-"
-            "stroke` capped at 24px. Without the cap the grid-unit "
-            "stroke (120-150px in user space) covers ~8-10× the "
-            "line it identifies and obscures the network."
+            "NAD overload halo sizing: at the `region` and `detail` zoom "
+            "tiers the halo must RE-ASSERT a screen-space "
+            "`vector-effect: non-scaling-stroke` so it can never scale into "
+            "a smear if a pypowsybl build flips equipment paths back to "
+            "`vector-effect: none`. The halo keeps its base 120/150px "
+            "screen-space width at EVERY tier (no abrupt shrink), so the "
+            "glow stays smooth + prominent from full-extent to deep zoom — "
+            "the old 24px cap made it a thin, coarse high-zoom trace."
         ),
         react={
             "file_hint": "frontend/src/App.css",
             "pattern": (
                 r"\[data-zoom-tier=\"detail\"\]\s+\.nad-overloaded[\s\S]*?"
-                r"stroke-width:\s*24px[\s\S]*?vector-effect:\s*non-scaling-stroke"
+                r"vector-effect:\s*non-scaling-stroke"
             ),
         },
         standalone={"file_hint": "standalone_interface.html"},

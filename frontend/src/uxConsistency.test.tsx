@@ -234,17 +234,23 @@ describe('UX consistency — Recommendation #2 (progressive disclosure)', () => 
 // Recommendation #3 — NAD overload halo (CSS contract)
 // ------------------------------------------------------------------
 
-describe('UX consistency — Recommendation #3 (halo cap at zoom)', () => {
-    // The runtime cap requires a real pypowsybl SVG to verify; the
-    // Layer-4 static invariant guards the CSS rule. Here we re-assert
-    // the rule lives in the source so a refactor that drops the cap
-    // also fails this file (cheaper feedback loop than the script).
-    it('App.css caps overload halo stroke at 24px on detail zoom', () => {
+describe('UX consistency — overload-halo sizing is constant across zoom tiers', () => {
+    // The halo keeps its BASE screen-space width at every zoom tier (no shrink
+    // at region/detail) so the glow looks identical and prominent from
+    // full-extent to deep zoom — no jarring snap, no thin/coarse high-zoom
+    // trace. The tier rules now only RE-ASSERT non-scaling-stroke (a guard
+    // against a pypowsybl build flipping equipment paths to vector-effect:none).
+    it('keeps the overload halo at its base screen-space width at detail zoom (no 24px shrink)', () => {
         const css = readFileSync(resolve(__dirname, 'App.css'), 'utf-8');
-        // The detail-zoom block must mention both the cap and the
-        // screen-space stroke vector-effect.
+        // Base halo is a prominent screen-space stroke...
+        expect(css).toMatch(/\.nad-overloaded path[^{]*{[^}]*stroke-width:\s*120px/s);
+        // ...the detail tier re-asserts non-scaling-stroke...
         expect(css).toMatch(
-            /\[data-zoom-tier="detail"\]\s+\.nad-overloaded[^{]*{[^}]*stroke-width:\s*24px[^}]*vector-effect:\s*non-scaling-stroke/s,
+            /\[data-zoom-tier="detail"\]\s+\.nad-overloaded[^{]*{[^}]*vector-effect:\s*non-scaling-stroke/s,
+        );
+        // ...but no longer caps the width (which made it thin/coarse at deep zoom).
+        expect(css).not.toMatch(
+            /\[data-zoom-tier="detail"\]\s+\.nad-overloaded[^{]*{[^}]*stroke-width:\s*24px/s,
         );
     });
 });
