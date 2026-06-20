@@ -97,11 +97,27 @@ export interface SnapshotOptions {
     /** Element CSS box (untransformed) — the raster surface size. */
     width: number;
     height: number;
-    /** Current `data-zoom-tier` so tier-capped halo widths render right. */
+    /** Current `data-zoom-tier` so tier-dependent rules render right. */
     zoomTier?: string | null;
+    /**
+     * Current zoom-adaptive halo width (px) from usePanZoom's `--nad-halo-w`.
+     * The inlined halo rules bind `stroke-width: var(--nad-halo-w, 24px)`, and
+     * the isolated snapshot SVG has no JS to set the var — so we re-declare it
+     * on the snapshot root here, otherwise the baked halo would snap to the
+     * 24px fallback and mismatch the live (e.g. zoomed-out 120px) halo.
+     */
+    haloWidthPx?: number | null;
     /** CSS (from collectHighlightCss) to inline so halos/deltas keep painting. */
     css?: string;
 }
+
+/**
+ * CSS that re-declares the live `--nad-halo-w` on the snapshot's <svg> root so
+ * the inlined `var(--nad-halo-w, …)` halo widths resolve to the current zoom's
+ * value (custom properties inherit to the cloned halo descendants).
+ */
+const haloVarRule = (opts: SnapshotOptions): string =>
+    opts.haloWidthPx != null ? `svg{--nad-halo-w:${opts.haloWidthPx}px}\n` : '';
 
 /**
  * Build a detached, de-tainted, style-inlined clone of the live NAD svg,
@@ -119,7 +135,7 @@ export const buildSnapshotSvg = (liveSvg: SVGSVGElement, opts: SnapshotOptions):
     if (opts.zoomTier) clone.setAttribute('data-zoom-tier', opts.zoomTier);
     if (opts.css) {
         const style = (clone.ownerDocument || document).createElementNS(SVG_NS, 'style');
-        style.textContent = opts.css;
+        style.textContent = haloVarRule(opts) + opts.css;
         clone.insertBefore(style, clone.firstChild);
     }
     return clone;
@@ -209,7 +225,7 @@ export const composeSnapshotMarkup = (serialized: string, opts: SnapshotOptions)
     open = setAttr(open, 'viewBox', `${opts.baseVb.x} ${opts.baseVb.y} ${opts.baseVb.w} ${opts.baseVb.h}`);
     open = setAttr(open, 'preserveAspectRatio', 'xMidYMid meet');
     if (opts.zoomTier) open = setAttr(open, 'data-zoom-tier', opts.zoomTier);
-    const styleTag = opts.css ? `<style>${opts.css}</style>` : '';
+    const styleTag = opts.css ? `<style>${haloVarRule(opts)}${opts.css}</style>` : '';
     return serialized.replace(/<svg\b[^>]*>/, open + styleTag);
 };
 

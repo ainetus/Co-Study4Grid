@@ -38,6 +38,21 @@ const computeZoomTier = (current: ViewBox, original: ViewBox): ZoomTier => {
     return 'detail';
 };
 
+// Screen-space px width for the overload / action / contingency line halos,
+// driven into the `--nad-halo-w` CSS var (see App.css). The halos are thin
+// (HALO_MIN_PX — a clean trace of the branch) across the whole zoomed-in range
+// and grow toward HALO_MAX_PX (a prominent marker) only once past the overview
+// boundary, so a contingency stays visible on the full-extent view. Continuous
+// at ratio = 0.5 — no jarring snap at a tier boundary.
+const HALO_MIN_PX = 24;
+const HALO_MAX_PX = 120;
+const computeHaloWidthPx = (current: ViewBox, original: ViewBox): number => {
+    const ratio = current.w / original.w;
+    if (ratio <= 0.5) return HALO_MIN_PX;
+    const t = Math.min(1, (ratio - 0.5) / 0.5);
+    return Math.round(HALO_MIN_PX + (HALO_MAX_PX - HALO_MIN_PX) * t);
+};
+
 /**
  * Element-local affine for a viewBox under `preserveAspectRatio="xMidYMid
  * meet"` (what pypowsybl emits). Returns the uniform scale `a` and offset
@@ -122,6 +137,8 @@ export const usePanZoom = (
 
     // Zoom tier: tracked in ref to avoid DOM writes when tier hasn't changed
     const currentTierRef = useRef<ZoomTier | null>(null);
+    // Last `--nad-halo-w` value written, to skip redundant style writes per frame
+    const currentHaloWRef = useRef<number | null>(null);
     const originalVbRef = useRef<ViewBox | null>(null);
 
     // Opt-in "Smooth pan/zoom (GPU)" state. `smoothRef` snapshots the
@@ -205,6 +222,14 @@ export const usePanZoom = (
             if (tier !== currentTierRef.current) {
                 currentTierRef.current = tier;
                 container.setAttribute('data-zoom-tier', tier);
+            }
+            // Zoom-adaptive halo width: thin when zoomed in, growing toward a
+            // prominent marker when zoomed out (smooth, no tier snap). Cheap —
+            // only writes the var when the rounded px value actually changes.
+            const haloW = computeHaloWidthPx(vb, orig);
+            if (haloW !== currentHaloWRef.current && container.style) {
+                currentHaloWRef.current = haloW;
+                container.style.setProperty('--nad-halo-w', `${haloW}px`);
             }
         }
     }, [svgRef]);
@@ -293,6 +318,7 @@ export const usePanZoom = (
             // not on programmatic zoom which uses setViewBoxPublic instead.
             originalVbRef.current = initialViewBox;
             currentTierRef.current = null; // force re-evaluation
+            currentHaloWRef.current = null; // re-apply --nad-halo-w for the new diagram
             interactingRef.current = false; // a new diagram cancels any pending bake
             teardownBitmap(); // drop any in-flight bitmap overlay for the old diagram
             invalidateSnapshotCache(); // the SVG content changed — re-warm later
@@ -426,7 +452,10 @@ export const usePanZoom = (
                 }
                 let css = '';
                 try { css = collectHighlightCss(container.ownerDocument); } catch { /* ignore */ }
-                const markup = composeSnapshotMarkup(serialized, { baseVb, width: w, height: h, zoomTier, css });
+                const markup = composeSnapshotMarkup(serialized, {
+                    baseVb, width: w, height: h, zoomTier, css,
+                    haloWidthPx: currentHaloWRef.current,
+                });
                 rasterizeMarkupToCanvas(markup, w, h, dpr)
                     .then((canvas) => {
                         // Gesture may have settled / a new diagram may have loaded /

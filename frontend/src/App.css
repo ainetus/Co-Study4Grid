@@ -277,55 +277,23 @@ circle.nad-highlight {
     stroke-linejoin: round !important;
 }
 
-/* Keep the overload / action / contingency halos at their BASE
-   screen-space width (the 120 / 150px set above) at EVERY zoom tier so
-   the glow looks identical from full-extent to deep-zoom — no abrupt
-   shrink at a tier boundary, and it stays a prominent reading aid when
-   zoomed right in. (The old 24px cap here made the high-zoom halo a thin,
-   coarse trace of the branch with a jarring snap at the region boundary.)
-   These rules now only RE-ASSERT `vector-effect: non-scaling-stroke` at
-   the zoomed-in tiers — belt-and-braces against a pypowsybl build that
-   might append an inline `<style>` flipping equipment paths back to
-   `vector-effect: none` (which would let the halo scale into a smear).
-   Current pypowsybl emits no such override, so the base
-   `.svg-container svg path { vector-effect: non-scaling-stroke }` rule
-   already keeps the halo screen-space. */
-[data-zoom-tier="region"] .nad-overloaded path,
-[data-zoom-tier="region"] .nad-overloaded line,
-[data-zoom-tier="region"] .nad-overloaded polyline,
-[data-zoom-tier="region"] .nad-overloaded rect,
-[data-zoom-tier="region"] .nad-overloaded polygon,
-[data-zoom-tier="detail"] .nad-overloaded path,
-[data-zoom-tier="detail"] .nad-overloaded line,
-[data-zoom-tier="detail"] .nad-overloaded polyline,
-[data-zoom-tier="detail"] .nad-overloaded rect,
-[data-zoom-tier="detail"] .nad-overloaded polygon {
-    vector-effect: non-scaling-stroke !important;
-}
-
-[data-zoom-tier="region"] .nad-action-target path,
-[data-zoom-tier="region"] .nad-action-target line,
-[data-zoom-tier="region"] .nad-action-target polyline,
-[data-zoom-tier="region"] .nad-action-target rect,
-[data-zoom-tier="region"] .nad-action-target polygon,
-[data-zoom-tier="detail"] .nad-action-target path,
-[data-zoom-tier="detail"] .nad-action-target line,
-[data-zoom-tier="detail"] .nad-action-target polyline,
-[data-zoom-tier="detail"] .nad-action-target rect,
-[data-zoom-tier="detail"] .nad-action-target polygon {
-    vector-effect: non-scaling-stroke !important;
-}
-
-[data-zoom-tier="region"] .nad-contingency-highlight path,
-[data-zoom-tier="region"] .nad-contingency-highlight line,
-[data-zoom-tier="region"] .nad-contingency-highlight polyline,
-[data-zoom-tier="region"] .nad-contingency-highlight rect,
-[data-zoom-tier="region"] .nad-contingency-highlight polygon,
-[data-zoom-tier="detail"] .nad-contingency-highlight path,
-[data-zoom-tier="detail"] .nad-contingency-highlight line,
-[data-zoom-tier="detail"] .nad-contingency-highlight polyline,
-[data-zoom-tier="detail"] .nad-contingency-highlight rect,
-[data-zoom-tier="detail"] .nad-contingency-highlight polygon {
+/* ===== Zoom-adaptive halo width (smooth, no tier snap) =====
+   The overload / action / contingency line halos are screen-space
+   (`vector-effect: non-scaling-stroke`), so their `stroke-width` is rendered
+   pixels. usePanZoom drives `--nad-halo-w` CONTINUOUSLY from the zoom ratio:
+   - zoomed IN  → thin (HALO_MIN_PX, ~24px): a clean trace of the branch, the
+     look the operator wants at deep zoom;
+   - zoomed OUT → grows toward a prominent marker (HALO_MAX_PX) so the
+     contingency stays visible on the full-extent view,
+   with no abrupt jump at a tier boundary (the old `data-zoom-tier` 24px-vs-
+   120px snap). This rule comes AFTER the per-class colour rules above, so the
+   var overrides their base `stroke-width`. It defaults thin if JS hasn't set
+   the var yet. `non-scaling-stroke` is re-asserted here as a guard against a
+   pypowsybl build flipping equipment paths back to `vector-effect: none`. */
+.nad-overloaded path, .nad-overloaded line, .nad-overloaded polyline, .nad-overloaded rect, .nad-overloaded polygon,
+.nad-action-target path, .nad-action-target line, .nad-action-target polyline, .nad-action-target rect, .nad-action-target polygon,
+.nad-contingency-highlight path, .nad-contingency-highlight line, .nad-contingency-highlight polyline, .nad-contingency-highlight rect, .nad-contingency-highlight polygon {
+    stroke-width: var(--nad-halo-w, 24px) !important;
     vector-effect: non-scaling-stroke !important;
 }
 

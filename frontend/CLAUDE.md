@@ -348,6 +348,21 @@ plus `overviewPz` for the Action overview map). The
 `useTiedTabsSync` hook mirrors viewBox changes from the active tab
 to any "tied" detached tab.
 
+**Zoom-adaptive overload/action/contingency halo width.** The line
+halos are screen-space (`vector-effect: non-scaling-stroke`), so their
+`stroke-width` is rendered px. `usePanZoom.applyViewBox` writes a
+**continuous** `--nad-halo-w` CSS var on the container from the zoom
+ratio (`computeHaloWidthPx`): thin (~24px — a clean trace of the
+branch) across the whole zoomed-in range, growing toward a prominent
+~120px marker only past the overview boundary, with **no `data-zoom-tier`
+step** (the old discrete 24px-vs-120px snap looked jarring + coarse at
+deep zoom). App.css binds `stroke-width: var(--nad-halo-w, 24px)` on the
+three halo classes (thin default if JS hasn't set it). The var is only
+written when the rounded px value changes, so it's free during a pan and
+re-evaluated on each settle. Guarded by the
+`nad_overload_halo_zoom_adaptive` Layer-4 invariant +
+`uxConsistency.test.tsx`.
+
 Pan/zoom fluidity on large grids has an always-on lever plus a
 3-mode opt-in `utils/smoothPanZoom.ts` singleton (`'off' | 'gpu' |
 'bitmap'`, read by `usePanZoom` at gesture start; **Pan/zoom rendering**
@@ -371,8 +386,10 @@ selector in Settings → Configurations, default `'off'`). See
   in: strip `<foreignObject>` (canvas taint), inline the App.css
   halo/delta rules + theme tokens + base non-scaling-stroke into the
   clone (so N-1/Action halos/deltas survive the isolated raster), set the
-  current `data-zoom-tier`, and an analytic cursor→user mapping for the
-  wheel zoom (the live SVG is `visibility:hidden`, so `getScreenCTM` is
+  current `data-zoom-tier` AND re-declare the live `--nad-halo-w` on the
+  snapshot root (the isolated SVG has no JS, so the var-bound halo width would
+  otherwise snap to its 24px fallback), and an analytic cursor→user mapping for
+  the wheel zoom (the live SVG is `visibility:hidden`, so `getScreenCTM` is
   stale). A generation token discards a slow async raster from a settled
   gesture. OFF by default — it's the experimental "big bet".
   - **Responsive start.** Serialising the 9 MB SVG costs ~250 ms — far too

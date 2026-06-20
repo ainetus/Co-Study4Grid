@@ -83,6 +83,25 @@ describe('serializeStrippedSvg + composeSnapshotMarkup (cached path)', () => {
         expect(out2).toContain('viewBox="9 9 9 9"');
         expect(out2).toContain('class="nad-overloaded"');
     });
+
+    it('re-declares the live --nad-halo-w on the snapshot root so var()-bound halo widths resolve', () => {
+        const serialized = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">'
+            + '<path class="nad-overloaded" d="M0,0"/></svg>';
+        // With a live halo width, the inlined style sets --nad-halo-w on `svg`
+        // (custom properties inherit to the cloned halos) ahead of the rules.
+        const out = composeSnapshotMarkup(serialized, {
+            baseVb: { x: 0, y: 0, w: 1, h: 1 }, width: 10, height: 10,
+            haloWidthPx: 120, css: '.nad-overloaded path{stroke-width:var(--nad-halo-w,24px)}',
+        });
+        expect(out).toContain('svg{--nad-halo-w:120px}');
+        expect(out.indexOf('--nad-halo-w:120px')).toBeLessThan(out.indexOf('.nad-overloaded path'));
+        // No live width → no var declaration (falls back to the 24px default).
+        const out2 = composeSnapshotMarkup(serialized, {
+            baseVb: { x: 0, y: 0, w: 1, h: 1 }, width: 10, height: 10,
+            css: '.nad-overloaded path{stroke-width:var(--nad-halo-w,24px)}',
+        });
+        expect(out2).not.toContain('--nad-halo-w:');
+    });
 });
 
 describe('collectHighlightCss', () => {

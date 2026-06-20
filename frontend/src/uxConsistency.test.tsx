@@ -13,11 +13,12 @@
 //      DOM `style` attributes for the migrated components.
 //   2. Progressive-disclosure ActionCard — at-rest cards hide the
 //      editable detail rows; viewing cards reveal them.
-//   3. NAD overload-halo cap (CSS contract — covered by the Layer-4
-//      static invariant `nad_overload_halo_capped_at_zoom`. The
-//      runtime check would require a real pypowsybl SVG, so we keep
-//      the static invariant as the gate and only assert here that
-//      the rule lives in App.css).
+//   3. NAD overload-halo zoom-adaptive width (CSS + usePanZoom contract —
+//      also covered by the Layer-4 static invariant
+//      `nad_overload_halo_zoom_adaptive`. The runtime check would require a
+//      real pypowsybl SVG, so the static invariant is the gate and we only
+//      assert here that the var-driven rule lives in App.css and that
+//      usePanZoom drives `--nad-halo-w` continuously).
 //   4. Tier the warning system — no inline yellow banner in the
 //      ActionFeed / OverloadPanel surfaces; NoticesPanel surfaces
 //      one entry point in the Header, under the app title.
@@ -234,24 +235,34 @@ describe('UX consistency — Recommendation #2 (progressive disclosure)', () => 
 // Recommendation #3 — NAD overload halo (CSS contract)
 // ------------------------------------------------------------------
 
-describe('UX consistency — overload-halo sizing is constant across zoom tiers', () => {
-    // The halo keeps its BASE screen-space width at every zoom tier (no shrink
-    // at region/detail) so the glow looks identical and prominent from
-    // full-extent to deep zoom — no jarring snap, no thin/coarse high-zoom
-    // trace. The tier rules now only RE-ASSERT non-scaling-stroke (a guard
-    // against a pypowsybl build flipping equipment paths to vector-effect:none).
-    it('keeps the overload halo at its base screen-space width at detail zoom (no 24px shrink)', () => {
+describe('UX consistency — overload-halo width is zoom-adaptive (smooth, no tier snap)', () => {
+    // The halo is screen-space (non-scaling-stroke) and its width is driven
+    // CONTINUOUSLY by usePanZoom through the `--nad-halo-w` CSS var: thin (a
+    // clean ~24px trace) when zoomed in, growing toward a prominent marker when
+    // zoomed out — no abrupt `data-zoom-tier` snap. The shared rule defaults
+    // thin so the look is correct even before JS sets the var, and re-asserts
+    // non-scaling-stroke as a guard against a pypowsybl build flipping equipment
+    // paths to vector-effect:none.
+    it('drives the overload halo width from the --nad-halo-w var with a thin default + non-scaling-stroke', () => {
         const css = readFileSync(resolve(__dirname, 'App.css'), 'utf-8');
-        // Base halo is a prominent screen-space stroke...
-        expect(css).toMatch(/\.nad-overloaded path[^{]*{[^}]*stroke-width:\s*120px/s);
-        // ...the detail tier re-asserts non-scaling-stroke...
+        // The shared halo rule binds stroke-width to the zoom-adaptive var with
+        // a thin fallback, and keeps the stroke screen-space.
         expect(css).toMatch(
-            /\[data-zoom-tier="detail"\]\s+\.nad-overloaded[^{]*{[^}]*vector-effect:\s*non-scaling-stroke/s,
+            /\.nad-overloaded path[^{]*{[^}]*stroke-width:\s*var\(--nad-halo-w,\s*24px\)[^}]*vector-effect:\s*non-scaling-stroke/s,
         );
-        // ...but no longer caps the width (which made it thin/coarse at deep zoom).
+        // No fixed per-tier width snap survives (neither the old thin 24px cap
+        // nor a fat 120px override) — width is the var, continuously.
         expect(css).not.toMatch(
-            /\[data-zoom-tier="detail"\]\s+\.nad-overloaded[^{]*{[^}]*stroke-width:\s*24px/s,
+            /\[data-zoom-tier="(?:region|detail)"\]\s+\.nad-overloaded[^{]*{[^}]*stroke-width:/s,
         );
+    });
+
+    it('drives the var continuously from the zoom ratio (no tier-stepped width) in usePanZoom', () => {
+        const hook = readFileSync(resolve(__dirname, 'hooks/usePanZoom.ts'), 'utf-8');
+        // usePanZoom writes --nad-halo-w from a continuous ratio function, not a
+        // tier lookup, so the width transitions smoothly between zoom levels.
+        expect(hook).toMatch(/setProperty\(\s*['"]--nad-halo-w['"]/s);
+        expect(hook).toMatch(/computeHaloWidthPx/s);
     });
 });
 
