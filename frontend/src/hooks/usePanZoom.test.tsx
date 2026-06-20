@@ -8,6 +8,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePanZoom } from './usePanZoom';
+import { setSmoothPanZoomMode } from '../utils/smoothPanZoom';
 import type { ViewBox } from '../types';
 
 /**
@@ -438,6 +439,40 @@ describe('usePanZoom', () => {
             // time, the drag would have bound to whatever `window`
             // was at that moment, not the current ownerWindow.)
             expect(lastTarget).toBe(fakeWindow);
+        });
+    });
+
+    describe('bitmap mode — graceful degradation', () => {
+        // In jsdom (no SVG-to-canvas raster) and on a cold serialisation cache,
+        // a bitmap-mode gesture must NOT crash, must NOT mount a canvas overlay,
+        // and must leave the live SVG visible (it stays on the viewBox fallback).
+        // The expensive serialize is never run synchronously in the handler, so
+        // the gesture start stays responsive.
+        it('does not crash or mount a canvas; keeps the live SVG visible', async () => {
+            setSmoothPanZoomMode('bitmap');
+            try {
+                const { container, svg } = createMockSvgContainer('0 0 1000 800');
+                document.body.appendChild(container);
+                const ref = { current: container };
+                renderHook(() => usePanZoom(ref, initialVB, true));
+
+                act(() => {
+                    container.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100, clientY: 100 }));
+                });
+                act(() => {
+                    window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 130, clientY: 120 }));
+                });
+                // flush the deferred build (setTimeout 0)
+                await act(async () => { await new Promise((r) => setTimeout(r, 5)); });
+
+                expect(container.querySelector('canvas')).toBeNull();
+                expect(svg.style.visibility).not.toBe('hidden');
+
+                act(() => { window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })); });
+                document.body.removeChild(container);
+            } finally {
+                setSmoothPanZoomMode('off');
+            }
         });
     });
 });

@@ -375,6 +375,21 @@ selector in Settings → Configurations, default `'off'`). See
   wheel zoom (the live SVG is `visibility:hidden`, so `getScreenCTM` is
   stale). A generation token discards a slow async raster from a settled
   gesture. OFF by default — it's the experimental "big bet".
+  - **Responsive start.** Serialising the 9 MB SVG costs ~250 ms — far too
+    much to run in the `mousedown` handler (it froze the pan start). So the
+    viewBox-INDEPENDENT serialisation is **cached** (`serializeStrippedSvg`),
+    **pre-warmed on idle** (`requestIdleCallback`) and **invalidated by a
+    MutationObserver** on the live SVG (highlight/delta class + childList
+    changes — viewBox writes are NOT observed, so per-frame pans don't churn
+    it). Each gesture only re-composes the cheap `<svg>` header + `<style>`
+    (`composeSnapshotMarkup`) and decodes **off the main thread**
+    (`createImageBitmap`). If the cache is still cold at gesture start, the
+    gesture stays on the responsive viewBox fallback and the bitmap engages
+    from the next gesture — the start is never blocked. mousedown→first-frame
+    ≈ 128 ms (same as the default path).
+  - **No ghost on settle.** The target viewBox is baked onto the still-hidden
+    live SVG and the bitmap is kept on top for ~2 frames before the swap, so
+    the SVG layer's stale base-zoom paint never flashes during its repaint.
 
 ## Detached tabs
 
