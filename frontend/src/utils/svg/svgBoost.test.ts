@@ -40,6 +40,33 @@ describe('boostSvgForLargeGrid', () => {
         expect(out).toMatch(/translate\(50,50\) scale\(59\.68\)/);
     });
 
+    it('de-clutters overlapping flow values by sliding them apart along the edge', () => {
+        // Two flow-value groups overprint near one substation node (to their
+        // left). Section 6 should slide them apart along their edge tangent
+        // (oriented away from the node) so both stay visible. European-scale
+        // viewBox so the boost (and thus the de-clutter) actually engages.
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4400000 3470000">'
+            + '<g class="nad-vl-nodes"><g transform="translate(0,1000)"><circle cx="0" cy="0" r="27.5"/></g></g>'
+            + '<g class="nad-edge-infos">'
+            + '<g transform="translate(1000,1000)"><path transform="rotate(0)" class="nad-arrow-in" d="M0,0"/><text class="nad-active">5</text></g>'
+            + '<g transform="translate(1300,1000)"><path transform="rotate(0)" class="nad-arrow-in" d="M0,0"/><text class="nad-active">5</text></g>'
+            + '</g></svg>';
+        const vb = { x: 0, y: 0, w: 4_400_000, h: 3_470_000 };
+        const out = boostSvgForLargeGrid(svg, vb, 5247);
+        // Pull the edge-info group x-translations from the output (the node
+        // group's outer translate is at x=0, so > 10 filters to the two values).
+        const xs: number[] = [];
+        for (const m of out.matchAll(/translate\(\s*([0-9.eE+-]+)\s*,\s*1000(?:\.0+)?\s*\)/g)) {
+            const x = parseFloat(m[1]);
+            if (isFinite(x) && x > 10) xs.push(x);
+        }
+        expect(xs.length).toBe(2);
+        const [a, b] = xs.sort((p, q) => p - q);
+        // They started 300 apart and must end up well separated, away from the node.
+        expect(b - a).toBeGreaterThan(1500);
+        expect(a).toBeGreaterThan(0); // never slid back past the node at x=0
+    });
+
     it('preserves the PyPSA-EUR fr225_400 calibration (low density, viewBox ~1.4 M)', () => {
         // 1196 VLs on a 1.4 M × 1.39 M layout matches the operator-
         // confirmed nodeBoost ≈ 60 from iteration 2 (density penalty

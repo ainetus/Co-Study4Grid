@@ -138,7 +138,9 @@ frontend/
         │   ├── deltaVisuals.ts        # - fitRect: bounding-box auto-zoom
         │   ├── actionPinData.ts       # - deltaVisuals: flow-delta colouring
         │   ├── actionPinRender.ts     # - actionPin{Data,Render}: overview pin layer
-        │   └── highlights.ts          # - highlights: contingency / overload halos
+        │   ├── highlights.ts          # - highlights: contingency / overload halos
+        │   └── edgeInfoDeclutter.ts   # - flow-value de-collision (slide along edge;
+        │                              #   load-time pass invoked by svgBoost §6)
         ├── svgPatch.ts                # SVG DOM recycling: clone N-state SVG
         │                              # and patch per-branch deltas on N-1 / action
         │                              # tab switches (PR #108). Used by useContingencyFetch.
@@ -301,6 +303,23 @@ performance levers are applied today:
 - **`boostSvgForLargeGrid`** (`utils/svg/svgBoost.ts`): dynamic
   font/node-radius scaling for grids ≥ 500 voltage levels so labels
   stay readable at high zoom.
+- **Flow-value de-cluttering** (`utils/svg/edgeInfoDeclutter.ts`,
+  invoked as `svgBoost` §6): pypowsybl places both branch flow values
+  ~22 % from each terminal with NO label de-collision, so values
+  fanning out of a busy substation overprint into a blob. This pass
+  slides each *overlapping* value further along its OWN edge — oriented
+  toward mid-segment (away from its nearest VL node, from the `vlOuter`
+  set §2) and capped at ~the distance to mid — so every flow stays
+  visible and on its line. It is a **load-time, one-shot** pass (runs
+  inside `processSvg`, never per frame) and **zoom-invariant** (the
+  values are vector `<text>` that scale with the viewBox, so a single
+  user-space solve is correct at every zoom), hence **zero pan/zoom
+  gesture cost** — the gesture culls `.nad-edge-infos` anyway. ~16 k
+  labels resolve in ~30 ms parse + ~70 ms relax (8 passes) thanks to a
+  flat-`Float64Array` + numeric-keyed linked-list spatial hash. The
+  ultra-dense urban core (e.g. Paris, ~50 substations in a tiny area)
+  stays busy — a physical limit of "show *all* flows" by sliding on
+  very short edges.
  - **VL-names toggle** (`useDiagrams.showVoltageLevelNames`, default
   on): a `🏷 VL` button next to the bottom-left Inspect field flips
   the `nad-hide-vl-labels` class on each `MemoizedSvgContainer`. The

@@ -5,6 +5,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import type { ViewBox } from '../../types';
+import { declutterEdgeInfoLabels, parseRotateDeg, type EdgeInfoLabel } from './edgeInfoDeclutter';
 
 /**
  * Scale SVG elements for large grids so text, nodes, and flow values
@@ -491,9 +492,125 @@ export const boostSvgForLargeGrid = (svgString: string, viewBox: ViewBox | null,
             }
         }
 
+        // === 6. De-clutter overlapping flow values (slide along the edge) ===
+        // pypowsybl places both branch flow values ~22 % from each terminal with
+        // NO label de-collision, so the values fanning out of a busy substation
+        // overprint into an unreadable blob. Slide each overlapping value further
+        // along its OWN edge — toward mid-segment, away from the crowd — until they
+        // separate. Every flow stays visible. Overlap is zoom-invariant in user
+        // space (vector <text> scale with the viewBox), so this one pass is correct
+        // at every zoom and never runs during a gesture. The slide is oriented +
+        // capped from the nearest VL node (vlOuter, already collected in section 2)
+        // so a value can't overshoot a short dense-core edge onto a neighbour.
+        // Hot path uses flat arrays + numeric-keyed hashes. See
+        // utils/svg/edgeInfoDeclutter.ts.
+        let declutteredLabels = 0;
+        if (edgeInfoGroup) {
+            const declutterStart = Date.now();
+            // Spatial hash over VL node centres → nearest substation per label.
+            const NODE_CELL = Math.max(1e-6, Math.sqrt((viewBox.w * viewBox.h) / Math.max(1, vlCount)));
+            const NK_OFF = 1 << 20, NK_STRIDE = 1 << 21;
+            const nodeGrid = new Map<number, number[]>();
+            for (let i = 0; i < vlOuter.length; i++) {
+                const gx = Math.floor(vlOuter[i].cx / NODE_CELL);
+                const gy = Math.floor(vlOuter[i].cy / NODE_CELL);
+                const key = (gx + NK_OFF) * NK_STRIDE + (gy + NK_OFF);
+                const b = nodeGrid.get(key);
+                if (b) b.push(i); else nodeGrid.set(key, [i]);
+            }
+            let nnx = 0, nny = 0; // nearest-node centre (out-params)
+            const nearestNodeDist2 = (px: number, py: number): number => {
+                const gx = Math.floor(px / NODE_CELL), gy = Math.floor(py / NODE_CELL);
+                let best = Infinity;
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        const b = nodeGrid.get((gx + dx + NK_OFF) * NK_STRIDE + (gy + dy + NK_OFF));
+                        if (!b) continue;
+                        for (let k = 0; k < b.length; k++) {
+                            const vl = vlOuter[b[k]];
+                            const ex = px - vl.cx, ey = py - vl.cy;
+                            const d2 = ex * ex + ey * ey;
+                            if (d2 < best) { best = d2; nnx = vl.cx; nny = vl.cy; }
+                        }
+                    }
+                }
+                return best;
+            };
+
+            const RE_TRANSLATE = /translate\(\s*([-0-9.eE+]+)\s*[, ]\s*([-0-9.eE+]+)\s*\)/;
+            const RE_SCALE = /scale\(\s*([-0-9.eE+]+)/;
+            const infoGs2 = edgeInfoGroup.querySelectorAll(':scope > g[transform]');
+            const labels: EdgeInfoLabel[] = [];
+            const slots: Array<{ g: Element; x: number; y: number; tx: number; ty: number; trailing: string } | null> = [];
+            for (let i = 0; i < infoGs2.length; i++) {
+                const g = infoGs2[i];
+                const t = g.getAttribute('transform') || '';
+                const mt = RE_TRANSLATE.exec(t);
+                if (!mt) { slots.push(null); continue; }
+                const x = parseFloat(mt[1]);
+                const y = parseFloat(mt[2]);
+                if (!isFinite(x) || !isFinite(y)) { slots.push(null); continue; }
+                // Direct child access (arrow <path> + value <text>) — avoids two
+                // querySelector descents per group across ~16k groups.
+                let arrowT: string | null = null;
+                let txt = '';
+                for (let c = g.firstElementChild; c; c = c.nextElementSibling) {
+                    const tag = c.tagName;
+                    if (arrowT === null && (tag === 'path' || tag === 'PATH')) arrowT = c.getAttribute('transform');
+                    else if (tag === 'text' || tag === 'TEXT') txt = c.textContent || '';
+                }
+                const ang = parseRotateDeg(arrowT);
+                if (ang == null) { slots.push(null); continue; }
+                const a = (ang * Math.PI) / 180;
+                let tx = Math.cos(a);
+                let ty = Math.sin(a);
+                const ms = RE_SCALE.exec(t);
+                const sRaw = ms ? parseFloat(ms[1]) : 1;
+                const scale = isFinite(sRaw) && sRaw > 0 ? sRaw : 1;
+                const nChars = Math.max(1, (txt.trim().length) || 3);
+                const halfLen = (nChars * 11 * 0.5 + 14) * scale;
+                const halfThick = 12 * scale;
+                // Orient the tangent toward mid (away from the nearest node) and
+                // cap the toward-mid slide relative to the distance to that node.
+                // The label sits ~22 % along its edge, so ~1.2× the node distance
+                // just reaches mid; we allow 2× so a value can slide PAST mid into
+                // the far half (more room to separate in dense cores) while still
+                // staying on its own branch line. Symmetric size-cap fallback when
+                // no node is near (rare).
+                let maxSlideToMid: number | undefined;
+                const d2 = nearestNodeDist2(x, y);
+                if (isFinite(d2)) {
+                    if ((x - nnx) * tx + (y - nny) * ty < 0) { tx = -tx; ty = -ty; }
+                    maxSlideToMid = Math.sqrt(d2) * 1.6;
+                }
+                const trailing = t.replace(RE_TRANSLATE, '').trim();
+                slots.push({ g, x, y, tx, ty, trailing });
+                labels.push({ x, y, tx, ty, halfLen, halfThick, maxSlideToMid });
+            }
+            const parseMs = Date.now() - declutterStart;
+            if (labels.length > 1) {
+                const offsets = declutterEdgeInfoLabels(labels, { iterations: 8, maxSlideFactor: 5 });
+                let li = 0;
+                for (let i = 0; i < slots.length; i++) {
+                    const slot = slots[i];
+                    if (!slot) continue;
+                    const off = offsets[li++];
+                    if (Math.abs(off) > 0.5) {
+                        const nx = slot.x + off * slot.tx;
+                        const ny = slot.y + off * slot.ty;
+                        const newTranslate = `translate(${nx.toFixed(2)},${ny.toFixed(2)})`;
+                        slot.g.setAttribute('transform', slot.trailing ? `${newTranslate} ${slot.trailing}` : newTranslate);
+                        declutteredLabels++;
+                    }
+                }
+            }
+            console.log(`[SVG] declutter pass: ${Date.now() - declutterStart}ms (parse ${parseMs}ms, ${labels.length} labels, ${declutteredLabels} moved)`);
+        }
+
         const result = new XMLSerializer().serializeToString(svgEl);
         console.log(
-            `[SVG] Boosted vlCount=${vlCount}, ratio ${ratio.toFixed(2)}, boost ${boostStr}, ` +
+            `[SVG] De-cluttered ${declutteredLabels} flow labels. ` +
+            `Boosted vlCount=${vlCount}, ratio ${ratio.toFixed(2)}, boost ${boostStr}, ` +
             `nodeBoost ${nodeBoostStr}, straightened ${straightenedKinks} half-edges, ` +
             `reconnected ${reconnectedEndpoints} endpoints, projected ${projectedIndicators} flow ` +
             `indicators in ${Date.now() - start}ms`,
