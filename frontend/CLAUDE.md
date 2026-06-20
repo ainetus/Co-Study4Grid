@@ -348,18 +348,33 @@ plus `overviewPz` for the Action overview map). The
 `useTiedTabsSync` hook mirrors viewBox changes from the active tab
 to any "tied" detached tab.
 
-Pan/zoom fluidity on large grids has two levers (see
-`docs/performance/history/interaction-paint-culling.md`):
-- **Default — interaction paint culling.** While a gesture is active
-  (`usePanZoom` adds `.svg-interacting`), `App.css` hides the expensive
-  `<foreignObject>` VL labels + `.nad-edge-infos` so each viewBox-repaint
-  frame is cheaper. GPU-independent; safe everywhere.
-- **Opt-in — "Smooth pan/zoom (GPU)"** (`utils/smoothPanZoom.ts`, a
-  localStorage singleton read by `usePanZoom` at gesture start; toggle in
-  Settings → Configurations, default OFF). Replaces the per-frame viewBox
-  rewrite with a compositor-only CSS transform, baking back on settle.
-  Much smoother on GPU; OFF by default because it regresses on
-  software/VDI rendering.
+Pan/zoom fluidity on large grids has an always-on lever plus a
+3-mode opt-in `utils/smoothPanZoom.ts` singleton (`'off' | 'gpu' |
+'bitmap'`, read by `usePanZoom` at gesture start; **Pan/zoom rendering**
+selector in Settings → Configurations, default `'off'`). See
+`docs/performance/history/interaction-paint-culling.md` and
+`benchmarks/interaction_paint/`:
+- **`'off'` (default) — interaction paint culling.** While a gesture is
+  active (`usePanZoom` adds `.svg-interacting`), `App.css` hides the
+  expensive `<foreignObject>` VL labels + `.nad-edge-infos` so each
+  viewBox-repaint frame is cheaper. GPU-independent; safe everywhere.
+- **`'gpu'`** — replaces the per-frame viewBox rewrite with a
+  compositor-only CSS transform on the live `<svg>`, baking back on
+  settle. Only ~1.2–1.5× over the default though: Chrome RE-RASTERS the
+  ~100k-node vector layer on every transform.
+- **`'bitmap'`** (`utils/svg/bitmapSnapshot.ts`) — rasterise the NAD to a
+  dpr-scaled `<canvas>` ONCE at gesture start and transform that bitmap
+  (compositor-only, no vector re-raster), baking back to the live SVG on
+  settle. **~3× the fps of off/gpu** in the real app (50 ms → 16.7 ms/frame
+  on the 5247-VL grid) and composites cheaply even in software, at the
+  cost of a one-shot raster when the gesture begins. Prerequisites baked
+  in: strip `<foreignObject>` (canvas taint), inline the App.css
+  halo/delta rules + theme tokens + base non-scaling-stroke into the
+  clone (so N-1/Action halos/deltas survive the isolated raster), set the
+  current `data-zoom-tier`, and an analytic cursor→user mapping for the
+  wheel zoom (the live SVG is `visibility:hidden`, so `getScreenCTM` is
+  stale). A generation token discards a slow async raster from a settled
+  gesture. OFF by default — it's the experimental "big bet".
 
 ## Detached tabs
 

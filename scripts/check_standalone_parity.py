@@ -232,7 +232,7 @@ SPEC_DETAILS: dict[str, dict] = {
     # --- Theme ---
     "theme_toggled":            _spec_row({"theme"}),
     # --- Smooth pan/zoom (GPU) preference ---
-    "smooth_pan_zoom_toggled":  _spec_row({"enabled"}),
+    "smooth_pan_zoom_toggled":  _spec_row({"enabled", "mode"}),
 }
 
 # Event types whose details argument is a bare identifier or a

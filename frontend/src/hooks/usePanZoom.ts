@@ -7,7 +7,8 @@
 
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, type RefObject } from 'react';
 import type { ViewBox } from '../types';
-import { isSmoothPanZoomEnabled } from '../utils/smoothPanZoom';
+import { getSmoothPanZoomMode, type PanZoomMode } from '../utils/smoothPanZoom';
+import { createNadSnapshotCanvas, collectHighlightCss } from '../utils/svg/bitmapSnapshot';
 
 /**
  * Custom Hook for SVG Pan/Zoom via viewBox manipulation.
@@ -68,6 +69,26 @@ const interactionTransform = (base: ViewBox, target: ViewBox, W: number, H: numb
     return `translate(${tx}px, ${ty}px) scale(${s})`;
 };
 
+/**
+ * Analytic inverse of the `xMidYMid meet` mapping: the user-space point under
+ * a client pixel for a given viewBox. Used by the BITMAP mode's wheel zoom,
+ * where the live <svg> is `visibility:hidden` at its base viewBox so
+ * `getScreenCTM()` would report the base mapping, not the live (transformed)
+ * one — anchoring the zoom to the wrong point. Computing it from the *current*
+ * viewBox + the element box keeps the point under the cursor fixed.
+ */
+const cursorToUserSpace = (
+    svg: SVGSVGElement, size: { w: number; h: number } | null, vb: ViewBox, clientX: number, clientY: number,
+): { x: number; y: number } => {
+    const rect = svg.getBoundingClientRect();
+    const W = (size && size.w) || rect.width;
+    const H = (size && size.h) || rect.height;
+    const a = Math.min(W / vb.w, H / vb.h);
+    const offX = (W - a * vb.w) / 2;
+    const offY = (H - a * vb.h) / 2;
+    return { x: vb.x + ((clientX - rect.left) - offX) / a, y: vb.y + ((clientY - rect.top) - offY) / a };
+};
+
 export const usePanZoom = (
     svgRef: RefObject<HTMLDivElement | null>,
     initialViewBox: ViewBox | null | undefined,
@@ -108,6 +129,15 @@ export const usePanZoom = (
     const interactingRef = useRef(false);
     const baseVbRef = useRef<ViewBox | null>(null);
     const baseSizeRef = useRef<{ w: number; h: number } | null>(null);
+    // Which smooth mode this gesture uses (snapshotted at gesture start).
+    const modeRef = useRef<PanZoomMode>('off');
+    // Bitmap mode: the dpr-scaled <canvas> overlay transformed during the
+    // gesture, and whether the (async) snapshot has been drawn + mounted yet.
+    const bitmapCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const bitmapReadyRef = useRef(false);
+    // Generation token: bumped on every begin/teardown so a slow async raster
+    // from a settled gesture can't mount a stale bitmap into a later gesture.
+    const bitmapTokenRef = useRef(0);
 
 
     // Toggle interaction class on container to disable pointer-events on SVG children
@@ -168,6 +198,24 @@ export const usePanZoom = (
         }
     }, [svgRef]);
 
+    // Bitmap-mode teardown: remove the canvas overlay and un-hide the live
+    // SVG. Hook-level (not inside the event effect) so the diagram-load and
+    // tab-switch lifecycle effects can cancel an in-flight bitmap gesture too.
+    // No-op in the default / GPU paths (no canvas, SVG never hidden).
+    const teardownBitmap = useCallback(() => {
+        bitmapTokenRef.current++; // invalidate any in-flight async raster
+        const canvas = bitmapCanvasRef.current;
+        if (canvas) {
+            canvas.style.transform = '';
+            canvas.style.willChange = '';
+            canvas.remove();
+            bitmapCanvasRef.current = null;
+        }
+        bitmapReadyRef.current = false;
+        const svg = svgElRef.current;
+        if (svg?.style && svg.style.visibility === 'hidden') svg.style.visibility = '';
+    }, []);
+
     // Flush ref -> React state for downstream consumers. Skip the state
     // update (and the React re-render it triggers) when the settled viewBox
     // is byte-identical to the last committed one — e.g. a drag that returns
@@ -210,6 +258,7 @@ export const usePanZoom = (
             originalVbRef.current = initialViewBox;
             currentTierRef.current = null; // force re-evaluation
             interactingRef.current = false; // a new diagram cancels any pending bake
+            teardownBitmap(); // drop any in-flight bitmap overlay for the old diagram
             viewBoxRef.current = initialViewBox;
             applyViewBox(initialViewBox);
             setViewBox(initialViewBox);
@@ -223,6 +272,7 @@ export const usePanZoom = (
         // A tab switch ends any in-flight smooth-mode gesture; applyViewBox
         // re-bakes the settled viewBox and clears the transform.
         interactingRef.current = false;
+        teardownBitmap();
         if (!active || !viewBoxRef.current) return;
         applyViewBox(viewBoxRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -282,12 +332,83 @@ export const usePanZoom = (
             ctmCacheRef.current = null;
         };
 
+        // --- Opt-in BITMAP mode helpers (rasterise once, transform the bitmap) ---
+        // Capture the base viewBox + element size, then kick off an ASYNC raster
+        // of the live NAD to a dpr-scaled canvas. The canvas is mounted (and the
+        // live SVG hidden) only once the raster finishes; until then frames fall
+        // through to a viewBox write, so the gesture starts on the default path
+        // and upgrades to compositor-only the moment the bitmap is ready.
+        const beginBitmapInteraction = () => {
+            if (interactingRef.current) return;
+            const svg = svgElRef.current;
+            const container = svgRef.current;
+            if (!svg || !container || !viewBoxRef.current) return;
+            const rect = svg.getBoundingClientRect();
+            const w = svg.clientWidth || rect.width;
+            const h = svg.clientHeight || rect.height;
+            baseVbRef.current = { ...viewBoxRef.current };
+            baseSizeRef.current = { w, h };
+            interactingRef.current = true;
+            bitmapReadyRef.current = false;
+            const token = ++bitmapTokenRef.current;
+            const baseVb = baseVbRef.current;
+            const view = container.ownerDocument.defaultView ?? window;
+            const dpr = view.devicePixelRatio || 1;
+            const zoomTier = container.getAttribute('data-zoom-tier');
+            let css = '';
+            try { css = collectHighlightCss(container.ownerDocument); } catch { /* ignore */ }
+            createNadSnapshotCanvas(svg, { baseVb, width: w, height: h, zoomTier, css, dpr })
+                .then((canvas) => {
+                    // Gesture may have settled / a new diagram may have loaded /
+                    // the mode may have changed while the raster ran (token bump).
+                    if (token !== bitmapTokenRef.current || !interactingRef.current
+                        || modeRef.current !== 'bitmap' || bitmapCanvasRef.current) return;
+                    canvas.style.position = 'absolute';
+                    canvas.style.left = '0';
+                    canvas.style.top = '0';
+                    canvas.style.width = `${w}px`;
+                    canvas.style.height = `${h}px`;
+                    canvas.style.transformOrigin = '0 0';
+                    canvas.style.willChange = 'transform';
+                    canvas.style.pointerEvents = 'none';
+                    container.appendChild(canvas);
+                    bitmapCanvasRef.current = canvas;
+                    svg.style.visibility = 'hidden';
+                    bitmapReadyRef.current = true;
+                    // Jump straight to the current frame (no flash of base view).
+                    const live = viewBoxRef.current;
+                    if (live) {
+                        const t = interactionTransform(baseVb, live, w, h);
+                        if (t) canvas.style.transform = t;
+                    }
+                })
+                .catch(() => { /* raster failed → stay on the viewBox fallback */ });
+        };
+
+        // Per-frame: keep viewBoxRef in lockstep (the wheel/drag math + the
+        // settle bake all read it), then transform the canvas if it's mounted,
+        // else fall back to a viewBox write (pre-raster frames).
+        const applyBitmapFrame = (vb: ViewBox) => {
+            viewBoxRef.current = vb;
+            const canvas = bitmapCanvasRef.current;
+            const base = baseVbRef.current;
+            const size = baseSizeRef.current;
+            if (bitmapReadyRef.current && canvas && base && size) {
+                const t = interactionTransform(base, vb, size.w, size.h);
+                if (t) { canvas.style.transform = t; ctmCacheRef.current = null; return; }
+            }
+            applyViewBox(vb);
+        };
+
         // Bake the live viewBox back onto the SVG (single repaint at the
         // settled position; applyViewBox clears the transform) and sync
         // React state. Safe to call in the default path — it just commits.
         const endInteraction = () => {
             if (interactingRef.current) {
                 interactingRef.current = false;
+                // Bitmap mode: drop the canvas overlay + un-hide the live SVG
+                // BEFORE baking the viewBox onto it (no-op for default / GPU).
+                teardownBitmap();
                 if (viewBoxRef.current) applyViewBox(viewBoxRef.current);
                 // The gesture is over — drop the `will-change: transform`
                 // compositor-layer hint now so we don't hold a promoted
@@ -312,11 +433,13 @@ export const usePanZoom = (
             pendingWheelScale.current *= scaleFactor;
             pendingWheelCursor.current = { x: e.clientX, y: e.clientY };
 
-            // Mark as interacting. Snapshot the smooth-mode preference for
-            // the whole gesture and, when on, capture the transform base.
-            smoothRef.current = isSmoothPanZoomEnabled();
+            // Mark as interacting. Snapshot the pan/zoom mode for the whole
+            // gesture and, when smooth, capture the transform base / snapshot.
+            modeRef.current = getSmoothPanZoomMode();
+            smoothRef.current = modeRef.current !== 'off';
             setInteracting(true);
-            if (smoothRef.current) beginInteraction();
+            if (modeRef.current === 'gpu') beginInteraction();
+            else if (modeRef.current === 'bitmap') beginBitmapInteraction();
 
             // Schedule rAF if not already queued
             if (!wheelRafId.current) {
@@ -328,16 +451,24 @@ export const usePanZoom = (
 
                     const vb = viewBoxRef.current;
                     const svg = svgElRef.current;
-                    if (!vb || !svg || !ctm) return;
+                    if (!vb || !svg) return;
 
                     const accumulatedScale = pendingWheelScale.current;
                     pendingWheelScale.current = 1; // reset accumulator
 
                     const cursor = pendingWheelCursor.current;
-                    const pt = svg.createSVGPoint();
-                    pt.x = cursor.x;
-                    pt.y = cursor.y;
-                    const svgP = pt.matrixTransform(ctm.inverse());
+                    let svgP: { x: number; y: number };
+                    if (modeRef.current === 'bitmap') {
+                        // Live SVG is hidden at its base viewBox, so getScreenCTM
+                        // is stale — derive the cursor's user point analytically.
+                        svgP = cursorToUserSpace(svg, baseSizeRef.current, vb, cursor.x, cursor.y);
+                    } else {
+                        if (!ctm) return;
+                        const pt = svg.createSVGPoint();
+                        pt.x = cursor.x;
+                        pt.y = cursor.y;
+                        svgP = pt.matrixTransform(ctm.inverse());
+                    }
 
                     const newVb: ViewBox = {
                         x: vb.x + (svgP.x - vb.x) * (1 - accumulatedScale),
@@ -346,7 +477,9 @@ export const usePanZoom = (
                         h: vb.h * accumulatedScale,
                     };
 
-                    if (smoothRef.current) {
+                    if (modeRef.current === 'bitmap') {
+                        applyBitmapFrame(newVb);
+                    } else if (modeRef.current === 'gpu') {
                         applyInteractionFrame(newVb);
                     } else {
                         viewBoxRef.current = newVb;
@@ -399,7 +532,9 @@ export const usePanZoom = (
                     x: vb.x - dx * scale,
                     y: vb.y - dy * scale,
                 };
-                if (smoothRef.current) {
+                if (modeRef.current === 'bitmap') {
+                    applyBitmapFrame(newVb);
+                } else if (modeRef.current === 'gpu') {
                     applyInteractionFrame(newVb);
                 } else {
                     viewBoxRef.current = newVb;
@@ -435,9 +570,11 @@ export const usePanZoom = (
             if (!activeRef.current || !viewBoxRef.current) return;
             isDragging.current = true;
             startPoint.current = { x: e.clientX, y: e.clientY, pendingX: e.clientX, pendingY: e.clientY };
-            smoothRef.current = isSmoothPanZoomEnabled();
+            modeRef.current = getSmoothPanZoomMode();
+            smoothRef.current = modeRef.current !== 'off';
             setInteracting(true);
-            if (smoothRef.current) beginInteraction();
+            if (modeRef.current === 'gpu') beginInteraction();
+            else if (modeRef.current === 'bitmap') beginBitmapInteraction();
 
             // Resolve the element's CURRENT owner window per-drag rather
             // than capturing it at effect-bind time. This is critical for
@@ -470,6 +607,7 @@ export const usePanZoom = (
             // Drop any in-flight smooth-mode transform so a re-bind / tab
             // teardown never leaves a stale transform on the SVG.
             interactingRef.current = false;
+            teardownBitmap();
             const svgEl = svgElRef.current;
             if (svgEl && svgEl.style?.transform) {
                 svgEl.style.transform = '';

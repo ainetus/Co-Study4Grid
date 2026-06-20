@@ -148,7 +148,7 @@ const SPEC: Record<string, SpecRow> = {
   // --- Theme ---
   theme_toggled:                  { required: new Set(['theme']) },
   // --- Smooth pan/zoom (GPU) preference ---
-  smooth_pan_zoom_toggled:        { required: new Set(['enabled']) },
+  smooth_pan_zoom_toggled:        { required: new Set(['enabled', 'mode']) },
 };
 
 // ---------------------------------------------------------------------

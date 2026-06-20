@@ -5,40 +5,58 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { isSmoothPanZoomEnabled, setSmoothPanZoomEnabled } from './smoothPanZoom';
+import {
+    isSmoothPanZoomEnabled,
+    setSmoothPanZoomEnabled,
+    getSmoothPanZoomMode,
+    setSmoothPanZoomMode,
+} from './smoothPanZoom';
 import { interactionLogger } from './interactionLogger';
 
 describe('smoothPanZoom preference singleton', () => {
     beforeEach(() => {
         localStorage.clear();
-        setSmoothPanZoomEnabled(false);
+        setSmoothPanZoomMode('off');
     });
 
     it('defaults to OFF', () => {
+        expect(getSmoothPanZoomMode()).toBe('off');
         expect(isSmoothPanZoomEnabled()).toBe(false);
     });
 
-    it('toggles, persists to localStorage, and reads back', () => {
-        setSmoothPanZoomEnabled(true);
+    it('persists each mode to localStorage and reads it back', () => {
+        setSmoothPanZoomMode('gpu');
+        expect(getSmoothPanZoomMode()).toBe('gpu');
         expect(isSmoothPanZoomEnabled()).toBe(true);
-        expect(localStorage.getItem('cs4g-smooth-pan-zoom')).toBe('1');
+        expect(localStorage.getItem('cs4g-smooth-pan-zoom')).toBe('gpu');
 
-        setSmoothPanZoomEnabled(false);
+        setSmoothPanZoomMode('bitmap');
+        expect(getSmoothPanZoomMode()).toBe('bitmap');
+        expect(isSmoothPanZoomEnabled()).toBe(true);
+        expect(localStorage.getItem('cs4g-smooth-pan-zoom')).toBe('bitmap');
+
+        setSmoothPanZoomMode('off');
+        expect(getSmoothPanZoomMode()).toBe('off');
         expect(isSmoothPanZoomEnabled()).toBe(false);
-        expect(localStorage.getItem('cs4g-smooth-pan-zoom')).toBe('0');
+        expect(localStorage.getItem('cs4g-smooth-pan-zoom')).toBe('off');
     });
 
-    it('notifies subscribers only on a real change', () => {
-        // Re-import to access the internal store via the public hook surface
-        // is awkward; instead assert the logger fires once per real flip.
-        const spy = vi.spyOn(interactionLogger, 'record');
+    it('back-compat boolean setter maps true→gpu, false→off', () => {
         setSmoothPanZoomEnabled(true);
-        setSmoothPanZoomEnabled(true); // no-op, same value
+        expect(getSmoothPanZoomMode()).toBe('gpu');
         setSmoothPanZoomEnabled(false);
+        expect(getSmoothPanZoomMode()).toBe('off');
+    });
+
+    it('notifies + logs only on a real change, with enabled + mode', () => {
+        const spy = vi.spyOn(interactionLogger, 'record');
+        setSmoothPanZoomMode('bitmap');
+        setSmoothPanZoomMode('bitmap'); // no-op, same value
+        setSmoothPanZoomMode('off');
         const calls = spy.mock.calls.filter(([t]) => t === 'smooth_pan_zoom_toggled');
         expect(calls).toHaveLength(2);
-        expect(calls[0][1]).toEqual({ enabled: true });
-        expect(calls[1][1]).toEqual({ enabled: false });
+        expect(calls[0][1]).toEqual({ enabled: true, mode: 'bitmap' });
+        expect(calls[1][1]).toEqual({ enabled: false, mode: 'off' });
         spy.mockRestore();
     });
 });
