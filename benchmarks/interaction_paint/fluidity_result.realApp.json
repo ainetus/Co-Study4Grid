@@ -1,0 +1,3 @@
+{"env":{"app":"localhost:5173 + backend:8000","gpu":"Apple M4 Pro Metal","dpr":1,"hz":120},
+ "N_tab":{"off":{"pan":60.1,"zoom":75.0},"on":{"pan":50.0,"zoom":50.1}},
+ "N1_tab":{"off":{"pan":82.6,"zoom":83.9},"on":{"pan":58.4,"zoom":66.7},"contingency":"T_relation_13260100-400-225 (HAVRE LE CENTRALE)","svgNodes":104213}}

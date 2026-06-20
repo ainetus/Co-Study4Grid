@@ -1,0 +1,308 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>pan/zoom fluidity bench</title>
+<style>
+  html,body{margin:0;padding:0;background:#fff;font:13px monospace}
+  #stage{width:1400px;height:900px;position:relative;overflow:hidden;border:1px solid #ccc}
+  #out{padding:8px;white-space:pre}
+</style>
+<!-- App.css is injected at runtime from the served copy so the .svg-interacting
+     culling rules are byte-identical to the app. -->
+<style id="appcss"></style>
+<!-- Simulates the PRE-#2 state: re-force non-scaling-stroke on equipment during
+     a gesture (higher specificity than App.css #2's override) so we can A/B the
+     #2 quick win. Active only when the container also carries .nss-force. -->
+<style id="nssforce">
+.svg-container.svg-interacting.nss-force .nad-branch-edges path,
+.svg-container.svg-interacting.nss-force .nad-branch-edges line,
+.svg-container.svg-interacting.nss-force .nad-branch-edges polyline,
+.svg-container.svg-interacting.nss-force .nad-branch-edges rect,
+.svg-container.svg-interacting.nss-force .nad-vl-nodes path,
+.svg-container.svg-interacting.nss-force .nad-vl-nodes line,
+.svg-container.svg-interacting.nss-force .nad-vl-nodes polyline,
+.svg-container.svg-interacting.nss-force .nad-vl-nodes rect {
+    vector-effect: non-scaling-stroke !important;
+}
+</style>
+</head>
+<body>
+<div id="stage"><div class="svg-container" id="c"></div></div>
+<div id="out">loading…</div>
+<script>
+// ---- exact port of usePanZoom's smooth-mode math (commit b451ee3) ----
+const meetLocal = (vb, W, H) => {
+  const a = Math.min(W / vb.w, H / vb.h);
+  return { a, cx: (W - a * vb.w) / 2 - a * vb.x, cy: (H - a * vb.h) / 2 - a * vb.y };
+};
+const interactionTransform = (base, target, W, H) => {
+  if (!(W > 0 && H > 0 && base.w > 0 && base.h > 0 && target.w > 0 && target.h > 0)) return null;
+  const lb = meetLocal(base, W, H), lt = meetLocal(target, W, H);
+  const s = lt.a / lb.a, tx = lt.cx - s * lb.cx, ty = lt.cy - s * lb.cy;
+  if (!Number.isFinite(s) || !Number.isFinite(tx) || !Number.isFinite(ty)) return null;
+  return `translate(${tx}px, ${ty}px) scale(${s})`;
+};
+
+let svg, base, baseSize, paths;
+const c = document.getElementById('c');
+const out = document.getElementById('out');
+
+async function setup() {
+  const css = await (await fetch('/frontend/src/App.css')).text();
+  document.getElementById('appcss').textContent = css;
+  const svgFile = new URLSearchParams(location.search).get('svg') || 'nad.svg';
+  const svgText = await (await fetch('/benchmarks/interaction_paint/' + svgFile)).text();
+  c.innerHTML = svgText;
+  svg = c.querySelector('svg');
+  const v = svg.getAttribute('viewBox').split(/\s+/).map(Number);
+  base = { x: v[0], y: v[1], w: v[2], h: v[3] };
+  baseSize = { w: c.clientWidth, h: c.clientHeight };
+  // Build pan & zoom parametric paths (viewBox as a function of t in [0,1]).
+  const bCx = base.x + base.w / 2, bCy = base.y + base.h / 2;
+  const pX = base.x + base.w * 0.60, pY = base.y + base.h * 0.42;
+  const DETAIL = base.w * 0.12;
+  const lerp = (a, b, t) => a + (b - a) * t, geom = (a, b, t) => a * Math.pow(b / a, t);
+  const vbAt = (cx, cy, w) => { const h = w * (base.h / base.w); return { x: cx - w / 2, y: cy - h / 2, w, h }; };
+  paths = {
+    // pan at a fixed "region" zoom level, sweeping across the grid and back
+    pan: (t) => { const tt = 0.5 - 0.5 * Math.cos(2 * Math.PI * t); return vbAt(lerp(base.x + base.w*0.30, base.x + base.w*0.72, tt), pY, base.w * 0.22); },
+    // zoom from overview into detail and back out (ping-pong)
+    zoom: (t) => { const tt = 0.5 - 0.5 * Math.cos(2 * Math.PI * t); return vbAt(lerp(bCx, pX, tt), lerp(bCy, pY, tt), geom(base.w * 0.9, DETAIL, tt)); },
+  };
+  out.textContent = 'ready: ' + JSON.stringify(base);
+}
+
+const applyVb = (vb) => svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+function reset() {
+  c.classList.remove('svg-interacting');
+  c.classList.remove('nss-force');
+  svg.style.transform = ''; svg.style.willChange = ''; svg.style.transformOrigin = '';
+  applyVb(base);
+}
+
+// Run one arm: mode in {plain, cull, gpu}; gesture in {pan, zoom}.
+// Drives a time-parametrised animation for durationMs and records the
+// real per-frame rAF interval distribution (the fluidity metric).
+let DROP_THRESH = 24;
+function runArm(mode, gesture, durationMs) {
+  return new Promise((resolve) => {
+    reset();
+    const cull = (mode === 'cull' || mode === 'gpu' || mode === 'cull_nss');
+    if (cull) c.classList.add('svg-interacting');
+    if (mode === 'cull_nss') c.classList.add('nss-force');
+    if (mode === 'gpu') { svg.style.transformOrigin = '0 0'; svg.style.willChange = 'transform'; }
+    const path = paths[gesture];
+    // settle on first frame, then measure
+    requestAnimationFrame(() => {
+      const intervals = [];
+      let last = performance.now();
+      const t0 = last;
+      function frame(now) {
+        const dt = now - last; last = now;
+        intervals.push(dt);
+        const elapsed = now - t0;
+        const t = (elapsed / durationMs) % 1;
+        const vb = path(t);
+        if (mode === 'gpu') {
+          const tr = interactionTransform(base, vb, baseSize.w, baseSize.h);
+          if (tr) svg.style.transform = tr; else applyVb(vb);
+        } else {
+          applyVb(vb);
+        }
+        if (elapsed < durationMs) requestAnimationFrame(frame);
+        else {
+          // settle (bake) like endInteraction
+          if (mode === 'gpu') { svg.style.transform = ''; svg.style.willChange = ''; applyVb(vb); }
+          c.classList.remove('svg-interacting');
+          applyVb(base);
+          intervals.shift(); // drop first (warm-up)
+          resolve(summarize(intervals));
+        }
+      }
+      requestAnimationFrame(frame);
+    });
+  });
+}
+
+function summarize(a) {
+  if (!a.length) return null;
+  const s = a.slice().sort((x, y) => x - y);
+  const n = s.length, mean = a.reduce((p, v) => p + v, 0) / n;
+  const pct = (p) => s[Math.min(n - 1, Math.floor(p * n))];
+  const dropped = a.filter(d => d > DROP_THRESH).length;
+  return {
+    frames: n,
+    mean: +mean.toFixed(2),
+    median: +pct(0.5).toFixed(2),
+    p95: +pct(0.95).toFixed(2),
+    max: +s[n - 1].toFixed(2),
+    fps_median: +(1000 / pct(0.5)).toFixed(1),
+    dropped, dropPct: +(100 * dropped / n).toFixed(1),
+  };
+}
+
+// Idle baseline: measure the display refresh period with no work.
+function idleBaseline(durationMs) {
+  return new Promise((resolve) => {
+    reset();
+    const intervals = []; let last = performance.now(); const t0 = last;
+    function frame(now) { intervals.push(now - last); last = now; if (now - t0 < durationMs) requestAnimationFrame(frame); else { intervals.shift(); resolve(summarize(intervals)); } }
+    requestAnimationFrame(frame);
+  });
+}
+
+// Full interleaved suite. Returns a JSON-able result object.
+window.__runSuite = async function (durationMs = 2500, reps = 4) {
+  const idle = await idleBaseline(1000);
+  DROP_THRESH = idle.median * 1.5;
+  const result = { idle, dropThresh: +DROP_THRESH.toFixed(2), gestures: {} };
+  for (const g of ['pan', 'zoom']) {
+    const acc = { plain: [], cull: [], gpu: [] };
+    for (let r = 0; r < reps; r++) {
+      for (const mode of ['plain', 'cull', 'gpu']) {
+        const s = await runArm(mode, g, durationMs);
+        acc[mode].push(s);
+        await new Promise(r => setTimeout(r, 150));
+      }
+    }
+    // aggregate medians across reps
+    const agg = {};
+    for (const mode of ['plain', 'cull', 'gpu']) {
+      const reps_ = acc[mode];
+      const med = (k) => { const v = reps_.map(x => x[k]).sort((a, b) => a - b); return +v[Math.floor(v.length / 2)].toFixed(2); };
+      // dropped-frame %: re-derive from intervals not stored; approximate via median/p95 vs thresh per rep
+      agg[mode] = {
+        median: med('median'), p95: med('p95'), mean: med('mean'), max: med('max'),
+        fps_median: +(1000 / med('median')).toFixed(1),
+        dropPct: med('dropPct'),
+        reps: reps_,
+      };
+    }
+    result.gestures[g] = agg;
+  }
+  window.__result = result;
+  out.textContent = JSON.stringify(result, null, 2);
+  return result;
+};
+
+// ---- Diagnostic arms for "why isn't GPU compositing free?" ----
+
+// Pure ±2px translate of the will-change'd SVG layer: if the layer is truly
+// composited and reused, this should run at display refresh; if Chrome
+// re-rasters the vector layer anyway, it stays slow.
+function runMicro(durationMs) {
+  return new Promise((resolve) => {
+    reset();
+    c.classList.add('svg-interacting');
+    svg.style.transformOrigin = '0 0'; svg.style.willChange = 'transform';
+    requestAnimationFrame(() => {
+      const intervals = []; let last = performance.now(); const t0 = last;
+      function frame(now) {
+        intervals.push(now - last); last = now;
+        const e = now - t0;
+        const dx = 2 * Math.sin(e / 30);
+        svg.style.transform = `translate(${dx}px, 0px) scale(1)`;
+        if (e < durationMs) requestAnimationFrame(frame);
+        else { svg.style.transform = ''; svg.style.willChange = ''; c.classList.remove('svg-interacting'); intervals.shift(); resolve(summarize(intervals)); }
+      }
+      requestAnimationFrame(frame);
+    });
+  });
+}
+
+// Bitmap-snapshot arm: rasterise the SVG to a canvas ONCE at gesture start,
+// transform the (small) bitmap layer during the gesture, restore the live
+// SVG on settle. This is the "snapshot during gesture" optimisation — if it
+// hits refresh rate it proves the bottleneck is vector re-raster, not compositing.
+async function snapshotCanvas() {
+  const clone = svg.cloneNode(true);
+  // Drop the HTML <foreignObject> labels: they taint the canvas (SecurityError
+  // on drawImage) and are culled mid-gesture anyway.
+  clone.querySelectorAll('foreignObject, .nad-label-nodes').forEach(n => n.remove());
+  clone.setAttribute('width', baseSize.w);
+  clone.setAttribute('height', baseSize.h);
+  clone.setAttribute('viewBox', `${base.x} ${base.y} ${base.w} ${base.h}`);
+  const xml = new XMLSerializer().serializeToString(clone);
+  const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }));
+  const img = new Image();
+  await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+  const dpr = window.devicePixelRatio || 1;
+  let cv = document.getElementById('snap');
+  if (!cv) { cv = document.createElement('canvas'); cv.id = 'snap'; cv.style.position = 'absolute'; cv.style.left = '0'; cv.style.top = '0'; cv.style.width = baseSize.w + 'px'; cv.style.height = baseSize.h + 'px'; document.getElementById('stage').appendChild(cv); }
+  cv.width = Math.round(baseSize.w * dpr); cv.height = Math.round(baseSize.h * dpr);
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, baseSize.w, baseSize.h);
+  ctx.drawImage(img, 0, 0, baseSize.w, baseSize.h);
+  URL.revokeObjectURL(url);
+  return cv;
+}
+
+async function runBitmap(gesture, durationMs) {
+  reset();
+  const cv = await snapshotCanvas();
+  svg.style.visibility = 'hidden';
+  cv.style.display = 'block'; cv.style.transformOrigin = '0 0'; cv.style.willChange = 'transform';
+  const path = paths[gesture];
+  return await new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      const intervals = []; let last = performance.now(); const t0 = last;
+      function frame(now) {
+        intervals.push(now - last); last = now;
+        const e = now - t0; const t = (e / durationMs) % 1; const vb = path(t);
+        const tr = interactionTransform(base, vb, baseSize.w, baseSize.h);
+        if (tr) cv.style.transform = tr;
+        if (e < durationMs) requestAnimationFrame(frame);
+        else { cv.style.display = 'none'; cv.style.transform = ''; cv.style.willChange = ''; svg.style.visibility = ''; applyVb(base); intervals.shift(); resolve(summarize(intervals)); }
+      }
+      requestAnimationFrame(frame);
+    });
+  });
+}
+
+window.__runExtra = async function (durationMs = 2500, reps = 3) {
+  const idle = await idleBaseline(1000);
+  DROP_THRESH = idle.median * 1.5;
+  const micro = []; for (let r = 0; r < reps; r++) { micro.push(await runMicro(durationMs)); await new Promise(r => setTimeout(r, 150)); }
+  const bmp = { pan: [], zoom: [] };
+  for (const g of ['pan', 'zoom']) for (let r = 0; r < reps; r++) { bmp[g].push(await runBitmap(g, durationMs)); await new Promise(r => setTimeout(r, 150)); }
+  const med = (arr, k) => { const v = arr.map(x => x[k]).sort((a, b) => a - b); return +v[Math.floor(v.length / 2)].toFixed(2); };
+  const result = {
+    idle, dropThresh: +DROP_THRESH.toFixed(2),
+    micro_translate: { median: med(micro, 'median'), p95: med(micro, 'p95'), fps_median: +(1000 / med(micro, 'median')).toFixed(1), dropPct: med(micro, 'dropPct'), reps: micro },
+    bitmap_pan: { median: med(bmp.pan, 'median'), p95: med(bmp.pan, 'p95'), fps_median: +(1000 / med(bmp.pan, 'median')).toFixed(1), dropPct: med(bmp.pan, 'dropPct'), reps: bmp.pan },
+    bitmap_zoom: { median: med(bmp.zoom, 'median'), p95: med(bmp.zoom, 'p95'), fps_median: +(1000 / med(bmp.zoom, 'median')).toFixed(1), dropPct: med(bmp.zoom, 'dropPct'), reps: bmp.zoom },
+  };
+  window.__extra = result; out.textContent = JSON.stringify(result, null, 2);
+  return result;
+};
+
+// A/B for the #2 quick win: cull_nss (pre-#2, non-scaling-stroke re-forced)
+// vs cull (current App.css with #2 dropping it). Same cull window otherwise.
+window.__runNss = async function (durationMs = 2500, reps = 4) {
+  const idle = await idleBaseline(1000);
+  DROP_THRESH = idle.median * 1.5;
+  const result = { idle, dropThresh: +DROP_THRESH.toFixed(2), gestures: {} };
+  for (const g of ['pan', 'zoom']) {
+    const acc = { cull_nss: [], cull: [] };
+    for (let r = 0; r < reps; r++) {
+      for (const mode of ['cull_nss', 'cull']) {
+        acc[mode].push(await runArm(mode, g, durationMs));
+        await new Promise(r => setTimeout(r, 150));
+      }
+    }
+    const med = (arr, k) => { const v = arr.map(x => x[k]).sort((a, b) => a - b); return +v[Math.floor(v.length / 2)].toFixed(2); };
+    const agg = {};
+    for (const mode of ['cull_nss', 'cull']) agg[mode] = { median: med(acc[mode], 'median'), p95: med(acc[mode], 'p95'), fps_median: +(1000 / med(acc[mode], 'median')).toFixed(1), reps: acc[mode] };
+    agg.speedup = +(agg.cull_nss.median / agg.cull.median).toFixed(2);
+    result.gestures[g] = agg;
+  }
+  window.__nss = result; out.textContent = JSON.stringify(result, null, 2);
+  return result;
+};
+
+setup();
+</script>
+</body>
+</html>

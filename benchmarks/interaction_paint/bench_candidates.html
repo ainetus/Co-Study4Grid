@@ -1,0 +1,145 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>pan/zoom candidate-optimization bench</title>
+<style>
+  html,body{margin:0;padding:0;background:#fff;font:13px monospace}
+  #stage{width:1400px;height:900px;position:relative;overflow:hidden;border:1px solid #ccc}
+  #out{padding:8px;white-space:pre}
+  /* Candidate-only CSS rules toggled by class on #c. Mirrors what a
+     real-app change would do — additive to App.css culling. */
+  /* C1: drop the 2nd polyline of every edge during gesture */
+  #c.cand-half-poly.svg-interacting .nad-edge > polyline:nth-of-type(2) { display:none !important; }
+  /* C2: content-visibility:auto on edge groups (skip off-screen raster) */
+  #c.cand-cv .nad-edge { content-visibility:auto; contain-intrinsic-size:1px 1px; }
+  /* C3: hide ALL edges during gesture, keep only bus nodes */
+  #c.cand-nodes-only.svg-interacting .nad-branch-edges { display:none !important; }
+  /* C4: hide bus circles during gesture, keep only edges */
+  #c.cand-edges-only.svg-interacting .nad-vl-nodes { display:none !important; }
+  /* C5: hide BOTH 2nd polyline AND bus circles (combined skeleton) */
+  #c.cand-skeleton.svg-interacting .nad-edge > polyline:nth-of-type(2),
+  #c.cand-skeleton.svg-interacting .nad-vl-nodes { display:none !important; }
+  /* C6: drop non-scaling-stroke during gesture (scaled stroke = cheaper raster?) */
+  #c.cand-no-nss.svg-interacting svg path,
+  #c.cand-no-nss.svg-interacting svg line,
+  #c.cand-no-nss.svg-interacting svg polyline,
+  #c.cand-no-nss.svg-interacting svg rect { vector-effect: none !important; }
+  /* C7: optimizeSpeed shape/text rendering during gesture (no AA) */
+  #c.cand-optspeed.svg-interacting svg { shape-rendering: optimizeSpeed; text-rendering: optimizeSpeed; }
+  /* C8: skeleton + optimizeSpeed + no-nss combined */
+  #c.cand-max.svg-interacting .nad-edge > polyline:nth-of-type(2),
+  #c.cand-max.svg-interacting .nad-vl-nodes { display:none !important; }
+  #c.cand-max.svg-interacting svg { shape-rendering: optimizeSpeed; }
+  #c.cand-max.svg-interacting svg polyline { vector-effect: none !important; }
+  /* C9: containment hint on the svg root during gesture */
+  #c.cand-contain.svg-interacting svg { contain: strict; }
+  /* C10: no-nss + half-poly (does dropping 2nd poly stack on top of no-nss?) */
+  #c.cand-nss-half.svg-interacting svg polyline { vector-effect: none !important; }
+  #c.cand-nss-half.svg-interacting .nad-edge > polyline:nth-of-type(2) { display:none !important; }
+</style>
+<style id="appcss"></style>
+</head>
+<body>
+<div id="stage"><div class="svg-container" id="c"></div></div>
+<div id="out">loading…</div>
+<script>
+const meetLocal = (vb, W, H) => { const a = Math.min(W / vb.w, H / vb.h); return { a, cx: (W - a * vb.w) / 2 - a * vb.x, cy: (H - a * vb.h) / 2 - a * vb.y }; };
+let svg, base, baseSize, paths;
+const c = document.getElementById('c');
+const out = document.getElementById('out');
+
+async function setup() {
+  const css = await (await fetch('/frontend/src/App.css')).text();
+  document.getElementById('appcss').textContent = css;
+  const svgText = await (await fetch('/benchmarks/interaction_paint/nad.svg')).text();
+  c.innerHTML = svgText;
+  svg = c.querySelector('svg');
+  const v = svg.getAttribute('viewBox').split(/\s+/).map(Number);
+  base = { x: v[0], y: v[1], w: v[2], h: v[3] };
+  baseSize = { w: c.clientWidth, h: c.clientHeight };
+  const bCx = base.x + base.w / 2, bCy = base.y + base.h / 2;
+  const pX = base.x + base.w * 0.60, pY = base.y + base.h * 0.42;
+  const DETAIL = base.w * 0.12;
+  const lerp = (a, b, t) => a + (b - a) * t, geom = (a, b, t) => a * Math.pow(b / a, t);
+  const vbAt = (cx, cy, w) => { const h = w * (base.h / base.w); return { x: cx - w / 2, y: cy - h / 2, w, h }; };
+  paths = {
+    pan: (t) => { const tt = 0.5 - 0.5 * Math.cos(2 * Math.PI * t); return vbAt(lerp(base.x + base.w*0.30, base.x + base.w*0.72, tt), pY, base.w * 0.22); },
+    zoom: (t) => { const tt = 0.5 - 0.5 * Math.cos(2 * Math.PI * t); return vbAt(lerp(bCx, pX, tt), lerp(bCy, pY, tt), geom(base.w * 0.9, DETAIL, tt)); },
+  };
+  out.textContent = 'ready: ' + JSON.stringify(base);
+}
+
+const applyVb = (vb) => svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+const CAND_CLASSES = ['cand-half-poly','cand-cv','cand-nodes-only','cand-edges-only','cand-skeleton','cand-no-nss','cand-optspeed','cand-max','cand-contain','cand-nss-half'];
+function reset() {
+  c.classList.remove('svg-interacting', ...CAND_CLASSES);
+  svg.style.transform = ''; svg.style.willChange = ''; svg.style.transformOrigin = '';
+  applyVb(base);
+}
+
+let DROP_THRESH = 12;
+// mode: 'cull' (baseline) or a candidate class name. All apply .svg-interacting
+// (so App.css culling is active) PLUS the candidate class.
+function runArm(mode, gesture, durationMs) {
+  return new Promise((resolve) => {
+    reset();
+    c.classList.add('svg-interacting');
+    if (mode !== 'cull') c.classList.add(mode);
+    const path = paths[gesture];
+    requestAnimationFrame(() => {
+      const intervals = []; let last = performance.now(); const t0 = last;
+      function frame(now) {
+        const dt = now - last; last = now; intervals.push(dt);
+        const elapsed = now - t0; const t = (elapsed / durationMs) % 1;
+        applyVb(path(t));
+        if (elapsed < durationMs) requestAnimationFrame(frame);
+        else { reset(); intervals.shift(); resolve(summarize(intervals)); }
+      }
+      requestAnimationFrame(frame);
+    });
+  });
+}
+function summarize(a) {
+  if (!a.length) return null;
+  const s = a.slice().sort((x, y) => x - y);
+  const n = s.length, mean = a.reduce((p, v) => p + v, 0) / n;
+  const pct = (p) => s[Math.min(n - 1, Math.floor(p * n))];
+  const dropped = a.filter(d => d > DROP_THRESH).length;
+  return { frames: n, mean: +mean.toFixed(2), median: +pct(0.5).toFixed(2), p95: +pct(0.95).toFixed(2), max: +s[n-1].toFixed(2), fps_median: +(1000/pct(0.5)).toFixed(1), dropPct: +(100*dropped/n).toFixed(1) };
+}
+function idleBaseline(durationMs) {
+  return new Promise((resolve) => {
+    reset();
+    const intervals = []; let last = performance.now(); const t0 = last;
+    function frame(now) { intervals.push(now - last); last = now; if (now - t0 < durationMs) requestAnimationFrame(frame); else { intervals.shift(); resolve(summarize(intervals)); } }
+    requestAnimationFrame(frame);
+  });
+}
+
+window.__runCandidates = async function (durationMs = 2500, reps = 3) {
+  const idle = await idleBaseline(1000);
+  DROP_THRESH = idle.median * 1.5;
+  const modes = ['cull', 'cand-no-nss', 'cand-nss-half'];
+  const result = { idle, dropThresh: +DROP_THRESH.toFixed(2), gestures: {} };
+  for (const g of ['pan', 'zoom']) {
+    const acc = {}; for (const m of modes) acc[m] = [];
+    for (let r = 0; r < reps; r++) {
+      for (const m of modes) { acc[m].push(await runArm(m, g, durationMs)); await new Promise(r => setTimeout(r, 150)); }
+    }
+    const agg = {};
+    for (const m of modes) {
+      const reps_ = acc[m];
+      const med = (k) => { const v = reps_.map(x => x[k]).sort((a, b) => a - b); return +v[Math.floor(v.length / 2)].toFixed(2); };
+      agg[m] = { median: med('median'), p95: med('p95'), mean: med('mean'), max: med('max'), fps_median: +(1000/med('median')).toFixed(1), dropPct: med('dropPct') };
+    }
+    result.gestures[g] = agg;
+  }
+  window.__candResult = result;
+  out.textContent = JSON.stringify(result, null, 2);
+  return result;
+};
+setup();
+</script>
+</body>
+</html>
