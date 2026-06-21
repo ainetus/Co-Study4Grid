@@ -94,6 +94,42 @@ This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface t
     pointer-events: none !important;
 }
 
+/* ===== Interaction-time paint culling =====
+   On a large NAD (≈5k voltage levels / ≈100k DOM nodes) the per-frame
+   cost of a viewBox pan/zoom is dominated by two element classes the
+   browser must re-rasterise every frame: the HTML voltage-level labels
+   (<foreignObject> — by far the most expensive SVG primitive to paint)
+   and the edge-info flow values + direction arrows. They are unreadable
+   mid-gesture anyway, so we drop them from the render tree while a
+   gesture is active (`usePanZoom` toggles `.svg-interacting` on
+   wheel/drag start and clears it on settle). On settle they repaint
+   once at the resting viewBox.
+
+   This is GPU-independent — it shrinks the work of the plain viewBox
+   repaint path itself, so it holds up even on software-rendered /
+   remote-desktop / GPU-blocklisted sessions (common for control-room
+   operators) where a CSS-transform compositing trick would instead
+   regress badly (every pan frame re-rasters new tiles of the whole
+   layer). Measured on the pypsa_eur_eur220_225_380_400 grid (5247 VLs,
+   8205 branches, 7.3 MB SVG) with an interleaved A/B headless benchmark,
+   per painted frame: pan 290 ms -> 188 ms (~1.5x), zoom 378 ms -> 226 ms
+   (~1.7x). The win is dropping the <foreignObject> HTML labels (the most
+   expensive SVG paint primitive) and is expected to be larger on GPU
+   hardware where that CPU-side raster dominates relatively more.
+   See docs/performance/history/interaction-paint-culling.md. The selector
+   list mirrors `.nad-hide-vl-labels` below (every shape pypowsybl uses
+   for a VL label) plus the edge-info group. */
+.svg-container.svg-interacting .nad-edge-infos,
+.svg-container.svg-interacting .nad-text-nodes,
+.svg-container.svg-interacting foreignObject.nad-text-nodes,
+.svg-container.svg-interacting .nad-vl-nodes foreignObject,
+.svg-container.svg-interacting .nad-label-nodes foreignObject,
+.svg-container.svg-interacting .nad-label-nodes,
+.svg-container.svg-interacting .nad-label-box,
+.svg-container.svg-interacting .nad-text-edges {
+    display: none !important;
+}
+
 /* ===== Zoom-tier Level-of-Detail =====
    data-zoom-tier is set by usePanZoom based on the ratio of the current
    viewBox width to the original (full-extent) viewBox width.
@@ -241,55 +277,23 @@ circle.nad-highlight {
     stroke-linejoin: round !important;
 }
 
-/* At zoomed-in tiers (region + detail) the grid-unit halo strokes
-   above (120 / 150 px in user-space coordinates) cover so much of
-   the network they obscure the very lines they identify. Switch
-   to a screen-space stroke capped at 24px so the halo stays a
-   reading aid instead of a smear. The base
-   `.svg-container svg path { vector-effect: non-scaling-stroke }`
-   rule does NOT apply here because pypowsybl appends its own
-   inline `<style>` block AFTER App.css that re-asserts the
-   default `vector-effect: none` on equipment paths — so we set
-   it !important on the halos themselves. */
-[data-zoom-tier="region"] .nad-overloaded path,
-[data-zoom-tier="region"] .nad-overloaded line,
-[data-zoom-tier="region"] .nad-overloaded polyline,
-[data-zoom-tier="region"] .nad-overloaded rect,
-[data-zoom-tier="region"] .nad-overloaded polygon,
-[data-zoom-tier="detail"] .nad-overloaded path,
-[data-zoom-tier="detail"] .nad-overloaded line,
-[data-zoom-tier="detail"] .nad-overloaded polyline,
-[data-zoom-tier="detail"] .nad-overloaded rect,
-[data-zoom-tier="detail"] .nad-overloaded polygon {
-    stroke-width: 24px !important;
-    vector-effect: non-scaling-stroke !important;
-}
-
-[data-zoom-tier="region"] .nad-action-target path,
-[data-zoom-tier="region"] .nad-action-target line,
-[data-zoom-tier="region"] .nad-action-target polyline,
-[data-zoom-tier="region"] .nad-action-target rect,
-[data-zoom-tier="region"] .nad-action-target polygon,
-[data-zoom-tier="detail"] .nad-action-target path,
-[data-zoom-tier="detail"] .nad-action-target line,
-[data-zoom-tier="detail"] .nad-action-target polyline,
-[data-zoom-tier="detail"] .nad-action-target rect,
-[data-zoom-tier="detail"] .nad-action-target polygon {
-    stroke-width: 24px !important;
-    vector-effect: non-scaling-stroke !important;
-}
-
-[data-zoom-tier="region"] .nad-contingency-highlight path,
-[data-zoom-tier="region"] .nad-contingency-highlight line,
-[data-zoom-tier="region"] .nad-contingency-highlight polyline,
-[data-zoom-tier="region"] .nad-contingency-highlight rect,
-[data-zoom-tier="region"] .nad-contingency-highlight polygon,
-[data-zoom-tier="detail"] .nad-contingency-highlight path,
-[data-zoom-tier="detail"] .nad-contingency-highlight line,
-[data-zoom-tier="detail"] .nad-contingency-highlight polyline,
-[data-zoom-tier="detail"] .nad-contingency-highlight rect,
-[data-zoom-tier="detail"] .nad-contingency-highlight polygon {
-    stroke-width: 24px !important;
+/* ===== Zoom-adaptive halo width (smooth, no tier snap) =====
+   The overload / action / contingency line halos are screen-space
+   (`vector-effect: non-scaling-stroke`), so their `stroke-width` is rendered
+   pixels. usePanZoom drives `--nad-halo-w` CONTINUOUSLY from the zoom ratio:
+   - zoomed IN  → thin (HALO_MIN_PX, ~24px): a clean trace of the branch, the
+     look the operator wants at deep zoom;
+   - zoomed OUT → grows toward a prominent marker (HALO_MAX_PX) so the
+     contingency stays visible on the full-extent view,
+   with no abrupt jump at a tier boundary (the old `data-zoom-tier` 24px-vs-
+   120px snap). This rule comes AFTER the per-class colour rules above, so the
+   var overrides their base `stroke-width`. It defaults thin if JS hasn't set
+   the var yet. `non-scaling-stroke` is re-asserted here as a guard against a
+   pypowsybl build flipping equipment paths back to `vector-effect: none`. */
+.nad-overloaded path, .nad-overloaded line, .nad-overloaded polyline, .nad-overloaded rect, .nad-overloaded polygon,
+.nad-action-target path, .nad-action-target line, .nad-action-target polyline, .nad-action-target rect, .nad-action-target polygon,
+.nad-contingency-highlight path, .nad-contingency-highlight line, .nad-contingency-highlight polyline, .nad-contingency-highlight rect, .nad-contingency-highlight polygon {
+    stroke-width: var(--nad-halo-w, 24px) !important;
     vector-effect: non-scaling-stroke !important;
 }
 

@@ -439,20 +439,28 @@ INVARIANTS: list[Invariant] = [
         standalone={"file_hint": "standalone_interface.html"},
     ),
     Invariant(
-        name="nad_overload_halo_capped_at_zoom",
+        name="nad_overload_halo_zoom_adaptive",
         description=(
-            "Recommendation #3 (cap NAD overload halo): at the "
-            "`region` and `detail` zoom tiers the halo strokes must "
-            "switch to a screen-space `vector-effect: non-scaling-"
-            "stroke` capped at 24px. Without the cap the grid-unit "
-            "stroke (120-150px in user space) covers ~8-10× the "
-            "line it identifies and obscures the network."
+            "NAD overload halo sizing: the halo is screen-space "
+            "(`vector-effect: non-scaling-stroke`) and its width is driven "
+            "CONTINUOUSLY by usePanZoom through the `--nad-halo-w` CSS var — "
+            "thin (~24px, a clean trace) when zoomed in, growing toward a "
+            "prominent marker when zoomed out, with no abrupt `data-zoom-tier` "
+            "snap. App.css binds `stroke-width` to the var (thin default + "
+            "non-scaling-stroke guard) and usePanZoom writes the var from the "
+            "zoom ratio (`computeHaloWidthPx`). Guard against re-introducing a "
+            "fixed per-tier width snap (the old 24px-vs-120px tier step)."
         ),
         react={
             "file_hint": "frontend/src/App.css",
             "pattern": (
-                r"\[data-zoom-tier=\"detail\"\]\s+\.nad-overloaded[\s\S]*?"
-                r"stroke-width:\s*24px[\s\S]*?vector-effect:\s*non-scaling-stroke"
+                r"\.nad-overloaded[^{}]*\{[^{}]*"
+                r"stroke-width:\s*var\(\s*--nad-halo-w,\s*24px\s*\)"
+                r"[^{}]*vector-effect:\s*non-scaling-stroke"
+            ),
+            "must_not": (
+                r"\[data-zoom-tier=\"(?:region|detail)\"\]\s+\.nad-overloaded"
+                r"[^{}]*\{[^{}]*stroke-width:"
             ),
         },
         standalone={"file_hint": "standalone_interface.html"},

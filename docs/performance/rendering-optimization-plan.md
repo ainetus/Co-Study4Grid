@@ -74,6 +74,8 @@ Co-Study4Grid renders pypowsybl Network Area Diagrams (NAD) for power grids with
 
 4. **rAF-throttled drag** — Mouse move events are batched to at most one DOM update per display frame via `requestAnimationFrame`.
 
+5. **Interaction-time paint culling** — while `.svg-interacting` is set (the gesture window), `App.css` drops the two most expensive paint element classes from the render tree: the HTML `<foreignObject>` voltage-level labels and the `.nad-edge-infos` flow values/arrows. They repaint once on settle. ~1.5–1.7x cheaper frames on the 5247-VL European grid, GPU-independent — this is the default. A CSS-transform GPU-compositing path (much smoother on GPU, but a regression under software/VDI rendering where every pan frame re-rasters new layer tiles) ships as the **off-by-default** "Smooth pan/zoom (GPU)" toggle (`utils/smoothPanZoom.ts`, read by `usePanZoom` at gesture start). Full write-up + benchmark: [`history/interaction-paint-culling.md`](history/interaction-paint-culling.md).
+
 ### Critical `useLayoutEffect` Hooks
 
 ```

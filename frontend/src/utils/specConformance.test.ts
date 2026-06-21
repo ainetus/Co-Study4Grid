@@ -147,6 +147,8 @@ const SPEC: Record<string, SpecRow> = {
   contingency_clear_requested:    { required: new Set(['had_analysis_state']) },
   // --- Theme ---
   theme_toggled:                  { required: new Set(['theme']) },
+  // --- Smooth pan/zoom (GPU) preference ---
+  smooth_pan_zoom_toggled:        { required: new Set(['enabled', 'mode']) },
 };
 
 // ---------------------------------------------------------------------

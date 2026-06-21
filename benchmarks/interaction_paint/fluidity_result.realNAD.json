@@ -1,0 +1,4 @@
+{"env":{"gpu":"Apple M4 Pro (ANGLE Metal)","dpr":1,"display_hz":120,"idle_median_ms":8.3,"svgChildren":98959,"svgMB":9.1,"labels":"<text> (15706), not foreignObject","grid":"pypsa_eur_eur220_225_380_400 REAL pypowsybl NAD"},
+"main":{"pan":{"plain":100.0,"cull":58.0,"gpu":41.9},"zoom":{"plain":126.7,"cull":65.1,"gpu":43.3}},
+"diagnostic":{"micro_translate_median_ms":41.7,"bitmap_pan_median_ms":8.3,"bitmap_zoom_median_ms":8.3},
+"notes":"zoom plain p95 spikes to ~1008ms (text-label re-raster). bitmap=120fps/0-drop on real NAD too."}

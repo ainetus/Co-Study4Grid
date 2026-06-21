@@ -1,0 +1,8 @@
+# Generated benchmark artifacts
+nad.svg
+nad.stats.json
+result.json
+# Real pypowsybl NAD fetched from the backend (9 MB; regenerate via
+# GET /api/network-diagram?format=text) — don't track the heavy artifact.
+real_nad.svg
+real_nad.html

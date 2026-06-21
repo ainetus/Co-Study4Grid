@@ -7,6 +7,7 @@
 
 import { interactionLogger } from '../../utils/interactionLogger';
 import type { SettingsState } from '../../hooks/useSettings';
+import { useSmoothPanZoom, type PanZoomMode } from '../../utils/smoothPanZoom';
 import { colors } from '../../styles/tokens';
 import { ACTION_TYPE_FILTER_TOKENS, ACTION_TYPE_LABELS } from '../../utils/actionTypes';
 import type { ActionTypeKind } from '../../utils/actionTypes';
@@ -17,6 +18,9 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
+  // Pure client rendering preference (localStorage, not backend config) —
+  // read from its own singleton rather than SettingsState.
+  const { mode: panZoomMode, setMode: setPanZoomMode } = useSmoothPanZoom();
   const {
     isSettingsOpen,
     settingsTab, setSettingsTab,
@@ -386,6 +390,30 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
                 </div>
                 <div style={{ fontSize: '0.75rem', color: colors.textTertiary, fontStyle: 'italic', marginLeft: '26px' }}>
                   Disable voltage control in pypowsybl for faster simulations (may affect convergence)
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px', background: colors.surfaceMuted, borderRadius: '4px', border: `1px solid ${colors.borderSubtle}` }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <label htmlFor="panZoomMode" style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Pan/zoom rendering</label>
+                  <select
+                    id="panZoomMode"
+                    value={panZoomMode}
+                    onChange={e => setPanZoomMode(e.target.value as PanZoomMode)}
+                    data-testid="pan-zoom-mode-select"
+                    style={{ padding: '4px 8px', border: `1px solid ${colors.border}`, borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    <option value="off">Default (repaint + culling)</option>
+                    <option value="gpu">Smooth — GPU transform</option>
+                    <option value="bitmap">Smooth — Bitmap snapshot</option>
+                  </select>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: colors.textTertiary, fontStyle: 'italic' }}>
+                  How the diagram renders <i>during</i> a pan/zoom gesture (opt-in, default OFF; applies on the next gesture).
+                  {' '}<b>Default</b> repaints the vector each frame — safe everywhere.
+                  {' '}<b>GPU transform</b> composites the live SVG — smoother on hardware-accelerated browsers, can stutter on software / remote-desktop / VDI.
+                  {' '}<b>Bitmap snapshot</b> rasterises the diagram once at gesture start and transforms that bitmap — much smoother on large grids (even in software), at the cost of a brief raster when the gesture begins.
                 </div>
               </div>
             </div>

@@ -7,7 +7,7 @@ between 2026-05-01 and 2026-05-02.**
 |---|---|---|---|
 | 1 | Design-token layer | ✅ Full | 47a2700 / 0e60059 / b8de481 (2026-05-01 → 2026-05-02) — Phases A/B/C |
 | 2 | Progressive-disclosure ActionCard | ✅ Full | fbfb2b0 (PR #121, 2026-05-02) |
-| 3 | Cap NAD overload halo at zoom | ✅ Full | fbfb2b0 (PR #121, 2026-05-02) — `vector-effect: non-scaling-stroke` capped at the `region` and `detail` zoom tiers |
+| 3 | Cap NAD overload halo at zoom | ✅ Full | fbfb2b0 (PR #121, 2026-05-02) — screen-space halo, originally a discrete `data-zoom-tier` cap; superseded 2026-06-20 by a **continuous** zoom-adaptive width (`--nad-halo-w` driven by usePanZoom: thin ~24px when zoomed in → grows toward a modest ~50px when zoomed out, no tier snap) |
 | 4 | Tier the warning system | ✅ Full | tier-warning-system PR (2026-05-02) — NoticesPanel pill + inline contextual hints |
 | 5 | Diagram legend | ✅ Full | tier-warning-system PR (2026-05-02) — collapsible bottom-right per tab |
 

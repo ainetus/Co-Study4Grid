@@ -1,0 +1,13 @@
+const PORT=9444; const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+import { writeFileSync } from 'fs';
+const list=await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json();
+const t=list.find(x=>x.type==='page'&&/localhost:5173/.test(x.url));
+const ws=new WebSocket(t.webSocketDebuggerUrl); let id=0; const p=new Map();
+ws.addEventListener('message',ev=>{const m=JSON.parse(ev.data);if(m.id&&p.has(m.id)){const{r}=p.get(m.id);p.delete(m.id);r(m.result);}});
+await new Promise(r=>ws.addEventListener('open',r));
+const send=(method,params={})=>new Promise(r=>{const mid=++id;p.set(mid,{r});ws.send(JSON.stringify({id:mid,method,params}));});
+await send('Page.enable');
+const {data}=await send('Page.captureScreenshot',{format:'jpeg',quality:72});
+writeFileSync('/tmp/cs4g_app_n1.jpg', Buffer.from(data,'base64'));
+console.log('saved /tmp/cs4g_app_n1.jpg');
+process.exit(0);

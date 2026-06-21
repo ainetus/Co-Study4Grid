@@ -13,11 +13,12 @@
 //      DOM `style` attributes for the migrated components.
 //   2. Progressive-disclosure ActionCard — at-rest cards hide the
 //      editable detail rows; viewing cards reveal them.
-//   3. NAD overload-halo cap (CSS contract — covered by the Layer-4
-//      static invariant `nad_overload_halo_capped_at_zoom`. The
-//      runtime check would require a real pypowsybl SVG, so we keep
-//      the static invariant as the gate and only assert here that
-//      the rule lives in App.css).
+//   3. NAD overload-halo zoom-adaptive width (CSS + usePanZoom contract —
+//      also covered by the Layer-4 static invariant
+//      `nad_overload_halo_zoom_adaptive`. The runtime check would require a
+//      real pypowsybl SVG, so the static invariant is the gate and we only
+//      assert here that the var-driven rule lives in App.css and that
+//      usePanZoom drives `--nad-halo-w` continuously).
 //   4. Tier the warning system — no inline yellow banner in the
 //      ActionFeed / OverloadPanel surfaces; NoticesPanel surfaces
 //      one entry point in the Header, under the app title.
@@ -234,17 +235,64 @@ describe('UX consistency — Recommendation #2 (progressive disclosure)', () => 
 // Recommendation #3 — NAD overload halo (CSS contract)
 // ------------------------------------------------------------------
 
-describe('UX consistency — Recommendation #3 (halo cap at zoom)', () => {
-    // The runtime cap requires a real pypowsybl SVG to verify; the
-    // Layer-4 static invariant guards the CSS rule. Here we re-assert
-    // the rule lives in the source so a refactor that drops the cap
-    // also fails this file (cheaper feedback loop than the script).
-    it('App.css caps overload halo stroke at 24px on detail zoom', () => {
+describe('UX consistency — overload-halo width is zoom-adaptive (smooth, no tier snap)', () => {
+    // The halo is screen-space (non-scaling-stroke) and its width is driven
+    // CONTINUOUSLY by usePanZoom through the `--nad-halo-w` CSS var: thin (a
+    // clean ~24px trace) when zoomed in, growing toward a prominent marker when
+    // zoomed out — no abrupt `data-zoom-tier` snap. The shared rule defaults
+    // thin so the look is correct even before JS sets the var, and re-asserts
+    // non-scaling-stroke as a guard against a pypowsybl build flipping equipment
+    // paths to vector-effect:none.
+    it('drives the overload halo width from the --nad-halo-w var with a thin default + non-scaling-stroke', () => {
         const css = readFileSync(resolve(__dirname, 'App.css'), 'utf-8');
-        // The detail-zoom block must mention both the cap and the
-        // screen-space stroke vector-effect.
+        // The shared halo rule binds stroke-width to the zoom-adaptive var with
+        // a thin fallback, and keeps the stroke screen-space.
         expect(css).toMatch(
-            /\[data-zoom-tier="detail"\]\s+\.nad-overloaded[^{]*{[^}]*stroke-width:\s*24px[^}]*vector-effect:\s*non-scaling-stroke/s,
+            /\.nad-overloaded path[^{]*{[^}]*stroke-width:\s*var\(--nad-halo-w,\s*24px\)[^}]*vector-effect:\s*non-scaling-stroke/s,
+        );
+        // No fixed per-tier width snap survives (neither the old thin 24px cap
+        // nor a fat 120px override) — width is the var, continuously.
+        expect(css).not.toMatch(
+            /\[data-zoom-tier="(?:region|detail)"\]\s+\.nad-overloaded[^{]*{[^}]*stroke-width:/s,
+        );
+    });
+
+    it('drives the var continuously from the zoom ratio (no tier-stepped width) in usePanZoom', () => {
+        const hook = readFileSync(resolve(__dirname, 'hooks/usePanZoom.ts'), 'utf-8');
+        // usePanZoom writes --nad-halo-w from a continuous ratio function, not a
+        // tier lookup, so the width transitions smoothly between zoom levels.
+        expect(hook).toMatch(/setProperty\(\s*['"]--nad-halo-w['"]/s);
+        expect(hook).toMatch(/computeHaloWidthPx/s);
+    });
+});
+
+// ------------------------------------------------------------------
+// Interaction-time paint culling (pan/zoom fluidity, CSS contract)
+// ------------------------------------------------------------------
+
+describe('UX consistency — interaction paint culling', () => {
+    // While a pan/zoom gesture is active, usePanZoom adds `.svg-interacting`
+    // to the container. The CSS culls the two most expensive paint element
+    // classes (HTML VL labels + edge-info flow values) for that window so
+    // the per-frame viewBox repaint stays cheaper on large grids (measured
+    // ~1.5x faster pan / ~1.7x faster zoom on the 5247-VL European grid in
+    // a software-rendered headless benchmark; larger expected on GPU).
+    // Guard the rule so a refactor that drops it fails here rather than
+    // silently regressing fluidity. See
+    // docs/performance/history/interaction-paint-culling.md.
+    const readCss = () => readFileSync(resolve(__dirname, 'App.css'), 'utf-8');
+
+    it('hides the edge-info flow group during active interaction', () => {
+        expect(readCss()).toMatch(
+            /\.svg-container\.svg-interacting\s+\.nad-edge-infos[^{]*{[^}]*display:\s*none/s,
+        );
+    });
+
+    it('hides the HTML voltage-level labels during active interaction', () => {
+        // At least one of the pypowsybl VL-label foreignObject shapes
+        // must be culled under `.svg-interacting`.
+        expect(readCss()).toMatch(
+            /\.svg-container\.svg-interacting\s+(?:foreignObject\.nad-text-nodes|\.nad-text-nodes|\.nad-vl-nodes\s+foreignObject)[^{]*{[^}]*display:\s*none/s,
         );
     });
 });
