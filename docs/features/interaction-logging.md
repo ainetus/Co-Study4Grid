@@ -210,7 +210,7 @@ Each event's `details` field contains **all parameters needed to replay** the us
 | `zoom_out` | `{ tab: TabId }` | Click - button |
 | `zoom_reset` | `{ tab: TabId }` | Click reset button |
 | `inspect_query_changed` | `{ query: string, target_tab?: TabId }` — `target_tab` is only present when the inspect field was triggered from a detached-tab overlay (per-tab inspect routing). Absent = main-window active tab. | Type in search box |
-| `vl_names_toggled` | `{ show: boolean }` — new visibility state of the `🏷 VL` toggle (default ON). Toggles the `nad-hide-vl-labels` CSS class on every NAD tab; the labels remain reachable via the per-bus `<title>` tooltip injected by `applyVlTitles`. | Click `🏷 VL` next to the bottom-left Inspect field. |
+| `vl_names_toggled` | `{ show: boolean }` — new visibility state of the `🏷 VL` toggle (default ON). Toggles the `nad-hide-vl-labels` CSS class on every NAD tab; while hidden, the labels remain reachable via the per-disk hover tooltip injected by `attachVlInteractions` (`utils/svg/vlInteractions.ts`). | Click `🏷 VL` next to the bottom-left Inspect field. |
 
 ### Action Overview Diagram
 

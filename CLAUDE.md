@@ -108,8 +108,9 @@ Co-Study4Grid/
 │                                  # fileRegistry (structure regression guard)
 │           └── svg/               # PR #104 decomposition — idMap, metadataIndex,
 │                                  # svgBoost, fitRect, deltaVisuals, actionPinData,
-│                                  # actionPinRender, highlights, vlTitles (PR #118 —
-│                                  # VL-name title-tooltip injector), overflowPinPayload
+│                                  # actionPinRender, highlights, vlInteractions (VL-disk
+│                                  # hover name / click-to-inspect / dbl-click SLD),
+│                                  # overflowPinPayload
 │                                  # + overflowOverlayRender + pinGlyph (PR #116 —
 │                                  # iframe-overlay pin pipeline)
 ├── standalone_interface_legacy.html  # DECOMMISSIONED 2026-04-20 — hand-maintained
@@ -168,6 +169,7 @@ Co-Study4Grid/
 | `docs/features/adding-action-type.md` | Cross-cutting checklist for adding/upgrading a remedial-action type (lib → backend → frontend → save/log/reload triad → regression specs) |
 | `docs/features/interaction-logging.md` | Replay-ready event log contract |
 | `docs/features/sld-topology-edit.md` | Interactive SLD topology edit → manual action card |
+| `docs/features/vl-disk-interactions.md` | Interactive VL disks on the NAD (hover name / click → Inspect / double-click → SLD) + delegation performance contract |
 | `docs/features/game-mode-codabench.md` | Timed, scored Game Mode (`?game=1`) + Codabench benchmark bundle |
 | `deploy/huggingface/` | HuggingFace Docker Space deployment (Space README + `SETUP.md`) |
 

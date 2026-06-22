@@ -27,7 +27,7 @@ export {
     applyContingencyHighlight,
 } from './svg/highlights';
 export { applyDeltaVisuals } from './svg/deltaVisuals';
-export { applyVlTitles } from './svg/vlTitles';
+export { attachVlInteractions } from './svg/vlInteractions';
 export {
     severityFill,
     severityFillDimmed,

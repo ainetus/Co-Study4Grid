@@ -7,6 +7,28 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Interactive voltage-level disks on the network diagram
+
+The voltage-level disks of the NAD (Network, Contingency and Remedial
+Action tabs) are now directly interactive:
+
+- **Hover** surfaces the VL name as a lightweight floating tooltip while
+  the on-diagram labels are hidden (the `🏷 VL` toggle), so the name is
+  recoverable without turning the labels back on.
+- **Single-click** selects the VL — it fills the Inspect field and
+  auto-zooms / highlights it, exactly as typing the name in the Inspect
+  box would.
+- **Double-click** opens the VL's Single Line Diagram overlay.
+
+Implemented as a single delegated listener set per diagram container
+(`utils/svg/vlInteractions.ts`), deliberately engineered to leave
+rendering and pan/zoom fluidity untouched: no per-node or per-frame
+work, a static CSS pointer-cursor affordance, and full reliance on the
+existing `.svg-interacting` hit-test cull so nothing runs mid-gesture.
+A click is distinguished from a pan by pointer travel, and the single-
+click action is deferred briefly so a double-click pre-empts it. This
+supersedes the former native `<title>` tooltip (`utils/svg/vlTitles.ts`).
+
 ### Editable MW setpoint in Manual Selection and Explore Pairs tables
 
 Injection-based remedial actions (redispatch, load shedding, curtailment)

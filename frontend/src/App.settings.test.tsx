@@ -93,7 +93,7 @@ vi.mock('./utils/svgUtils', () => ({
   getIdMap: () => new Map(),
   invalidateIdMapCache: vi.fn(),
   isCouplingAction: vi.fn(() => false),
-  applyVlTitles: vi.fn(),
+  attachVlInteractions: vi.fn(() => () => {}),
 }));
 
 

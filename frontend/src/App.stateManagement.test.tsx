@@ -75,6 +75,13 @@ vi.mock('./hooks/usePanZoom', () => ({
   usePanZoom: () => ({ viewBox: null, setViewBox: vi.fn() }),
 }));
 
+// Capture the handlers App wires into each attachVlInteractions call so
+// the VL-disk interaction wiring tests can invoke onSelect / onOpenSld
+// directly (the real delegation needs a live SVG the mock doesn't render).
+const vlInteractionHandlers = vi.hoisted(
+  () => [] as Array<{ onSelect?: (id: string) => void; onOpenSld?: (id: string) => void }>,
+);
+
 // Mock SVG utilities
 vi.mock('./utils/svgUtils', () => ({
   processSvg: (svg: string) => ({ svg, viewBox: { x: 0, y: 0, w: 100, h: 100 } }),
@@ -86,7 +93,12 @@ vi.mock('./utils/svgUtils', () => ({
   getIdMap: () => new Map(),
   invalidateIdMapCache: vi.fn(),
   isCouplingAction: vi.fn(() => false),
-  applyVlTitles: vi.fn(),
+  attachVlInteractions: vi.fn(
+    (_container: unknown, _meta: unknown, handlers: { onSelect?: (id: string) => void; onOpenSld?: (id: string) => void }) => {
+      vlInteractionHandlers.push(handlers);
+      return () => {};
+    },
+  ),
 }));
 
 // Mock API
@@ -312,6 +324,44 @@ describe('Phase 2: State Management Optimization', () => {
       expect(typeof lastRender.onVoltageRangeChange).toBe('function');
       expect(typeof lastRender.onInspectQueryChange).toBe('function');
       expect(typeof lastRender.onVlOpen).toBe('function');
+    });
+  });
+
+  describe('Voltage-level disk interaction wiring', () => {
+    it('routes a single-clicked VL into the shared Inspect query', async () => {
+      vlInteractionHandlers.length = 0;
+      await renderAndLoadStudy();
+      await waitFor(() => expect(vlInteractionHandlers.length).toBeGreaterThanOrEqual(3));
+
+      // The latest effect run binds [n, contingency, action] in order, so
+      // the first of the final three is the Network (N) tab's handler set.
+      const nTab = vlInteractionHandlers[vlInteractionHandlers.length - 3];
+      expect(typeof nTab.onSelect).toBe('function');
+
+      act(() => { nTab.onSelect!('VL1'); });
+
+      await waitFor(() => {
+        const last = vizPanelRenderLog[vizPanelRenderLog.length - 1];
+        expect(last.inspectQuery).toBe('VL1');
+      });
+    });
+
+    it('opens the SLD overlay when a VL disk is double-clicked', async () => {
+      mockApi.getNSld.mockResolvedValueOnce({ svg: '<svg></svg>', sld_metadata: null, switch_states: {} });
+      vlInteractionHandlers.length = 0;
+      await renderAndLoadStudy();
+      await waitFor(() => expect(vlInteractionHandlers.length).toBeGreaterThanOrEqual(3));
+
+      const handlers = vlInteractionHandlers[vlInteractionHandlers.length - 1];
+      expect(typeof handlers.onOpenSld).toBe('function');
+
+      await act(async () => { handlers.onOpenSld!('VL1'); });
+
+      await waitFor(() => {
+        const last = vizPanelRenderLog[vizPanelRenderLog.length - 1];
+        const overlay = last.vlOverlay as { vlName?: string } | null;
+        expect(overlay?.vlName).toBe('VL1');
+      });
     });
   });
 

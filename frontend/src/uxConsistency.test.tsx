@@ -53,7 +53,7 @@ vi.mock('./utils/svgUtils', async () => {
         applyActionOverviewHighlights: vi.fn(),
         applyActionOverviewPins: vi.fn(),
         rescaleActionOverviewPins: vi.fn(),
-        applyVlTitles: vi.fn(),
+        attachVlInteractions: vi.fn(() => () => {}),
         boostSvgForLargeGrid: vi.fn(),
         invalidateIdMapCache: vi.fn(),
     };
