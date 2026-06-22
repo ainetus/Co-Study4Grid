@@ -111,6 +111,48 @@ describe('useDiagrams — interaction logging', () => {
         expect(log[0].details).toEqual({ tab: 'n' });
     });
 
+    it('handleManualReset records the current contingency anchor so the auto-zoom effect does NOT re-zoom back onto the contingency (Unzoom must fully unzoom)', () => {
+        // Regression: handleManualReset used to reset lastZoomState to
+        // { query: '', branch: '' } while a contingency was still selected.
+        // The auto-zoom effect then saw branch '' !== contingency anchor,
+        // treated it as a branch change, and immediately re-zoomed onto the
+        // contingency — so Unzoom snapped back instead of fully unzooming.
+        const { result } = renderHook(() =>
+            useDiagrams([], [], ['LINE_A', 'LINE_B']),
+        );
+
+        // A viewBox must exist for the reset to write lastZoomState.
+        act(() => {
+            result.current.setOriginalViewBox({ x: 0, y: 0, w: 100, h: 100 });
+        });
+
+        act(() => {
+            result.current.handleManualReset();
+        });
+
+        expect(result.current.lastZoomState.current).toEqual({
+            query: '',
+            branch: 'LINE_A',
+        });
+    });
+
+    it('handleManualReset records an empty branch when no contingency is selected', () => {
+        const { result } = renderHook(() => useDiagrams([], [], []));
+
+        act(() => {
+            result.current.setOriginalViewBox({ x: 0, y: 0, w: 100, h: 100 });
+        });
+
+        act(() => {
+            result.current.handleManualReset();
+        });
+
+        expect(result.current.lastZoomState.current).toEqual({
+            query: '',
+            branch: '',
+        });
+    });
+
     it('logs sld_overlay_opened when handleVlDoubleClick is called', () => {
         const { result } = renderHook(() => useDiagrams([], [], []));
 
