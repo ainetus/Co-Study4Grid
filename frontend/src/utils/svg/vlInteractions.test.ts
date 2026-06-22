@@ -198,4 +198,100 @@ describe('attachVlInteractions', () => {
         vi.advanceTimersByTime(VL_SINGLE_CLICK_DELAY_MS);
         expect(onSelect).not.toHaveBeenCalled();
     });
+
+    it('falls back to the raw id in the tooltip when no displayName is given', () => {
+        const { container, disk } = makeContainer();
+        cleanups.push(attachVlInteractions(container, makeMetaIndex(), {}));
+        container.classList.add('nad-hide-vl-labels');
+        disk.dispatchEvent(mouse('mouseover'));
+        const tip = container.querySelector('.cs4g-vl-hover-tooltip') as HTMLElement;
+        expect(tip.textContent).toBe('VL_400');
+    });
+
+    it('keeps the tooltip while the pointer moves within the same VL group', () => {
+        const { container, disk } = makeContainer();
+        const path = document.createElementNS(SVG_NS, 'path');
+        (disk.parentNode as Element).appendChild(path); // sibling inside the VL group
+        cleanups.push(attachVlInteractions(container, makeMetaIndex(), {}));
+        container.classList.add('nad-hide-vl-labels');
+
+        disk.dispatchEvent(mouse('mouseover'));
+        const tip = container.querySelector('.cs4g-vl-hover-tooltip') as HTMLElement;
+        expect(tip.style.display).toBe('block');
+
+        // Crossing from the circle to a sibling of the SAME group must not hide it.
+        disk.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: path }));
+        expect(tip.style.display).toBe('block');
+    });
+
+    it('reuses a single tooltip node across successive hovers', () => {
+        const { container, disk } = makeContainer();
+        cleanups.push(attachVlInteractions(container, makeMetaIndex(), {}));
+        container.classList.add('nad-hide-vl-labels');
+
+        disk.dispatchEvent(mouse('mouseover'));
+        disk.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: null }));
+        disk.dispatchEvent(mouse('mouseover'));
+
+        expect(container.querySelectorAll('.cs4g-vl-hover-tooltip')).toHaveLength(1);
+    });
+
+    it('resolves the VL when the event originates on a nested child element', () => {
+        const { container, disk } = makeContainer();
+        const path = document.createElementNS(SVG_NS, 'path');
+        (disk.parentNode as Element).appendChild(path);
+        const onSelect = vi.fn();
+        cleanups.push(attachVlInteractions(container, makeMetaIndex(), { onSelect }));
+
+        path.dispatchEvent(mouse('mousedown'));
+        path.dispatchEvent(mouse('click'));
+        vi.advanceTimersByTime(VL_SINGLE_CLICK_DELAY_MS);
+        expect(onSelect).toHaveBeenCalledWith('VL_400');
+    });
+
+    it('selects the specific disk that was pressed when several VLs are present', () => {
+        const { container } = makeContainer();
+        const node2: NodeMeta = { equipmentId: 'VL_225', svgId: 'vl2-svg', x: 100, y: 100 };
+        const vlNodes = container.querySelector('.nad-vl-nodes')!;
+        const group2 = document.createElementNS(SVG_NS, 'g');
+        group2.id = 'vl2-svg';
+        const disk2 = document.createElementNS(SVG_NS, 'circle');
+        group2.appendChild(disk2);
+        vlNodes.appendChild(group2);
+        const meta = makeMetaIndex();
+        meta.nodesByEquipmentId.set('VL_225', node2);
+        meta.nodesBySvgId.set('vl2-svg', node2);
+
+        const onSelect = vi.fn();
+        cleanups.push(attachVlInteractions(container, meta, { onSelect }));
+
+        disk2.dispatchEvent(mouse('mousedown'));
+        disk2.dispatchEvent(mouse('click'));
+        vi.advanceTimersByTime(VL_SINGLE_CLICK_DELAY_MS);
+        expect(onSelect).toHaveBeenCalledWith('VL_225');
+    });
+
+    it('does not fire a queued single-click after teardown', () => {
+        const { container, disk } = makeContainer();
+        const onSelect = vi.fn();
+        const teardown = attachVlInteractions(container, makeMetaIndex(), { onSelect });
+
+        disk.dispatchEvent(mouse('mousedown'));
+        disk.dispatchEvent(mouse('click')); // queues the deferred select…
+        teardown();                          // …then we tear down within the window
+        vi.advanceTimersByTime(VL_SINGLE_CLICK_DELAY_MS);
+        expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when the optional handlers are omitted', () => {
+        const { container, disk } = makeContainer();
+        cleanups.push(attachVlInteractions(container, makeMetaIndex(), {}));
+        expect(() => {
+            disk.dispatchEvent(mouse('mousedown'));
+            disk.dispatchEvent(mouse('click'));
+            vi.advanceTimersByTime(VL_SINGLE_CLICK_DELAY_MS);
+            disk.dispatchEvent(mouse('mousedown'));
+            disk.dispatchEvent(mouse('dblclick'));
+        }).not.toThrow();
+    });
 });
