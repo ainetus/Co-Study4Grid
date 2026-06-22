@@ -334,12 +334,26 @@ performance levers are applied today:
   `.nad-vl-nodes` / `.nad-label-nodes`, and root-level
   `.nad-label-box` divs — with `!important` to beat the inline
   `<style>` block pypowsybl appends after App.css. When labels are
-  hidden the VL name is still reachable via a native `<title>`
-  tooltip on each bus circle: `applyVlTitles` (`utils/svg/vlTitles.ts`)
-  walks the metadata index after every diagram refresh and injects /
-  updates one `<title data-vl-title>` per node group, idempotently.
-  The toggle emits a `vl_names_toggled { show }` interaction event
-  (declared in both `spec
+  hidden the VL name is still reachable on hover via a lightweight
+  floating tooltip injected by `attachVlInteractions`
+  (`utils/svg/vlInteractions.ts`) — see the **VL-disk interactions**
+  entry below. The toggle emits a `vl_names_toggled { show }`
+  interaction event (declared in both `spec
+ - **VL-disk interactions** (`utils/svg/vlInteractions.ts`,
+  `attachVlInteractions`): the voltage-level disks on every NAD tab are
+  interactive — **hover** shows the VL name (only while the static
+  labels are hidden), **single-click** selects the VL (drives the
+  Inspect field + auto-zoom, same as typing it in the box) and
+  **double-click** opens its SLD overlay. Wired from `App.tsx` via one
+  delegated effect, re-bound on each diagram / metadata refresh.
+  Performance is the design constraint: a fixed handful of delegated
+  listeners on the container (never one-per-node), **no `mousemove` /
+  per-frame work**, the pointer-cursor affordance is a static
+  `.nad-vl-nodes { cursor: pointer }` CSS rule, and during pan/zoom the
+  existing `.svg-interacting` rule disables SVG hit-testing so no
+  handler resolves a node mid-gesture. A click is told apart from a pan
+  by pointer travel; the single-click action is deferred
+  `VL_SINGLE_CLICK_DELAY_MS` so a double-click pre-empts it.
 - **SVG DOM recycling** (`utils/svgPatch.ts`, PR #108): on N-1 /
   action tab switches the N-state `SVGSVGElement` is cloned and
   patched with per-branch deltas from the new

@@ -108,8 +108,9 @@ Co-Study4Grid/
 │                                  # fileRegistry (structure regression guard)
 │           └── svg/               # PR #104 decomposition — idMap, metadataIndex,
 │                                  # svgBoost, fitRect, deltaVisuals, actionPinData,
-│                                  # actionPinRender, highlights, vlTitles (PR #118 —
-│                                  # VL-name title-tooltip injector), overflowPinPayload
+│                                  # actionPinRender, highlights, vlInteractions (VL-disk
+│                                  # hover name / click-to-inspect / dbl-click SLD),
+│                                  # overflowPinPayload
 │                                  # + overflowOverlayRender + pinGlyph (PR #116 —
 │                                  # iframe-overlay pin pipeline)
 ├── standalone_interface_legacy.html  # DECOMMISSIONED 2026-04-20 — hand-maintained

@@ -19,7 +19,7 @@ import ReloadSessionModal from './components/modals/ReloadSessionModal';
 import ConfirmationDialog from './components/modals/ConfirmationDialog';
 import type { ConfirmDialogState } from './components/modals/ConfirmationDialog';
 import { api } from './api';
-import type { ActionDetail, ActionOverviewFilters, DiagramData, TabId, RecommenderDisplayConfig, UnsimulatedActionScoreInfo } from './types';
+import type { ActionDetail, ActionOverviewFilters, DiagramData, TabId, MetadataIndex, RecommenderDisplayConfig, UnsimulatedActionScoreInfo } from './types';
 import { useSettings } from './hooks/useSettings';
 import { useActions } from './hooks/useActions';
 import { useAnalysis } from './hooks/useAnalysis';
@@ -34,7 +34,7 @@ import { interactionLogger } from './utils/interactionLogger';
 import { gameBridge } from './game/gameBridge';
 import type { GameStudy } from './game/types';
 import { DEFAULT_ACTION_OVERVIEW_FILTERS } from './utils/actionTypes';
-import { applyVlTitles } from './utils/svgUtils';
+import { attachVlInteractions } from './utils/svgUtils';
 import {
     buildOverflowPinPayload,
     buildOverflowUnsimulatedPinPayload,
@@ -1319,24 +1319,6 @@ function App() {
     diagrams.selectedContingencyForSld.current = selectedContingency;
   }, [selectedContingency, diagrams.selectedContingencyForSld]);
 
-  // Inject `<title>` elements into each voltage-level node group on every
-  // diagram refresh so the browser surfaces the VL name as a native
-  // tooltip when the user hovers a bus circle. This is the fallback path
-  // when the on-diagram label is hidden via the VL-names toggle (see
-  // `nad-hide-vl-labels`), but the titles are kept attached
-  // unconditionally — they're invisible until hover and cost effectively
-  // nothing.
-  useEffect(() => {
-    applyVlTitles(nSvgContainerRef.current, diagrams.nMetaIndex, displayName);
-  }, [nDiagram, diagrams.nMetaIndex, displayName, nSvgContainerRef]);
-  useEffect(() => {
-    applyVlTitles(n1SvgContainerRef.current, diagrams.n1MetaIndex, displayName);
-  }, [n1Diagram, diagrams.n1MetaIndex, displayName, n1SvgContainerRef]);
-  useEffect(() => {
-    applyVlTitles(actionSvgContainerRef.current, diagrams.actionMetaIndex, displayName);
-  }, [actionDiagram, diagrams.actionMetaIndex, displayName, actionSvgContainerRef]);
-
-
 
   useContingencyFetch({
     selectedContingency,
@@ -1563,6 +1545,47 @@ function App() {
     // "Action '' not found in last analysis result".
     handleVlDoubleClick(selectedActionId || '', vlName);
   }, [handleVlDoubleClick, selectedActionId]);
+
+  // Keep the VL-disk interaction callbacks in refs so the delegated
+  // listeners below re-bind ONLY when a diagram / its metadata actually
+  // changes — never on an unrelated App render, which would needlessly
+  // tear down the listeners and (worse) cancel an in-flight single-click
+  // timer mid-window.
+  const vlSelectRef = useRef(handleInspectQueryChangeFor);
+  const vlOpenSldRef = useRef(handleVlOpen);
+  const vlDisplayNameRef = useRef(displayName);
+  useEffect(() => {
+    vlSelectRef.current = handleInspectQueryChangeFor;
+    vlOpenSldRef.current = handleVlOpen;
+    vlDisplayNameRef.current = displayName;
+  });
+
+  // Voltage-level disk interactions on every NAD tab: hover shows the VL
+  // name while the static labels are hidden, single-click selects the VL
+  // (drives the Inspect field + auto-zoom), double-click opens its SLD.
+  // Delegated listeners only — see `attachVlInteractions` for the
+  // performance contract (no per-node / per-frame work; idle during
+  // pan/zoom gestures because `.svg-interacting` disables SVG hit-
+  // testing). Re-binds only on a diagram / metadata-index refresh.
+  useEffect(() => {
+    const targets: Array<readonly [HTMLElement | null, MetadataIndex | null, TabId]> = [
+      [nSvgContainerRef.current, diagrams.nMetaIndex, 'n'],
+      [n1SvgContainerRef.current, diagrams.n1MetaIndex, 'contingency'],
+      [actionSvgContainerRef.current, diagrams.actionMetaIndex, 'action'],
+    ];
+    const teardowns = targets.map(([container, metaIndex, tab]) =>
+      attachVlInteractions(container, metaIndex, {
+        displayName: (id) => vlDisplayNameRef.current(id),
+        onSelect: (vlId) => vlSelectRef.current(tab, vlId),
+        onOpenSld: (vlId) => vlOpenSldRef.current(vlId),
+      }),
+    );
+    return () => teardowns.forEach((teardown) => teardown());
+  }, [
+    nDiagram, n1Diagram, actionDiagram,
+    diagrams.nMetaIndex, diagrams.n1MetaIndex, diagrams.actionMetaIndex,
+    nSvgContainerRef, n1SvgContainerRef, actionSvgContainerRef,
+  ]);
 
   // Double-click on an action pin in the overflow graph drills into
   // that substation's SLD on the post-action ('action') sub-tab.

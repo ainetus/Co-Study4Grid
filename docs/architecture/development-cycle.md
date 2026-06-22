@@ -664,9 +664,10 @@ toucher au moteur d'analyse.
   `.nad-vl-nodes` / `.nad-label-nodes`, et `.nad-label-box` au
   niveau racine) avec `!important` pour battre l'inline style block
   injecté par pypowsybl après App.css.
-- Quand les labels sont cachés, le nom du VL reste accessible via
-  un `<title>` natif sur chaque cercle de bus
-  (`utils/svg/vlTitles.ts:applyVlTitles`).
+- Quand les labels sont cachés, le nom du VL reste accessible au
+  survol via une infobulle flottante injectée par
+  `utils/svg/vlInteractions.ts:attachVlInteractions` (qui ajoute aussi
+  le clic = sélection/Inspect et le double-clic = ouverture du SLD).
 - Nouvel évènement `vl_names_toggled { show }` dans le journal
   d'interactions (`4ed9bdb`).
 

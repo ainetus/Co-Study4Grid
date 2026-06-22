@@ -45,7 +45,7 @@ vi.mock('./utils/svgUtils', () => ({
   getIdMap: () => new Map(),
   invalidateIdMapCache: vi.fn(),
   isCouplingAction: vi.fn(() => false),
-  applyVlTitles: vi.fn(),
+  attachVlInteractions: vi.fn(() => () => {}),
   // ActionFeed filters its card list through this — always pass so the
   // origin assertions aren't masked by the severity/threshold gate.
   actionPassesOverviewFilter: vi.fn(() => true),

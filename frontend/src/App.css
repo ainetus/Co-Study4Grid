@@ -176,6 +176,16 @@ This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface t
     display: none !important;
 }
 
+/* Voltage-level disks are interactive: single-click selects (Inspect +
+   auto-zoom), double-click opens the SLD, hover shows the name while the
+   static labels are hidden (see utils/svg/vlInteractions.ts). The pointer
+   cursor is a static rule so the affordance costs nothing at render or
+   gesture time; during a pan/zoom `.svg-interacting` disables SVG hit-
+   testing, so the container's grab/grabbing cursor wins instead. */
+.svg-container .nad-vl-nodes {
+    cursor: pointer;
+}
+
 /* ===== Highlight styles ===== */
 
 .nad-highlight {
