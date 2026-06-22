@@ -106,6 +106,34 @@ describe('attachVlInteractions', () => {
         expect(onSelect).not.toHaveBeenCalled();
     });
 
+    // Real-world regression: usePanZoom sets pointer-events:none on every
+    // SVG child during the gesture, so the browser retargets the resulting
+    // `click` / `dblclick` to the container (not the disk). The VL must
+    // still be resolved — it is captured from the mousedown, whose hit-test
+    // lands on the live disk before the cull is applied.
+    it('selects even when the click is retargeted to the container', () => {
+        const { container, disk } = makeContainer();
+        const onSelect = vi.fn();
+        cleanups.push(attachVlInteractions(container, makeMetaIndex(), { onSelect }));
+
+        disk.dispatchEvent(mouse('mousedown')); // hit-tests the live disk
+        container.dispatchEvent(mouse('click')); // retargeted to the container
+        vi.advanceTimersByTime(VL_SINGLE_CLICK_DELAY_MS);
+        expect(onSelect).toHaveBeenCalledWith('VL_400');
+    });
+
+    it('opens the SLD even when the double-click is retargeted to the container', () => {
+        const { container, disk } = makeContainer();
+        const onOpenSld = vi.fn();
+        cleanups.push(attachVlInteractions(container, makeMetaIndex(), { onOpenSld }));
+
+        disk.dispatchEvent(mouse('mousedown'));
+        container.dispatchEvent(mouse('click'));
+        disk.dispatchEvent(mouse('mousedown'));
+        container.dispatchEvent(mouse('dblclick'));
+        expect(onOpenSld).toHaveBeenCalledWith('VL_400');
+    });
+
     it('treats a drag (pointer travel beyond the threshold) as a pan, not a click', () => {
         const { container, disk } = makeContainer();
         const onSelect = vi.fn();

@@ -158,13 +158,25 @@ export const attachVlInteractions = (
     };
 
     // --- Click vs. double-click (drag-guarded, single-click deferred) ---
+    //
+    // The VL node is captured on `mousedown`, NOT on `click`. usePanZoom
+    // adds `.svg-interacting` (→ `pointer-events: none` on every SVG child)
+    // the instant a drag starts, so by the time `mouseup` fires the disk is
+    // transparent and the browser retargets the resulting `click` to the
+    // container (the common ancestor of the disk-mousedown and the
+    // container-mouseup). Resolving from `click.target` would therefore
+    // always miss. The mousedown hit-test still lands on the real disk
+    // (the class is only set *by* that handler, after the target is fixed),
+    // so that is where we read the node.
     let downX = 0;
     let downY = 0;
+    let downVl: NodeMeta | null = null;
     let clickTimer: ReturnType<typeof setTimeout> | null = null;
 
     const onDown = (evt: MouseEvent) => {
         downX = evt.clientX;
         downY = evt.clientY;
+        downVl = resolveVl(evt.target);
     };
 
     const onClick = (evt: MouseEvent) => {
@@ -172,7 +184,7 @@ export const attachVlInteractions = (
         if (Math.hypot(evt.clientX - downX, evt.clientY - downY) > DRAG_THRESHOLD_PX) return;
         // Second click of a double-click — let `dblclick` take over.
         if (clickTimer !== null) return;
-        const node = resolveVl(evt.target);
+        const node = downVl;
         if (!node) return;
         const vlId = node.equipmentId;
         clickTimer = setTimeout(() => {
@@ -181,12 +193,12 @@ export const attachVlInteractions = (
         }, VL_SINGLE_CLICK_DELAY_MS);
     };
 
-    const onDblClick = (evt: MouseEvent) => {
+    const onDblClick = () => {
         if (clickTimer !== null) {
             clearTimeout(clickTimer);
             clickTimer = null;
         }
-        const node = resolveVl(evt.target);
+        const node = downVl;
         if (!node) return;
         onOpenSld?.(node.equipmentId);
     };
