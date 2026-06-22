@@ -770,7 +770,11 @@ export function useDiagrams(
 
     if (pz && viewBox) {
       pz.setViewBox(viewBox);
-      lastZoomState.current = { query: '', branch: '' };
+      // Record the current contingency anchor (not an empty branch) so the
+      // auto-zoom effect does NOT see a "branch change" and immediately
+      // re-zoom back onto the contingency — Unzoom must fully unzoom to the
+      // whole-network view and stay there.
+      lastZoomState.current = { query: '', branch: selectedContingency[0] || '' };
     }
 
     const container = tab === 'action' ? actionSvgContainerRef.current
@@ -778,7 +782,7 @@ export function useDiagrams(
     if (container) {
       container.querySelectorAll('.nad-highlight').forEach(el => el.classList.remove('nad-highlight'));
     }
-  }, [activeTab, actionPZ, nPZ, n1PZ, actionDiagram, nDiagram, n1Diagram, originalViewBox]);
+  }, [activeTab, actionPZ, nPZ, n1PZ, actionDiagram, nDiagram, n1Diagram, originalViewBox, selectedContingency]);
 
   // ===== Tab Synchronization =====
   useLayoutEffect(() => {
