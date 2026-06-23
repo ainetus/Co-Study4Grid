@@ -544,6 +544,21 @@ def extract_action_topology(action: Any, action_id: str, dict_action: dict | Non
             if sw:
                 topo["switches"] = sanitize_for_json(sw)
 
+    # Back-fill injection setpoints from the action content so a user-built
+    # combined injection action (``set_gen_p`` AND ``set_load_p``) reports
+    # BOTH the generator and the load in its topology — the SLD / NAD
+    # highlight reads ``gens_p`` / ``loads_p`` to mark the affected feeders,
+    # and the grid2op action object doesn't always expose them as public
+    # attributes. Covers every action, not just the ``curtail_`` /
+    # ``load_shedding_`` prefixes handled below.
+    if dict_action:
+        content = (dict_action.get(action_id) or {}).get("content")
+        if isinstance(content, dict):
+            if not topo.get("gens_p") and content.get("set_gen_p"):
+                topo["gens_p"] = sanitize_for_json(content["set_gen_p"])
+            if not topo.get("loads_p") and content.get("set_load_p"):
+                topo["loads_p"] = sanitize_for_json(content["set_load_p"])
+
     if action_id.startswith("curtail_") and not topo.get("gens_p"):
         gen_name = action_id.replace("curtail_", "")
         reg = (dict_action or {}).get(action_id, {}).get("content", {}).get("set_gen_p", {})

@@ -134,6 +134,19 @@ generalised auto-description (`build_manual_action_description`) that
 names a user-built action covering switches AND injections
 (`"Manoeuvre manuelle sur <vl>: SW_A ouvert, GEN_X P=90.0 MW"`).
 
+**Highlighting a combined injection action.** A user-built action can
+retune a generator AND a load at the same VL (`set_gen_p` + `set_load_p`).
+For the SLD / NAD action-target highlight to mark **both** feeders, the
+action's `action_topology` must report both — but the grid2op action
+object doesn't expose `gens_p` / `loads_p` as public attributes, so
+`extract_action_topology` back-fills them from the action **content**
+(`set_gen_p` / `set_load_p`) for every action. The frontend also threads
+`action_topology` into the manual-action `ActionDetail`
+(`handleSimulateSldEdit` + `handleSimulateUnsimulatedAction`), so the SLD
+highlight reads `topo.gens_p` / `topo.loads_p` and clones a
+`sld-highlight-action` halo on each affected feeder — different feeders at
+the same substation are highlighted independently.
+
 Generator setpoints are clamped to `[min_p, max_p]` in the editor;
 loads have no capability bounds. Active-power values are read straight
 from the displayed network variant, so the baseline reflects the

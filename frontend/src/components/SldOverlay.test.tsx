@@ -489,6 +489,26 @@ describe('SldOverlay', () => {
             expect(container.querySelector('#cell_pst.sld-highlight-action-original')).toBeTruthy();
         });
 
+        it('highlights BOTH the generator and the load of a combined injection action', () => {
+            // The user's combined manual action sets set_gen_p AND set_load_p;
+            // the backend now back-fills action_topology with both, so the SLD
+            // must highlight the generator AND the load feeders — not just one.
+            const detail = {
+                description_unitaire: 'Manoeuvre manuelle sur VL_BEON: GEN_Y P=24.0 MW, LOAD_X P=3.0 MW',
+                rho_before: [1.1],
+                rho_after: [0.9],
+                max_rho: 0.9,
+                max_rho_line: 'X',
+                is_rho_reduction: true,
+                action_topology: { gens_p: { GEN_Y: 24.0 }, loads_p: { LOAD_X: 3.0 } },
+            };
+            const { container } = render(
+                <SldOverlay {...defaultProps} vlOverlay={makeOverlay()} result={makeResult(detail)} />,
+            );
+            expect(container.querySelector('#cell_gen.sld-highlight-action-original')).toBeTruthy();
+            expect(container.querySelector('#cell_load.sld-highlight-action-original')).toBeTruthy();
+        });
+
         it('falls back to SVG <text> search when SLD metadata equipmentId does not match load_name', () => {
             // Regression for the case observed on `bare_env_small_grid_test`:
             // the backend's LS action carries `load_name: "P.SAO3TR311"`

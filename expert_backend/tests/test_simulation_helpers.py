@@ -581,6 +581,34 @@ class TestExtractActionTopology:
         topo = extract_action_topology(action, "a", dict_action)
         assert topo["switches"] == {"SW1": 1}
 
+    def test_backfills_both_gens_and_loads_for_user_built_combined_action(self):
+        # A user-built combined injection action sets BOTH set_gen_p and
+        # set_load_p; the grid2op action object exposes neither, so the
+        # topology must be back-filled from the content so the SLD highlights
+        # BOTH the generator and the load.
+        action = MagicMock()
+        for f in ("lines_ex_bus", "lines_or_bus", "gens_bus", "loads_bus",
+                  "pst_tap", "substations", "switches", "loads_p", "gens_p"):
+            setattr(action, f, None)
+        dict_action = {
+            "user_topo_VL_X_1": {
+                "content": {"set_gen_p": {"GEN_A": 24.0}, "set_load_p": {"LOAD_A": 3.0}},
+            }
+        }
+        topo = extract_action_topology(action, "user_topo_VL_X_1", dict_action)
+        assert topo["gens_p"] == {"GEN_A": 24.0}
+        assert topo["loads_p"] == {"LOAD_A": 3.0}
+
+    def test_action_attributes_take_precedence_over_content_backfill(self):
+        action = MagicMock()
+        for f in ("lines_ex_bus", "lines_or_bus", "gens_bus", "loads_bus",
+                  "pst_tap", "substations", "switches", "loads_p"):
+            setattr(action, f, None)
+        action.gens_p = {"GEN_A": 99.0}  # already on the action
+        dict_action = {"user_topo_x": {"content": {"set_gen_p": {"GEN_A": 24.0}}}}
+        topo = extract_action_topology(action, "user_topo_x", dict_action)
+        assert topo["gens_p"] == {"GEN_A": 99.0}
+
 
 # ----------------------------------------------------------------------
 # serialize_action_result + normalise_non_convergence

@@ -648,6 +648,7 @@ function App() {
           disconnected_mw: metrics.disconnected_mw,
           non_convergence: metrics.non_convergence,
           lines_overloaded_after: metrics.lines_overloaded_after,
+          action_topology: metrics.action_topology,
           load_shedding_details: metrics.load_shedding_details,
           curtailment_details: metrics.curtailment_details,
           redispatch_details: metrics.redispatch_details,
@@ -854,6 +855,10 @@ function App() {
         disconnected_mw: m.disconnected_mw,
         non_convergence: m.non_convergence,
         lines_overloaded_after: m.lines_overloaded_after,
+        // Carry the topology so the SLD/NAD highlight marks EVERY affected
+        // feeder of a combined manual action (e.g. a generator redispatch
+        // AND a load shedding at the same VL get highlighted, not just one).
+        action_topology: m.action_topology,
         load_shedding_details: m.load_shedding_details,
         curtailment_details: m.curtailment_details,
         redispatch_details: m.redispatch_details,

@@ -31,8 +31,9 @@ breakers:
   for a generator — its **Pmin / Pmax** capability range and energy
   source. The operator types a new MW value (rounded to one decimal;
   generator values are clamped to the capability range) and it is staged
-  alongside any switch toggles in the same maneuver panel. **Simulate
-  action** runs the
+  alongside any switch toggles in the same maneuver panel. A combined
+  retune (a generator AND a load at the same VL) now highlights **both**
+  affected feeders on the SLD, not just one. **Simulate action** runs the
   combined switch + injection edit as one manual action, exactly like a
   topology maneuver.
 
