@@ -66,9 +66,20 @@ export const boostSvgForLargeGrid = (svgString: string, viewBox: ViewBox | null,
     // The clamp prevents pathological cases:
     //   - Floor 0.5 on a small grid that just crossed the
     //     BOOST_THRESHOLD: gained boost stays around 3, no underflow.
-    //   - Ceiling 250 caps the multiplier on grids whose viewBox is so
-    //     huge (≥ 9 M units) that the gained boost would overwhelm the
-    //     intrinsic node density.
+    //   - Ceiling 60 caps the multiplier on grids whose viewBox is so
+    //     wide that the gained boost would overwhelm the intrinsic node
+    //     density. It is pinned to the value the France `fr225_400`
+    //     layout already computes (~59.7), the largest boost we have
+    //     confirmed legible. Continent-scale layouts (`eur*`) compute
+    //     ~110 purely because their extent is ~3× wider while the
+    //     physical substation spacing is unchanged, so their r=27.5
+    //     circles were blown up to a ~6 040-unit diameter — larger than
+    //     the median inter-substation distance, which (a) made adjacent
+    //     stations bleed together and (b) made the two voltage levels of
+    //     one substation overlap even after the layout separated them.
+    //     Clamping to 60 halves those disks (~3 280-unit diameter) and
+    //     leaves every France grid (all ≤ 60) untouched. Lower this only
+    //     if you accept smaller nodes on the France layouts too.
     //
     // Adding an OFFSET (third iteration) gave a baseline shape that
     // converges to native rendering for very small viewBoxes; adding
@@ -107,7 +118,7 @@ export const boostSvgForLargeGrid = (svgString: string, viewBox: ViewBox | null,
     const NODE_BOOST_FLOOR = 1.0;
     const NODE_BOOST_OFFSET = 1.5;
     const NODE_BOOST_GAIN = 10 / 3;
-    const NODE_BOOST_CEILING = 250;
+    const NODE_BOOST_CEILING = 60;
     // VLs per unit² above which the formula starts shrinking nodes
     // proportionally to `sqrt(density)`. Calibrated against fr225_400:
     // 1 196 VLs / (1.4 M × 1.39 M) ≈ 6 × 10⁻¹⁰. Less-dense layouts

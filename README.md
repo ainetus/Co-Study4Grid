@@ -1,5 +1,9 @@
 # Co-Study4Grid
 
+> **Want to try being a dispatcher?** Jump into this challenge to try it yourself: [![Open in HuggingFace Space](https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace-Open%20the%20demo-yellow)](https://amarot-co-study4grid.hf.space/)
+>
+> The demo runs the [European-Wide Studies in Practice](#european-wide-studies-in-practice) cases highlighted below.
+
 **Co-Study4Grid** is a full-stack web application for **power grid contingency analysis and remedial action search**. It provides an interactive interface on top of the [`expert_op4grid_recommender`](https://github.com/marota/Expert_op4grid_recommender) library, letting grid operators simulate element disconnections, visualize and analyze network overflows, and explore prioritized remedial actions — topology changes, PST tap adjustments, renewable curtailment, load shedding, and generation redispatch — individually or combined.It adopts the supportive framework mindset from AI4RealNet European project, empowering and supporting the user in developping its expertise rather than automating it.
 
 The remedial action recommender is **pluggable**: pick the expert rule-based system, a random

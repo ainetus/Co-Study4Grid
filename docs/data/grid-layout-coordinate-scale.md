@@ -68,3 +68,4 @@ The branch's earlier work (`utils/svg/svgBoost.ts`) added several frontend SVG t
 * `scripts/pypsa_eur/regenerate_grid_layout.py` — module docstring carries the same math summary.
 * `CHANGELOG.md` — `[Unreleased]` "Fixed" section.
 * `frontend/src/utils/svg/svgBoost.ts` — frontend mitigations that the layout fix retires.
+* [`voltage-level-separation.md`](voltage-level-separation.md) — the follow-on fix for substations whose **several voltage levels** share one location; run `separate_voltage_levels.py` *after* any regeneration here.

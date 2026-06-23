@@ -45,6 +45,28 @@ existing `set_gen_p` / `set_load_p` simulation path, with a generalised
 interaction-log events `sld_injection_staged` / `sld_injection_removed`.
 See [`docs/features/sld-topology-edit.md`](docs/features/sld-topology-edit.md).
 
+### Co-located voltage-level disks no longer overlap on the NAD
+
+Substations modelled at several voltages (225/400 kV, 380/400 kV, …) had
+their voltage-level buses placed at near-identical OSM coordinates, so on
+the network diagram their disks overlapped and the inter-voltage
+transformer rendered as a stray "ghost" ring beside the station. Fixed in
+two parts:
+
+- **`svgBoost.ts` node-boost ceiling lowered `250 → 60`.** Continent-scale
+  layouts (`eur*`) computed a ~110× boost purely from their wider extent,
+  blowing the fixed `r = 27.5` busnode up to a ~6 040-unit diameter — wider
+  than the median substation spacing. `60` is the largest boost confirmed
+  legible (the value `fr225_400` already computes), so every France grid
+  (all ≤ 60) is untouched while the European disks halve to ~3 280 units.
+- **New `scripts/pypsa_eur/separate_voltage_levels.py`.** Keeps the
+  highest-voltage VL anchored and pushes each lower-voltage VL into the
+  largest open angular gap by one boosted disk diameter (+30 %), with the
+  separation derived per network from the mirrored boost math. Regenerated
+  `grid_layout.json` for `eur220_225_380_400`, `eur380_400` and
+  `fr225_400` (`fr400` is single-voltage). Full write-up:
+  [`docs/data/voltage-level-separation.md`](docs/data/voltage-level-separation.md).
+
 ### Interactive voltage-level disks on the network diagram
 
 The voltage-level disks of the NAD (Network, Contingency and Remedial
