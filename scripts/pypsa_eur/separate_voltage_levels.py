@@ -59,15 +59,68 @@ log = logging.getLogger(__name__)
 
 # ─── Geometry tuning ─────────────────────────────────────────────────────────
 # pypowsybl emits the VL outer circle at a fixed r = 27.5 user units, but the
-# frontend (utils/svg/svgBoost.ts) scales it up by up to NODE_BOOST_CEILING
-# (= 60) on wide layouts so the disks are visible — a rendered diameter of
-# ~2 × 27.5 × 60 ≈ 3 300 units. For the two voltage-level disks of one
-# substation NOT to overlap on screen, their centres must therefore be more
-# than one boosted diameter apart. We separate by that diameter plus a margin.
-BOOST_CEILING = 60.0                       # keep in sync with svgBoost.ts NODE_BOOST_CEILING
-BOOSTED_DIAMETER = 2 * 27.5 * BOOST_CEILING  # ≈ 3 300 user units
-DEFAULT_SEPARATION = round(BOOSTED_DIAMETER * 1.3, 1)   # ≈ 4 290 — one diameter + 30 % visible gap
+# frontend (utils/svg/svgBoost.ts) scales it up so the disks are visible at the
+# layout's extent. For the two voltage-level disks of one substation NOT to
+# overlap on screen, their centres must be more than one *boosted* diameter
+# apart, so the separation is derived per-network from that same boost math
+# (see `frontend_node_boost`) plus a margin.
+BUSNODE_RADIUS = 27.5                       # pypowsybl's fixed VL-circle radius (user units)
+SEPARATION_MARGIN = 1.3                     # one boosted diameter + 30 % visible gap
+
+# Mirror of frontend utils/svg/svgBoost.ts `boostSvgForLargeGrid` node-boost
+# math — KEEP IN SYNC. A busnode is rendered at radius BUSNODE_RADIUS × boost,
+# so the separation we pick here must track whatever that file computes.
+BOOST_CEILING = 60.0                        # == svgBoost.ts NODE_BOOST_CEILING
+BOOST_REFERENCE_SIZE = 1250.0               # == REFERENCE_SIZE
+BOOST_THRESHOLD = 3.0                       # == BOOST_THRESHOLD
+NODE_BOOST_OFFSET = 1.5                     # == NODE_BOOST_OFFSET
+NODE_BOOST_GAIN = 10.0 / 3.0                # == NODE_BOOST_GAIN
+NODE_BOOST_FLOOR = 1.0                      # == NODE_BOOST_FLOOR
+VL_DENSITY_REFERENCE = 6e-10                # == VL_DENSITY_REFERENCE
+BOOST_MIN_VL_COUNT = 500                    # boost only engages at >= 500 VLs
+
+# The reference (continent-scale) boosted diameter, used as the function-level
+# default separation; `auto_separation` recomputes it per network at run time.
+BOOSTED_DIAMETER = 2 * BUSNODE_RADIUS * BOOST_CEILING   # ≈ 3 300 user units
+DEFAULT_SEPARATION = round(BOOSTED_DIAMETER * SEPARATION_MARGIN, 1)   # ≈ 4 290
 MIN_USABLE_GAP_RAD = math.radians(30.0)   # a direction is "open" only if its gap ≥ this
+
+
+def frontend_node_boost(width: float, height: float, vl_count: int,
+                        ceiling: float = BOOST_CEILING) -> float:
+    """Replicate svgBoost.ts node-boost factor for a layout of the given extent.
+
+    ``width`` / ``height`` are the NAD viewBox span (the layout bounding box is
+    a close proxy at these scales). Returns 1.0 (native rendering) for small or
+    dense grids, otherwise the clamped boost the frontend applies.
+    """
+    if vl_count < BOOST_MIN_VL_COUNT:
+        return 1.0
+    diagram_size = max(width, height)
+    ratio = diagram_size / BOOST_REFERENCE_SIZE
+    if ratio <= BOOST_THRESHOLD:
+        return 1.0
+    boost = math.sqrt(ratio / BOOST_THRESHOLD)
+    density = vl_count / max(1.0, width * height)
+    suppress = math.sqrt(max(1.0, density / VL_DENSITY_REFERENCE))
+    raw = (boost - NODE_BOOST_OFFSET) * NODE_BOOST_GAIN + 1.0
+    return max(NODE_BOOST_FLOOR, min(ceiling, raw / suppress))
+
+
+def boosted_diameter_for(layout: dict[str, list[float]], vl_count: int) -> float:
+    """The on-screen busnode diameter (user units) for ``layout`` after boosting."""
+    xs = [p[0] for p in layout.values()]
+    ys = [p[1] for p in layout.values()]
+    if not xs:
+        return 2 * BUSNODE_RADIUS
+    boost = frontend_node_boost(max(xs) - min(xs), max(ys) - min(ys), vl_count)
+    return 2 * BUSNODE_RADIUS * boost
+
+
+def auto_separation(layout: dict[str, list[float]], vl_count: int,
+                    margin: float = SEPARATION_MARGIN) -> float:
+    """Per-network separation: one boosted disk diameter + ``margin`` headroom."""
+    return round(boosted_diameter_for(layout, vl_count) * margin, 1)
 
 
 def _resolve_xiidm(network_dir: str) -> str:
@@ -197,14 +250,15 @@ def separate_layout(
     vl_nominal_v: dict[str, float],
     line_neighbours: dict[str, list[str]],
     separation: float = DEFAULT_SEPARATION,
+    disk_diameter: float = BOOSTED_DIAMETER,
 ) -> tuple[dict[str, list[float]], int]:
     """Return a new layout with co-located multi-voltage VLs separated.
 
     ``line_neighbours[vl]`` lists the *other* VLs reachable from ``vl`` over a
     transmission line (NOT the intra-substation transformer). Each lower-voltage
     level is pushed ``separation`` units from its anchor — chosen so its rendered
-    (boosted) disk clears the anchor's. Coordinates of untouched VLs are copied
-    verbatim. Returns ``(new_layout, n_moved)``.
+    (boosted) disk, of diameter ``disk_diameter``, clears the anchor's. Coordinates
+    of untouched VLs are copied verbatim. Returns ``(new_layout, n_moved)``.
     """
     # group VLs by substation
     by_sub: dict[str, list[str]] = {}
@@ -216,9 +270,9 @@ def separate_layout(
     n_moved = 0
 
     # minimum angle between two displaced levels so their boosted disks (one
-    # diameter ≈ BOOSTED_DIAMETER, both at radius `separation`) clear each other.
-    ratio = min(1.0, BOOSTED_DIAMETER / (2.0 * separation))
-    min_angle = min(math.pi, 2.0 * math.asin(ratio) * 1.3)
+    # `disk_diameter`, both at radius `separation`) clear each other.
+    ratio = min(1.0, disk_diameter / (2.0 * separation))
+    min_angle = min(math.pi, 2.0 * math.asin(ratio) * SEPARATION_MARGIN)
 
     for sub, vls in by_sub.items():
         if len(vls) < 2:
@@ -289,12 +343,12 @@ def main() -> None:
                         help="Compute and report, but do not write the new layout")
     parser.add_argument("--no-backup", action="store_true",
                         help="Skip writing grid_layout.json.bak.coloc")
-    parser.add_argument("--separation", type=float, default=DEFAULT_SEPARATION,
+    parser.add_argument("--separation", type=float, default=None,
                         help=(
                             "Units to push each lower-voltage level from its anchor. "
-                            f"Default {DEFAULT_SEPARATION:.0f} ≈ one boosted disk diameter "
-                            "(2 × 27.5 × svgBoost ceiling 60) + 10 %%, so the two disks "
-                            "clear on screen. Raise it in lockstep if you raise the boost ceiling."
+                            "Default: auto — one boosted disk diameter (derived from the "
+                            "layout extent via the mirrored svgBoost math) + 30 %%, so the "
+                            "two disks clear on screen. Pass a value to override."
                         ))
     args = parser.parse_args()
 
@@ -314,10 +368,15 @@ def main() -> None:
     with open(layout_path) as f:
         layout = json.load(f)
 
+    diameter = boosted_diameter_for(layout, len(layout))
+    separation = args.separation if args.separation is not None else auto_separation(layout, len(layout))
+    log.info("Frontend node boost ⇒ disk diameter ≈ %.0f units; using separation = %.0f (%s).",
+             diameter, separation, "manual" if args.separation is not None else "auto")
+
     new_layout, n_moved = separate_layout(
-        layout, vl_substation, vl_nominal_v, line_neighbours, separation=args.separation)
-    log.info("Separated %d lower-voltage levels by %.0f units across multi-voltage substations.",
-             n_moved, args.separation)
+        layout, vl_substation, vl_nominal_v, line_neighbours,
+        separation=separation, disk_diameter=diameter)
+    log.info("Separated %d lower-voltage levels across multi-voltage substations.", n_moved)
 
     # report min intra-substation distance after separation
     by_sub: dict[str, list[str]] = {}
@@ -331,7 +390,8 @@ def main() -> None:
                 p, q = new_layout[vls[i]], new_layout[vls[j]]
                 worst = min(worst, math.hypot(p[0] - q[0], p[1] - q[1]))
     if worst < math.inf:
-        log.info("  Min intra-substation VL distance now: %.1f units (was ~34).", worst)
+        log.info("  Min intra-substation VL distance now: %.1f units (disk diameter ≈ %.0f).",
+                 worst, diameter)
 
     if args.dry_run:
         log.info("Dry-run: not writing.")

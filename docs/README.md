@@ -97,6 +97,7 @@ Unimplemented ideas and rejected designs kept for reference.
 |------|-------|
 | [`pypsa-eur-osm-to-xiidm.md`](data/pypsa-eur-osm-to-xiidm.md) | PyPSA-Eur OSM → XIIDM 3-script conversion pipeline. |
 | [`grid-layout-coordinate-scale.md`](data/grid-layout-coordinate-scale.md) | Why `grid_layout.json` MUST be raw Mercator metres (~1.4–1.6 M span) and not the legacy 8 000-unit rescale. Operator-vs-PyPSA comparison + the 2026-05-08 fix. |
+| [`voltage-level-separation.md`](data/voltage-level-separation.md) | Why co-located 225/400 kV VL disks overlapped (node boost + collocated OSM buses) and the two-part fix: `svgBoost` `60×` ceiling + `separate_voltage_levels.py` layout post-processing. |
 
 ---
 

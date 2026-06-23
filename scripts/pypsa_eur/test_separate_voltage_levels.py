@@ -45,6 +45,33 @@ def test_default_separation_clears_one_boosted_diameter():
     assert S.DEFAULT_SEPARATION > S.BOOSTED_DIAMETER
 
 
+def test_frontend_node_boost_mirrors_svgboost():
+    # small / dense / sub-threshold grids → native rendering (boost 1.0)
+    assert S.frontend_node_boost(1_400_000, 1_390_000, 190) == 1.0     # < 500 VLs
+    assert S.frontend_node_boost(5000, 5000, 1000) == 1.0              # ratio below threshold
+    # France fr225_400 regime ≈ 60 (the value svgBoost.test.ts pins to 59.68)
+    assert S.frontend_node_boost(1_401_015, 1_390_000, 1196) == pytest.approx(59.7, abs=0.3)
+    # continent-scale European layout is clamped to the 60 ceiling (raw ≈ 110)
+    assert S.frontend_node_boost(4_400_000, 3_470_000, 5247) == pytest.approx(60.0)
+    # ceiling is honoured on an enormous sparse grid
+    assert S.frontend_node_boost(100_000_000, 100_000_000, 1000) == pytest.approx(60.0)
+
+
+def test_auto_separation_scales_with_boost():
+    # boost-off layout (few VLs) → small separation (~one native diameter + margin)
+    small = {f"v{i}": [i * 1000.0, 0.0] for i in range(190)}
+    assert S.auto_separation(small, len(small)) == pytest.approx(
+        2 * S.BUSNODE_RADIUS * S.SEPARATION_MARGIN, abs=1.0)
+    # a 2D continent-scale spread (600 VLs over ~4.4 M × 3.47 M, low density)
+    # → boost clamped to 60 → ~one boosted diameter + margin
+    cols = 25
+    wide = {f"v{i}": [(i % cols) * (4_400_000 / 24), (i // cols) * (3_470_000 / 23)]
+            for i in range(600)}
+    sep = S.auto_separation(wide, len(wide))
+    assert sep > S.BOOSTED_DIAMETER
+    assert sep == pytest.approx(S.DEFAULT_SEPARATION, rel=0.05)
+
+
 def test_placement_single_mover_prefers_open_gap_aligned_with_own_lines():
     # lines clustered to the right (angles near 0) → open gap points left (±pi)
     gaps = S.angular_gaps([0.2, -0.2, 0.4])
