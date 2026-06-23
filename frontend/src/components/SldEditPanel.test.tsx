@@ -192,4 +192,20 @@ describe('SldEditPanel', () => {
         fireEvent.click(screen.getByTestId('sld-edit-injection-focus-GEN_A'));
         expect(onFocus).toHaveBeenCalledWith('GEN_A');
     });
+
+    it('lists switch toggles AND injection retunes together in one combined action', () => {
+        render(<SldEditPanel
+            {...defaultProps}
+            pendingChanges={[{ switchId: 'SW_A', baselineOpen: false, targetOpen: true }]}
+            injectionChanges={[
+                { equipmentId: 'GEN_A', kind: 'generator', baselineP: 120, targetP: 90 },
+                { equipmentId: 'LOAD_A', kind: 'load', baselineP: 50, targetP: 30 },
+            ]}
+        />);
+        expect(screen.getByTestId('sld-edit-change-SW_A')).toBeInTheDocument();
+        expect(screen.getByTestId('sld-edit-injection-GEN_A')).toBeInTheDocument();
+        expect(screen.getByTestId('sld-edit-injection-LOAD_A')).toBeInTheDocument();
+        // One Simulate button drives the whole combined action.
+        expect(screen.getByTestId('sld-edit-simulate')).not.toBeDisabled();
+    });
 });

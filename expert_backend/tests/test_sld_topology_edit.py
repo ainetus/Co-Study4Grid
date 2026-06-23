@@ -320,6 +320,32 @@ class TestSimulateManualActionInjectionEdit:
         assert entry["content"]["set_load_p"] == {"LOAD_A": 30.0}
         assert entry["content"]["switches"] == {"SW_A": True}
 
+    def test_combined_action_topology_reports_both_feeders(self):
+        # End-to-end on the backend side of the combined-injection highlight:
+        # _inject_action_content_entries builds the dict content, and
+        # extract_action_topology must then report BOTH the generator and the
+        # load (back-filled from the content) so the SLD highlights both — even
+        # though the grid2op action object exposes neither.
+        from expert_backend.services.recommender_service import RecommenderService
+        from expert_backend.services.simulation_helpers import extract_action_topology
+
+        service = RecommenderService()
+        service._dict_action = {}
+        service._inject_action_content_entries(
+            ["user_topo_VL_X_2"],
+            {"gens_p": {"GEN_A": 24.0}, "loads_p": {"LOAD_A": 3.0}},
+            recent_actions={},
+            voltage_level_id="VL_X",
+        )
+
+        action = MagicMock()
+        for f in ("lines_ex_bus", "lines_or_bus", "gens_bus", "loads_bus",
+                  "pst_tap", "substations", "switches", "loads_p", "gens_p"):
+            setattr(action, f, None)
+        topo = extract_action_topology(action, "user_topo_VL_X_2", service._dict_action)
+        assert topo["gens_p"] == {"GEN_A": 24.0}
+        assert topo["loads_p"] == {"LOAD_A": 3.0}
+
 
 class TestTopologyPreviewSld:
     """get_topology_preview_sld clones a throwaway variant, applies the

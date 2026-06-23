@@ -201,20 +201,22 @@ key.
 | `App.tsx::sldTopologyEdit edit-mode effect` | Forces `editMode = editable` — on for an open editable tab (operable switches or editable injections, never N), off on close. No user-facing toggle. |
 | `App.tsx::handleSimulateSldEdit` | Builds `action_content` from `changedSwitches` + `changedInjections` (the latter split into `gens_p` / `loads_p` by kind), streams `/api/simulate-and-variant-diagram` with `voltage_level_id`, primes the action-variant diagram under the **backend-canonical** id (`metrics.action_id`), pushes the card via `wrappedManualActionAdded(_, _, _, 'user')`, then `handleVlDoubleClick(id, vl, 'action')` to auto-focus the new action's tab. |
 | `App.tsx::sldPreview` | Debounced fetch of `/api/sld-topology-preview` with sequence guard. |
-| `styles/tokens.css` | `--signal-edit-open` / `--signal-edit-closed` token pair for the toggle outline. |
-| `App.css` | `.sld-user-toggle-{open,closed}` (dashed outline) + `.sld-preview-stale` (grey flow values). |
+| `styles/tokens.css` | `--signal-edit-open` / `--signal-edit-closed` (toggle outline) + `--signal-edit-injection` (staged-injection outline). The injection **name button** reuses the brand tokens (`--color-brand` / `--color-brand-strong` / `--color-text-on-brand`). |
+| `App.css` | `.sld-user-toggle-{open,closed}` + `.sld-user-injection` (dashed staged outlines), `.sld-{switch,injection}-editable` (pointer cursor), `.sld-injection-name-{btn,label}` (dark-blue name button), `.sld-preview-stale` (grey flow values). |
 
 ### Edit-mode invariants
 
-The hook drops every staged toggle when:
+The hook drops every staged change — switch toggle **and** injection
+retune — when:
 - the operator exits edit mode (`setEditMode(false)`),
-- the baseline `switch_states` map identity changes (new SLD tab, new
-  VL, or new action variant),
+- either baseline map identity changes (`switch_states` or `injections`
+  — a new SLD tab, VL, or action variant),
 - the simulation succeeds (after the card is pushed).
 
-The hook **silently ignores** taps on switches that aren't in the
-baseline — this is the cheapest way to guarantee a user-built
-`switches` payload only references operable equipment.
+The hook **silently ignores** taps on equipment that isn't in the
+baseline (`toggleSwitch` checks `switch_states`, `setInjection` checks
+`injections`) — the cheapest way to guarantee a user-built payload only
+references operable / editable equipment.
 
 ### Single-bucket vs multi-bucket type classification
 
@@ -244,8 +246,8 @@ overflow-pin filters at once.
 | `sld_injection_removed` | `equipment_id` | |
 | `sld_topology_simulated` | `voltage_level_id`, `switches` | `combined_with`, `injections` |
 
-Declared in the `InteractionType` union (`frontend/src/types.ts`),
-mirrored in the conformance contract
+All eight `sld_*` edit events are declared in the `InteractionType`
+union (`frontend/src/types.ts`) and mirrored in the conformance contract
 (`frontend/src/utils/specConformance.test.ts` `SPEC` and
 `scripts/check_standalone_parity.py` `SPEC_DETAILS`).
 
@@ -263,7 +265,9 @@ mirrored in the conformance contract
   combined switch + injection, empty content.
 - `TestSimulateManualActionInjectionEdit` — `_inject_action_content_entries`
   builds combined `set_gen_p` / `set_load_p` + switch content and a
-  description covering both.
+  description covering both, AND the end-to-end back-fill chain
+  (`_inject_action_content_entries` → `extract_action_topology` reports
+  both feeders for the combined-injection highlight).
 - `TestExtractVlSwitchStatesEdgeCases` — corrupt-row skipping, missing
   VL, missing `fictitious` column.
 - `TestIsSwitchOnlyContent` / `TestBuildSwitchActionDescription` /
@@ -286,6 +290,15 @@ mirrored in the conformance contract
   — HTTP-boundary tests via FastAPI `TestClient` (skipped in sandboxes
   that mock `expert_op4grid_recommender.models`).
 
+Cross-file (same content path):
+- `test_simulation_helpers.py::TestExtractActionTopology` — back-fills
+  `gens_p` / `loads_p` from the action content for a user-built combined
+  action; the action object's own attributes take precedence.
+- `test_power_reduction_format.py::TestBuildActionEntryPowerReduction` —
+  `_build_action_entry_from_topology` maps `loads_p`/`gens_p` →
+  `set_load_p`/`set_gen_p`, including the **combined `switches` +
+  `gens_p` + `loads_p`** case.
+
 ### Frontend
 
 - `hooks/useSldTopologyEdit.test.ts` — toggle / reset / remove single /
@@ -296,29 +309,32 @@ mirrored in the conformance contract
   `sld_injection_staged` / `sld_injection_removed` logging.
 - `components/SldInjectionPopover.test.tsx` — name / kind / source /
   Pmin-Pmax render, load omits bounds, apply, generator clamp,
-  disabled-Apply on blank, Reset only when staged, remove / close.
-  Plus (in `SldOverlay.test.tsx`) a regression: clicking inside the
-  bubble (incl. Apply) over a switch never toggles that switch.
+  **seed + applied value rounded to one decimal**, disabled-Apply on
+  blank, Reset only when staged, remove / close.
 - `components/SldEditPanel.test.tsx` — empty state, per-row direction
   display, focus on row click, `×` removal, block removal, busy
   state, combined-with badge, **injection rows** (baseline→target MW,
-  remove, focus).
+  remove, focus), **switch + injection rows together** in one combined
+  action, exit-✕ omitted without `onClose`.
 - `components/SldOverlay.test.tsx` — injection edit: click a generator
   opens the editor, edit-off suppresses it, apply routes through
   `onInjectionStage`, staged cell gets the `sld-user-injection` outline,
-  editable cells get the pointer cue, the injection **name button**
-  (`sld-injection-name-btn`) is injected and opens the editor on click,
-  and lands on the original text rather than a highlight clone;
-  **implicit edit mode**: no `sld-edit-toggle` button, panel stays
-  collapsed until a switch or injection change is staged (with no exit ✕),
-  window auto-sizes to a measured diagram.
+  editable cells get the pointer cue; the injection **name button**
+  (`sld-injection-name-btn`) is injected, opens the editor on click,
+  lands on the original text rather than a highlight clone, and stays a
+  same-parent sibling glued to the name across a wheel-zoom re-render;
+  **combined action** highlights BOTH the generator and the load feeder;
+  clicking inside the bubble (incl. Apply) never toggles a switch under
+  it; **implicit edit mode**: no `sld-edit-toggle` button, panel stays
+  collapsed until a change is staged (with no exit ✕), window auto-sizes
+  to a measured diagram.
 - `utils/actionTypes.test.ts` — multi-bucket classifier coverage
   (open/close/disco/reco from manual maneuvers), combined open+close
   card, comma-joined coupling + line, line-only maneuvers, ligature
   spelling, regression that singular classifier still returns one
   bucket for normal cards.
-- `utils/specConformance.test.ts` — `SPEC` rows for the six
-  `sld_*` interaction types.
+- `utils/specConformance.test.ts` — `SPEC` rows for the eight
+  `sld_*` edit interaction types.
 
 ## Limitation: which backend
 
