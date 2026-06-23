@@ -22,6 +22,9 @@ breakers:
 - **The overlay auto-sizes to the diagram** on open, so the whole
   voltage level is visible without manual expansion (the operator can
   still shrink it; a manual resize sticks until the next diagram loads).
+- **The maneuver panel stays collapsed** until the first switch or
+  injection change is staged, then lists the staged switch toggles and
+  injection retunes together.
 - **Editable load / generator active power.** Clicking a load or
   generator opens a floating bubble showing its current setpoint and —
   for a generator — its **Pmin / Pmax** capability range and energy

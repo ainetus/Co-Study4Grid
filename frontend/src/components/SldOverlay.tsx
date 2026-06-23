@@ -194,9 +194,11 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
         const bodyH = targetH - HEADER - PANEL;
         const fitRaw = Math.min(bodyW / natW, bodyH / natH, 1);
         const fitScale = fitRaw > 0 && Number.isFinite(fitRaw) ? fitRaw : 1;
+        // Centre horizontally, top-align vertically: the spare height below
+        // the diagram is where the (initially collapsed) edit panel grows,
+        // so staging a change doesn't clip the top of the diagram.
         const tx = Math.max(4, (bodyW - natW * fitScale) / 2);
-        const ty = Math.max(4, (bodyH - natH * fitScale) / 2);
-        setOverlayTransform({ scale: fitScale, tx, ty });
+        setOverlayTransform({ scale: fitScale, tx, ty: 4 });
     }, [activeSvg, vlOverlay.vlName, vlOverlay.tab, vlOverlay.actionId, vlOverlay.loading, previewActive]);
 
     // Apply / clear delta flow colors on the SLD whenever svg/metadata, tab, or mode changes.
@@ -1315,9 +1317,10 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
                     />
                 )}
             </div>
-            {editMode && pendingChanges && onSimulateEdit && onResetEdit && (
+            {editMode && onSimulateEdit && onResetEdit
+                && ((pendingChanges?.length ?? 0) > 0 || (injectionChanges?.length ?? 0) > 0) && (
                 <SldEditPanel
-                    pendingChanges={pendingChanges}
+                    pendingChanges={pendingChanges ?? []}
                     injectionChanges={injectionChanges}
                     onReset={onResetEdit}
                     onSimulate={onSimulateEdit}

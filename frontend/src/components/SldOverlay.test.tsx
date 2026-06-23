@@ -1131,12 +1131,25 @@ describe('SldOverlay', () => {
             expect(screen.queryByTestId('sld-edit-toggle')).toBeNull();
         });
 
-        it('always shows the edit panel (empty-state hint) on an editable open SLD', () => {
-            render(<SldOverlay {...props()} />);
+        it('keeps the edit panel collapsed until a change is staged', () => {
+            const { rerender } = render(<SldOverlay {...props()} />);
+            // No staged change → panel collapsed.
+            expect(screen.queryByTestId('sld-edit-panel')).toBeNull();
+            // Stage a switch toggle → panel appears (with no exit ✕ — read-only
+            // is via closing the overlay).
+            rerender(<SldOverlay {...props({
+                pendingChanges: [{ switchId: 'SWITCH_A', baselineOpen: false, targetOpen: true }],
+            })} />);
             expect(screen.getByTestId('sld-edit-panel')).toBeInTheDocument();
-            expect(screen.getByText(/click a breaker .* or a load \/ generator/i)).toBeInTheDocument();
-            // No exit-edit ✕ in production (read-only happens on close).
             expect(screen.queryByTestId('sld-edit-close')).toBeNull();
+        });
+
+        it('expands the panel and lists an injection retune when one is staged', () => {
+            render(<SldOverlay {...props({
+                injectionChanges: [{ equipmentId: 'GEN_A', kind: 'generator', baselineP: 120, targetP: 90 }],
+            })} />);
+            expect(screen.getByTestId('sld-edit-panel')).toBeInTheDocument();
+            expect(screen.getByTestId('sld-edit-injection-GEN_A').textContent).toMatch(/120\.0 → 90\.0 MW/);
         });
 
         it('gives editable switches the clickable cue', () => {

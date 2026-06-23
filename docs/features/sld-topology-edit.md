@@ -48,7 +48,8 @@ combined manual action.
    dashed teal outline (`sld-user-injection`) so the operator sees
    WHERE the injection changed. (Injection edits do not trigger the
    topological preview — no load flow runs until simulation.)
-5. The side panel under the SVG lists every staged maneuver — switch
+5. The side panel under the SVG stays **collapsed until the first
+   change is staged**, then lists every staged maneuver — switch
    toggles AND injection retunes. From there, the operator can:
    - **Click a row** to focus a single element (only its outline stays
      on the diagram — same affordance as `seq_highlights` in
@@ -180,7 +181,7 @@ key.
 |---|---|
 | `hooks/useSldTopologyEdit.ts` | Owns the pending switch overrides AND injection setpoint overrides, focus state, and the toggle / removeSwitch / removeSwitches / **setInjection / removeInjection** / reset / setFocusedSwitch API. Exposes `changedSwitches` + `changedInjections` + `pendingChanges` + `injectionChanges` + `hasPendingChanges`. Auto-drops stale overrides on either baseline's identity change. |
 | `components/SldInjectionPopover.tsx` | **NEW.** Floating active-power editor opened by clicking a load / generator: name + kind, current P, Pmin / Pmax + energy source (gen), a setpoint input (Enter to apply, Esc to close), out-of-range clamp note, Apply / Reset-to-baseline / Close. |
-| `components/SldEditPanel.tsx` | Side panel under the SLD body — maneuver list (switch toggles + injection retunes), focus on row click, `×` per row, checkbox + **Remove selected (N)** for switch blocks, combined-with badge, Reset / Simulate buttons. |
+| `components/SldEditPanel.tsx` | Side panel under the SLD body — **rendered only once at least one change is staged** (collapsed otherwise). Maneuver list (switch toggles + injection retunes), focus on row click, `×` per row, checkbox + **Remove selected (N)** for switch blocks, combined-with badge, Reset / Simulate buttons. `onClose` (the exit ✕) is optional and omitted in production. |
 | `components/SldOverlay.tsx` | No in-overlay edit toggle (edit mode is implicit while open). Click delegation via SLD metadata `equipmentId → SVG id` map (dot/underscore variants handled): a switch hit toggles it, a load / generator hit opens `SldInjectionPopover` anchored at the click (body-relative, clamped to stay visible). Persistent `sld-switch-editable` / `sld-injection-editable` cue on every editable cell + toggle / injection outlines + focused-element filter — applied **also on the preview**. **Auto-size:** a keyed layout effect measures the rendered SVG once per diagram and sizes the window to fit it (clamped to the viewport) + fits the SVG into the body; a manual resize persists until the next diagram. **Click targeting:** breaker / disconnector glyphs are small, so the handler keeps the pixel-perfect hit fast-path **and** snaps to the closest editable switch within a 26 px radius on a near-miss (load / gen glyphs are large enough for an exact hit); the trailing `click` of a pan-drag is ignored (a `panMovedRef` slop guard). |
 | `App.tsx::sldTopologyEdit edit-mode effect` | Forces `editMode = editable` — on for an open editable tab (operable switches or editable injections, never N), off on close. No user-facing toggle. |
 | `App.tsx::handleSimulateSldEdit` | Builds `action_content` from `changedSwitches` + `changedInjections` (the latter split into `gens_p` / `loads_p` by kind), streams `/api/simulate-and-variant-diagram` with `voltage_level_id`, primes the action-variant diagram under the **backend-canonical** id (`metrics.action_id`), pushes the card via `wrappedManualActionAdded(_, _, _, 'user')`, then `handleVlDoubleClick(id, vl, 'action')` to auto-focus the new action's tab. |
@@ -289,9 +290,9 @@ mirrored in the conformance contract
   opens the editor, edit-off suppresses it, apply routes through
   `onInjectionStage`, staged cell gets the `sld-user-injection` outline,
   editable cells get the `sld-switch-editable` / `sld-injection-editable`
-  cue; **implicit edit mode**: no `sld-edit-toggle` button, panel always
-  shown on an editable open SLD with no exit ✕, window auto-sizes to a
-  measured diagram.
+  cue; **implicit edit mode**: no `sld-edit-toggle` button, panel stays
+  collapsed until a switch or injection change is staged (with no exit ✕),
+  window auto-sizes to a measured diagram.
 - `utils/actionTypes.test.ts` — multi-bucket classifier coverage
   (open/close/disco/reco from manual maneuvers), combined open+close
   card, comma-joined coupling + line, line-only maneuvers, ligature
