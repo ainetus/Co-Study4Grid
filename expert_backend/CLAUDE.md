@@ -36,9 +36,11 @@ expert_backend/
 │   │   ├── nad_render.py          # - NAD generation + NaN-element stripping
 │   │   ├── sld_render.py          # - SLD SVG + metadata with fallbacks
 │   │   │                          #   + extract_vl_switch_states (per-VL
-│   │   │                          #   operable-switch baseline used by the
-│   │   │                          #   interactive SLD-edit feature, see
-│   │   │                          #   docs/features/sld-topology-edit.md)
+│   │   │                          #   operable-switch baseline) AND
+│   │   │                          #   extract_vl_injections (per-VL load/
+│   │   │                          #   generator active-power baseline) used
+│   │   │                          #   by the interactive SLD-edit feature,
+│   │   │                          #   see docs/features/sld-topology-edit.md)
 │   │   ├── overloads.py           # - overload filtering, element-currents
 │   │   ├── flows.py               # - branch + asset flow extractors (vectorised)
 │   │   ├── deltas.py              # - terminal-aware flow-delta math (pure)
@@ -199,7 +201,9 @@ Diagram & topology:
   `docs/performance/history/svg-dom-recycling.md`.
 - `POST /api/n-sld` / `/api/contingency-sld` / `/api/action-variant-sld`
   — each response now carries a `switch_states` map (per-VL
-  operable-switch booleans), driving the interactive SLD-edit baseline.
+  operable-switch booleans) AND an `injections` map (per-VL load /
+  generator active-power baseline: `kind`, `p`, gen `min_p` / `max_p` /
+  `energy_source`), driving the interactive SLD-edit baseline.
 - `POST /api/sld-topology-preview` — re-renders the VL SLD with the
   user's staged switch overrides applied on a throwaway variant
   (topological-colouring, NO load flow). Response carries

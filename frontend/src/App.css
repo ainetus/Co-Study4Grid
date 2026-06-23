@@ -438,6 +438,17 @@ circle.nad-highlight {
     stroke-dasharray: 4 2 !important;
 }
 
+/* Pending injection (load / generator active-power) retune. */
+.sld-user-injection path,
+.sld-user-injection line,
+.sld-user-injection polyline,
+.sld-user-injection rect,
+.sld-user-injection circle {
+    stroke: var(--signal-edit-injection) !important;
+    stroke-width: 2.5px !important;
+    stroke-dasharray: 4 2 !important;
+}
+
 .sld-delta-negative path,
 .sld-delta-negative line,
 .sld-delta-negative polyline,

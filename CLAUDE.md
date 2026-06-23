@@ -86,7 +86,9 @@ Co-Study4Grid/
 │       │                          # no longer rendered from App.tsx),
 │       │                          # CombinedActionsModal, ComputedPairsTable,
 │       │                          # ExplorePairsTab, SldOverlay, SldEditPanel
-│       │                          # (interactive maneuver list, 0.8.0), DetachableTabHost,
+│       │                          # (interactive maneuver list, 0.8.0),
+│       │                          # SldInjectionPopover (SLD load/gen active-
+│       │                          # power editor bubble), DetachableTabHost,
 │       │                          # MemoizedSvgContainer, ErrorBoundary, NoticesPanel
 │       │                          # (PR #122 tier system), DiagramLegend (PR #122),
 │       │                          # InspectSearchField + DetachedPlaceholder (PR #116
@@ -295,9 +297,9 @@ Both scripts run in CI (`.github/workflows/code-quality.yml` and
 | POST | `/api/action-variant-diagram-patch` | Per-branch delta + VL-subtree splice for action DOM recycling |
 | POST | `/api/focused-diagram` | Generate NAD sub-diagram focused on a specific element |
 | POST | `/api/action-variant-focused-diagram` | Focused NAD for specific VL in post-action state |
-| POST | `/api/n-sld` | Single Line Diagram for voltage level in N state. Response includes `switch_states` (per-switch open/closed map) used by the interactive SLD-edit feature. |
-| POST | `/api/contingency-sld` | Single Line Diagram in N-1 state (with flow deltas + `switch_states`). |
-| POST | `/api/action-variant-sld` | SLD in post-action state (with flow deltas, `changed_switches`, `switch_states`). |
+| POST | `/api/n-sld` | Single Line Diagram for voltage level in N state. Response includes `switch_states` (per-switch open/closed map) **and** `injections` (per-load/generator active-power baseline) used by the interactive SLD-edit feature. |
+| POST | `/api/contingency-sld` | Single Line Diagram in N-1 state (with flow deltas + `switch_states` + `injections`). |
+| POST | `/api/action-variant-sld` | SLD in post-action state (with flow deltas, `changed_switches`, `switch_states`, `injections`). |
 | POST | `/api/sld-topology-preview` | Target-topology preview SLD for the interactive SLD-edit feature: applies staged switch overrides on a throwaway variant and re-renders with topological colouring (no load flow; `stale_flows: true`). |
 | GET  | `/api/actions` | Return all available action IDs and descriptions |
 | POST | `/api/regenerate-overflow-graph` | Regenerate (or serve from cache) the overflow graph in hierarchical / geo layout — drives the toggle on the Overflow Analysis tab |
@@ -338,7 +340,7 @@ Both scripts run in CI (`.github/workflows/code-quality.yml` and
   - `hooks/useContingencyFetch.ts` owns the N-1 diagram fetch pipeline (svgPatch fast-path + `/api/contingency-diagram` fallback + contingency-change confirm routing).
   - `hooks/useDiagramHighlights.ts` owns the per-tab SVG highlight pipeline (overload halos, contingency highlight, action targets, delta visuals) + per-tab Flow/Impacts view-mode state.
   - `hooks/useOverflowIframe.ts` (PR #116, 0.7.0) owns the interactive overflow viewer — iframe lifecycle, layer-toggle state, hierarchical ↔ geo layout switch, postMessage bridge to the host, and the action-pin overlay payload computation.
-  - `hooks/useSldTopologyEdit.ts` (0.8.0) owns the interactive SLD switch-edit flow — `editMode`, staged `pendingStates`, `toggle` / `removeSwitch(es)` / `focusedSwitchId` — that turns clicked breakers into a manual action card. See [`docs/features/sld-topology-edit.md`](docs/features/sld-topology-edit.md).
+  - `hooks/useSldTopologyEdit.ts` (0.8.0) owns the interactive SLD edit flow — `editMode` (auto-enabled on SLD open), staged `pendingStates` (switch toggles) + `pendingInjections` (load / generator active-power retunes), `toggle` / `removeSwitch(es)` / `setInjection` / `removeInjection` / `focusedSwitchId` — that turns clicked breakers AND injection retunes into one manual action card (`SldInjectionPopover` is the active-power editor bubble). See [`docs/features/sld-topology-edit.md`](docs/features/sld-topology-edit.md).
   - `useSettings.ts` exposes `SettingsState` (all settings values + setters), which is passed wholesale to `SettingsModal` to avoid 30+ prop-drilling.
 - **SVG DOM recycling (PR #108)**: `utils/svgPatch.ts` clones the already-mounted N-state `SVGSVGElement` and patches only per-branch deltas on N-1 / action tab switches, saving a 12–28 MB SVG re-download and re-parse.
 - **Props-based data flow**: State lifted to `App.tsx`, passed down via props

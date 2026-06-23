@@ -1,41 +1,64 @@
-# Interactive SLD topology edit → manual action
+# Interactive SLD edit → manual action
 
 This feature lets the operator build a manual remedial action directly
-from the Single Line Diagram by clicking switches. It mirrors the
-`manoeuvre_ihm` tool in `expert_op4grid_recommender/scripts/` —
-target-topology view with topological colouring, an editable maneuver
-list, single / block deletion — adapted to the React + FastAPI stack
-of Co-Study4Grid.
+from the Single Line Diagram by clicking equipment. Two gestures are
+supported from the **same** diagram and combine into one action:
+
+- **Topology** — click a breaker / disconnector to toggle it (mirrors
+  the `manoeuvre_ihm` tool in `expert_op4grid_recommender/scripts/`:
+  target-topology view with topological colouring, an editable
+  maneuver list, single / block deletion).
+- **Injection** — click a load / generator to retune its **active
+  power** in a floating editor that surfaces its current setpoint and
+  (for a generator) its Pmin / Pmax capability range.
+
+Both are staged in the same maneuver panel and simulate as one
+combined manual action.
 
 ## TL;DR — the workflow
 
 1. Open the SLD overlay on a voltage level (double-click on the NAD)
    in the **N-1 (contingency)** tab or the **action-variant** tab of
    an already-suggested action.
-2. Click the **`✎ Manual action`** button in the SLD header to enter
-   edit mode.
-3. Click any operable switch on the diagram. The diagram is
-   re-rendered as a **target-topology preview** (see below): the
-   breaker is drawn in its target open/closed state, the busbar /
-   branch connectivity is re-coloured by pypowsybl's topological
-   colouring (so a node split / merge is immediately visible), and
-   flow values are greyed because no load flow has been run yet. The
-   changed switch keeps its dashed highlight (magenta = will open,
-   blue = will close) **on top of** the preview, so the operator
-   always sees WHERE the topology changed.
-4. The side panel under the SVG lists every staged maneuver. From
-   there, the operator can:
-   - **Click a row** to focus a single switch (only its outline stays
+2. **Edit mode is on by default** the moment an editable SLD opens —
+   there is no longer any need to click **`✎ Manual action`** first
+   (that header button is now an opt-out back to a read-only view; it
+   also appears for VLs that only carry editable injections). App
+   auto-enables it once per SLD identity (`useSldTopologyEdit`
+   auto-enable effect), so turning it off stays sticky until the VL /
+   tab / action changes.
+3. **Topology:** click any operable switch. The diagram is re-rendered
+   as a **target-topology preview** (see below): the breaker is drawn
+   in its target open/closed state, the busbar / branch connectivity is
+   re-coloured by pypowsybl's topological colouring (so a node split /
+   merge is immediately visible), and flow values are greyed because no
+   load flow has been run yet. The changed switch keeps its dashed
+   highlight (magenta = will open, blue = will close) **on top of** the
+   preview, so the operator always sees WHERE the topology changed.
+4. **Injection:** click any load / generator. A floating bubble
+   (`SldInjectionPopover`) opens, anchored at the glyph, showing the
+   element name + kind, its **current active power**, and — for a
+   generator — its **Pmin / Pmax** and energy source. Type a new
+   setpoint and click **`Appliquer`**; a generator value out of range
+   is clamped to its capability bounds. The retuned element keeps a
+   dashed teal outline (`sld-user-injection`) so the operator sees
+   WHERE the injection changed. (Injection edits do not trigger the
+   topological preview — no load flow runs until simulation.)
+5. The side panel under the SVG lists every staged maneuver — switch
+   toggles AND injection retunes. From there, the operator can:
+   - **Click a row** to focus a single element (only its outline stays
      on the diagram — same affordance as `seq_highlights` in
      `manoeuvre_ihm`).
    - Click **`×`** on a row to remove that maneuver (`seq_delete`).
-   - **Check** several rows + click **`Remove selected (N)`** to drop
-     a block (`seq_delete_many`).
+   - **Check** several switch rows + click **`Remove selected (N)`** to
+     drop a block (`seq_delete_many`).
    - Click **`Reset`** to drop every staged change.
-5. Click **`Simulate action`**. The backend simulates the user-built
-   topology and emits a manual-action card in the Action Feed; the
-   SLD overlay auto-focuses on the new action's `ACTION` tab so the
-   post-action state is shown immediately (no manual tab switch).
+6. Click **`Simulate action`**. The backend simulates the user-built
+   state (switches + injection setpoints combined into one
+   `action_content`) and emits a manual-action card in the Action
+   Feed; the SLD overlay auto-focuses on the new action's `ACTION` tab
+   so the post-action state is shown immediately (no manual tab
+   switch).
 
 When the edit was done **on a post-action SLD**, the resulting card
 has a combined id `<base_action_id>+user_topo_<vl>_<ts>` so it appears
@@ -76,16 +99,57 @@ The frontend renders the preview SVG in place of the baseline with
 the `sld-preview-stale` CSS class greying every flow `<text>` and
 arrow glyph until the operator commits the simulation.
 
+## Injection (active-power) edit
+
+Clicking a load / generator while in edit mode opens
+`SldInjectionPopover`, seeded from the **`injections` baseline** the
+backend now stamps on every SLD response (mirror of `switch_states`):
+
+```
+injections: { <equipment_id>: {
+    kind: "generator" | "load",
+    p: <current setpoint MW>,          // target_p (gen) / p0 (load)
+    min_p?, max_p?,                    // generator capability bounds
+    energy_source?                      // e.g. WIND / NUCLEAR (gen only)
+} }
+```
+
+The operator types a new setpoint; the hook stages it as an absolute
+override (`pendingInjections[equipment_id] = MW`) and the
+`injectionChanges` diff (target ≠ baseline) feeds both the maneuver
+panel and the `action_content`. On simulate, App splits the staged
+injections by kind into `gens_p` / `loads_p` content keys, which the
+backend's `_build_action_entry_from_topology` maps to
+`set_gen_p` / `set_load_p` — the same content path the
+load-shedding / curtailment / redispatch actions already use. So
+**no new simulation code is needed**; the only backend addition is a
+generalised auto-description (`build_manual_action_description`) that
+names a user-built action covering switches AND injections
+(`"Manoeuvre manuelle sur <vl>: SW_A ouvert, GEN_X P=90.0 MW"`).
+
+Generator setpoints are clamped to `[min_p, max_p]` in the editor;
+loads have no capability bounds. Active-power values are read straight
+from the displayed network variant, so the baseline reflects the
+contingency / post-action state being edited.
+
 ## Backend contract
 
 | Endpoint | Change |
 |---|---|
-| `POST /api/n-sld` | Response gains `switch_states: { switch_id: is_open }` for the requested VL. |
+| `POST /api/n-sld` | Response gains `switch_states: { switch_id: is_open }` **and** `injections: { equipment_id: {...} }` for the requested VL. |
 | `POST /api/contingency-sld` | Same. |
 | `POST /api/action-variant-sld` | Same. The existing `changed_switches` diff is unchanged. |
-| `POST /api/sld-topology-preview` | **NEW.** Body: `{ voltage_level_id, disconnected_elements, switches, base_action_id? }`. Response: `{ svg, sld_metadata, voltage_level_id, switch_states, stale_flows: true }`. |
-| `POST /api/simulate-manual-action` | New optional body field `voltage_level_id` used to auto-name switch-only manual actions (`"Manoeuvre manuelle sur <vl>: SW_A ouvert, SW_B fermé"`). |
-| `POST /api/simulate-and-variant-diagram` | Same `voltage_level_id` plumbing. The NDJSON stream is unchanged (`{type:"metrics"} → {type:"diagram"}`). |
+| `POST /api/sld-topology-preview` | **NEW.** Body: `{ voltage_level_id, disconnected_elements, switches, base_action_id? }`. Response: `{ svg, sld_metadata, voltage_level_id, switch_states, injections, stale_flows: true }`. |
+| `POST /api/simulate-manual-action` | Optional body field `voltage_level_id` used to auto-name user-built manual actions (`"Manoeuvre manuelle sur <vl>: SW_A ouvert, GEN_X P=90.0 MW"`). `action_content` may carry any combination of `switches` / `gens_p` / `loads_p`. |
+| `POST /api/simulate-and-variant-diagram` | Same `voltage_level_id` plumbing + combined `action_content`. The NDJSON stream is unchanged (`{type:"metrics"} → {type:"diagram"}`). |
+
+**Injection baseline extraction** — `extract_vl_injections`
+(`expert_backend/services/diagram/sld_render.py`) reads
+`network.get_generators(...)` / `network.get_loads(...)` filtered to the
+requested VL (with attribute-list fallbacks for legacy pypowsybl),
+coercing non-finite setpoints / bounds to `null`. Returns `{}` on any
+pypowsybl failure — injection editing is additive, so the SLD still
+renders.
 
 **Operable switch filtering** — `extract_vl_switch_states`
 (`expert_backend/services/diagram/sld_render.py`) reads
@@ -110,10 +174,12 @@ key.
 
 | File | Role |
 |---|---|
-| `hooks/useSldTopologyEdit.ts` | Owns the pending overrides, focus state, and the toggle / removeSwitch / removeSwitches / reset / setFocusedSwitch API. Auto-drops stale overrides on baseline identity change. |
-| `components/SldEditPanel.tsx` | Side panel under the SLD body — maneuver list, focus on row click, `×` per row, checkbox + **Remove selected (N)** for blocks, combined-with badge, Reset / Simulate buttons. |
-| `components/SldOverlay.tsx` | Header `✎ Manual action` button, switch-click delegation via SLD metadata `equipmentId → SVG id` map (dot/underscore variants handled), toggle outlines + focused-switch filter — applied **also on the preview** so the highlight persists. **Click targeting:** breaker / disconnector glyphs are small, so the click handler keeps the pixel-perfect hit fast-path **and** snaps to the closest editable switch within a 26 px radius on a near-miss; the trailing `click` of a pan-drag is ignored (a `panMovedRef` slop guard). The overlay body shows the standard arrow cursor (not a grab hand) while in edit mode. |
-| `App.tsx::handleSimulateSldEdit` | Streams `/api/simulate-and-variant-diagram` with `action_content={switches}` + `voltage_level_id`, primes the action-variant diagram under the **backend-canonical** id (`metrics.action_id`), pushes the card via `wrappedManualActionAdded(_, _, _, 'user')`, then `handleVlDoubleClick(id, vl, 'action')` to auto-focus the new action's tab. |
+| `hooks/useSldTopologyEdit.ts` | Owns the pending switch overrides AND injection setpoint overrides, focus state, and the toggle / removeSwitch / removeSwitches / **setInjection / removeInjection** / reset / setFocusedSwitch API. Exposes `changedSwitches` + `changedInjections` + `pendingChanges` + `injectionChanges` + `hasPendingChanges`. Auto-drops stale overrides on either baseline's identity change. |
+| `components/SldInjectionPopover.tsx` | **NEW.** Floating active-power editor opened by clicking a load / generator: name + kind, current P, Pmin / Pmax + energy source (gen), a setpoint input (Enter to apply, Esc to close), out-of-range clamp note, Apply / Reset-to-baseline / Close. |
+| `components/SldEditPanel.tsx` | Side panel under the SLD body — maneuver list (switch toggles + injection retunes), focus on row click, `×` per row, checkbox + **Remove selected (N)** for switch blocks, combined-with badge, Reset / Simulate buttons. |
+| `components/SldOverlay.tsx` | Header `✎ Manual action` opt-out button, click delegation via SLD metadata `equipmentId → SVG id` map (dot/underscore variants handled): a switch hit toggles it, a load / generator hit opens `SldInjectionPopover` anchored at the click (body-relative, clamped to stay visible). Toggle / injection outlines + focused-element filter — applied **also on the preview** so the highlight persists. **Click targeting:** breaker / disconnector glyphs are small, so the handler keeps the pixel-perfect hit fast-path **and** snaps to the closest editable switch within a 26 px radius on a near-miss (load / gen glyphs are large enough for an exact hit); the trailing `click` of a pan-drag is ignored (a `panMovedRef` slop guard). |
+| `App.tsx::sldTopologyEdit auto-enable effect` | Turns edit mode on the first time an editable SLD (non-N tab with operable switches or editable injections) loads, keyed on the SLD identity so an explicit opt-out stays sticky until the VL / tab / action changes. |
+| `App.tsx::handleSimulateSldEdit` | Builds `action_content` from `changedSwitches` + `changedInjections` (the latter split into `gens_p` / `loads_p` by kind), streams `/api/simulate-and-variant-diagram` with `voltage_level_id`, primes the action-variant diagram under the **backend-canonical** id (`metrics.action_id`), pushes the card via `wrappedManualActionAdded(_, _, _, 'user')`, then `handleVlDoubleClick(id, vl, 'action')` to auto-focus the new action's tab. |
 | `App.tsx::sldPreview` | Debounced fetch of `/api/sld-topology-preview` with sequence guard. |
 | `styles/tokens.css` | `--signal-edit-open` / `--signal-edit-closed` token pair for the toggle outline. |
 | `App.css` | `.sld-user-toggle-{open,closed}` (dashed outline) + `.sld-preview-stale` (grey flow values). |
@@ -154,7 +220,9 @@ overflow-pin filters at once.
 | `sld_maneuver_removed` | `equipment_ids` | |
 | `sld_maneuver_focused` | `equipment_id` | |
 | `sld_edit_reset` | — | |
-| `sld_topology_simulated` | `voltage_level_id`, `switches` | `combined_with` |
+| `sld_injection_staged` | `equipment_id`, `kind`, `target_mw` | |
+| `sld_injection_removed` | `equipment_id` | |
+| `sld_topology_simulated` | `voltage_level_id`, `switches` | `combined_with`, `injections` |
 
 Declared in the `InteractionType` union (`frontend/src/types.ts`),
 mirrored in the conformance contract
@@ -167,6 +235,15 @@ mirrored in the conformance contract
 
 - `TestExtractVlSwitchStates` — happy path, fictitious-row filter,
   pypowsybl-failure resilience, extended-attribute fallback.
+- `TestExtractVlInjections` — load + generator collection, VL filter,
+  non-finite setpoint coercion, pypowsybl-failure resilience,
+  attribute fallback, missing-column handling.
+- `TestBuildManualActionDescription` — switch-only parity with
+  `build_switch_action_description`, injection-only setpoints,
+  combined switch + injection, empty content.
+- `TestSimulateManualActionInjectionEdit` — `_inject_action_content_entries`
+  builds combined `set_gen_p` / `set_load_p` + switch content and a
+  description covering both.
 - `TestExtractVlSwitchStatesEdgeCases` — corrupt-row skipping, missing
   VL, missing `fictitious` column.
 - `TestIsSwitchOnlyContent` / `TestBuildSwitchActionDescription` /
@@ -193,10 +270,20 @@ mirrored in the conformance contract
 
 - `hooks/useSldTopologyEdit.test.ts` — toggle / reset / remove single /
   remove block / focus / baseline-change pruning / interaction-log
-  emissions.
+  emissions, **plus** injection staging: edit-mode gating, retune vs
+  baseline, drop-on-baseline, unknown-equipment rejection, remove +
+  focus clear, switch+injection coexistence, baseline-identity pruning,
+  `sld_injection_staged` / `sld_injection_removed` logging.
+- `components/SldInjectionPopover.test.tsx` — name / kind / source /
+  Pmin-Pmax render, load omits bounds, apply, generator clamp,
+  disabled-Apply on blank, Reset only when staged, remove / close.
 - `components/SldEditPanel.test.tsx` — empty state, per-row direction
   display, focus on row click, `×` removal, block removal, busy
-  state, combined-with badge.
+  state, combined-with badge, **injection rows** (baseline→target MW,
+  remove, focus).
+- `components/SldOverlay.test.tsx` — injection edit: click a generator
+  opens the editor, edit-off suppresses it, apply routes through
+  `onInjectionStage`, staged cell gets the `sld-user-injection` outline.
 - `utils/actionTypes.test.ts` — multi-bucket classifier coverage
   (open/close/disco/reco from manual maneuvers), combined open+close
   card, comma-joined coupling + line, line-only maneuvers, ligature

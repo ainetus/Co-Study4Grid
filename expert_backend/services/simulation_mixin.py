@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING
 from expert_backend.services.sanitize import sanitize_for_json
 from expert_backend.services.simulation_helpers import (
     build_combined_description,
-    build_switch_action_description,
+    build_manual_action_description,
     canonicalize_action_id,
     classify_action_content,
     clamp_tap,
@@ -366,11 +366,13 @@ class SimulationMixin(_Base):
         their content has to be available before
         ``env.action_space(content)`` is called.
 
-        When the content is switch-only (the SLD-edit case) and a
-        ``voltage_level_id`` is provided, the placeholder ``Restored
-        action`` description is replaced with a human-readable one so
-        the resulting card in the frontend feed reads "Manoeuvre
-        manuelle sur <vl>: …" instead of the synthetic id.
+        When the action is a user-built SLD edit (a ``user_topo_*`` id) or a
+        switch-only content, the placeholder ``Restored action`` description
+        is replaced with a human-readable one so the resulting card in the
+        frontend feed reads "Manoeuvre manuelle sur <vl>: …" instead of the
+        synthetic id. The description covers both breaker / disconnector
+        toggles AND load / generator active-power retunes staged from the
+        same diagram (see ``build_manual_action_description``).
         """
         if not action_content:
             return
@@ -383,9 +385,9 @@ class SimulationMixin(_Base):
                 continue
             entry = self._build_action_entry_from_topology(aid, topo)
             content = entry.get("content") or {}
-            if is_switch_only_content(content):
-                desc = build_switch_action_description(
-                    content["switches"], voltage_level_id=voltage_level_id
+            if aid.startswith("user_topo_") or is_switch_only_content(content):
+                desc = build_manual_action_description(
+                    content, voltage_level_id=voltage_level_id
                 )
                 entry["description_unitaire"] = desc
                 entry["description"] = desc

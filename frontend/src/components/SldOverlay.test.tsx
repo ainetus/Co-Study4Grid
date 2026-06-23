@@ -1036,4 +1036,71 @@ describe('SldOverlay', () => {
             }
         });
     });
+
+    describe('Interactive injection (load / generator) edit', () => {
+        const injectionOverlay = (): VlOverlay => ({
+            vlName: 'VL_400',
+            actionId: null,
+            svg: '<svg><g id="gen_feeder_GEN_A" class="sld-extern-cell"><rect width="20" height="20"/></g></svg>',
+            sldMetadata: JSON.stringify({
+                nodes: [{ id: 'gen_feeder_GEN_A', equipmentId: 'GEN_A', componentType: 'GENERATOR' }],
+            }),
+            loading: false,
+            error: null,
+            tab: 'contingency' as SldTab,
+            switch_states: {},
+            injections: {
+                GEN_A: { kind: 'generator', p: 120, min_p: 0, max_p: 200, energy_source: 'WIND' },
+            },
+        });
+
+        const editProps = (over: Partial<Parameters<typeof SldOverlay>[0]> = {}) => ({
+            ...defaultProps,
+            vlOverlay: injectionOverlay(),
+            selectedContingency: ['L_FAULTY'],
+            editMode: true,
+            onEditModeChange: vi.fn(),
+            pendingChanges: [],
+            onSimulateEdit: vi.fn(),
+            onResetEdit: vi.fn(),
+            onInjectionStage: vi.fn(),
+            onInjectionRemove: vi.fn(),
+            pendingInjections: {},
+            injectionChanges: [],
+            ...over,
+        });
+
+        it('opens the injection editor when a generator is clicked in edit mode', () => {
+            const { container } = render(<SldOverlay {...editProps()} />);
+            expect(screen.queryByTestId('sld-injection-popover')).toBeNull();
+            fireEvent.click(container.querySelector('#gen_feeder_GEN_A rect')!);
+            expect(screen.getByTestId('sld-injection-popover')).toBeInTheDocument();
+            expect(screen.getByTestId('sld-injection-name').textContent).toBe('GEN_A');
+            expect(screen.getByTestId('sld-injection-bounds')).toBeInTheDocument();
+        });
+
+        it('does NOT open the editor when edit mode is off', () => {
+            const { container } = render(<SldOverlay {...editProps({ editMode: false })} />);
+            fireEvent.click(container.querySelector('#gen_feeder_GEN_A rect')!);
+            expect(screen.queryByTestId('sld-injection-popover')).toBeNull();
+        });
+
+        it('stages the retune from the editor through onInjectionStage', () => {
+            const onInjectionStage = vi.fn();
+            const { container } = render(<SldOverlay {...editProps({ onInjectionStage })} />);
+            fireEvent.click(container.querySelector('#gen_feeder_GEN_A rect')!);
+            fireEvent.change(screen.getByTestId('sld-injection-input'), { target: { value: '95' } });
+            fireEvent.click(screen.getByTestId('sld-injection-apply'));
+            expect(onInjectionStage).toHaveBeenCalledWith('GEN_A', 95);
+            // Bubble dismisses after applying.
+            expect(screen.queryByTestId('sld-injection-popover')).toBeNull();
+        });
+
+        it('paints a staged injection cell with the sld-user-injection outline', () => {
+            const { container } = render(
+                <SldOverlay {...editProps({ pendingInjections: { GEN_A: 95 } })} />,
+            );
+            expect(container.querySelector('.sld-user-injection')).toBeTruthy();
+        });
+    });
 });

@@ -28,8 +28,12 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from expert_backend.services.diagram.sld_render import extract_vl_switch_states
+from expert_backend.services.diagram.sld_render import (
+    extract_vl_injections,
+    extract_vl_switch_states,
+)
 from expert_backend.services.simulation_helpers import (
+    build_manual_action_description,
     build_switch_action_description,
     canonicalize_action_id,
     is_switch_only_content,
@@ -81,6 +85,129 @@ class TestExtractVlSwitchStates:
         network.get_switches.side_effect = [TypeError("unknown attr"), df]
         states = extract_vl_switch_states(network, "VL_A")
         assert states == {"SW_X": True}
+
+
+class TestExtractVlInjections:
+    """``extract_vl_injections`` is the load / generator analogue of
+    ``extract_vl_switch_states``: it lists the editable active-power
+    injections on a VL with their current setpoint + (for generators)
+    capability bounds + energy source."""
+
+    def _network(self):
+        network = MagicMock()
+        network.get_generators.return_value = pd.DataFrame(
+            {
+                "voltage_level_id": ["VL_A", "VL_B"],
+                "target_p": [120.0, 50.0],
+                "min_p": [0.0, 10.0],
+                "max_p": [200.0, 80.0],
+                "energy_source": ["WIND", "NUCLEAR"],
+            },
+            index=["GEN_A", "GEN_B"],
+        )
+        network.get_loads.return_value = pd.DataFrame(
+            {"voltage_level_id": ["VL_A", "VL_C"], "p0": [42.5, 10.0]},
+            index=["LOAD_A", "LOAD_C"],
+        )
+        return network
+
+    def test_collects_generators_and_loads_for_vl(self):
+        inj = extract_vl_injections(self._network(), "VL_A")
+        assert set(inj.keys()) == {"GEN_A", "LOAD_A"}
+        assert inj["GEN_A"] == {
+            "kind": "generator", "p": 120.0,
+            "min_p": 0.0, "max_p": 200.0, "energy_source": "WIND",
+        }
+        assert inj["LOAD_A"] == {"kind": "load", "p": 42.5}
+
+    def test_filters_out_other_voltage_levels(self):
+        inj = extract_vl_injections(self._network(), "VL_B")
+        assert set(inj.keys()) == {"GEN_B"}
+
+    def test_returns_empty_on_pypowsybl_failure(self):
+        network = MagicMock()
+        network.get_generators.side_effect = RuntimeError("boom")
+        network.get_loads.side_effect = RuntimeError("boom")
+        assert extract_vl_injections(network, "VL_A") == {}
+
+    def test_coerces_non_finite_setpoints_to_none(self):
+        network = MagicMock()
+        network.get_generators.return_value = pd.DataFrame(
+            {
+                "voltage_level_id": ["VL_A"],
+                "target_p": [float("nan")],
+                "min_p": [float("-inf")],
+                "max_p": [float("inf")],
+                "energy_source": ["SOLAR"],
+            },
+            index=["GEN_NAN"],
+        )
+        network.get_loads.return_value = pd.DataFrame(
+            {"voltage_level_id": ["VL_OTHER"], "p0": [1.0]}, index=["LOAD_OTHER"]
+        )
+        inj = extract_vl_injections(network, "VL_A")
+        assert inj["GEN_NAN"]["p"] is None
+        assert inj["GEN_NAN"]["min_p"] is None
+        assert inj["GEN_NAN"]["max_p"] is None
+
+    def test_falls_back_when_attributes_unsupported(self):
+        network = MagicMock()
+        df_gen = pd.DataFrame(
+            {
+                "voltage_level_id": ["VL_A"], "target_p": [12.0],
+                "min_p": [0.0], "max_p": [20.0], "energy_source": ["HYDRO"],
+            },
+            index=["GEN_X"],
+        )
+        # First call (rich attributes) raises; fallback get_generators() works.
+        network.get_generators.side_effect = [TypeError("no attrs"), df_gen]
+        network.get_loads.return_value = pd.DataFrame(
+            {"voltage_level_id": ["VL_A"], "p0": [5.0]}, index=["LOAD_X"]
+        )
+        inj = extract_vl_injections(network, "VL_A")
+        assert inj["GEN_X"]["energy_source"] == "HYDRO"
+        assert inj["LOAD_X"] == {"kind": "load", "p": 5.0}
+
+    def test_handles_missing_bounds_and_source_columns(self):
+        network = MagicMock()
+        network.get_generators.side_effect = [
+            TypeError("no attrs"),
+            pd.DataFrame(
+                {"voltage_level_id": ["VL_A"], "target_p": [7.0]}, index=["GEN_BARE"]
+            ),
+        ]
+        network.get_loads.return_value = pd.DataFrame(
+            {"voltage_level_id": ["VL_A"], "p0": [3.0]}, index=["LOAD_A"]
+        )
+        inj = extract_vl_injections(network, "VL_A")
+        assert inj["GEN_BARE"] == {"kind": "generator", "p": 7.0}
+
+
+class TestBuildManualActionDescription:
+    """``build_manual_action_description`` generalises the switch-only
+    description to combined switch + injection user-built actions, while
+    keeping the switch-only output byte-identical."""
+
+    def test_switch_only_matches_switch_builder(self):
+        content = {"switches": {"SW_A": True, "SW_B": False}}
+        assert build_manual_action_description(content, "VL_X") == \
+            build_switch_action_description({"SW_A": True, "SW_B": False}, "VL_X")
+
+    def test_includes_injection_setpoints(self):
+        content = {"set_gen_p": {"GEN_A": 90.0}, "set_load_p": {"LOAD_A": 30.0}}
+        desc = build_manual_action_description(content, "VL_X")
+        assert "VL_X" in desc
+        assert "GEN_A P=90.0 MW" in desc
+        assert "LOAD_A P=30.0 MW" in desc
+
+    def test_combines_switch_and_injection(self):
+        content = {"switches": {"SW_A": True}, "set_gen_p": {"GEN_A": 12.5}}
+        desc = build_manual_action_description(content)
+        assert "SW_A ouvert" in desc
+        assert "GEN_A P=12.5 MW" in desc
+
+    def test_empty_content(self):
+        assert "vide" in build_manual_action_description({}).lower()
 
 
 class TestIsSwitchOnlyContent:
@@ -160,6 +287,38 @@ class TestSimulateManualActionSwitchOnly:
         # Description is built even without VL — just without VL prefix.
         desc = service._dict_action["user_topo_x"]["description_unitaire"]
         assert "SW_A ouvert" in desc
+
+
+class TestSimulateManualActionInjectionEdit:
+    """A user-built SLD edit can stage active-power retunes (loads / gens)
+    alongside switch toggles; ``_inject_action_content_entries`` must build
+    the combined ``set_gen_p`` / ``set_load_p`` content AND a human-readable
+    description covering both."""
+
+    def test_injects_injection_content_and_description(self):
+        from expert_backend.services.recommender_service import RecommenderService
+
+        service = RecommenderService()
+        service._dict_action = {}
+
+        service._inject_action_content_entries(
+            ["user_topo_VL_X_9"],
+            {"gens_p": {"GEN_A": 90.0}, "loads_p": {"LOAD_A": 30.0},
+             "switches": {"SW_A": True}},
+            recent_actions={},
+            voltage_level_id="VL_X",
+        )
+
+        entry = service._dict_action["user_topo_VL_X_9"]
+        desc = entry["description_unitaire"]
+        assert "VL_X" in desc
+        assert "GEN_A P=90.0 MW" in desc
+        assert "LOAD_A P=30.0 MW" in desc
+        assert "SW_A ouvert" in desc
+        # Topology dict round-trips into env-parseable set_gen_p / set_load_p.
+        assert entry["content"]["set_gen_p"] == {"GEN_A": 90.0}
+        assert entry["content"]["set_load_p"] == {"LOAD_A": 30.0}
+        assert entry["content"]["switches"] == {"SW_A": True}
 
 
 class TestTopologyPreviewSld:
@@ -255,9 +414,10 @@ class TestRequireActionCanonicalAlias:
 
 
 class TestSldEndpointSwitchStates:
-    """get_*_sld endpoints expose switch_states alongside svg + metadata."""
+    """get_*_sld endpoints expose switch_states + injections alongside
+    svg + metadata."""
 
-    def test_get_n_sld_attaches_switch_states(self):
+    def test_get_n_sld_attaches_switch_states_and_injections(self):
         from expert_backend.services.recommender_service import RecommenderService
 
         service = RecommenderService()
@@ -274,6 +434,16 @@ class TestSldEndpointSwitchStates:
             },
             index=["SW_X"],
         )
+        mock_net.get_generators.return_value = pd.DataFrame(
+            {
+                "voltage_level_id": ["VL_X"], "target_p": [80.0],
+                "min_p": [0.0], "max_p": [150.0], "energy_source": ["WIND"],
+            },
+            index=["GEN_X"],
+        )
+        mock_net.get_loads.return_value = pd.DataFrame(
+            {"voltage_level_id": ["VL_X"], "p0": [25.0]}, index=["LOAD_X"]
+        )
         mock_sld = MagicMock()
         mock_sld._repr_svg_.return_value = "<svg/>"
         mock_sld._metadata = "{}"
@@ -285,6 +455,9 @@ class TestSldEndpointSwitchStates:
         result = service.get_n_sld("VL_X")
         assert result["voltage_level_id"] == "VL_X"
         assert result["switch_states"] == {"SW_X": False}
+        assert result["injections"]["GEN_X"]["kind"] == "generator"
+        assert result["injections"]["GEN_X"]["max_p"] == 150.0
+        assert result["injections"]["LOAD_X"] == {"kind": "load", "p": 25.0}
 
 
 class TestExtractVlSwitchStatesEdgeCases:

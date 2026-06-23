@@ -89,6 +89,47 @@ def build_switch_action_description(
     return f"Manoeuvre manuelle: {body}"
 
 
+def _fmt_setpoint_mw(value: Any) -> str:
+    """Format an active-power setpoint for an action description (1 decimal)."""
+    try:
+        return f"{float(value):.1f}"
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def build_manual_action_description(
+    content: dict[str, Any],
+    voltage_level_id: str | None = None,
+) -> str:
+    """Describe a user-built SLD-edit action (switch toggles AND/OR injection
+    setpoint changes) in one human-readable French clause.
+
+    Generalises :func:`build_switch_action_description` to the combined
+    interactive-SLD gesture: the operator can, from the same diagram, flip
+    breakers / disconnectors **and** retune the active power of loads /
+    generators before simulating one manual action. For a switch-only
+    ``content`` the output is byte-identical to
+    :func:`build_switch_action_description`, so the existing card / filter
+    contract is preserved.
+
+    ``content`` is the post-``_build_action_entry_from_topology`` form, i.e.
+    ``switches`` plus ``set_gen_p`` / ``set_load_p`` (absolute MW setpoints).
+    """
+    parts: list[str] = []
+    for sw_id, is_open in (content.get("switches") or {}).items():
+        parts.append(f"{sw_id} {'ouvert' if is_open else 'fermé'}")
+    for gen_id, p in (content.get("set_gen_p") or {}).items():
+        parts.append(f"{gen_id} P={_fmt_setpoint_mw(p)} MW")
+    for load_id, p in (content.get("set_load_p") or {}).items():
+        parts.append(f"{load_id} P={_fmt_setpoint_mw(p)} MW")
+    if not parts:
+        return "Manoeuvre manuelle (vide)"
+    body = ", ".join(parts)
+    if voltage_level_id:
+        return f"Manoeuvre manuelle sur {voltage_level_id}: {body}"
+    return f"Manoeuvre manuelle: {body}"
+
+
 def compute_reduction_setpoint(
     element_name: str,
     element_type: str,

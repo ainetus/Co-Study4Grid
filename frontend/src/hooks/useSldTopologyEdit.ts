@@ -4,8 +4,9 @@
 // you can obtain one at http://mozilla.org/MPL/2.0/.
 // SPDX-License-Identifier: MPL-2.0
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { interactionLogger } from '../utils/interactionLogger';
+import type { VlInjection } from '../types';
 
 export interface SwitchToggleEntry {
     switchId: string;
@@ -13,11 +14,27 @@ export interface SwitchToggleEntry {
     targetOpen: boolean;
 }
 
+export interface InjectionChangeEntry {
+    equipmentId: string;
+    kind: 'generator' | 'load';
+    /** Baseline active-power setpoint (MW); null when unknown. */
+    baselineP: number | null;
+    /** Staged target active-power setpoint (MW). */
+    targetP: number;
+    minP?: number | null;
+    maxP?: number | null;
+    energySource?: string;
+}
+
+// Two setpoints are "the same" below this tolerance (MW) — used so a
+// retune that lands back on the baseline value drops the override.
+const P_EPSILON = 1e-6;
+
 export interface SldTopologyEditState {
     /**
-     * Edit mode is opt-in: when off, the SLD acts as a read-only
-     * visualisation (existing behaviour). Toggling it on enables click
-     * handlers on switch DOM elements.
+     * Edit mode toggles the click handlers on switch / injection DOM
+     * elements. It is opt-out (App auto-enables it when an editable SLD
+     * opens) — turning it off returns the SLD to a read-only view.
      */
     editMode: boolean;
     setEditMode: (next: boolean) => void;
@@ -51,12 +68,30 @@ export interface SldTopologyEditState {
      */
     removeSwitches: (equipmentIds: string[]) => void;
     /**
-     * Drop all pending toggles. Logged as ``sld_edit_reset``.
+     * Absolute target active-power setpoints (MW) keyed by
+     * ``equipmentId`` (load / generator). Only equipment present in the
+     * ``injections`` baseline is accepted — see ``setInjection``.
+     */
+    pendingInjections: Record<string, number>;
+    /**
+     * Stage an active-power retune for a load / generator. Silently
+     * ignored when ``editMode`` is off or the id is missing from the
+     * injection baseline. When the target equals the baseline setpoint
+     * the override is dropped (so it doesn't show up in
+     * ``changedInjections``).
+     */
+    setInjection: (equipmentId: string, targetP: number) => void;
+    /** Remove a single staged injection retune (revert to baseline). */
+    removeInjection: (equipmentId: string) => void;
+    /**
+     * Drop all pending toggles AND injection retunes. Logged as
+     * ``sld_edit_reset``.
      */
     reset: () => void;
     /**
-     * When set, the SLD highlights ONLY this switch (the maneuver-list
-     * focus gesture). Null = highlight every staged change.
+     * When set, the SLD highlights ONLY this equipment (the maneuver-list
+     * focus gesture — works for both switches and injections). Null =
+     * highlight every staged change.
      */
     focusedSwitchId: string | null;
     setFocusedSwitch: (equipmentId: string | null) => void;
@@ -66,50 +101,71 @@ export interface SldTopologyEditState {
      */
     changedSwitches: Record<string, boolean>;
     /**
+     * Subset of ``pendingInjections`` that differ from the baseline.
+     * Split into ``gens_p`` / ``loads_p`` by App before being sent as
+     * ``action_content``.
+     */
+    changedInjections: Record<string, number>;
+    /**
      * Per-switch diff descriptors for the side-panel UI. Stable order
      * (insertion order of `pendingStates` keys) so re-renders don't
      * shuffle the list.
      */
     pendingChanges: SwitchToggleEntry[];
+    /** Per-injection diff descriptors for the side-panel UI. */
+    injectionChanges: InjectionChangeEntry[];
+    /** True when at least one switch OR injection change is staged. */
+    hasPendingChanges: boolean;
 }
 
 /**
- * Owns the pending switch overrides for the interactive SLD-edit
- * gesture. The baseline is the ``switch_states`` map the backend
- * stamped on the current SLD response (N-1 or post-action variant).
+ * Owns the pending switch overrides AND injection (active-power) retunes
+ * for the interactive SLD-edit gesture. The baselines are the
+ * ``switch_states`` / ``injections`` maps the backend stamped on the
+ * current SLD response (N-1 or post-action variant).
  *
- * The hook auto-resets pending overrides whenever the baseline
- * identity changes (new VL opened, tab switched, action variant
- * changed) — keeping stale toggles around would silently apply them
- * to a different network state.
+ * The hook auto-resets pending edits whenever the baseline identity
+ * changes (new VL opened, tab switched, action variant changed) —
+ * keeping stale edits around would silently apply them to a different
+ * network state.
  */
 export function useSldTopologyEdit(
     baselineSwitchStates: Record<string, boolean> | undefined,
+    baselineInjections?: Record<string, VlInjection> | undefined,
 ): SldTopologyEditState {
     const [editMode, setEditModeState] = useState(false);
     const [pendingStates, setPendingStates] = useState<Record<string, boolean>>({});
+    const [pendingInjections, setPendingInjections] = useState<Record<string, number>>({});
     const [focusedSwitchId, setFocusedSwitchId] = useState<string | null>(null);
 
-    // Stable identity probe for the baseline — used to drop stale
-    // overrides when the operator switches VL or SLD tab. We don't
-    // hash deeply: the backend re-issues the entire map every fetch,
-    // so the JS object identity already changes on every update.
-    // Same pattern as useDiagramHighlights's reattach-prune effect —
-    // a guarded reset that must run on baseline change.
+    // Mirror of "is anything staged right now", kept in sync with the
+    // committed state so ``reset()`` can decide whether to log
+    // ``sld_edit_reset`` synchronously (state updaters run after the
+    // current call, so a flag set inside them would read stale).
+    const hasPendingRef = useRef(false);
+    useEffect(() => {
+        hasPendingRef.current =
+            Object.keys(pendingStates).length > 0 || Object.keys(pendingInjections).length > 0;
+    }, [pendingStates, pendingInjections]);
+
+    // Stable identity probe for the baselines — used to drop stale edits
+    // when the operator switches VL or SLD tab. We don't hash deeply: the
+    // backend re-issues the entire maps every fetch, so the JS object
+    // identity already changes on every update. Same pattern as
+    // useDiagramHighlights's reattach-prune effect.
     //
-    // CRITICAL: the setter callbacks no-op when there's nothing to
-    // clear. Without the bail-out, a caller passing a fresh object
-    // literal on every render (which Re-renderHook does naturally in
-    // tests, and any non-memoised parent could do in production)
-    // would trigger an infinite render loop:
-    //   render → effect → setState({}) → render → effect → setState({}) …
-    // The bail-out keeps React's reconciliation short-circuit working
-    // (Object.is on the previous and next state → no re-render).
+    // CRITICAL: the setter callbacks no-op when there's nothing to clear.
+    // Without the bail-out, a caller passing a fresh object literal on
+    // every render (which renderHook does naturally in tests, and any
+    // non-memoised parent could do in production) would trigger an
+    // infinite render loop. The bail-out keeps React's reconciliation
+    // short-circuit working (Object.is on prev/next → no re-render).
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setPendingStates(prev => (Object.keys(prev).length === 0 ? prev : {}));
+        setPendingInjections(prev => (Object.keys(prev).length === 0 ? prev : {}));
         setFocusedSwitchId(prev => (prev === null ? prev : null));
-    }, [baselineSwitchStates]);
+    }, [baselineSwitchStates, baselineInjections]);
 
     const setEditMode = useCallback((next: boolean) => {
         setEditModeState(prev => {
@@ -119,6 +175,7 @@ export function useSldTopologyEdit(
         });
         if (!next) {
             setPendingStates({});
+            setPendingInjections({});
             setFocusedSwitchId(null);
         }
     }, []);
@@ -169,17 +226,52 @@ export function useSldTopologyEdit(
         interactionLogger.record('sld_maneuver_removed', { equipment_ids: equipmentIds });
     }, []);
 
+    const setInjection = useCallback((equipmentId: string, targetP: number) => {
+        if (!editMode) return;
+        const baseline = baselineInjections;
+        if (!baseline || !(equipmentId in baseline)) return;
+        if (!Number.isFinite(targetP)) return;
+        const baselineP = baseline[equipmentId].p;
+        setPendingInjections(prev => {
+            const next = { ...prev };
+            // A retune back onto the baseline setpoint clears the override.
+            if (baselineP != null && Math.abs(targetP - baselineP) < P_EPSILON) {
+                delete next[equipmentId];
+            } else {
+                next[equipmentId] = targetP;
+            }
+            return next;
+        });
+        interactionLogger.record('sld_injection_staged', {
+            equipment_id: equipmentId,
+            kind: baseline[equipmentId].kind,
+            target_mw: targetP,
+        });
+    }, [editMode, baselineInjections]);
+
+    const removeInjection = useCallback((equipmentId: string) => {
+        setPendingInjections(prev => {
+            if (!(equipmentId in prev)) return prev;
+            const next = { ...prev };
+            delete next[equipmentId];
+            return next;
+        });
+        setFocusedSwitchId(prev => (prev === equipmentId ? null : prev));
+        interactionLogger.record('sld_injection_removed', { equipment_id: equipmentId });
+    }, []);
+
     const setFocusedSwitch = useCallback((equipmentId: string | null) => {
         setFocusedSwitchId(equipmentId);
     }, []);
 
     const reset = useCallback(() => {
         setFocusedSwitchId(null);
-        setPendingStates(prev => {
-            if (Object.keys(prev).length === 0) return prev;
+        setPendingStates(prev => (Object.keys(prev).length === 0 ? prev : {}));
+        setPendingInjections(prev => (Object.keys(prev).length === 0 ? prev : {}));
+        if (hasPendingRef.current) {
             interactionLogger.record('sld_edit_reset');
-            return {};
-        });
+            hasPendingRef.current = false;
+        }
     }, []);
 
     const changedSwitches = useMemo(() => {
@@ -193,6 +285,18 @@ export function useSldTopologyEdit(
         return diff;
     }, [pendingStates, baselineSwitchStates]);
 
+    const changedInjections = useMemo(() => {
+        if (!baselineInjections) return {};
+        const diff: Record<string, number> = {};
+        for (const [eid, target] of Object.entries(pendingInjections)) {
+            const baselineP = baselineInjections[eid]?.p;
+            if (baselineP == null || Math.abs(target - baselineP) >= P_EPSILON) {
+                diff[eid] = target;
+            }
+        }
+        return diff;
+    }, [pendingInjections, baselineInjections]);
+
     const pendingChanges = useMemo<SwitchToggleEntry[]>(() => {
         if (!baselineSwitchStates) return [];
         return Object.entries(changedSwitches).map(([switchId, targetOpen]) => ({
@@ -202,6 +306,24 @@ export function useSldTopologyEdit(
         }));
     }, [changedSwitches, baselineSwitchStates]);
 
+    const injectionChanges = useMemo<InjectionChangeEntry[]>(() => {
+        if (!baselineInjections) return [];
+        return Object.entries(changedInjections).map(([equipmentId, targetP]) => {
+            const base = baselineInjections[equipmentId];
+            return {
+                equipmentId,
+                kind: base.kind,
+                baselineP: base.p,
+                targetP,
+                minP: base.min_p,
+                maxP: base.max_p,
+                energySource: base.energy_source,
+            };
+        });
+    }, [changedInjections, baselineInjections]);
+
+    const hasPendingChanges = pendingChanges.length > 0 || injectionChanges.length > 0;
+
     return {
         editMode,
         setEditMode,
@@ -209,10 +331,16 @@ export function useSldTopologyEdit(
         toggleSwitch,
         removeSwitch,
         removeSwitches,
+        pendingInjections,
+        setInjection,
+        removeInjection,
         reset,
         focusedSwitchId,
         setFocusedSwitch,
         changedSwitches,
+        changedInjections,
         pendingChanges,
+        injectionChanges,
+        hasPendingChanges,
     };
 }

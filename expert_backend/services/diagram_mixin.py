@@ -57,6 +57,7 @@ from expert_backend.services.diagram.overloads import (
 )
 from expert_backend.services.diagram.sld_render import (
     extract_sld_svg_and_metadata,
+    extract_vl_injections,
     extract_vl_switch_states,
 )
 from typing import TYPE_CHECKING
@@ -496,6 +497,7 @@ class DiagramMixin(_Base):
             sld = n.get_single_line_diagram(voltage_level_id)
             svg, sld_metadata = extract_sld_svg_and_metadata(sld)
             switch_states = extract_vl_switch_states(n, voltage_level_id)
+            injections = extract_vl_injections(n, voltage_level_id)
         finally:
             n.set_working_variant(original_variant)
         return {
@@ -503,6 +505,7 @@ class DiagramMixin(_Base):
             "sld_metadata": sld_metadata,
             "voltage_level_id": voltage_level_id,
             "switch_states": switch_states,
+            "injections": injections,
         }
 
     def get_contingency_sld(self, disconnected_elements, voltage_level_id: str) -> dict:
@@ -516,12 +519,14 @@ class DiagramMixin(_Base):
             sld = n.get_single_line_diagram(voltage_level_id)
             svg, sld_metadata = extract_sld_svg_and_metadata(sld)
             switch_states = extract_vl_switch_states(n, voltage_level_id)
+            injections = extract_vl_injections(n, voltage_level_id)
             result = {
                 "svg": svg,
                 "sld_metadata": sld_metadata,
                 "voltage_level_id": voltage_level_id,
                 "disconnected_elements": list(norm),
                 "switch_states": switch_states,
+                "injections": injections,
             }
             self._attach_flow_deltas_vs_base(result, n, voltage_level_ids=[voltage_level_id])
             return result
@@ -550,6 +555,7 @@ class DiagramMixin(_Base):
         sld = network.get_single_line_diagram(voltage_level_id)
         svg, sld_metadata = extract_sld_svg_and_metadata(sld)
         switch_states = extract_vl_switch_states(network, voltage_level_id)
+        injections = extract_vl_injections(network, voltage_level_id)
 
         result = {
             "svg": svg,
@@ -557,6 +563,7 @@ class DiagramMixin(_Base):
             "action_id": action_id,
             "voltage_level_id": voltage_level_id,
             "switch_states": switch_states,
+            "injections": injections,
         }
         self._attach_convergence_from_obs(result, obs)
 
@@ -703,11 +710,13 @@ class DiagramMixin(_Base):
             sld = self._render_topological_sld(network, voltage_level_id)
             svg, sld_metadata = extract_sld_svg_and_metadata(sld)
             switch_states = extract_vl_switch_states(network, voltage_level_id)
+            injections = extract_vl_injections(network, voltage_level_id)
             return {
                 "svg": svg,
                 "sld_metadata": sld_metadata,
                 "voltage_level_id": voltage_level_id,
                 "switch_states": switch_states,
+                "injections": injections,
                 "stale_flows": True,
             }
         finally:

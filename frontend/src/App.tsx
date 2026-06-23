@@ -673,8 +673,38 @@ function App() {
   // is the ``switch_states`` map the backend stamps on every SLD
   // response; the hook drops stale toggles when it changes (VL switch,
   // tab switch, action variant change).
-  const sldTopologyEdit = useSldTopologyEdit(diagrams.vlOverlay?.switch_states);
+  const sldTopologyEdit = useSldTopologyEdit(diagrams.vlOverlay?.switch_states, diagrams.vlOverlay?.injections);
   const [sldEditBusy, setSldEditBusy] = useState(false);
+  // Auto-enable edit mode the first time an editable SLD (a non-N tab
+  // carrying operable switches or editable injections) loads, so the
+  // operator can manipulate breakers / loads / generators straight from
+  // the opened diagram without first clicking "Manual action". Keyed on
+  // the SLD identity so turning edit off stays sticky until the VL / tab
+  // / action changes.
+  const autoEnabledSldSigRef = useRef<string | null>(null);
+  useEffect(() => {
+    const ov = diagrams.vlOverlay;
+    if (!ov || ov.loading) return;
+    const editable = ov.tab !== 'n' && (
+      (!!ov.switch_states && Object.keys(ov.switch_states).length > 0)
+      || (!!ov.injections && Object.keys(ov.injections).length > 0)
+    );
+    if (editable) {
+      const sig = `${ov.vlName}|${ov.tab}|${ov.actionId ?? ''}`;
+      if (autoEnabledSldSigRef.current !== sig) {
+        autoEnabledSldSigRef.current = sig;
+        sldTopologyEdit.setEditMode(true);
+      }
+    } else {
+      autoEnabledSldSigRef.current = null;
+      // The N state can't host a manual action — keep it read-only.
+      if (ov.tab === 'n' && sldTopologyEdit.editMode) sldTopologyEdit.setEditMode(false);
+    }
+    // `setEditMode` is a stable useCallback and `editMode` is read for the
+    // N-tab reset guard; depending on the whole `sldTopologyEdit` object
+    // (recreated each render) would only add churn.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [diagrams.vlOverlay, sldTopologyEdit.setEditMode, sldTopologyEdit.editMode]);
   const sldEditBaseActionId = useMemo(() => {
     const overlay = diagrams.vlOverlay;
     if (!overlay) return null;
@@ -732,7 +762,10 @@ function App() {
   const handleSimulateSldEdit = useCallback(async () => {
     const overlay = diagrams.vlOverlay;
     const switches = sldTopologyEdit.changedSwitches;
-    if (!overlay || Object.keys(switches).length === 0) return;
+    const injections = sldTopologyEdit.changedInjections;
+    const hasSwitches = Object.keys(switches).length > 0;
+    const hasInjections = Object.keys(injections).length > 0;
+    if (!overlay || (!hasSwitches && !hasInjections)) return;
     if (selectedContingency.length === 0) {
       setError('Select a contingency first.');
       return;
@@ -742,9 +775,26 @@ function App() {
     const userPart = `user_topo_${vlName}_${ts}`;
     const baseActionId = sldEditBaseActionId;
     const actionId = baseActionId ? `${baseActionId}+${userPart}` : userPart;
+    // Split the staged injection retunes into the per-kind content keys the
+    // backend expects (gens_p / loads_p → set_gen_p / set_load_p).
+    const gensP: Record<string, number> = {};
+    const loadsP: Record<string, number> = {};
+    for (const ic of sldTopologyEdit.injectionChanges) {
+      if (ic.kind === 'generator') gensP[ic.equipmentId] = ic.targetP;
+      else loadsP[ic.equipmentId] = ic.targetP;
+    }
+    const actionContent: {
+      switches?: Record<string, boolean>;
+      gens_p?: Record<string, number>;
+      loads_p?: Record<string, number>;
+    } = {};
+    if (hasSwitches) actionContent.switches = switches;
+    if (Object.keys(gensP).length > 0) actionContent.gens_p = gensP;
+    if (Object.keys(loadsP).length > 0) actionContent.loads_p = loadsP;
     interactionLogger.record('sld_topology_simulated', {
       voltage_level_id: vlName,
       switches,
+      injections,
       combined_with: baseActionId,
     });
     setSldEditBusy(true);
@@ -752,7 +802,7 @@ function App() {
       const response = await api.simulateAndVariantDiagramStream({
         action_id: actionId,
         disconnected_elements: selectedContingency,
-        action_content: { switches },
+        action_content: actionContent,
         lines_overloaded: result?.lines_overloaded ?? null,
         target_mw: null,
         target_tap: null,
@@ -1945,6 +1995,10 @@ function App() {
             sldEditPendingSwitches={sldTopologyEdit.pendingStates}
             sldEditPendingChanges={sldTopologyEdit.pendingChanges}
             onSldSwitchClick={sldTopologyEdit.toggleSwitch}
+            sldEditPendingInjections={sldTopologyEdit.pendingInjections}
+            sldEditInjectionChanges={sldTopologyEdit.injectionChanges}
+            onSldInjectionStage={sldTopologyEdit.setInjection}
+            onSldInjectionRemove={sldTopologyEdit.removeInjection}
             onSldEditSimulate={handleSimulateSldEdit}
             onSldEditReset={sldTopologyEdit.reset}
             sldEditBusy={sldEditBusy}
