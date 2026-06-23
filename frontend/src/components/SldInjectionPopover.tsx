@@ -25,6 +25,9 @@ export interface SldInjectionPopoverProps {
 const fmtMw = (v: number | null | undefined): string =>
     v == null ? '—' : `${v.toFixed(1)} MW`;
 
+/** Active-power setpoints are edited to a single decimal place. */
+const roundMw = (v: number): number => Math.round(v * 10) / 10;
+
 /**
  * Floating editor for a load / generator active-power setpoint, opened by
  * clicking the element on the SLD while in edit mode. Surfaces the
@@ -36,8 +39,10 @@ const fmtMw = (v: number | null | undefined): string =>
 const SldInjectionPopover: React.FC<SldInjectionPopoverProps> = ({
     equipmentId, injection, currentValue, staged, position, onApply, onRemove, onClose,
 }) => {
+    // Seed (and edit) to a single decimal — the backend setpoints can carry
+    // many digits, but the operator tunes in 0.1 MW steps.
     const [value, setValue] = useState<string>(
-        Number.isFinite(currentValue) ? String(currentValue) : '',
+        Number.isFinite(currentValue) ? String(roundMw(currentValue)) : '',
     );
 
     const isGen = injection.kind === 'generator';
@@ -51,10 +56,11 @@ const SldInjectionPopover: React.FC<SldInjectionPopoverProps> = ({
 
     const commit = () => {
         if (!valid) return;
-        // Clamp generators to their capability range; loads have no bounds.
-        let target = parsed;
-        if (hasBounds) target = Math.min(Math.max(parsed, minP as number), maxP as number);
-        onApply(target);
+        // One-decimal setpoint, then clamp generators to their capability
+        // range (loads have no bounds).
+        let target = roundMw(parsed);
+        if (hasBounds) target = Math.min(Math.max(target, minP as number), maxP as number);
+        onApply(roundMw(target));
     };
 
     return (
@@ -101,7 +107,7 @@ const SldInjectionPopover: React.FC<SldInjectionPopoverProps> = ({
                 <input
                     data-testid="sld-injection-input"
                     type="number"
-                    step={1}
+                    step={0.1}
                     min={isGen && minP != null ? minP : undefined}
                     max={isGen && maxP != null ? maxP : undefined}
                     value={value}

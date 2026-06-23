@@ -16,9 +16,10 @@ breakers:
 - **No "Manual action" button.** Edit mode is implicit: an open SLD on
   an editable tab (N-1 or post-action) is always editable, and closing
   the overlay is what returns it to read-only. Breakers / disconnectors
-  are clickable immediately; editable equipment carries a persistent
-  clickable cue (pointer cursor, and a dotted accent underline on
-  injection names) so it's obvious what can be manipulated.
+  are clickable immediately; editable equipment (breakers AND loads /
+  generators) carries a persistent clickable cue — pointer cursor + a
+  solid edit-blue outline, like a button — so it's obvious what can be
+  manipulated.
 - **The overlay auto-sizes to the diagram** on open, so the whole
   voltage level is visible without manual expansion (the operator can
   still shrink it; a manual resize sticks until the next diagram loads).
@@ -28,9 +29,10 @@ breakers:
 - **Editable load / generator active power.** Clicking a load or
   generator opens a floating bubble showing its current setpoint and —
   for a generator — its **Pmin / Pmax** capability range and energy
-  source. The operator types a new MW value (generator values are
-  clamped to the capability range) and it is staged alongside any switch
-  toggles in the same maneuver panel. **Simulate action** runs the
+  source. The operator types a new MW value (rounded to one decimal;
+  generator values are clamped to the capability range) and it is staged
+  alongside any switch toggles in the same maneuver panel. **Simulate
+  action** runs the
   combined switch + injection edit as one manual action, exactly like a
   topology maneuver.
 

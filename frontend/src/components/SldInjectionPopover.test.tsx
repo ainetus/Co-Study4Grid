@@ -49,6 +49,19 @@ describe('SldInjectionPopover', () => {
         expect(onApply).toHaveBeenCalledWith(90);
     });
 
+    it('seeds the input rounded to a single decimal', () => {
+        render(<SldInjectionPopover {...baseProps} currentValue={16.199733180865255} />);
+        expect((screen.getByTestId('sld-injection-input') as HTMLInputElement).value).toBe('16.2');
+    });
+
+    it('rounds the applied setpoint to one decimal', () => {
+        const onApply = vi.fn();
+        render(<SldInjectionPopover {...baseProps} onApply={onApply} />);
+        fireEvent.change(screen.getByTestId('sld-injection-input'), { target: { value: '90.456' } });
+        fireEvent.click(screen.getByTestId('sld-injection-apply'));
+        expect(onApply).toHaveBeenCalledWith(90.5);
+    });
+
     it('clamps an out-of-range generator setpoint to its capability bounds', () => {
         const onApply = vi.fn();
         render(<SldInjectionPopover {...baseProps} onApply={onApply} />);

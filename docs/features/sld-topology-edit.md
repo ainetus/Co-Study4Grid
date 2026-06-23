@@ -28,9 +28,9 @@ combined manual action.
    is what returns it to read-only. App drives `editMode` directly
    (on for an open editable tab — operable switches and/or editable
    injections, never the N state — off on close). Editable breakers
-   and loads / generators carry a persistent **clickable cue** (pointer
-   cursor; injection names get a dotted accent underline) so the
-   operator sees what can be manipulated.
+   and loads / generators carry a persistent **clickable cue** — pointer
+   cursor + a solid **edit-blue outline** (the same blue for breakers and
+   assets, like a button) — so the operator sees what can be manipulated.
 3. **Topology:** click any operable switch. The diagram is re-rendered
    as a **target-topology preview** (see below): the breaker is drawn
    in its target open/closed state, the busbar / branch connectivity is
@@ -180,7 +180,7 @@ key.
 | File | Role |
 |---|---|
 | `hooks/useSldTopologyEdit.ts` | Owns the pending switch overrides AND injection setpoint overrides, focus state, and the toggle / removeSwitch / removeSwitches / **setInjection / removeInjection** / reset / setFocusedSwitch API. Exposes `changedSwitches` + `changedInjections` + `pendingChanges` + `injectionChanges` + `hasPendingChanges`. Auto-drops stale overrides on either baseline's identity change. |
-| `components/SldInjectionPopover.tsx` | **NEW.** Floating active-power editor opened by clicking a load / generator: name + kind, current P, Pmin / Pmax + energy source (gen), a setpoint input (Enter to apply, Esc to close), out-of-range clamp note, Apply / Reset-to-baseline / Close. The bubble is a DOM child of the overlay body, so `SldOverlay`'s capture-phase click delegate explicitly bails on `closest('[data-testid="sld-injection-popover"]')` — otherwise a click inside the bubble would near-miss-snap to a switch underneath it (a React `stopPropagation` can't stop a capture-phase native listener). |
+| `components/SldInjectionPopover.tsx` | **NEW.** Floating active-power editor opened by clicking a load / generator: name + kind, current P, Pmin / Pmax + energy source (gen), a setpoint input (0.1 MW step, **seeded and applied rounded to one decimal**, Enter to apply, Esc to close), out-of-range clamp note, Apply / Reset-to-baseline / Close. The bubble is a DOM child of the overlay body, so `SldOverlay`'s capture-phase click delegate explicitly bails on `closest('[data-testid="sld-injection-popover"]')` — otherwise a click inside the bubble would near-miss-snap to a switch underneath it (a React `stopPropagation` can't stop a capture-phase native listener). |
 | `components/SldEditPanel.tsx` | Side panel under the SLD body — **rendered only once at least one change is staged** (collapsed otherwise). Maneuver list (switch toggles + injection retunes), focus on row click, `×` per row, checkbox + **Remove selected (N)** for switch blocks, combined-with badge, Reset / Simulate buttons. `onClose` (the exit ✕) is optional and omitted in production. |
 | `components/SldOverlay.tsx` | No in-overlay edit toggle (edit mode is implicit while open). Click delegation via SLD metadata `equipmentId → SVG id` map (dot/underscore variants handled): a switch hit toggles it, a load / generator hit opens `SldInjectionPopover` anchored at the click (body-relative, clamped to stay visible). Persistent `sld-switch-editable` / `sld-injection-editable` cue on every editable cell + toggle / injection outlines + focused-element filter — applied **also on the preview**. **Auto-size:** a keyed layout effect measures the rendered SVG once per diagram and sizes the window to fit it (clamped to the viewport) + fits the SVG into the body; a manual resize persists until the next diagram. **Click targeting:** breaker / disconnector glyphs are small, so the handler keeps the pixel-perfect hit fast-path **and** snaps to the closest editable switch within a 26 px radius on a near-miss (load / gen glyphs are large enough for an exact hit); the trailing `click` of a pan-drag is ignored (a `panMovedRef` slop guard). |
 | `App.tsx::sldTopologyEdit edit-mode effect` | Forces `editMode = editable` — on for an open editable tab (operable switches or editable injections, never N), off on close. No user-facing toggle. |
