@@ -79,6 +79,28 @@ git add --renormalize . && git commit -m "migrate binaries to LFS"
    reference studies (Medium difficulty). Build without that flag for the bare
    workspace.
 
+## Automated redeploy on merge to `main` (GitHub Action)
+
+`.github/workflows/deploy-huggingface.yml` runs the same orphan-snapshot push
+automatically on every merge to `main` (and on manual `workflow_dispatch`). It
+checks out the current tree with LFS, squashes it to one history-free commit,
+and force-pushes it to the Space's `main`.
+
+Opt in by setting, in the GitHub repo **Settings → Secrets and variables →
+Actions**:
+
+| Kind | Name | Value |
+|---|---|---|
+| Secret | `HF_TOKEN` | a HuggingFace **write** access token with access to the Space |
+| Variable | `HF_SPACE` | the Space path, e.g. `your-user/co-study4grid-game` |
+| Variable | `HF_USERNAME` | *(optional)* the token owner's HF username — only when the Space is under an **org** and so differs from the owner part of `HF_SPACE` |
+
+The job is inert (it logs a notice and exits cleanly) until both `HF_TOKEN` and
+`HF_SPACE` are set, so merging the workflow doesn't break anything before you
+opt in. The push reuses LFS objects already on the Space, so repeat deploys only
+upload what changed. If you want the deploy gated on green tests, change the
+trigger to a `workflow_run` on the **Tests** workflow instead of `push`.
+
 ## Test the image locally first (recommended)
 
 ```bash
