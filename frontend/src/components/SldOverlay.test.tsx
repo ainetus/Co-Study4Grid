@@ -1102,5 +1102,61 @@ describe('SldOverlay', () => {
             );
             expect(container.querySelector('.sld-user-injection')).toBeTruthy();
         });
+
+        it('marks editable injections with the clickable cue while in edit mode', () => {
+            const { container, rerender } = render(<SldOverlay {...editProps()} />);
+            expect(container.querySelector('.sld-injection-editable')).toBeTruthy();
+            // Cue is cleared when edit mode is off (read-only).
+            rerender(<SldOverlay {...editProps({ editMode: false })} />);
+            expect(container.querySelector('.sld-injection-editable')).toBeNull();
+        });
+    });
+
+    describe('Implicit edit mode (no toggle) + auto-size', () => {
+        const overlay = (): VlOverlay => ({
+            vlName: 'VL_400', actionId: null,
+            svg: '<svg><g id="sw_1" class="sld-extern-cell"><rect/></g></svg>',
+            sldMetadata: JSON.stringify({ nodes: [{ id: 'sw_1', equipmentId: 'SWITCH_A' }] }),
+            loading: false, error: null, tab: 'contingency' as SldTab,
+            switch_states: { SWITCH_A: false }, injections: {},
+        });
+        const props = (over = {}) => ({
+            ...defaultProps, vlOverlay: overlay(), editMode: true,
+            pendingChanges: [], onSimulateEdit: vi.fn(), onResetEdit: vi.fn(),
+            onSwitchClick: vi.fn(), ...over,
+        });
+
+        it('no longer renders the in-overlay "Manual action" toggle button', () => {
+            render(<SldOverlay {...props()} />);
+            expect(screen.queryByTestId('sld-edit-toggle')).toBeNull();
+        });
+
+        it('always shows the edit panel (empty-state hint) on an editable open SLD', () => {
+            render(<SldOverlay {...props()} />);
+            expect(screen.getByTestId('sld-edit-panel')).toBeInTheDocument();
+            expect(screen.getByText(/click a breaker .* or a load \/ generator/i)).toBeInTheDocument();
+            // No exit-edit ✕ in production (read-only happens on close).
+            expect(screen.queryByTestId('sld-edit-close')).toBeNull();
+        });
+
+        it('gives editable switches the clickable cue', () => {
+            const { container } = render(<SldOverlay {...props()} />);
+            expect(container.querySelector('.sld-switch-editable')).toBeTruthy();
+        });
+
+        it('auto-sizes the overlay window to fit the measured diagram', () => {
+            const spy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(
+                { width: 800, height: 600, left: 0, top: 0, right: 800, bottom: 600, x: 0, y: 0, toJSON: () => ({}) } as DOMRect,
+            );
+            try {
+                render(<SldOverlay {...props()} />);
+                const win = screen.getByTestId('sld-overlay') as HTMLElement;
+                // Default is 440×420; a measured 800-wide SVG must grow it.
+                expect(parseInt(win.style.width, 10)).toBeGreaterThan(600);
+                expect(parseInt(win.style.height, 10)).toBeGreaterThan(440);
+            } finally {
+                spy.mockRestore();
+            }
+        });
     });
 });

@@ -675,33 +675,24 @@ function App() {
   // tab switch, action variant change).
   const sldTopologyEdit = useSldTopologyEdit(diagrams.vlOverlay?.switch_states, diagrams.vlOverlay?.injections);
   const [sldEditBusy, setSldEditBusy] = useState(false);
-  // Auto-enable edit mode the first time an editable SLD (a non-N tab
-  // carrying operable switches or editable injections) loads, so the
-  // operator can manipulate breakers / loads / generators straight from
-  // the opened diagram without first clicking "Manual action". Keyed on
-  // the SLD identity so turning edit off stays sticky until the VL / tab
-  // / action changes.
-  const autoEnabledSldSigRef = useRef<string | null>(null);
+  // Edit mode is implicit: an open SLD on an editable tab (operable
+  // switches or editable injections, never the N state) is always
+  // editable, and closing the overlay returns it to read-only. There is
+  // no user-facing toggle — the operator manipulates breakers / loads /
+  // generators straight from the opened diagram.
   useEffect(() => {
     const ov = diagrams.vlOverlay;
-    if (!ov || ov.loading) return;
-    const editable = ov.tab !== 'n' && (
+    // Don't churn editMode during a re-fetch flash (a tab switch sets
+    // `loading` true before the new switch_states / injections arrive).
+    if (ov && ov.loading) return;
+    const editable = !!ov && ov.tab !== 'n' && (
       (!!ov.switch_states && Object.keys(ov.switch_states).length > 0)
       || (!!ov.injections && Object.keys(ov.injections).length > 0)
     );
-    if (editable) {
-      const sig = `${ov.vlName}|${ov.tab}|${ov.actionId ?? ''}`;
-      if (autoEnabledSldSigRef.current !== sig) {
-        autoEnabledSldSigRef.current = sig;
-        sldTopologyEdit.setEditMode(true);
-      }
-    } else {
-      autoEnabledSldSigRef.current = null;
-      // The N state can't host a manual action — keep it read-only.
-      if (ov.tab === 'n' && sldTopologyEdit.editMode) sldTopologyEdit.setEditMode(false);
-    }
-    // `setEditMode` is a stable useCallback and `editMode` is read for the
-    // N-tab reset guard; depending on the whole `sldTopologyEdit` object
+    if (editable && !sldTopologyEdit.editMode) sldTopologyEdit.setEditMode(true);
+    else if (!editable && sldTopologyEdit.editMode) sldTopologyEdit.setEditMode(false);
+    // `setEditMode` is a stable useCallback; `editMode` is read to avoid a
+    // redundant set. Depending on the whole `sldTopologyEdit` object
     // (recreated each render) would only add churn.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [diagrams.vlOverlay, sldTopologyEdit.setEditMode, sldTopologyEdit.editMode]);

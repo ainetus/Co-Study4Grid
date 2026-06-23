@@ -13,11 +13,15 @@ The interactive Single Line Diagram editor is now reachable straight
 from the opened diagram and covers loads / generators as well as
 breakers:
 
-- **No more "Manual action" pre-click.** Edit mode is auto-enabled the
-  moment an editable SLD opens (N-1 or post-action tab), so breakers and
-  disconnectors are clickable immediately. The header `✎ Manual action`
-  button stays as an opt-out back to a read-only view (and now also
-  appears for VLs whose only editable equipment is injections).
+- **No "Manual action" button.** Edit mode is implicit: an open SLD on
+  an editable tab (N-1 or post-action) is always editable, and closing
+  the overlay is what returns it to read-only. Breakers / disconnectors
+  are clickable immediately; editable equipment carries a persistent
+  clickable cue (pointer cursor, and a dotted accent underline on
+  injection names) so it's obvious what can be manipulated.
+- **The overlay auto-sizes to the diagram** on open, so the whole
+  voltage level is visible without manual expansion (the operator can
+  still shrink it; a manual resize sticks until the next diagram loads).
 - **Editable load / generator active power.** Clicking a load or
   generator opens a floating bubble showing its current setpoint and —
   for a generator — its **Pmin / Pmax** capability range and energy

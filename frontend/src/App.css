@@ -449,6 +449,35 @@ circle.nad-highlight {
     stroke-dasharray: 4 2 !important;
 }
 
+/* Persistent "this element is clickable" cue while editing the SLD.
+   Breakers/disconnectors get a pointer cursor; loads/generators ALSO get a
+   dotted accent underline on their label so the operator is drawn to click
+   the name and open the active-power editor. Hover intensifies both. */
+.sld-switch-editable,
+.sld-injection-editable {
+    cursor: pointer;
+}
+.sld-injection-editable text {
+    text-decoration: underline dotted var(--signal-edit-injection);
+    text-underline-offset: 2px;
+}
+.sld-injection-editable:hover text {
+    fill: var(--signal-edit-injection) !important;
+    text-decoration-style: solid;
+}
+.sld-injection-editable:hover path,
+.sld-injection-editable:hover line,
+.sld-injection-editable:hover rect,
+.sld-injection-editable:hover circle {
+    stroke: var(--signal-edit-injection) !important;
+}
+.sld-switch-editable:hover path,
+.sld-switch-editable:hover line,
+.sld-switch-editable:hover rect,
+.sld-switch-editable:hover circle {
+    stroke: var(--signal-edit-open) !important;
+}
+
 .sld-delta-negative path,
 .sld-delta-negative line,
 .sld-delta-negative polyline,

@@ -17,7 +17,9 @@ export interface SldEditPanelProps {
     onInjectionRemove?: (equipmentId: string) => void;
     onReset: () => void;
     onSimulate: () => void;
-    onClose: () => void;
+    /** Optional exit-edit affordance. Omitted in production (edit mode is
+     *  implicit while the SLD overlay is open); kept for isolated tests. */
+    onClose?: () => void;
     /**
      * When true the Simulate button is busy / disabled. Driven by the
      * `simulateAndVariantDiagramStream` lifecycle in App.tsx.
@@ -100,15 +102,17 @@ const SldEditPanel: React.FC<SldEditPanelProps> = ({
                         </span>
                         : null}
                 </span>
-                <button
-                    data-testid="sld-edit-close"
-                    onClick={onClose}
-                    title="Exit edit mode"
-                    style={{
-                        border: 'none', background: 'transparent', color: colors.textTertiary,
-                        cursor: 'pointer', fontSize: text.sm, padding: 0,
-                    }}
-                >✕</button>
+                {onClose && (
+                    <button
+                        data-testid="sld-edit-close"
+                        onClick={onClose}
+                        title="Exit edit mode"
+                        style={{
+                            border: 'none', background: 'transparent', color: colors.textTertiary,
+                            cursor: 'pointer', fontSize: text.sm, padding: 0,
+                        }}
+                    >✕</button>
+                )}
             </div>
 
             {!hasChanges && (

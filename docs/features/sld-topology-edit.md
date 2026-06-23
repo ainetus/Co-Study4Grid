@@ -19,14 +19,18 @@ combined manual action.
 
 1. Open the SLD overlay on a voltage level (double-click on the NAD)
    in the **N-1 (contingency)** tab or the **action-variant** tab of
-   an already-suggested action.
-2. **Edit mode is on by default** the moment an editable SLD opens —
-   there is no longer any need to click **`✎ Manual action`** first
-   (that header button is now an opt-out back to a read-only view; it
-   also appears for VLs that only carry editable injections). App
-   auto-enables it once per SLD identity (`useSldTopologyEdit`
-   auto-enable effect), so turning it off stays sticky until the VL /
-   tab / action changes.
+   an already-suggested action. The overlay window **auto-sizes to the
+   diagram** so the whole voltage level is visible without manual
+   expansion (the operator can still shrink it via the resize handle;
+   a manual resize sticks until a new diagram loads).
+2. **Edit mode is implicit — there is no toggle button.** An open SLD
+   on an editable tab is always editable, and **closing the overlay**
+   is what returns it to read-only. App drives `editMode` directly
+   (on for an open editable tab — operable switches and/or editable
+   injections, never the N state — off on close). Editable breakers
+   and loads / generators carry a persistent **clickable cue** (pointer
+   cursor; injection names get a dotted accent underline) so the
+   operator sees what can be manipulated.
 3. **Topology:** click any operable switch. The diagram is re-rendered
    as a **target-topology preview** (see below): the breaker is drawn
    in its target open/closed state, the busbar / branch connectivity is
@@ -177,8 +181,8 @@ key.
 | `hooks/useSldTopologyEdit.ts` | Owns the pending switch overrides AND injection setpoint overrides, focus state, and the toggle / removeSwitch / removeSwitches / **setInjection / removeInjection** / reset / setFocusedSwitch API. Exposes `changedSwitches` + `changedInjections` + `pendingChanges` + `injectionChanges` + `hasPendingChanges`. Auto-drops stale overrides on either baseline's identity change. |
 | `components/SldInjectionPopover.tsx` | **NEW.** Floating active-power editor opened by clicking a load / generator: name + kind, current P, Pmin / Pmax + energy source (gen), a setpoint input (Enter to apply, Esc to close), out-of-range clamp note, Apply / Reset-to-baseline / Close. |
 | `components/SldEditPanel.tsx` | Side panel under the SLD body — maneuver list (switch toggles + injection retunes), focus on row click, `×` per row, checkbox + **Remove selected (N)** for switch blocks, combined-with badge, Reset / Simulate buttons. |
-| `components/SldOverlay.tsx` | Header `✎ Manual action` opt-out button, click delegation via SLD metadata `equipmentId → SVG id` map (dot/underscore variants handled): a switch hit toggles it, a load / generator hit opens `SldInjectionPopover` anchored at the click (body-relative, clamped to stay visible). Toggle / injection outlines + focused-element filter — applied **also on the preview** so the highlight persists. **Click targeting:** breaker / disconnector glyphs are small, so the handler keeps the pixel-perfect hit fast-path **and** snaps to the closest editable switch within a 26 px radius on a near-miss (load / gen glyphs are large enough for an exact hit); the trailing `click` of a pan-drag is ignored (a `panMovedRef` slop guard). |
-| `App.tsx::sldTopologyEdit auto-enable effect` | Turns edit mode on the first time an editable SLD (non-N tab with operable switches or editable injections) loads, keyed on the SLD identity so an explicit opt-out stays sticky until the VL / tab / action changes. |
+| `components/SldOverlay.tsx` | No in-overlay edit toggle (edit mode is implicit while open). Click delegation via SLD metadata `equipmentId → SVG id` map (dot/underscore variants handled): a switch hit toggles it, a load / generator hit opens `SldInjectionPopover` anchored at the click (body-relative, clamped to stay visible). Persistent `sld-switch-editable` / `sld-injection-editable` cue on every editable cell + toggle / injection outlines + focused-element filter — applied **also on the preview**. **Auto-size:** a keyed layout effect measures the rendered SVG once per diagram and sizes the window to fit it (clamped to the viewport) + fits the SVG into the body; a manual resize persists until the next diagram. **Click targeting:** breaker / disconnector glyphs are small, so the handler keeps the pixel-perfect hit fast-path **and** snaps to the closest editable switch within a 26 px radius on a near-miss (load / gen glyphs are large enough for an exact hit); the trailing `click` of a pan-drag is ignored (a `panMovedRef` slop guard). |
+| `App.tsx::sldTopologyEdit edit-mode effect` | Forces `editMode = editable` — on for an open editable tab (operable switches or editable injections, never N), off on close. No user-facing toggle. |
 | `App.tsx::handleSimulateSldEdit` | Builds `action_content` from `changedSwitches` + `changedInjections` (the latter split into `gens_p` / `loads_p` by kind), streams `/api/simulate-and-variant-diagram` with `voltage_level_id`, primes the action-variant diagram under the **backend-canonical** id (`metrics.action_id`), pushes the card via `wrappedManualActionAdded(_, _, _, 'user')`, then `handleVlDoubleClick(id, vl, 'action')` to auto-focus the new action's tab. |
 | `App.tsx::sldPreview` | Debounced fetch of `/api/sld-topology-preview` with sequence guard. |
 | `styles/tokens.css` | `--signal-edit-open` / `--signal-edit-closed` token pair for the toggle outline. |
@@ -283,7 +287,11 @@ mirrored in the conformance contract
   remove, focus).
 - `components/SldOverlay.test.tsx` — injection edit: click a generator
   opens the editor, edit-off suppresses it, apply routes through
-  `onInjectionStage`, staged cell gets the `sld-user-injection` outline.
+  `onInjectionStage`, staged cell gets the `sld-user-injection` outline,
+  editable cells get the `sld-switch-editable` / `sld-injection-editable`
+  cue; **implicit edit mode**: no `sld-edit-toggle` button, panel always
+  shown on an editable open SLD with no exit ✕, window auto-sizes to a
+  measured diagram.
 - `utils/actionTypes.test.ts` — multi-bucket classifier coverage
   (open/close/disco/reco from manual maneuvers), combined open+close
   card, comma-joined coupling + line, line-only maneuvers, ligature

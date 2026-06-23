@@ -34,16 +34,20 @@ export interface SldOverlayProps {
      */
     monitoringFactor?: number;
     /**
-     * Interactive topology-edit affordance. When provided, the overlay
-     * exposes a Edit toggle next to the SLD-tab strip and renders the
-     * pending-changes panel under the SVG body. The actual state lives
-     * in ``useSldTopologyEdit`` on the App side; this component only
-     * forwards taps on the SVG to ``onSwitchClick``.
+     * Interactive edit affordance. When ``editMode`` is on the overlay
+     * renders the pending-changes panel under the SVG body and forwards
+     * taps on the SVG to ``onSwitchClick`` / opens the injection editor.
+     * Edit mode is now driven entirely by App (on for an open editable
+     * tab, off on close / N state) — there is no in-overlay toggle.
+     * The actual state lives in ``useSldTopologyEdit`` on the App side.
      *
      * The whole bundle is optional so older callers (overflow pin
      * double-click, etc.) keep working without changes.
      */
     editMode?: boolean;
+    /** @deprecated No in-overlay toggle anymore (edit mode is implicit
+     *  while the SLD is open). Retained so existing callers/tests that
+     *  still pass it keep type-checking; the value is ignored. */
     onEditModeChange?: (next: boolean) => void;
     pendingSwitches?: Record<string, boolean>;
     pendingChanges?: SwitchToggleEntry[];
@@ -95,7 +99,6 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
     selectedContingency, result,
     monitoringFactor = 0.95,
     editMode = false,
-    onEditModeChange,
     pendingSwitches,
     pendingChanges,
     onSwitchClick,
@@ -131,6 +134,19 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
     const activeMetadata = previewMetadata ?? vlOverlay.sldMetadata;
     const [overlayPos, setOverlayPos] = useState({ x: 16, y: 16 });
     const [overlayTransform, setOverlayTransform] = useState({ scale: 1, tx: 0, ty: 0 });
+    // Keep the latest transform readable inside layout effects that depend
+    // only on the SVG identity (so they don't re-run on every pan frame).
+    // Updated in an effect (never during render) — by the time the
+    // SVG-identity layout effect reads it, it still mirrors the transform
+    // the SVG is currently rendered with (auto-size hasn't run yet).
+    const overlayTransformRef = useRef(overlayTransform);
+    useEffect(() => { overlayTransformRef.current = overlayTransform; }, [overlayTransform]);
+    // Auto-computed overlay window size (fits the VL diagram on open). Null
+    // until the first SVG is measured → falls back to the default size. Only
+    // re-set when a NEW diagram loads, so a manual resize (resize: both)
+    // persists between renders.
+    const [overlaySize, setOverlaySize] = useState<{ w: number; h: number } | null>(null);
+    const autoSizedKeyRef = useRef<string>('');
     // Open injection editor: the clicked load / generator + a body-relative
     // (untransformed) anchor for the floating ``SldInjectionPopover``.
     const [injectionPopover, setInjectionPopover] = useState<{ equipmentId: string; x: number; y: number } | null>(null);
@@ -144,6 +160,44 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setInjectionPopover(null);
     }, [editMode, vlOverlay.vlName, vlOverlay.tab, vlOverlay.actionId]);
+
+    // Auto-size the overlay window to the VL diagram so it opens fully
+    // visible — no manual expansion each time. Measures the rendered SVG
+    // once per new diagram (keyed on its identity, so pans / manual resizes
+    // never re-trigger it), sizes the window to fit (clamped to the
+    // viewport), and fits the SVG into the body. The operator can still
+    // shrink it afterwards via the resize handle.
+    useLayoutEffect(() => {
+        const body = overlayBodyRef.current;
+        if (!body || vlOverlay.loading || previewActive || !activeSvg) return;
+        const key = `${vlOverlay.vlName}|${vlOverlay.tab}|${vlOverlay.actionId ?? ''}|${activeSvg.length}`;
+        if (autoSizedKeyRef.current === key) return;
+        const svgEl = body.querySelector('svg');
+        if (!svgEl) return;
+        const scale = overlayTransformRef.current.scale || 1;
+        const rect = svgEl.getBoundingClientRect();
+        const natW = rect.width / scale;
+        const natH = rect.height / scale;
+        // jsdom (and a not-yet-laid-out SVG) report a zero box — keep the
+        // default size in that case rather than collapsing the window.
+        if (!(natW > 1 && natH > 1)) return;
+        autoSizedKeyRef.current = key;
+
+        const vw = window.innerWidth || 1200;
+        const vh = window.innerHeight || 900;
+        const HEADER = 46, PANEL = 86, PAD = 14;
+        const targetW = Math.round(Math.min(Math.max(natW + PAD, 320), vw * 0.95));
+        const targetH = Math.round(Math.min(Math.max(natH + HEADER + PANEL + PAD, 300), vh * 0.92));
+        setOverlaySize({ w: targetW, h: targetH });
+
+        const bodyW = targetW - PAD;
+        const bodyH = targetH - HEADER - PANEL;
+        const fitRaw = Math.min(bodyW / natW, bodyH / natH, 1);
+        const fitScale = fitRaw > 0 && Number.isFinite(fitRaw) ? fitRaw : 1;
+        const tx = Math.max(4, (bodyW - natW * fitScale) / 2);
+        const ty = Math.max(4, (bodyH - natH * fitScale) / 2);
+        setOverlayTransform({ scale: fitScale, tx, ty });
+    }, [activeSvg, vlOverlay.vlName, vlOverlay.tab, vlOverlay.actionId, vlOverlay.loading, previewActive]);
 
     // Apply / clear delta flow colors on the SLD whenever svg/metadata, tab, or mode changes.
     //
@@ -872,24 +926,27 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
     useLayoutEffect(() => {
         const container = overlayBodyRef.current;
         if (!container) return;
-        const previous = container.querySelectorAll(
-            '.sld-user-toggle-open, .sld-user-toggle-closed, .sld-user-injection',
-        );
-        previous.forEach(el => {
-            el.classList.remove('sld-user-toggle-open');
-            el.classList.remove('sld-user-toggle-closed');
-            el.classList.remove('sld-user-injection');
-        });
+        const CUE_AND_STAGED = [
+            'sld-user-toggle-open', 'sld-user-toggle-closed', 'sld-user-injection',
+            'sld-switch-editable', 'sld-injection-editable',
+        ];
+        container.querySelectorAll(CUE_AND_STAGED.map(c => '.' + c).join(','))
+            .forEach(el => el.classList.remove(...CUE_AND_STAGED));
 
-        // Always outline the staged switch toggles AND injection retunes —
-        // even on the preview — so the operator keeps seeing WHERE the
-        // network changed. Uses the active metadata (preview metadata when
-        // previewing). When a maneuver row is focused, only that element is
-        // outlined.
+        // In edit mode: (1) mark EVERY editable breaker / load / generator
+        // with a persistent "clickable" cue so the operator sees what can be
+        // manipulated, and (2) outline the staged switch toggles AND
+        // injection retunes — even on the preview — so they keep seeing WHERE
+        // the network changed. When a maneuver row is focused, only that
+        // staged element keeps its outline (the cue is unaffected).
         if (!editMode) return;
+        const switchBaseline = vlOverlay.switch_states ?? {};
+        const injectionBaseline = vlOverlay.injections ?? {};
         const switchEntries = pendingSwitches ? Object.entries(pendingSwitches) : [];
         const injectionIds = pendingInjections ? Object.keys(pendingInjections) : [];
-        if (switchEntries.length === 0 && injectionIds.length === 0) return;
+        const hasCueTargets = Object.keys(switchBaseline).length > 0
+            || Object.keys(injectionBaseline).length > 0;
+        if (!hasCueTargets && switchEntries.length === 0 && injectionIds.length === 0) return;
 
         const equipIdToSvgIds = new Map<string, string[]>();
         if (activeMetadata) {
@@ -923,8 +980,8 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
             ?? elMap.get(svgId.replace(/\./g, '_'))
             ?? elMap.get(svgId.replace(/_/g, '.'));
 
-        const paintCell = (equipmentId: string, cls: string) => {
-            if (focusedSwitchId && equipmentId !== focusedSwitchId) return;
+        const paintCell = (equipmentId: string, cls: string, respectFocus: boolean) => {
+            if (respectFocus && focusedSwitchId && equipmentId !== focusedSwitchId) return;
             const svgIds = equipIdToSvgIds.get(equipmentId)
                 ?? equipIdToSvgIds.get(equipmentId.replace(/\./g, '_'))
                 ?? equipIdToSvgIds.get(equipmentId.replace(/_/g, '.'));
@@ -936,11 +993,19 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
             }
         };
 
+        // (1) Persistent clickable cue on every editable element.
+        for (const equipmentId of Object.keys(switchBaseline)) {
+            paintCell(equipmentId, 'sld-switch-editable', false);
+        }
+        for (const equipmentId of Object.keys(injectionBaseline)) {
+            paintCell(equipmentId, 'sld-injection-editable', false);
+        }
+        // (2) Staged-change outlines (focus-filtered).
         for (const [equipmentId, targetOpen] of switchEntries) {
-            paintCell(equipmentId, targetOpen ? 'sld-user-toggle-open' : 'sld-user-toggle-closed');
+            paintCell(equipmentId, targetOpen ? 'sld-user-toggle-open' : 'sld-user-toggle-closed', true);
         }
         for (const equipmentId of injectionIds) {
-            paintCell(equipmentId, 'sld-user-injection');
+            paintCell(equipmentId, 'sld-user-injection', true);
         }
     });
 
@@ -1130,7 +1195,9 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
             data-vl-name={vlOverlay.vlName}
             style={{
                 position: 'absolute', top: overlayPos.y + 'px', left: overlayPos.x + 'px',
-                width: '440px', height: '420px', minWidth: '220px', minHeight: '150px',
+                width: overlaySize ? overlaySize.w + 'px' : '440px',
+                height: overlaySize ? overlaySize.h + 'px' : '420px',
+                minWidth: '220px', minHeight: '150px', maxWidth: '95vw', maxHeight: '92vh',
                 background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '8px',
                 boxShadow: '0 4px 24px rgba(0,0,0,0.22)', zIndex: 45,
                 display: 'flex', flexDirection: 'column', overflow: 'hidden',
@@ -1191,25 +1258,6 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
                     </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {onEditModeChange && vlOverlay.tab !== 'n'
-                        && ((vlOverlay.switch_states && Object.keys(vlOverlay.switch_states).length > 0)
-                            || (vlOverlay.injections && Object.keys(vlOverlay.injections).length > 0)) && (
-                        <button
-                            data-testid="sld-edit-toggle"
-                            onMouseDown={e => e.stopPropagation()}
-                            onClick={(e) => { e.stopPropagation(); onEditModeChange(!editMode); }}
-                            style={{
-                                background: editMode ? colors.brand : colors.surfaceMuted,
-                                color: editMode ? colors.textOnBrand : colors.textPrimary,
-                                border: 'none', borderRadius: '5px', padding: '5px 12px',
-                                fontSize: '12px', fontWeight: 600,
-                                cursor: 'pointer', whiteSpace: 'nowrap',
-                            }}
-                            title={editMode
-                                ? 'Exit edit mode (read-only SLD)'
-                                : 'Edit mode: click breakers / disconnectors to switch them, and loads / generators to retune their active power'}
-                        >✎ Manual action</button>
-                    )}
                     <button
                         onMouseDown={e => e.stopPropagation()}
                         onClick={(e) => { e.stopPropagation(); onOverlayClose(); }}
@@ -1267,13 +1315,12 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
                     />
                 )}
             </div>
-            {editMode && onEditModeChange && pendingChanges && onSimulateEdit && onResetEdit && (
+            {editMode && pendingChanges && onSimulateEdit && onResetEdit && (
                 <SldEditPanel
                     pendingChanges={pendingChanges}
                     injectionChanges={injectionChanges}
                     onReset={onResetEdit}
                     onSimulate={onSimulateEdit}
-                    onClose={() => onEditModeChange(false)}
                     busy={editSimulationBusy}
                     combinedWithActionId={editCombinedWithActionId}
                     focusedSwitchId={focusedSwitchId}

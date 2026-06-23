@@ -52,7 +52,8 @@ frontend/
     │   ├── useSldOverlay.ts        # Single-Line-Diagram overlay
     │   ├── useSldTopologyEdit.ts    # Interactive SLD edit (switches +
     │   │                            # load/gen active power): editMode
-    │   │                            # (auto-on) + pendingStates +
+    │   │                            # (implicit while open, read-only on
+    │   │                            # close) + pendingStates +
     │   │                            # pendingInjections + toggle /
     │   │                            # removeSwitch(es) / setInjection /
     │   │                            # removeInjection / focusedSwitchId

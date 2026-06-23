@@ -85,6 +85,13 @@ describe('SldEditPanel', () => {
         expect(onClose).toHaveBeenCalledTimes(1);
     });
 
+    it('omits the exit ✕ when no onClose is provided (implicit edit mode)', () => {
+        const { onClose, ...noClose } = defaultProps;
+        void onClose;
+        render(<SldEditPanel {...noClose} />);
+        expect(screen.queryByTestId('sld-edit-close')).toBeNull();
+    });
+
     it('focuses a single switch when its row is clicked', () => {
         const onFocus = vi.fn();
         render(<SldEditPanel
