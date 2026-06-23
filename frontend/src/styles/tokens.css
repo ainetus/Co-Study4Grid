@@ -143,8 +143,6 @@ remaining hex-literal count after each migration.
   --signal-edit-open: #d81b60;
   --signal-edit-closed: #1976d2;
   --signal-edit-injection: #00897b;
-  /* Consistent "this element is editable" outline (breakers + assets). */
-  --signal-edit-cue: #1976d2;
 
   /* ----- Action-overview pin palette -----
      Severity buckets for Remedial Action overview pins

@@ -16,10 +16,10 @@ breakers:
 - **No "Manual action" button.** Edit mode is implicit: an open SLD on
   an editable tab (N-1 or post-action) is always editable, and closing
   the overlay is what returns it to read-only. Breakers / disconnectors
-  are clickable immediately; editable equipment (breakers AND loads /
-  generators) carries a persistent clickable cue — pointer cursor + a
-  solid edit-blue outline, like a button — so it's obvious what can be
-  manipulated.
+  are clickable immediately; each modifiable load / generator has its
+  NAME rendered as a dark-blue button (same look as the former "Manual
+  action" button) inviting a click — branches and busbars are never
+  recoloured.
 - **The overlay auto-sizes to the diagram** on open, so the whole
   voltage level is visible without manual expansion (the operator can
   still shrink it; a manual resize sticks until the next diagram loads).

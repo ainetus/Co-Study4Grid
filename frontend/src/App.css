@@ -417,40 +417,29 @@ circle.nad-highlight {
     opacity: 0.4 !important;
 }
 
-/* Persistent "this element is editable" cue while editing the SLD.
-   Both breakers/disconnectors AND loads/generators are outlined in the
-   same consistent edit-blue (like a button) so it's obvious what can be
-   manipulated; hover thickens the outline. The staged-change rules below
-   are declared AFTER this block so a staged element overrides the cue
-   with its dashed colour. */
+/* Editable-element affordance while editing the SLD: a plain pointer
+   cursor on the cells (no recolouring of branches / busbars). Loads and
+   generators ALSO get their NAME rendered as a dark-blue button (see
+   .sld-injection-name-btn below) to invite a click. */
 .sld-switch-editable,
 .sld-injection-editable {
     cursor: pointer;
 }
-.sld-switch-editable path,
-.sld-switch-editable line,
-.sld-switch-editable polyline,
-.sld-switch-editable rect,
-.sld-switch-editable circle,
-.sld-injection-editable path,
-.sld-injection-editable line,
-.sld-injection-editable polyline,
-.sld-injection-editable rect,
-.sld-injection-editable circle {
-    stroke: var(--signal-edit-cue) !important;
-    stroke-width: 2px !important;
+
+/* Injection name rendered as a button (same dark blue + white text as the
+   former "Manual action" button): a rounded rect injected behind the name
+   <text>, with the label recoloured on top. */
+.sld-injection-name-btn {
+    fill: var(--color-brand);
+    cursor: pointer;
 }
-.sld-switch-editable:hover path,
-.sld-switch-editable:hover line,
-.sld-switch-editable:hover polyline,
-.sld-switch-editable:hover rect,
-.sld-switch-editable:hover circle,
-.sld-injection-editable:hover path,
-.sld-injection-editable:hover line,
-.sld-injection-editable:hover polyline,
-.sld-injection-editable:hover rect,
-.sld-injection-editable:hover circle {
-    stroke-width: 3px !important;
+.sld-injection-name-btn:hover {
+    fill: var(--color-brand-strong);
+}
+.sld-injection-name-label {
+    fill: var(--color-text-on-brand) !important;
+    font-weight: 600;
+    cursor: pointer;
 }
 
 /* Pending switch toggles (interactive SLD topology edit). */

@@ -1011,6 +1011,59 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
         }
     });
 
+    // Render every editable injection's NAME as a dark-blue button: inject a
+    // rounded <rect> behind the matching name <text> and recolour the label
+    // on top (CSS). The whole thing is the click target that opens the
+    // active-power editor (data-injection-equip, read by the click delegate).
+    // Keyed on the SVG identity, not run per pan frame.
+    useLayoutEffect(() => {
+        const container = overlayBodyRef.current;
+        if (!container) return;
+        container.querySelectorAll('.sld-injection-name-btn').forEach(el => el.remove());
+        container.querySelectorAll('.sld-injection-name-label').forEach(el => {
+            el.classList.remove('sld-injection-name-label');
+            el.removeAttribute('data-injection-equip');
+        });
+        if (!editMode) return;
+        const injections = vlOverlay.injections;
+        if (!injections) return;
+        const ids = Object.keys(injections);
+        if (ids.length === 0) return;
+
+        const SVGNS = 'http://www.w3.org/2000/svg';
+        const texts = Array.from(container.querySelectorAll<SVGTextElement>('text'));
+        for (const equipmentId of ids) {
+            const variants = new Set([
+                equipmentId,
+                equipmentId.replace(/\./g, '_'),
+                equipmentId.replace(/_/g, '.'),
+            ]);
+            const textEl = texts.find(t => variants.has((t.textContent ?? '').trim()));
+            if (!textEl || !textEl.parentNode) continue;
+            let bbox: DOMRect;
+            try {
+                bbox = textEl.getBBox();
+            } catch {
+                continue; // getBBox unavailable (jsdom) / not laid out
+            }
+            if (!(bbox.width > 0 && bbox.height > 0)) continue;
+            const padX = 4, padY = 2.5;
+            const rect = document.createElementNS(SVGNS, 'rect');
+            rect.setAttribute('x', String(bbox.x - padX));
+            rect.setAttribute('y', String(bbox.y - padY));
+            rect.setAttribute('width', String(bbox.width + padX * 2));
+            rect.setAttribute('height', String(bbox.height + padY * 2));
+            rect.setAttribute('rx', '3');
+            rect.setAttribute('class', 'sld-injection-name-btn');
+            rect.setAttribute('data-injection-equip', equipmentId);
+            textEl.parentNode.insertBefore(rect, textEl);
+            textEl.classList.add('sld-injection-name-label');
+            textEl.setAttribute('data-injection-equip', equipmentId);
+        }
+        // Keyed on inputs that change the SVG content / editability; NOT
+        // overlayTransform, so panning doesn't re-run getBBox every frame.
+    }, [editMode, vlOverlay.injections, vlOverlay.vlName, vlOverlay.tab, vlOverlay.actionId, activeSvg, previewActive]);
+
     // Delegate switch clicks on the SVG body when edit mode is on.
     // We attach to the body container (capture phase) so taps on the
     // breaker's nested children still fire. The ``equipmentId`` is
@@ -1092,6 +1145,19 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
             // React stopPropagation on the bubble can't stop a capture-phase
             // native listener, so we filter here.
             if (target.closest('[data-testid="sld-injection-popover"]')) return;
+
+            // Injection NAME button (rect / label tagged with
+            // data-injection-equip) — opens the active-power editor.
+            const nameHit = target.closest('[data-injection-equip]');
+            if (nameHit && canInjection) {
+                const eq = nameHit.getAttribute('data-injection-equip');
+                if (eq && eq in editableInjections) {
+                    ev.stopPropagation();
+                    ev.preventDefault();
+                    openInjectionEditor(eq, ev);
+                    return;
+                }
+            }
 
             // Exact hit: pointer landed on the glyph or one of its children.
             let cur: Element | null = target;

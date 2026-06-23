@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import SldOverlay from './SldOverlay';
@@ -1147,6 +1147,55 @@ describe('SldOverlay', () => {
             fireEvent.click(screen.getByTestId('sld-injection-apply'));
             expect(onInjectionStage).toHaveBeenCalledWith('GEN_A', 88);
             expect(onSwitchClick).not.toHaveBeenCalled();
+        });
+
+        describe('name button', () => {
+            // jsdom has no getBBox — patch it on the prototype that defines it
+            // so the name-button rect is injected.
+            let restoreBBox: () => void;
+            beforeEach(() => {
+                const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                const bbox = { x: 10, y: 5, width: 80, height: 12, top: 5, left: 10, right: 90, bottom: 17, toJSON: () => ({}) } as DOMRect;
+                let proto: object | null = null;
+                let orig: PropertyDescriptor | undefined;
+                for (let p = Object.getPrototypeOf(txt); p && p !== Object.prototype; p = Object.getPrototypeOf(p)) {
+                    const d = Object.getOwnPropertyDescriptor(p, 'getBBox');
+                    if (d) { proto = p; orig = d; break; }
+                }
+                if (!proto) proto = Object.getPrototypeOf(txt);
+                Object.defineProperty(proto, 'getBBox', { value: () => bbox, configurable: true, writable: true });
+                const patched = proto;
+                restoreBBox = () => {
+                    if (orig) Object.defineProperty(patched, 'getBBox', orig);
+                    else Reflect.deleteProperty(patched, 'getBBox');
+                };
+            });
+            afterEach(() => restoreBBox());
+
+            const overlayWithName = (): VlOverlay => ({
+                ...injectionOverlay(),
+                svg: '<svg><text>GEN_A</text><g id="gen_feeder_GEN_A" class="sld-extern-cell"><rect width="20" height="20"/></g></svg>',
+            });
+
+            it('renders the injection name as a button (rect + recoloured label)', () => {
+                const { container } = render(<SldOverlay {...editProps({ vlOverlay: overlayWithName() })} />);
+                const btn = container.querySelector('.sld-injection-name-btn');
+                expect(btn).toBeTruthy();
+                expect(btn!.getAttribute('data-injection-equip')).toBe('GEN_A');
+                expect(container.querySelector('text.sld-injection-name-label')).toBeTruthy();
+            });
+
+            it('opens the editor when the name button is clicked', () => {
+                const { container } = render(<SldOverlay {...editProps({ vlOverlay: overlayWithName() })} />);
+                expect(screen.queryByTestId('sld-injection-popover')).toBeNull();
+                fireEvent.click(container.querySelector('.sld-injection-name-label')!);
+                expect(screen.getByTestId('sld-injection-popover')).toBeInTheDocument();
+            });
+
+            it('renders no name button in read-only mode', () => {
+                const { container } = render(<SldOverlay {...editProps({ vlOverlay: overlayWithName(), editMode: false })} />);
+                expect(container.querySelector('.sld-injection-name-btn')).toBeNull();
+            });
         });
     });
 
