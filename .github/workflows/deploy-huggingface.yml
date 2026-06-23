@@ -1,0 +1,84 @@
+name: Deploy to HuggingFace Space
+
+# Redeploys the HuggingFace Docker Space on every merge to main (a merged
+# PR pushes to main). Mirrors the manual flow in deploy/huggingface/SETUP.md:
+# HF's git endpoint rejects the >10 MiB .xiidm blobs that sit in branch
+# *history*, so we push ONE squashed, history-free commit of the current
+# tree (large binaries ride along via Git LFS).
+#
+# Required repo configuration (Settings → Secrets and variables → Actions):
+#   - secret  HF_TOKEN     : a HuggingFace WRITE access token with access to the Space
+#   - variable HF_SPACE    : the Space path, e.g. "your-user/co-study4grid-game"
+#   - variable HF_USERNAME : (optional) the token owner's HF username — only
+#                            needed when the Space lives under an ORG and so
+#                            differs from the owner part of HF_SPACE.
+#
+# The job no-ops (does not fail) when HF_TOKEN / HF_SPACE are absent, so the
+# workflow is inert until you opt in by setting them.
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+# Never run two deploys at once; the latest merge wins.
+concurrency:
+  group: huggingface-space-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Push snapshot to HF Space
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the deploy is configured
+        id: guard
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ vars.HF_SPACE }}
+        run: |
+          if [ -z "$HF_TOKEN" ] || [ -z "$HF_SPACE" ]; then
+            echo "::notice::HF_TOKEN secret and/or HF_SPACE variable not set — skipping deploy."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout current tree + LFS objects
+        if: steps.guard.outputs.configured == 'true'
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 1   # an orphan snapshot only needs the current tree
+
+      - name: Configure git + LFS
+        if: steps.guard.outputs.configured == 'true'
+        run: |
+          git lfs install --local
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Build a history-free snapshot
+        if: steps.guard.outputs.configured == 'true'
+        run: |
+          cp deploy/huggingface/README.md README.md   # HF needs the frontmatter at repo root
+          git checkout --orphan hf-deploy
+          git add -A
+          # Drop inert local dev artifacts from the deployed snapshot.
+          git rm -q --cached --ignore-unmatch \
+            .claude/plan.md inspect_action.py profiling_patch_results.json || true
+          git commit -q -m "Deploy ${GITHUB_SHA::7}"
+          test "$(git rev-list --count HEAD)" -eq 1   # sanity: exactly one commit
+
+      - name: Push to the HuggingFace Space
+        if: steps.guard.outputs.configured == 'true'
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ vars.HF_SPACE }}
+          HF_USERNAME: ${{ vars.HF_USERNAME }}
+        run: |
+          user="${HF_USERNAME:-${HF_SPACE%%/*}}"
+          # The token is a GitHub secret → masked in logs even inside the URL.
+          git remote add space "https://${user}:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}"
+          git -c protocol.version=0 push -f space hf-deploy:main
+          echo "::notice::Pushed snapshot of ${GITHUB_SHA::7} to spaces/${HF_SPACE}; HF will rebuild."
