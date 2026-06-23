@@ -80,15 +80,19 @@ describe('boostSvgForLargeGrid', () => {
         expect(out).toMatch(/scale\(59\.68\)/);
     });
 
-    it('preserves the PyPSA-EUR European calibration (very low density, viewBox ~4.4 M)', () => {
-        // 5247 VLs on a 4.4 M × 3.47 M layout is even sparser than
-        // fr225_400 — density penalty clamped at 1, so nodeBoost is
-        // entirely driven by viewBox: (boost − 1.5) × 10/3 + 1 ≈ 110.
+    it('clamps the continent-scale European layout to the 60× ceiling (viewBox ~4.4 M)', () => {
+        // 5247 VLs on a 4.4 M × 3.47 M layout: density penalty clamped
+        // at 1, so the raw viewBox-driven boost is (boost − 1.5) × 10/3
+        // + 1 ≈ 110. That blew the r=27.5 circles up to a ~6 040-unit
+        // diameter — wider than the median substation spacing, merging
+        // adjacent stations and the two voltage levels of one station.
+        // The 60× ceiling (= the largest boost confirmed legible, on
+        // fr225_400) halves them to a ~3 280-unit diameter.
         const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4400000 3470000">'
             + '<g><circle cx="0" cy="0" r="27.5"/></g></svg>';
         const vb = { x: 0, y: 0, w: 4_400_000, h: 3_470_000 };
         const out = boostSvgForLargeGrid(svg, vb, 5247);
-        expect(out).toMatch(/scale\(110\.18\)/);
+        expect(out).toMatch(/scale\(60\.00\)/);
     });
 
     it('shrinks nodes on the dense bare_env operator-reference layout (same span as fr225_400 but ~15× more VLs)', () => {
@@ -127,15 +131,15 @@ describe('boostSvgForLargeGrid', () => {
         expect(out).toMatch(/scale\(1\.00\)/);
     });
 
-    it('caps the node boost at the 250× ceiling on enormous sparse grids', () => {
+    it('caps the node boost at the 60× ceiling on enormous sparse grids', () => {
         // viewBox 100M + vlCount 1000: density = 1e-7 → way below REF
         // → no density penalty → boost growth uncapped → ceiling kicks
-        // in at 250.
+        // in at 60.
         const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100000000 100000000">'
             + '<g><circle cx="0" cy="0" r="27.5"/></g></svg>';
         const vb = { x: 0, y: 0, w: 100_000_000, h: 100_000_000 };
         const out = boostSvgForLargeGrid(svg, vb, 1000);
-        expect(out).toMatch(/scale\(250\.00\)/);
+        expect(out).toMatch(/scale\(60\.00\)/);
     });
 
     it('density-suppress only kicks in above the reference (sparser grids pass through)', () => {
@@ -144,12 +148,16 @@ describe('boostSvgForLargeGrid', () => {
         // produces densitySuppress = 1 (clamped to ≥ 1) so the formula
         // reduces to the OFFSET-shape alone. Guards against a
         // future refactor that accidentally inverts the max(1, …).
-        const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4000000 4000000">'
+        // Kept below the 60× ceiling (viewBox 1.2 M, 600 VLs) so the
+        // density-suppress passthrough is observable rather than masked
+        // by the clamp.
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200000 1200000">'
             + '<g><circle cx="0" cy="0" r="27.5"/></g></svg>';
-        const vb = { x: 0, y: 0, w: 4_000_000, h: 4_000_000 };
-        const out = boostSvgForLargeGrid(svg, vb, 1196);
-        // boost = sqrt(4M/3750) ≈ 32.66; rawBoost = (32.66 − 1.5) × 10/3 + 1 ≈ 104.87.
-        expect(out).toMatch(/scale\(104\.87\)/);
+        const vb = { x: 0, y: 0, w: 1_200_000, h: 1_200_000 };
+        const out = boostSvgForLargeGrid(svg, vb, 600);
+        // boost = sqrt(960/3) ≈ 17.89; rawBoost = (17.89 − 1.5) × 10/3 + 1 ≈ 55.63;
+        // density 4.17e-10 < REF → suppress = 1 → passes through (< 60 ceiling).
+        expect(out).toMatch(/scale\(55\.63\)/);
     });
 
     it('does NOT touch branch polylines in boost mode (line-extend / kink-drop / indicator-projection are shrink-only)', () => {
