@@ -1110,6 +1110,44 @@ describe('SldOverlay', () => {
             rerender(<SldOverlay {...editProps({ editMode: false })} />);
             expect(container.querySelector('.sld-injection-editable')).toBeNull();
         });
+
+        it('does NOT toggle a switch when clicking inside the injection bubble', () => {
+            // Regression: the bubble is a DOM descendant of the body, whose
+            // capture-phase click listener would otherwise near-miss-snap to a
+            // switch under the bubble — turning "Appliquer" into a spurious
+            // topology maneuver.
+            const onSwitchClick = vi.fn();
+            const onInjectionStage = vi.fn();
+            const overlay: VlOverlay = {
+                ...injectionOverlay(),
+                switch_states: { SWITCH_A: false },
+                svg: '<svg><g id="gen_feeder_GEN_A" class="sld-extern-cell"><rect width="20" height="20"/></g><g id="sw_1"><rect/></g></svg>',
+                sldMetadata: JSON.stringify({
+                    nodes: [
+                        { id: 'gen_feeder_GEN_A', equipmentId: 'GEN_A' },
+                        { id: 'sw_1', equipmentId: 'SWITCH_A' },
+                    ],
+                }),
+            };
+            const { container } = render(
+                <SldOverlay {...editProps({ vlOverlay: overlay, onSwitchClick, onInjectionStage })} />,
+            );
+            fireEvent.click(container.querySelector('#gen_feeder_GEN_A rect')!);
+            // Park the switch right where we'll click inside the bubble so a
+            // leaked near-miss snap WOULD fire without the guard.
+            const sw = container.querySelector('#sw_1')! as Element;
+            sw.getBoundingClientRect = () =>
+                ({ left: 50, top: 50, right: 56, bottom: 56, width: 6, height: 6, x: 50, y: 50, toJSON: () => ({}) }) as DOMRect;
+
+            fireEvent.click(screen.getByTestId('sld-injection-input'), { clientX: 52, clientY: 52 });
+            expect(onSwitchClick).not.toHaveBeenCalled();
+
+            // Apply still stages the injection (and only the injection).
+            fireEvent.change(screen.getByTestId('sld-injection-input'), { target: { value: '88' } });
+            fireEvent.click(screen.getByTestId('sld-injection-apply'));
+            expect(onInjectionStage).toHaveBeenCalledWith('GEN_A', 88);
+            expect(onSwitchClick).not.toHaveBeenCalled();
+        });
     });
 
     describe('Implicit edit mode (no toggle) + auto-size', () => {

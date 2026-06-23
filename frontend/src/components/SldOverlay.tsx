@@ -1084,6 +1084,15 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
             const target = ev.target as Element | null;
             if (!target) return;
 
+            // Clicks inside the injection editor bubble must NOT fall through
+            // to the diagram. The bubble is a DOM descendant of the body, so
+            // this CAPTURE-phase listener fires for them too — and the
+            // near-miss snap below would toggle a switch under the bubble,
+            // turning an "Appliquer" into a spurious topology maneuver. A
+            // React stopPropagation on the bubble can't stop a capture-phase
+            // native listener, so we filter here.
+            if (target.closest('[data-testid="sld-injection-popover"]')) return;
+
             // Exact hit: pointer landed on the glyph or one of its children.
             let cur: Element | null = target;
             while (cur && cur !== container) {
