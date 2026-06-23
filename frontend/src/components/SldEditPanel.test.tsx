@@ -20,7 +20,7 @@ const defaultProps = {
 describe('SldEditPanel', () => {
     it('shows the empty-state hint when there are no pending changes', () => {
         render(<SldEditPanel {...defaultProps} />);
-        expect(screen.getByText(/click any switch/i)).toBeInTheDocument();
+        expect(screen.getByText(/click a breaker .* or a load \/ generator/i)).toBeInTheDocument();
     });
 
     it('renders one row per pending change with baseline→target direction', () => {
@@ -85,6 +85,13 @@ describe('SldEditPanel', () => {
         expect(onClose).toHaveBeenCalledTimes(1);
     });
 
+    it('omits the exit ✕ when no onClose is provided (implicit edit mode)', () => {
+        const { onClose, ...noClose } = defaultProps;
+        void onClose;
+        render(<SldEditPanel {...noClose} />);
+        expect(screen.queryByTestId('sld-edit-close')).toBeNull();
+    });
+
     it('focuses a single switch when its row is clicked', () => {
         const onFocus = vi.fn();
         render(<SldEditPanel
@@ -146,5 +153,59 @@ describe('SldEditPanel', () => {
             pendingChanges={[{ switchId: 'SW_A', baselineOpen: false, targetOpen: true }]}
         />);
         expect(screen.queryByTestId('sld-edit-remove-selected')).toBeNull();
+    });
+
+    it('lists staged injection retunes with baseline→target MW', () => {
+        render(<SldEditPanel
+            {...defaultProps}
+            injectionChanges={[
+                { equipmentId: 'GEN_A', kind: 'generator', baselineP: 120, targetP: 90 },
+                { equipmentId: 'LOAD_A', kind: 'load', baselineP: 50, targetP: 30 },
+            ]}
+        />);
+        const gen = screen.getByTestId('sld-edit-injection-GEN_A');
+        expect(gen.textContent).toMatch(/120\.0 → 90\.0 MW/);
+        const load = screen.getByTestId('sld-edit-injection-LOAD_A');
+        expect(load.textContent).toMatch(/50\.0 → 30\.0 MW/);
+        // Simulate is enabled with only injection changes (no switch toggles).
+        expect(screen.getByTestId('sld-edit-simulate')).not.toBeDisabled();
+    });
+
+    it('removes a staged injection retune via its × button', () => {
+        const onInjectionRemove = vi.fn();
+        render(<SldEditPanel
+            {...defaultProps}
+            onInjectionRemove={onInjectionRemove}
+            injectionChanges={[{ equipmentId: 'GEN_A', kind: 'generator', baselineP: 120, targetP: 90 }]}
+        />);
+        fireEvent.click(screen.getByTestId('sld-edit-injection-remove-GEN_A'));
+        expect(onInjectionRemove).toHaveBeenCalledWith('GEN_A');
+    });
+
+    it('focuses an injection row when its label is clicked', () => {
+        const onFocus = vi.fn();
+        render(<SldEditPanel
+            {...defaultProps}
+            onFocus={onFocus}
+            injectionChanges={[{ equipmentId: 'GEN_A', kind: 'generator', baselineP: 120, targetP: 90 }]}
+        />);
+        fireEvent.click(screen.getByTestId('sld-edit-injection-focus-GEN_A'));
+        expect(onFocus).toHaveBeenCalledWith('GEN_A');
+    });
+
+    it('lists switch toggles AND injection retunes together in one combined action', () => {
+        render(<SldEditPanel
+            {...defaultProps}
+            pendingChanges={[{ switchId: 'SW_A', baselineOpen: false, targetOpen: true }]}
+            injectionChanges={[
+                { equipmentId: 'GEN_A', kind: 'generator', baselineP: 120, targetP: 90 },
+                { equipmentId: 'LOAD_A', kind: 'load', baselineP: 50, targetP: 30 },
+            ]}
+        />);
+        expect(screen.getByTestId('sld-edit-change-SW_A')).toBeInTheDocument();
+        expect(screen.getByTestId('sld-edit-injection-GEN_A')).toBeInTheDocument();
+        expect(screen.getByTestId('sld-edit-injection-LOAD_A')).toBeInTheDocument();
+        // One Simulate button drives the whole combined action.
+        expect(screen.getByTestId('sld-edit-simulate')).not.toBeDisabled();
     });
 });

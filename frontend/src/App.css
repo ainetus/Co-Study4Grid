@@ -417,6 +417,31 @@ circle.nad-highlight {
     opacity: 0.4 !important;
 }
 
+/* Editable-element affordance while editing the SLD: a plain pointer
+   cursor on the cells (no recolouring of branches / busbars). Loads and
+   generators ALSO get their NAME rendered as a dark-blue button (see
+   .sld-injection-name-btn below) to invite a click. */
+.sld-switch-editable,
+.sld-injection-editable {
+    cursor: pointer;
+}
+
+/* Injection name rendered as a button (same dark blue + white text as the
+   former "Manual action" button): a rounded rect injected behind the name
+   <text>, with the label recoloured on top. */
+.sld-injection-name-btn {
+    fill: var(--color-brand);
+    cursor: pointer;
+}
+.sld-injection-name-btn:hover {
+    fill: var(--color-brand-strong);
+}
+.sld-injection-name-label {
+    fill: var(--color-text-on-brand) !important;
+    font-weight: 600;
+    cursor: pointer;
+}
+
 /* Pending switch toggles (interactive SLD topology edit). */
 .sld-user-toggle-open path,
 .sld-user-toggle-open line,
@@ -434,6 +459,17 @@ circle.nad-highlight {
 .sld-user-toggle-closed rect,
 .sld-user-toggle-closed circle {
     stroke: var(--signal-edit-closed) !important;
+    stroke-width: 2.5px !important;
+    stroke-dasharray: 4 2 !important;
+}
+
+/* Pending injection (load / generator active-power) retune. */
+.sld-user-injection path,
+.sld-user-injection line,
+.sld-user-injection polyline,
+.sld-user-injection rect,
+.sld-user-injection circle {
+    stroke: var(--signal-edit-injection) !important;
     stroke-width: 2.5px !important;
     stroke-dasharray: 4 2 !important;
 }

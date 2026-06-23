@@ -136,11 +136,13 @@ remaining hex-literal count after each migration.
 
   /* ----- SLD interactive topology-edit highlight -----
      The interactive SLD-edit feature (useSldTopologyEdit + SldEditPanel)
-     stages switch toggles in the frontend and visually marks the
-     pending breaker. Distinct hues from action / contingency / overload
-     so a toggled switch on an overloaded line still reads as both. */
+     stages switch toggles + injection (load / generator) active-power
+     retunes in the frontend and visually marks the pending element.
+     Distinct hues from action / contingency / overload so a toggled
+     switch on an overloaded line still reads as both. */
   --signal-edit-open: #d81b60;
   --signal-edit-closed: #1976d2;
+  --signal-edit-injection: #00897b;
 
   /* ----- Action-overview pin palette -----
      Severity buckets for Remedial Action overview pins

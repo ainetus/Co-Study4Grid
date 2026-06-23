@@ -137,7 +137,9 @@ const SPEC: Record<string, SpecRow> = {
   sld_maneuver_removed:           { required: new Set(['equipment_ids']) },
   sld_maneuver_focused:           { required: new Set(['equipment_id']) },
   sld_edit_reset:                 { required: new Set() },
-  sld_topology_simulated:         { required: new Set(['voltage_level_id', 'switches']), optional: new Set(['combined_with']) },
+  sld_injection_staged:           { required: new Set(['equipment_id', 'kind', 'target_mw']) },
+  sld_injection_removed:          { required: new Set(['equipment_id']) },
+  sld_topology_simulated:         { required: new Set(['voltage_level_id', 'switches']), optional: new Set(['combined_with', 'injections']) },
   // --- Session Management ---
   session_saved:                  { required: new Set(['output_folder']) },
   session_reload_modal_opened:    { required: new Set() },

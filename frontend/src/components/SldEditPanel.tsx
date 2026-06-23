@@ -7,13 +7,19 @@
 import React, { useState, useMemo } from 'react';
 import { colors, space, text, radius } from '../styles/tokens';
 import { interactionLogger } from '../utils/interactionLogger';
-import type { SwitchToggleEntry } from '../hooks/useSldTopologyEdit';
+import type { SwitchToggleEntry, InjectionChangeEntry } from '../hooks/useSldTopologyEdit';
 
 export interface SldEditPanelProps {
     pendingChanges: SwitchToggleEntry[];
+    /** Staged active-power retunes (loads / generators) — listed below the
+     *  switch toggles, removable individually. */
+    injectionChanges?: InjectionChangeEntry[];
+    onInjectionRemove?: (equipmentId: string) => void;
     onReset: () => void;
     onSimulate: () => void;
-    onClose: () => void;
+    /** Optional exit-edit affordance. Omitted in production (edit mode is
+     *  implicit while the SLD overlay is open); kept for isolated tests. */
+    onClose?: () => void;
     /**
      * When true the Simulate button is busy / disabled. Driven by the
      * `simulateAndVariantDiagramStream` lifecycle in App.tsx.
@@ -38,10 +44,13 @@ export interface SldEditPanelProps {
 }
 
 const SldEditPanel: React.FC<SldEditPanelProps> = ({
-    pendingChanges, onReset, onSimulate, onClose, busy = false, combinedWithActionId = null,
+    pendingChanges, injectionChanges = [], onInjectionRemove,
+    onReset, onSimulate, onClose, busy = false, combinedWithActionId = null,
     focusedSwitchId = null, onFocus, onRemove, onRemoveMany,
 }) => {
-    const hasChanges = pendingChanges.length > 0;
+    const hasSwitchChanges = pendingChanges.length > 0;
+    const hasInjectionChanges = injectionChanges.length > 0;
+    const hasChanges = hasSwitchChanges || hasInjectionChanges;
     const [selected, setSelected] = useState<Set<string>>(new Set());
 
     // Intersect with the live change set so a selection left over from a
@@ -93,18 +102,26 @@ const SldEditPanel: React.FC<SldEditPanelProps> = ({
                         </span>
                         : null}
                 </span>
-                <button
-                    data-testid="sld-edit-close"
-                    onClick={onClose}
-                    title="Exit edit mode"
-                    style={{
-                        border: 'none', background: 'transparent', color: colors.textTertiary,
-                        cursor: 'pointer', fontSize: text.sm, padding: 0,
-                    }}
-                >✕</button>
+                {onClose && (
+                    <button
+                        data-testid="sld-edit-close"
+                        onClick={onClose}
+                        title="Exit edit mode"
+                        style={{
+                            border: 'none', background: 'transparent', color: colors.textTertiary,
+                            cursor: 'pointer', fontSize: text.sm, padding: 0,
+                        }}
+                    >✕</button>
+                )}
             </div>
 
-            {hasChanges ? (
+            {!hasChanges && (
+                <span style={{ fontSize: text.xs, color: colors.textTertiary }}>
+                    Click a breaker / disconnector to switch it, or a load / generator to retune its active power.
+                </span>
+            )}
+
+            {hasSwitchChanges && (
                 <ul style={{
                     listStyle: 'none', padding: 0, margin: 0,
                     display: 'flex', flexDirection: 'column', gap: space.half,
@@ -158,10 +175,62 @@ const SldEditPanel: React.FC<SldEditPanelProps> = ({
                         );
                     })}
                 </ul>
-            ) : (
-                <span style={{ fontSize: text.xs, color: colors.textTertiary }}>
-                    Click any switch in the diagram to stage a change.
-                </span>
+            )}
+
+            {hasInjectionChanges && (
+                <ul
+                    data-testid="sld-edit-injection-list"
+                    style={{
+                        listStyle: 'none', padding: 0, margin: 0,
+                        display: 'flex', flexDirection: 'column', gap: space.half,
+                        fontSize: text.xs,
+                    }}
+                >
+                    {injectionChanges.map(({ equipmentId, kind, baselineP, targetP }) => {
+                        const isFocused = focusedSwitchId === equipmentId;
+                        const baseStr = baselineP != null ? baselineP.toFixed(1) : '—';
+                        return (
+                            <li
+                                key={equipmentId}
+                                data-testid={`sld-edit-injection-${equipmentId}`}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: space[1],
+                                    padding: `${space.half} ${space[1]}`,
+                                    borderRadius: radius.sm,
+                                    background: isFocused ? colors.brandSoft : 'transparent',
+                                    border: `1px solid ${isFocused ? colors.brandMid : 'transparent'}`,
+                                }}
+                            >
+                                <span
+                                    title={kind === 'generator' ? 'générateur' : 'charge'}
+                                    style={{ flexShrink: 0, fontSize: text.xs }}
+                                >{kind === 'generator' ? '⚡' : '⌂'}</span>
+                                <button
+                                    data-testid={`sld-edit-injection-focus-${equipmentId}`}
+                                    onClick={() => handleFocus(equipmentId)}
+                                    title="Highlight only this element"
+                                    style={{
+                                        flex: 1, textAlign: 'left', cursor: 'pointer',
+                                        background: 'transparent', border: 'none', padding: 0,
+                                        color: colors.textSecondary, fontFamily: 'monospace', fontSize: text.xs,
+                                    }}
+                                >
+                                    <strong style={{ color: colors.textPrimary }}>{equipmentId}</strong>
+                                    {': '}{baseStr} → {targetP.toFixed(1)} MW
+                                </button>
+                                <button
+                                    data-testid={`sld-edit-injection-remove-${equipmentId}`}
+                                    onClick={() => onInjectionRemove?.(equipmentId)}
+                                    title="Remove this retune"
+                                    style={{
+                                        border: 'none', background: 'transparent', color: colors.danger,
+                                        cursor: 'pointer', fontSize: text.sm, padding: `0 ${space.half}`, flexShrink: 0,
+                                    }}
+                                >✕</button>
+                            </li>
+                        );
+                    })}
+                </ul>
             )}
 
             <div style={{ display: 'flex', gap: space[1], justifyContent: 'flex-end', marginTop: space[1], flexWrap: 'wrap' }}>

@@ -384,6 +384,25 @@ export interface SldFeederNode {
     direction?: string;
 }
 
+/**
+ * Baseline descriptor for one editable active-power injection (a load or
+ * generator) on the displayed SLD. Drives the interactive injection-edit
+ * bubble in ``useSldTopologyEdit`` / ``SldInjectionPopover``: the operator
+ * retunes ``p`` and the user-built action sends back the absolute setpoint
+ * as ``{loads_p|gens_p: {id: MW}}``. Backend populates this on every SLD
+ * endpoint via ``extract_vl_injections``.
+ */
+export interface VlInjection {
+    kind: 'generator' | 'load';
+    /** Current active-power setpoint (MW): ``target_p`` (gen) / ``p0`` (load). */
+    p: number | null;
+    /** Generator active-power capability bounds (MW); absent for loads. */
+    min_p?: number | null;
+    max_p?: number | null;
+    /** Generator energy source (e.g. ``WIND`` / ``NUCLEAR``); absent for loads. */
+    energy_source?: string;
+}
+
 export interface VlOverlay {
     vlName: string;
     actionId: string | null;
@@ -405,6 +424,15 @@ export interface VlOverlay {
      * ``extract_vl_switch_states``.
      */
     switch_states?: Record<string, boolean>;
+    /**
+     * Baseline active-power injections (loads + generators) for the
+     * displayed VL, keyed by equipment id. Drives the interactive
+     * injection-edit bubble: only equipment present here is editable, and
+     * a staged change is computed as ``user_setpoint !== baseline.p``.
+     * Backend populates this on every SLD endpoint via
+     * ``extract_vl_injections``.
+     */
+    injections?: Record<string, VlInjection>;
 }
 
 // ===== Session Save =====
@@ -609,6 +637,8 @@ export type InteractionType =
     | 'sld_maneuver_removed'
     | 'sld_maneuver_focused'
     | 'sld_edit_reset'
+    | 'sld_injection_staged'
+    | 'sld_injection_removed'
     | 'sld_topology_simulated'
     | 'overview_shown'
     | 'overview_hidden'

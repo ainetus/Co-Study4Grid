@@ -105,6 +105,10 @@ interface VisualizationPanelProps {
     sldEditPendingSwitches?: Record<string, boolean>;
     sldEditPendingChanges?: import('../hooks/useSldTopologyEdit').SwitchToggleEntry[];
     onSldSwitchClick?: (equipmentId: string) => void;
+    sldEditPendingInjections?: Record<string, number>;
+    sldEditInjectionChanges?: import('../hooks/useSldTopologyEdit').InjectionChangeEntry[];
+    onSldInjectionStage?: (equipmentId: string, targetP: number) => void;
+    onSldInjectionRemove?: (equipmentId: string) => void;
     onSldEditSimulate?: () => void;
     onSldEditReset?: () => void;
     sldEditBusy?: boolean;
@@ -263,6 +267,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     sldEditPendingSwitches,
     sldEditPendingChanges,
     onSldSwitchClick,
+    sldEditPendingInjections,
+    sldEditInjectionChanges,
+    onSldInjectionStage,
+    onSldInjectionRemove,
     onSldEditSimulate,
     onSldEditReset,
     sldEditBusy,
@@ -1380,6 +1388,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         pendingSwitches={sldEditPendingSwitches}
                         pendingChanges={sldEditPendingChanges}
                         onSwitchClick={onSldSwitchClick}
+                        pendingInjections={sldEditPendingInjections}
+                        injectionChanges={sldEditInjectionChanges}
+                        onInjectionStage={onSldInjectionStage}
+                        onInjectionRemove={onSldInjectionRemove}
                         onSimulateEdit={onSldEditSimulate}
                         onResetEdit={onSldEditReset}
                         editSimulationBusy={sldEditBusy}

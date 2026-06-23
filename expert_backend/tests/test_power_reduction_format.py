@@ -453,6 +453,23 @@ class TestBuildActionEntryPowerReduction:
         assert entry["content"]["set_load_p"]["LOAD_2"] == 0.0
         assert entry["content"]["set_gen_p"]["GEN_1"] == 0.0
 
+    def test_combined_switches_and_injections(self):
+        # The interactive SLD edit can stage a breaker toggle AND a generator
+        # retune AND a load retune in one action — the content must carry all
+        # three keys so env.action_space(content) applies them together.
+        topo = {
+            "switches": {"SW_A": True},
+            "gens_p": {"GEN_A": 24.0},
+            "loads_p": {"LOAD_A": 3.0},
+        }
+        entry = RecommenderService._build_action_entry_from_topology(
+            "user_topo_VL_X_1", topo
+        )
+        content = entry["content"]
+        assert content["switches"] == {"SW_A": True}
+        assert content["set_gen_p"] == {"GEN_A": 24.0}
+        assert content["set_load_p"] == {"LOAD_A": 3.0}
+
     def test_empty_loads_p_not_included(self):
         topo = {"loads_p": {}}
         entry = RecommenderService._build_action_entry_from_topology("test_empty", topo)

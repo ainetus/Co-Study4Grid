@@ -50,10 +50,13 @@ frontend/
     │   ├── useDiagrams.ts          # NAD fetching + tab management
     │   ├── usePanZoom.ts           # ViewBox state, zoom-to-element
     │   ├── useSldOverlay.ts        # Single-Line-Diagram overlay
-    │   ├── useSldTopologyEdit.ts    # Interactive SLD switch-edit:
-    │   │                            # editMode + pendingStates +
-    │   │                            # toggle / removeSwitch /
-    │   │                            # removeSwitches / focusedSwitchId
+    │   ├── useSldTopologyEdit.ts    # Interactive SLD edit (switches +
+    │   │                            # load/gen active power): editMode
+    │   │                            # (implicit while open, read-only on
+    │   │                            # close) + pendingStates +
+    │   │                            # pendingInjections + toggle /
+    │   │                            # removeSwitch(es) / setInjection /
+    │   │                            # removeInjection / focusedSwitchId
     │   │                            # (see docs/features/sld-topology-edit.md)
     │   ├── useSession.ts           # Session save / restore
     │   ├── useDetachedTabs.ts      # Detached visualization windows
@@ -107,13 +110,18 @@ frontend/
     │   ├── DetachableTabHost.tsx, ErrorBoundary.tsx,
     │   ├── MemoizedSvgContainer.tsx, SldOverlay.tsx,
     │   ├── SldEditPanel.tsx        # Interactive maneuver list under
-    │   │                           # the SLD overlay — focus on row
+    │   │                           # the SLD overlay — switch toggles +
+    │   │                           # injection retunes, focus on row
     │   │                           # click, ✕ per row, checkbox +
     │   │                           # Remove selected (N), Reset,
     │   │                           # Simulate action. Mirrors
     │   │                           # manoeuvre_ihm's seq_delete /
     │   │                           # seq_delete_many. See
     │   │                           # docs/features/sld-topology-edit.md.
+    │   ├── SldInjectionPopover.tsx # Floating load/gen active-power
+    │   │                           # editor bubble (current P, Pmin/Pmax,
+    │   │                           # clamp) opened by clicking an
+    │   │                           # injection on the SLD in edit mode.
     │   ├── AppSidebar.tsx          # Sidebar layout shell (summary +
     │   │                           # contingency picker + children).
     │   │                           # Collapsible to a 32-px strip via

@@ -221,7 +221,9 @@ SPEC_DETAILS: dict[str, dict] = {
     "sld_maneuver_removed":     _spec_row({"equipment_ids"}),
     "sld_maneuver_focused":     _spec_row({"equipment_id"}),
     "sld_edit_reset":           _spec_row(set()),
-    "sld_topology_simulated":   _spec_row({"voltage_level_id", "switches"}, {"combined_with"}),
+    "sld_injection_staged":     _spec_row({"equipment_id", "kind", "target_mw"}),
+    "sld_injection_removed":    _spec_row({"equipment_id"}),
+    "sld_topology_simulated":   _spec_row({"voltage_level_id", "switches"}, {"combined_with", "injections"}),
     # --- Session Management ---
     "session_saved":            _spec_row({"output_folder"}),
     "session_reload_modal_opened": _spec_row(set()),

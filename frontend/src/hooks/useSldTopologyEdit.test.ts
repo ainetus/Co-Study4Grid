@@ -10,11 +10,17 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSldTopologyEdit } from './useSldTopologyEdit';
 import { interactionLogger } from '../utils/interactionLogger';
+import type { VlInjection } from '../types';
 
 const baseline = (): Record<string, boolean> => ({
     SW_A: false,
     SW_B: true,
     SW_C: false,
+});
+
+const injectionsBaseline = (): Record<string, VlInjection> => ({
+    GEN_A: { kind: 'generator', p: 100, min_p: 0, max_p: 200, energy_source: 'WIND' },
+    LOAD_A: { kind: 'load', p: 50 },
 });
 
 // IMPORTANT: each test passes a STABLE baseline reference. The hook
@@ -168,6 +174,105 @@ describe('useSldTopologyEdit', () => {
             act(() => { result.current.setEditMode(i % 2 === 0); });
         }
         expect(result.current.changedSwitches).toEqual({});
+    });
+
+    it('ignores injection edits while edit mode is off', () => {
+        const b = baseline();
+        const inj = injectionsBaseline();
+        const { result } = renderHook(() => useSldTopologyEdit(b, inj));
+        act(() => { result.current.setInjection('GEN_A', 90); });
+        expect(result.current.changedInjections).toEqual({});
+        expect(result.current.injectionChanges).toHaveLength(0);
+    });
+
+    it('stages an injection retune relative to baseline', () => {
+        const b = baseline();
+        const inj = injectionsBaseline();
+        const { result } = renderHook(() => useSldTopologyEdit(b, inj));
+        act(() => { result.current.setEditMode(true); });
+        act(() => { result.current.setInjection('GEN_A', 90); });
+        expect(result.current.changedInjections).toEqual({ GEN_A: 90 });
+        expect(result.current.injectionChanges).toEqual([
+            { equipmentId: 'GEN_A', kind: 'generator', baselineP: 100, targetP: 90, minP: 0, maxP: 200, energySource: 'WIND' },
+        ]);
+        expect(result.current.hasPendingChanges).toBe(true);
+    });
+
+    it('drops the injection override when retuned back onto the baseline', () => {
+        const b = baseline();
+        const inj = injectionsBaseline();
+        const { result } = renderHook(() => useSldTopologyEdit(b, inj));
+        act(() => { result.current.setEditMode(true); });
+        act(() => { result.current.setInjection('GEN_A', 90); });
+        act(() => { result.current.setInjection('GEN_A', 100); });
+        expect(result.current.changedInjections).toEqual({});
+    });
+
+    it('rejects injection edits on equipment absent from the baseline', () => {
+        const b = baseline();
+        const inj = injectionsBaseline();
+        const { result } = renderHook(() => useSldTopologyEdit(b, inj));
+        act(() => { result.current.setEditMode(true); });
+        act(() => { result.current.setInjection('GEN_UNKNOWN', 10); });
+        expect(result.current.changedInjections).toEqual({});
+    });
+
+    it('removeInjection drops a staged retune and clears focus', () => {
+        const b = baseline();
+        const inj = injectionsBaseline();
+        const { result } = renderHook(() => useSldTopologyEdit(b, inj));
+        act(() => { result.current.setEditMode(true); });
+        act(() => { result.current.setInjection('GEN_A', 90); });
+        act(() => { result.current.setInjection('LOAD_A', 30); });
+        act(() => { result.current.setFocusedSwitch('GEN_A'); });
+        act(() => { result.current.removeInjection('GEN_A'); });
+        expect(result.current.changedInjections).toEqual({ LOAD_A: 30 });
+        expect(result.current.focusedSwitchId).toBeNull();
+    });
+
+    it('switch and injection edits coexist; reset and edit-off clear both', () => {
+        const b = baseline();
+        const inj = injectionsBaseline();
+        const { result } = renderHook(() => useSldTopologyEdit(b, inj));
+        act(() => { result.current.setEditMode(true); });
+        act(() => { result.current.toggleSwitch('SW_A'); });
+        act(() => { result.current.setInjection('GEN_A', 80); });
+        expect(result.current.changedSwitches).toEqual({ SW_A: true });
+        expect(result.current.changedInjections).toEqual({ GEN_A: 80 });
+        expect(result.current.hasPendingChanges).toBe(true);
+        act(() => { result.current.reset(); });
+        expect(result.current.changedSwitches).toEqual({});
+        expect(result.current.changedInjections).toEqual({});
+        expect(interactionLogger.getLog().map(e => e.type)).toContain('sld_edit_reset');
+    });
+
+    it('drops staged injections when the injection baseline identity changes', () => {
+        let injRef = injectionsBaseline();
+        const stableSwitches = baseline();
+        const { result, rerender } = renderHook(
+            (props: { inj: Record<string, VlInjection> }) => useSldTopologyEdit(stableSwitches, props.inj),
+            { initialProps: { inj: injRef } },
+        );
+        act(() => { result.current.setEditMode(true); });
+        act(() => { result.current.setInjection('GEN_A', 75); });
+        expect(result.current.changedInjections).toEqual({ GEN_A: 75 });
+        injRef = injectionsBaseline();
+        rerender({ inj: injRef });
+        expect(result.current.changedInjections).toEqual({});
+    });
+
+    it('logs sld_injection_staged and sld_injection_removed', () => {
+        const b = baseline();
+        const inj = injectionsBaseline();
+        const { result } = renderHook(() => useSldTopologyEdit(b, inj));
+        act(() => { result.current.setEditMode(true); });
+        act(() => { result.current.setInjection('GEN_A', 90); });
+        act(() => { result.current.removeInjection('GEN_A'); });
+        const types = interactionLogger.getLog().map(e => e.type);
+        expect(types).toContain('sld_injection_staged');
+        expect(types).toContain('sld_injection_removed');
+        const staged = interactionLogger.getLog().find(e => e.type === 'sld_injection_staged');
+        expect(staged?.details).toMatchObject({ equipment_id: 'GEN_A', kind: 'generator', target_mw: 90 });
     });
 
     it('a no-op baseline change does not destroy a focus or staged toggle on the SAME identity', () => {

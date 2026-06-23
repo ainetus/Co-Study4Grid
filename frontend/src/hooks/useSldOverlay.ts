@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useRef, useEffect, type MutableRefObject } from 'react';
 import { api } from '../api';
-import type { VlOverlay, SldTab, FlowDelta, AssetDelta, TabId } from '../types';
+import type { VlOverlay, SldTab, FlowDelta, AssetDelta, TabId, VlInjection } from '../types';
 import { interactionLogger } from '../utils/interactionLogger';
 
 export interface SldOverlayState {
@@ -63,12 +63,14 @@ export function useSldOverlay(activeTab: TabId, liveSelectedActionId?: string | 
             let assetDeltas: Record<string, AssetDelta> | undefined;
             let changedSwitches: Record<string, { from_open: boolean; to_open: boolean }> | undefined;
             let switchStates: Record<string, boolean> | undefined;
+            let injections: Record<string, VlInjection> | undefined;
 
             if (sldTab === 'n') {
                 const res = await api.getNSld(vlName);
                 svgData = res.svg;
                 metaData = res.sld_metadata ?? null;
                 switchStates = res.switch_states;
+                injections = res.injections;
             } else if (sldTab === 'contingency') {
                 const res = await api.getContingencySld(contingencyElements, vlName);
                 svgData = res.svg;
@@ -77,6 +79,7 @@ export function useSldOverlay(activeTab: TabId, liveSelectedActionId?: string | 
                 reactiveFlowDeltas = res.reactive_flow_deltas;
                 assetDeltas = res.asset_deltas;
                 switchStates = res.switch_states;
+                injections = res.injections;
             } else {
                 // Fallback to the live selectedActionId if the
                 // overlay was opened from a tab where no action
@@ -103,6 +106,7 @@ export function useSldOverlay(activeTab: TabId, liveSelectedActionId?: string | 
                 assetDeltas = res.asset_deltas;
                 changedSwitches = res.changed_switches;
                 switchStates = res.switch_states;
+                injections = res.injections;
                 // Persist the resolved actionId back onto the
                 // overlay so subsequent re-renders and highlight
                 // passes can find it on `vlOverlay.actionId`.
@@ -119,6 +123,7 @@ export function useSldOverlay(activeTab: TabId, liveSelectedActionId?: string | 
                         flow_deltas: flowDeltas, reactive_flow_deltas: reactiveFlowDeltas, asset_deltas: assetDeltas,
                         changed_switches: changedSwitches,
                         switch_states: switchStates,
+                        injections,
                     }
                     : prev
             );

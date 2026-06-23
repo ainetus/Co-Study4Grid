@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import SldOverlay from './SldOverlay';
@@ -487,6 +487,26 @@ describe('SldOverlay', () => {
                 <SldOverlay {...defaultProps} vlOverlay={makeOverlay()} result={makeResult(detail)} />,
             );
             expect(container.querySelector('#cell_pst.sld-highlight-action-original')).toBeTruthy();
+        });
+
+        it('highlights BOTH the generator and the load of a combined injection action', () => {
+            // The user's combined manual action sets set_gen_p AND set_load_p;
+            // the backend now back-fills action_topology with both, so the SLD
+            // must highlight the generator AND the load feeders — not just one.
+            const detail = {
+                description_unitaire: 'Manoeuvre manuelle sur VL_BEON: GEN_Y P=24.0 MW, LOAD_X P=3.0 MW',
+                rho_before: [1.1],
+                rho_after: [0.9],
+                max_rho: 0.9,
+                max_rho_line: 'X',
+                is_rho_reduction: true,
+                action_topology: { gens_p: { GEN_Y: 24.0 }, loads_p: { LOAD_X: 3.0 } },
+            };
+            const { container } = render(
+                <SldOverlay {...defaultProps} vlOverlay={makeOverlay()} result={makeResult(detail)} />,
+            );
+            expect(container.querySelector('#cell_gen.sld-highlight-action-original')).toBeTruthy();
+            expect(container.querySelector('#cell_load.sld-highlight-action-original')).toBeTruthy();
         });
 
         it('falls back to SVG <text> search when SLD metadata equipmentId does not match load_name', () => {
@@ -1033,6 +1053,270 @@ describe('SldOverlay', () => {
                 // Probe immediately after each commit — the delta
                 // class MUST still be there, never transiently null.
                 expect(queryDelta()).toBeTruthy();
+            }
+        });
+    });
+
+    describe('Interactive injection (load / generator) edit', () => {
+        const injectionOverlay = (): VlOverlay => ({
+            vlName: 'VL_400',
+            actionId: null,
+            svg: '<svg><g id="gen_feeder_GEN_A" class="sld-extern-cell"><rect width="20" height="20"/></g></svg>',
+            sldMetadata: JSON.stringify({
+                nodes: [{ id: 'gen_feeder_GEN_A', equipmentId: 'GEN_A', componentType: 'GENERATOR' }],
+            }),
+            loading: false,
+            error: null,
+            tab: 'contingency' as SldTab,
+            switch_states: {},
+            injections: {
+                GEN_A: { kind: 'generator', p: 120, min_p: 0, max_p: 200, energy_source: 'WIND' },
+            },
+        });
+
+        const editProps = (over: Partial<Parameters<typeof SldOverlay>[0]> = {}) => ({
+            ...defaultProps,
+            vlOverlay: injectionOverlay(),
+            selectedContingency: ['L_FAULTY'],
+            editMode: true,
+            onEditModeChange: vi.fn(),
+            pendingChanges: [],
+            onSimulateEdit: vi.fn(),
+            onResetEdit: vi.fn(),
+            onInjectionStage: vi.fn(),
+            onInjectionRemove: vi.fn(),
+            pendingInjections: {},
+            injectionChanges: [],
+            ...over,
+        });
+
+        it('opens the injection editor when a generator is clicked in edit mode', () => {
+            const { container } = render(<SldOverlay {...editProps()} />);
+            expect(screen.queryByTestId('sld-injection-popover')).toBeNull();
+            fireEvent.click(container.querySelector('#gen_feeder_GEN_A rect')!);
+            expect(screen.getByTestId('sld-injection-popover')).toBeInTheDocument();
+            expect(screen.getByTestId('sld-injection-name').textContent).toBe('GEN_A');
+            expect(screen.getByTestId('sld-injection-bounds')).toBeInTheDocument();
+        });
+
+        it('does NOT open the editor when edit mode is off', () => {
+            const { container } = render(<SldOverlay {...editProps({ editMode: false })} />);
+            fireEvent.click(container.querySelector('#gen_feeder_GEN_A rect')!);
+            expect(screen.queryByTestId('sld-injection-popover')).toBeNull();
+        });
+
+        it('stages the retune from the editor through onInjectionStage', () => {
+            const onInjectionStage = vi.fn();
+            const { container } = render(<SldOverlay {...editProps({ onInjectionStage })} />);
+            fireEvent.click(container.querySelector('#gen_feeder_GEN_A rect')!);
+            fireEvent.change(screen.getByTestId('sld-injection-input'), { target: { value: '95' } });
+            fireEvent.click(screen.getByTestId('sld-injection-apply'));
+            expect(onInjectionStage).toHaveBeenCalledWith('GEN_A', 95);
+            // Bubble dismisses after applying.
+            expect(screen.queryByTestId('sld-injection-popover')).toBeNull();
+        });
+
+        it('paints a staged injection cell with the sld-user-injection outline', () => {
+            const { container } = render(
+                <SldOverlay {...editProps({ pendingInjections: { GEN_A: 95 } })} />,
+            );
+            expect(container.querySelector('.sld-user-injection')).toBeTruthy();
+        });
+
+        it('marks editable injections with the clickable cue while in edit mode', () => {
+            const { container, rerender } = render(<SldOverlay {...editProps()} />);
+            expect(container.querySelector('.sld-injection-editable')).toBeTruthy();
+            // Cue is cleared when edit mode is off (read-only).
+            rerender(<SldOverlay {...editProps({ editMode: false })} />);
+            expect(container.querySelector('.sld-injection-editable')).toBeNull();
+        });
+
+        it('does NOT toggle a switch when clicking inside the injection bubble', () => {
+            // Regression: the bubble is a DOM descendant of the body, whose
+            // capture-phase click listener would otherwise near-miss-snap to a
+            // switch under the bubble — turning "Appliquer" into a spurious
+            // topology maneuver.
+            const onSwitchClick = vi.fn();
+            const onInjectionStage = vi.fn();
+            const overlay: VlOverlay = {
+                ...injectionOverlay(),
+                switch_states: { SWITCH_A: false },
+                svg: '<svg><g id="gen_feeder_GEN_A" class="sld-extern-cell"><rect width="20" height="20"/></g><g id="sw_1"><rect/></g></svg>',
+                sldMetadata: JSON.stringify({
+                    nodes: [
+                        { id: 'gen_feeder_GEN_A', equipmentId: 'GEN_A' },
+                        { id: 'sw_1', equipmentId: 'SWITCH_A' },
+                    ],
+                }),
+            };
+            const { container } = render(
+                <SldOverlay {...editProps({ vlOverlay: overlay, onSwitchClick, onInjectionStage })} />,
+            );
+            fireEvent.click(container.querySelector('#gen_feeder_GEN_A rect')!);
+            // Park the switch right where we'll click inside the bubble so a
+            // leaked near-miss snap WOULD fire without the guard.
+            const sw = container.querySelector('#sw_1')! as Element;
+            sw.getBoundingClientRect = () =>
+                ({ left: 50, top: 50, right: 56, bottom: 56, width: 6, height: 6, x: 50, y: 50, toJSON: () => ({}) }) as DOMRect;
+
+            fireEvent.click(screen.getByTestId('sld-injection-input'), { clientX: 52, clientY: 52 });
+            expect(onSwitchClick).not.toHaveBeenCalled();
+
+            // Apply still stages the injection (and only the injection).
+            fireEvent.change(screen.getByTestId('sld-injection-input'), { target: { value: '88' } });
+            fireEvent.click(screen.getByTestId('sld-injection-apply'));
+            expect(onInjectionStage).toHaveBeenCalledWith('GEN_A', 88);
+            expect(onSwitchClick).not.toHaveBeenCalled();
+        });
+
+        describe('name button', () => {
+            // jsdom has no getBBox — patch it on the prototype that defines it
+            // so the name-button rect is injected.
+            let restoreBBox: () => void;
+            beforeEach(() => {
+                const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                const bbox = { x: 10, y: 5, width: 80, height: 12, top: 5, left: 10, right: 90, bottom: 17, toJSON: () => ({}) } as DOMRect;
+                let proto: object | null = null;
+                let orig: PropertyDescriptor | undefined;
+                for (let p = Object.getPrototypeOf(txt); p && p !== Object.prototype; p = Object.getPrototypeOf(p)) {
+                    const d = Object.getOwnPropertyDescriptor(p, 'getBBox');
+                    if (d) { proto = p; orig = d; break; }
+                }
+                if (!proto) proto = Object.getPrototypeOf(txt);
+                Object.defineProperty(proto, 'getBBox', { value: () => bbox, configurable: true, writable: true });
+                const patched = proto;
+                restoreBBox = () => {
+                    if (orig) Object.defineProperty(patched, 'getBBox', orig);
+                    else Reflect.deleteProperty(patched, 'getBBox');
+                };
+            });
+            afterEach(() => restoreBBox());
+
+            const overlayWithName = (): VlOverlay => ({
+                ...injectionOverlay(),
+                svg: '<svg><text>GEN_A</text><g id="gen_feeder_GEN_A" class="sld-extern-cell"><rect width="20" height="20"/></g></svg>',
+            });
+
+            it('renders the injection name as a button (rect + recoloured label)', () => {
+                const { container } = render(<SldOverlay {...editProps({ vlOverlay: overlayWithName() })} />);
+                const btn = container.querySelector('.sld-injection-name-btn');
+                expect(btn).toBeTruthy();
+                expect(btn!.getAttribute('data-injection-equip')).toBe('GEN_A');
+                expect(container.querySelector('text.sld-injection-name-label')).toBeTruthy();
+            });
+
+            it('opens the editor when the name button is clicked', () => {
+                const { container } = render(<SldOverlay {...editProps({ vlOverlay: overlayWithName() })} />);
+                expect(screen.queryByTestId('sld-injection-popover')).toBeNull();
+                fireEvent.click(container.querySelector('.sld-injection-name-label')!);
+                expect(screen.getByTestId('sld-injection-popover')).toBeInTheDocument();
+            });
+
+            it('renders no name button in read-only mode', () => {
+                const { container } = render(<SldOverlay {...editProps({ vlOverlay: overlayWithName(), editMode: false })} />);
+                expect(container.querySelector('.sld-injection-name-btn')).toBeNull();
+            });
+
+            it('places the name button on the original text, not a highlight clone', () => {
+                // Regression: when the injection is an action / contingency
+                // target, the highlight effect clones its cell (incl. the name
+                // text) — the button must land on the ORIGINAL, which survives,
+                // not the soon-to-be-removed clone.
+                const overlay: VlOverlay = {
+                    ...injectionOverlay(),
+                    svg: '<svg>'
+                        + '<g class="sld-highlight-clone"><text>GEN_A</text></g>'
+                        + '<text id="orig-name">GEN_A</text>'
+                        + '<g id="gen_feeder_GEN_A" class="sld-extern-cell"><rect width="20" height="20"/></g>'
+                        + '</svg>',
+                };
+                const { container } = render(<SldOverlay {...editProps({ vlOverlay: overlay })} />);
+                const labeled = container.querySelector('.sld-injection-name-label');
+                expect(labeled).toBeTruthy();
+                expect(labeled!.id).toBe('orig-name');
+                expect(container.querySelector('.sld-highlight-clone .sld-injection-name-label')).toBeNull();
+            });
+
+            it('keeps the button glued to its text across pan / zoom re-renders', () => {
+                const { container, rerender } = render(<SldOverlay {...editProps({ vlOverlay: overlayWithName() })} />);
+                const btn = container.querySelector('.sld-injection-name-btn')!;
+                const label = container.querySelector('.sld-injection-name-label')!;
+                // Same-parent sibling immediately before the label, both inside
+                // the SVG → the overlay's pan/zoom CSS transform (on the SVG
+                // wrapper) moves the rect and the text as one unit.
+                expect(btn.parentNode).toBe(label.parentNode);
+                expect(btn.nextElementSibling).toBe(label);
+                expect(btn.closest('svg')).not.toBeNull();
+
+                // A wheel-zoom (and the re-render it triggers) must keep exactly
+                // one button, still glued — the self-gating pass neither drops
+                // nor duplicates it on a gesture.
+                fireEvent.wheel(screen.getByTestId('sld-overlay-body'), { deltaY: -120, clientX: 40, clientY: 40 });
+                rerender(<SldOverlay {...editProps({ vlOverlay: overlayWithName() })} />);
+                const btns = container.querySelectorAll('.sld-injection-name-btn');
+                expect(btns).toHaveLength(1);
+                expect(btns[0].nextElementSibling).toBe(container.querySelector('.sld-injection-name-label'));
+            });
+        });
+    });
+
+    describe('Implicit edit mode (no toggle) + auto-size', () => {
+        const overlay = (): VlOverlay => ({
+            vlName: 'VL_400', actionId: null,
+            svg: '<svg><g id="sw_1" class="sld-extern-cell"><rect/></g></svg>',
+            sldMetadata: JSON.stringify({ nodes: [{ id: 'sw_1', equipmentId: 'SWITCH_A' }] }),
+            loading: false, error: null, tab: 'contingency' as SldTab,
+            switch_states: { SWITCH_A: false }, injections: {},
+        });
+        const props = (over = {}) => ({
+            ...defaultProps, vlOverlay: overlay(), editMode: true,
+            pendingChanges: [], onSimulateEdit: vi.fn(), onResetEdit: vi.fn(),
+            onSwitchClick: vi.fn(), ...over,
+        });
+
+        it('no longer renders the in-overlay "Manual action" toggle button', () => {
+            render(<SldOverlay {...props()} />);
+            expect(screen.queryByTestId('sld-edit-toggle')).toBeNull();
+        });
+
+        it('keeps the edit panel collapsed until a change is staged', () => {
+            const { rerender } = render(<SldOverlay {...props()} />);
+            // No staged change → panel collapsed.
+            expect(screen.queryByTestId('sld-edit-panel')).toBeNull();
+            // Stage a switch toggle → panel appears (with no exit ✕ — read-only
+            // is via closing the overlay).
+            rerender(<SldOverlay {...props({
+                pendingChanges: [{ switchId: 'SWITCH_A', baselineOpen: false, targetOpen: true }],
+            })} />);
+            expect(screen.getByTestId('sld-edit-panel')).toBeInTheDocument();
+            expect(screen.queryByTestId('sld-edit-close')).toBeNull();
+        });
+
+        it('expands the panel and lists an injection retune when one is staged', () => {
+            render(<SldOverlay {...props({
+                injectionChanges: [{ equipmentId: 'GEN_A', kind: 'generator', baselineP: 120, targetP: 90 }],
+            })} />);
+            expect(screen.getByTestId('sld-edit-panel')).toBeInTheDocument();
+            expect(screen.getByTestId('sld-edit-injection-GEN_A').textContent).toMatch(/120\.0 → 90\.0 MW/);
+        });
+
+        it('gives editable switches the clickable cue', () => {
+            const { container } = render(<SldOverlay {...props()} />);
+            expect(container.querySelector('.sld-switch-editable')).toBeTruthy();
+        });
+
+        it('auto-sizes the overlay window to fit the measured diagram', () => {
+            const spy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(
+                { width: 800, height: 600, left: 0, top: 0, right: 800, bottom: 600, x: 0, y: 0, toJSON: () => ({}) } as DOMRect,
+            );
+            try {
+                render(<SldOverlay {...props()} />);
+                const win = screen.getByTestId('sld-overlay') as HTMLElement;
+                // Default is 440×420; a measured 800-wide SVG must grow it.
+                expect(parseInt(win.style.width, 10)).toBeGreaterThan(600);
+                expect(parseInt(win.style.height, 10)).toBeGreaterThan(440);
+            } finally {
+                spy.mockRestore();
             }
         });
     });

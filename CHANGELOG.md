@@ -7,6 +7,44 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Direct SLD editing — switches & injections without a mode toggle
+
+The interactive Single Line Diagram editor is now reachable straight
+from the opened diagram and covers loads / generators as well as
+breakers:
+
+- **No "Manual action" button.** Edit mode is implicit: an open SLD on
+  an editable tab (N-1 or post-action) is always editable, and closing
+  the overlay is what returns it to read-only. Breakers / disconnectors
+  are clickable immediately; each modifiable load / generator has its
+  NAME rendered as a dark-blue button (same look as the former "Manual
+  action" button) inviting a click — branches and busbars are never
+  recoloured.
+- **The overlay auto-sizes to the diagram** on open, so the whole
+  voltage level is visible without manual expansion (the operator can
+  still shrink it; a manual resize sticks until the next diagram loads).
+- **The maneuver panel stays collapsed** until the first switch or
+  injection change is staged, then lists the staged switch toggles and
+  injection retunes together.
+- **Editable load / generator active power.** Clicking a load or
+  generator opens a floating bubble showing its current setpoint and —
+  for a generator — its **Pmin / Pmax** capability range and energy
+  source. The operator types a new MW value (rounded to one decimal;
+  generator values are clamped to the capability range) and it is staged
+  alongside any switch toggles in the same maneuver panel. A combined
+  retune (a generator AND a load at the same VL) now highlights **both**
+  affected feeders on the SLD, not just one. **Simulate action** runs the
+  combined switch + injection edit as one manual action, exactly like a
+  topology maneuver.
+
+Implementation: every SLD endpoint now stamps an `injections` baseline
+(mirror of `switch_states`) via `extract_vl_injections`; the user-built
+`action_content` carries `gens_p` / `loads_p` straight through the
+existing `set_gen_p` / `set_load_p` simulation path, with a generalised
+`build_manual_action_description` naming the combined action. New
+interaction-log events `sld_injection_staged` / `sld_injection_removed`.
+See [`docs/features/sld-topology-edit.md`](docs/features/sld-topology-edit.md).
+
 ### Co-located voltage-level disks no longer overlap on the NAD
 
 Substations modelled at several voltages (225/400 kV, 380/400 kV, …) had

@@ -8,9 +8,22 @@
 from __future__ import annotations
 
 import logging
+import math
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+def _finite_float(value: Any) -> float | None:
+    """Coerce ``value`` to a finite float, or ``None`` when it is missing /
+    NaN / infinite. Keeps the injection payload JSON-safe (the SLD response is
+    serialised straight to the client, which cannot parse ``NaN`` / ``Infinity``).
+    """
+    try:
+        f = float(value)
+    except (TypeError, ValueError):
+        return None
+    return f if math.isfinite(f) else None
 
 
 def extract_vl_switch_states(network: Any, voltage_level_id: str) -> dict[str, bool]:
@@ -54,6 +67,98 @@ def extract_vl_switch_states(network: Any, voltage_level_id: str) -> dict[str, b
         except Exception:
             continue
     return states
+
+
+def _collect_vl_generators(
+    network: Any, voltage_level_id: str, out: dict[str, dict]
+) -> None:
+    """Add this VL's generators to ``out`` as editable-injection entries."""
+    try:
+        df = network.get_generators(
+            attributes=["voltage_level_id", "target_p", "min_p", "max_p", "energy_source"]
+        )
+    except Exception as e:
+        logger.debug("get_generators failed for VL %s: %s", voltage_level_id, e)
+        try:
+            df = network.get_generators()
+        except Exception as e2:
+            logger.debug("get_generators fallback failed for VL %s: %s", voltage_level_id, e2)
+            return
+    try:
+        sub = df[df["voltage_level_id"] == voltage_level_id]
+    except Exception as e:
+        logger.debug("Generator VL filter failed for %s: %s", voltage_level_id, e)
+        return
+    has_source = "energy_source" in sub.columns
+    has_bounds = "min_p" in sub.columns and "max_p" in sub.columns
+    p_col = "target_p" if "target_p" in sub.columns else None
+    for gen_id, row in sub.iterrows():
+        try:
+            entry: dict[str, Any] = {
+                "kind": "generator",
+                "p": _finite_float(row[p_col]) if p_col else None,
+            }
+            if has_bounds:
+                entry["min_p"] = _finite_float(row["min_p"])
+                entry["max_p"] = _finite_float(row["max_p"])
+            if has_source and row["energy_source"] is not None:
+                entry["energy_source"] = str(row["energy_source"])
+            out[str(gen_id)] = entry
+        except Exception:
+            continue
+
+
+def _collect_vl_loads(network: Any, voltage_level_id: str, out: dict[str, dict]) -> None:
+    """Add this VL's loads to ``out`` as editable-injection entries."""
+    try:
+        df = network.get_loads(attributes=["voltage_level_id", "p0"])
+    except Exception as e:
+        logger.debug("get_loads failed for VL %s: %s", voltage_level_id, e)
+        try:
+            df = network.get_loads()
+        except Exception as e2:
+            logger.debug("get_loads fallback failed for VL %s: %s", voltage_level_id, e2)
+            return
+    try:
+        sub = df[df["voltage_level_id"] == voltage_level_id]
+    except Exception as e:
+        logger.debug("Load VL filter failed for %s: %s", voltage_level_id, e)
+        return
+    p_col = "p0" if "p0" in sub.columns else None
+    for load_id, row in sub.iterrows():
+        try:
+            out[str(load_id)] = {
+                "kind": "load",
+                "p": _finite_float(row[p_col]) if p_col else None,
+            }
+        except Exception:
+            continue
+
+
+def extract_vl_injections(network: Any, voltage_level_id: str) -> dict[str, dict]:
+    """Return ``{equipment_id: {...}}`` for every editable injection on a VL.
+
+    Baseline for the interactive SLD injection-edit gesture — the mirror of
+    :func:`extract_vl_switch_states` for loads and generators. The operator
+    can retune the active-power setpoint of any element listed here and the
+    user-built action sends it back as ``{"loads_p"/"gens_p": {id: MW}}``.
+
+    Each entry carries:
+      - ``kind``: ``"generator"`` or ``"load"``.
+      - ``p``: current active-power setpoint (MW) — ``target_p`` for a
+        generator, ``p0`` for a load — i.e. the value the edit field seeds
+        from and that ``set_gen_p`` / ``set_load_p`` overrides.
+      - ``min_p`` / ``max_p`` (generators only): active-power capability
+        bounds shown in the edit bubble so the operator stays within range.
+      - ``energy_source`` (generators only): e.g. ``WIND`` / ``NUCLEAR``.
+
+    Returns ``{}`` on any pypowsybl failure — injection editing is additive,
+    so the SLD must still render even when this metadata is unavailable.
+    """
+    injections: dict[str, dict] = {}
+    _collect_vl_generators(network, voltage_level_id, injections)
+    _collect_vl_loads(network, voltage_level_id, injections)
+    return injections
 
 
 def extract_sld_svg_and_metadata(sld: Any) -> tuple:
