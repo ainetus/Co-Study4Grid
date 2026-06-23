@@ -1216,6 +1216,27 @@ describe('SldOverlay', () => {
                 expect(labeled!.id).toBe('orig-name');
                 expect(container.querySelector('.sld-highlight-clone .sld-injection-name-label')).toBeNull();
             });
+
+            it('keeps the button glued to its text across pan / zoom re-renders', () => {
+                const { container, rerender } = render(<SldOverlay {...editProps({ vlOverlay: overlayWithName() })} />);
+                const btn = container.querySelector('.sld-injection-name-btn')!;
+                const label = container.querySelector('.sld-injection-name-label')!;
+                // Same-parent sibling immediately before the label, both inside
+                // the SVG → the overlay's pan/zoom CSS transform (on the SVG
+                // wrapper) moves the rect and the text as one unit.
+                expect(btn.parentNode).toBe(label.parentNode);
+                expect(btn.nextElementSibling).toBe(label);
+                expect(btn.closest('svg')).not.toBeNull();
+
+                // A wheel-zoom (and the re-render it triggers) must keep exactly
+                // one button, still glued — the self-gating pass neither drops
+                // nor duplicates it on a gesture.
+                fireEvent.wheel(screen.getByTestId('sld-overlay-body'), { deltaY: -120, clientX: 40, clientY: 40 });
+                rerender(<SldOverlay {...editProps({ vlOverlay: overlayWithName() })} />);
+                const btns = container.querySelectorAll('.sld-injection-name-btn');
+                expect(btns).toHaveLength(1);
+                expect(btns[0].nextElementSibling).toBe(container.querySelector('.sld-injection-name-label'));
+            });
         });
     });
 
