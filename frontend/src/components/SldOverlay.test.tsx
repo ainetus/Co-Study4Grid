@@ -1196,6 +1196,26 @@ describe('SldOverlay', () => {
                 const { container } = render(<SldOverlay {...editProps({ vlOverlay: overlayWithName(), editMode: false })} />);
                 expect(container.querySelector('.sld-injection-name-btn')).toBeNull();
             });
+
+            it('places the name button on the original text, not a highlight clone', () => {
+                // Regression: when the injection is an action / contingency
+                // target, the highlight effect clones its cell (incl. the name
+                // text) — the button must land on the ORIGINAL, which survives,
+                // not the soon-to-be-removed clone.
+                const overlay: VlOverlay = {
+                    ...injectionOverlay(),
+                    svg: '<svg>'
+                        + '<g class="sld-highlight-clone"><text>GEN_A</text></g>'
+                        + '<text id="orig-name">GEN_A</text>'
+                        + '<g id="gen_feeder_GEN_A" class="sld-extern-cell"><rect width="20" height="20"/></g>'
+                        + '</svg>',
+                };
+                const { container } = render(<SldOverlay {...editProps({ vlOverlay: overlay })} />);
+                const labeled = container.querySelector('.sld-injection-name-label');
+                expect(labeled).toBeTruthy();
+                expect(labeled!.id).toBe('orig-name');
+                expect(container.querySelector('.sld-highlight-clone .sld-injection-name-label')).toBeNull();
+            });
         });
     });
 

@@ -1015,23 +1015,47 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
     // rounded <rect> behind the matching name <text> and recolour the label
     // on top (CSS). The whole thing is the click target that opens the
     // active-power editor (data-injection-equip, read by the click delegate).
-    // Keyed on the SVG identity, not run per pan frame.
+    //
+    // Runs every render and self-gates via signature + presence (same pattern
+    // as the delta / highlight passes above): the action / contingency
+    // highlight effect CLONES cells (the clone is inserted before the
+    // original and later removed), so (a) we must skip clones when matching
+    // the name text — otherwise the button lands on the soon-to-be-removed
+    // clone and the action target's name loses its button — and (b) we must
+    // re-apply if a reconciliation / tab switch drops the buttons.
+    const appliedNameBtnSigRef = useRef<string>('');
     useLayoutEffect(() => {
         const container = overlayBodyRef.current;
         if (!container) return;
+        const injections = editMode ? vlOverlay.injections : undefined;
+        const ids = injections ? Object.keys(injections) : [];
+        const sig = JSON.stringify({
+            edit: editMode,
+            ids: [...ids].sort(),
+            svgLen: activeSvg?.length ?? 0,
+            tab: vlOverlay.tab,
+            action: vlOverlay.actionId,
+            preview: previewActive,
+        });
+        const btnsPresent = container.querySelector('.sld-injection-name-btn') !== null;
+        const expectBtns = ids.length > 0 && !!activeSvg;
+        if (sig === appliedNameBtnSigRef.current && (expectBtns ? btnsPresent : !btnsPresent)) {
+            return;
+        }
+        appliedNameBtnSigRef.current = sig;
+
         container.querySelectorAll('.sld-injection-name-btn').forEach(el => el.remove());
         container.querySelectorAll('.sld-injection-name-label').forEach(el => {
             el.classList.remove('sld-injection-name-label');
             el.removeAttribute('data-injection-equip');
         });
-        if (!editMode) return;
-        const injections = vlOverlay.injections;
-        if (!injections) return;
-        const ids = Object.keys(injections);
-        if (ids.length === 0) return;
+        if (!injections || ids.length === 0) return;
 
         const SVGNS = 'http://www.w3.org/2000/svg';
-        const texts = Array.from(container.querySelectorAll<SVGTextElement>('text'));
+        // Skip highlight clones — they carry a copy of the name text but are
+        // removed on the next render, so a button placed on a clone vanishes.
+        const texts = Array.from(container.querySelectorAll<SVGTextElement>('text'))
+            .filter(t => !t.closest('.sld-highlight-clone'));
         for (const equipmentId of ids) {
             const variants = new Set([
                 equipmentId,
@@ -1060,9 +1084,9 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
             textEl.classList.add('sld-injection-name-label');
             textEl.setAttribute('data-injection-equip', equipmentId);
         }
-        // Keyed on inputs that change the SVG content / editability; NOT
-        // overlayTransform, so panning doesn't re-run getBBox every frame.
-    }, [editMode, vlOverlay.injections, vlOverlay.vlName, vlOverlay.tab, vlOverlay.actionId, activeSvg, previewActive]);
+        // No deps on purpose — runs every render, self-gates via the
+        // signature + presence probe above (catches clone churn + drops).
+    });
 
     // Delegate switch clicks on the SVG body when edit mode is on.
     // We attach to the body container (capture phase) so taps on the
