@@ -1396,8 +1396,22 @@ function App() {
     if (study.layoutPath !== undefined) setLayoutPath(study.layoutPath);
     if (study.linesMonitoringPath !== undefined) setLinesMonitoringPath(study.linesMonitoringPath);
     try {
+      // Recommender settings (per-type minima, model, monitoring factor, …)
+      // must come from the active persisted environment config, NOT the
+      // in-memory `useSettings` state. GameShell mounts <App/> and fires this
+      // loader before useSettings' async `getUserConfig()` effect has resolved,
+      // so `buildConfigRequest()` here would replay the hardcoded defaults
+      // (min_redispatch=0, n_prioritized_actions=10, allowed_action_types=[], …)
+      // and the environment's real config (e.g. min_redispatch=2) would be
+      // silently dropped — the same stale-closure trap `handleLoadConfig`
+      // guards against. The study only dictates the network / action / layout
+      // PATHS + contingency; everything else comes from the env config.
+      const freshCfg = await api.getUserConfig().catch(() => null);
+      const baseConfig = freshCfg
+        ? configRequestFromUserConfig(freshCfg)
+        : buildConfigRequest();
       const configRequest = {
-        ...buildConfigRequest(),
+        ...baseConfig,
         network_path: study.networkPath,
         action_file_path: study.actionFilePath,
         layout_path: study.layoutPath ?? '',
@@ -1445,7 +1459,8 @@ function App() {
       setConfigLoading(false);
     }
   }, [
-    buildConfigRequest, applyConfigResponse, resetAllState, diagrams,
+    buildConfigRequest, configRequestFromUserConfig, applyConfigResponse,
+    resetAllState, diagrams,
     setNetworkPath, setActionPath, setLayoutPath, setLinesMonitoringPath,
     setBranches, setVoltageLevels, setNameMap, setPendingContingency,
     setVlToSubstation, setSelectedContingency, setConfigLoading, setError,
