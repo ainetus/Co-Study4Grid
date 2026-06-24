@@ -1,6 +1,6 @@
 # Co-Study4Grid
 
-> **Want to try being a dispatcher?** Jump into this challenge to try it yourself: [![Open in HuggingFace Space](https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace-Open%20the%20demo-yellow)](https://amarot-co-study4grid.hf.space/)
+> **Want to try being a dispatcher?** Jump into this challenge to try it yourself: [![Open in HuggingFace Space](https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace-Open%20the%20demo-yellow)](https://huggingface.co/spaces/amarot/Co-Study4Grid)
 >
 > The demo runs the [European-Wide Studies in Practice](#european-wide-studies-in-practice) cases highlighted below.
 
