@@ -8,6 +8,9 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import type { DiagramData, AnalysisResult, ActionDetail, VlOverlay, SldTab, SldFeederNode } from '../types';
 import { isCouplingAction } from '../utils/svgUtils';
+import { buildFriendlyToEquip, overloadCandidates } from '../utils/svg/feederLabels';
+import { useSldFeederRelabel } from '../hooks/useSldFeederRelabel';
+import { useSldInjectionNameButtons } from '../hooks/useSldInjectionNameButtons';
 import { colors } from '../styles/tokens';
 import SldEditPanel from './SldEditPanel';
 import SldInjectionPopover from './SldInjectionPopover';
@@ -904,8 +907,18 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
             overloadedLinesToShow = isSolved ? [] : actionDetail.lines_overloaded_after;
         }
         if (overloadedLinesToShow && overloadedLinesToShow.length > 0) {
+            // Overload names arrive from the analysis result as grid2op /
+            // operator FRIENDLY names (e.g. "MARSIL61PRAGN"), but the SLD cells
+            // are keyed by IIDM id (e.g. "relation_8423569-225") — a direct
+            // `findCellForEquipment` misses, so the halo never showed (Issue 2).
+            // Bridge friendly name → IIDM id via the feeder_labels map.
+            const friendlyToEquip = buildFriendlyToEquip(vlOverlay.feeder_labels);
             for (const lineId of overloadedLinesToShow) {
-                const cell = findCellForEquipment(lineId);
+                let cell: Element | null = null;
+                for (const cand of overloadCandidates(lineId, friendlyToEquip)) {
+                    cell = findCellForEquipment(cand);
+                    if (cell) break;
+                }
                 if (cell && !highlightedCells.has(cell)) {
                     cloneHighlight(cell, 'sld-highlight-overloaded');
                     highlightedCells.add(cell);
@@ -1011,82 +1024,13 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
         }
     });
 
-    // Render every editable injection's NAME as a dark-blue button: inject a
-    // rounded <rect> behind the matching name <text> and recolour the label
-    // on top (CSS). The whole thing is the click target that opens the
-    // active-power editor (data-injection-equip, read by the click delegate).
-    //
-    // Runs every render and self-gates via signature + presence (same pattern
-    // as the delta / highlight passes above): the action / contingency
-    // highlight effect CLONES cells (the clone is inserted before the
-    // original and later removed), so (a) we must skip clones when matching
-    // the name text — otherwise the button lands on the soon-to-be-removed
-    // clone and the action target's name loses its button — and (b) we must
-    // re-apply if a reconciliation / tab switch drops the buttons.
-    const appliedNameBtnSigRef = useRef<string>('');
-    useLayoutEffect(() => {
-        const container = overlayBodyRef.current;
-        if (!container) return;
-        const injections = editMode ? vlOverlay.injections : undefined;
-        const ids = injections ? Object.keys(injections) : [];
-        const sig = JSON.stringify({
-            edit: editMode,
-            ids: [...ids].sort(),
-            svgLen: activeSvg?.length ?? 0,
-            tab: vlOverlay.tab,
-            action: vlOverlay.actionId,
-            preview: previewActive,
-        });
-        const btnsPresent = container.querySelector('.sld-injection-name-btn') !== null;
-        const expectBtns = ids.length > 0 && !!activeSvg;
-        if (sig === appliedNameBtnSigRef.current && (expectBtns ? btnsPresent : !btnsPresent)) {
-            return;
-        }
-        appliedNameBtnSigRef.current = sig;
+    // Render every editable injection's NAME as a clickable button (opens the
+    // active-power editor) — pass + its self-gate live in the hook.
+    useSldInjectionNameButtons(overlayBodyRef, vlOverlay.injections, editMode, activeSvg, vlOverlay.tab, vlOverlay.actionId, previewActive);
 
-        container.querySelectorAll('.sld-injection-name-btn').forEach(el => el.remove());
-        container.querySelectorAll('.sld-injection-name-label').forEach(el => {
-            el.classList.remove('sld-injection-name-label');
-            el.removeAttribute('data-injection-equip');
-        });
-        if (!injections || ids.length === 0) return;
-
-        const SVGNS = 'http://www.w3.org/2000/svg';
-        // Skip highlight clones — they carry a copy of the name text but are
-        // removed on the next render, so a button placed on a clone vanishes.
-        const texts = Array.from(container.querySelectorAll<SVGTextElement>('text'))
-            .filter(t => !t.closest('.sld-highlight-clone'));
-        for (const equipmentId of ids) {
-            const variants = new Set([
-                equipmentId,
-                equipmentId.replace(/\./g, '_'),
-                equipmentId.replace(/_/g, '.'),
-            ]);
-            const textEl = texts.find(t => variants.has((t.textContent ?? '').trim()));
-            if (!textEl || !textEl.parentNode) continue;
-            let bbox: DOMRect;
-            try {
-                bbox = textEl.getBBox();
-            } catch {
-                continue; // getBBox unavailable (jsdom) / not laid out
-            }
-            if (!(bbox.width > 0 && bbox.height > 0)) continue;
-            const padX = 4, padY = 2.5;
-            const rect = document.createElementNS(SVGNS, 'rect');
-            rect.setAttribute('x', String(bbox.x - padX));
-            rect.setAttribute('y', String(bbox.y - padY));
-            rect.setAttribute('width', String(bbox.width + padX * 2));
-            rect.setAttribute('height', String(bbox.height + padY * 2));
-            rect.setAttribute('rx', '3');
-            rect.setAttribute('class', 'sld-injection-name-btn');
-            rect.setAttribute('data-injection-equip', equipmentId);
-            textEl.parentNode.insertBefore(rect, textEl);
-            textEl.classList.add('sld-injection-name-label');
-            textEl.setAttribute('data-injection-equip', equipmentId);
-        }
-        // No deps on purpose — runs every render, self-gates via the
-        // signature + presence probe above (catches clone churn + drops).
-    });
+    // Relabel branch feeders with the far-end VL name (Issue 1) — pass + its
+    // self-gate live in the hook (see utils/svg/feederLabels.ts for the swap).
+    useSldFeederRelabel(overlayBodyRef, vlOverlay.feeder_labels, activeSvg, vlOverlay.tab, vlOverlay.actionId, previewActive);
 
     // Delegate switch clicks on the SVG body when edit mode is on.
     // We attach to the body container (capture phase) so taps on the

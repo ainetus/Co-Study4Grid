@@ -403,6 +403,26 @@ export interface VlInjection {
     energy_source?: string;
 }
 
+/**
+ * Identity + display label for one branch feeder on the displayed SLD.
+ * Backend populates this on every SLD endpoint via ``build_feeder_labels``.
+ *
+ * ``label`` is the **name of the voltage level at the OTHER end** of the
+ * branch (+ a parallel-circuit index when several branches of this VL reach
+ * the same far-end VL) — far more interpretable than pypowsybl's default raw
+ * IIDM branch id. ``name`` carries the branch's friendly / operator name
+ * (e.g. ``MARSIL61PRAGN``) so an overloaded line reported by friendly name
+ * can be mapped back to its IIDM-id-keyed SLD cell for the overload halo.
+ */
+export interface FeederLabel {
+    /** Branch friendly (operator / grid2op) name; ``null`` when none. */
+    name: string | null;
+    /** Voltage-level id at the far end of the branch; ``null`` when unknown. */
+    other_vl: string | null;
+    /** Display label (far-end VL name + index); ``null`` → keep the default id. */
+    label: string | null;
+}
+
 export interface VlOverlay {
     vlName: string;
     actionId: string | null;
@@ -415,6 +435,13 @@ export interface VlOverlay {
     reactive_flow_deltas?: Record<string, FlowDelta>;
     asset_deltas?: Record<string, AssetDelta>;
     changed_switches?: Record<string, { from_open: boolean; to_open: boolean }>;
+    /**
+     * Branch feeder identities + relabel targets for the displayed VL, keyed
+     * by IIDM equipment id. Drives the feeder relabelling (other-end VL name)
+     * and the friendly-name → IIDM-id resolution that lets the overload halo
+     * land on the right cell. Backend populates via ``build_feeder_labels``.
+     */
+    feeder_labels?: Record<string, FeederLabel>;
     /**
      * Baseline switch states for the displayed VL (``{switch_id:
      * is_open}``). Drives the interactive SLD-edit feature in

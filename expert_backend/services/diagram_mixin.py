@@ -56,6 +56,7 @@ from expert_backend.services.diagram.overloads import (
     get_overloaded_lines,
 )
 from expert_backend.services.diagram.sld_render import (
+    build_feeder_labels,
     extract_sld_svg_and_metadata,
     extract_vl_injections,
     extract_vl_switch_states,
@@ -498,6 +499,7 @@ class DiagramMixin(_Base):
             svg, sld_metadata = extract_sld_svg_and_metadata(sld)
             switch_states = extract_vl_switch_states(n, voltage_level_id)
             injections = extract_vl_injections(n, voltage_level_id)
+            feeder_labels = build_feeder_labels(n, voltage_level_id)
         finally:
             n.set_working_variant(original_variant)
         return {
@@ -506,6 +508,7 @@ class DiagramMixin(_Base):
             "voltage_level_id": voltage_level_id,
             "switch_states": switch_states,
             "injections": injections,
+            "feeder_labels": feeder_labels,
         }
 
     def get_contingency_sld(self, disconnected_elements, voltage_level_id: str) -> dict:
@@ -520,6 +523,7 @@ class DiagramMixin(_Base):
             svg, sld_metadata = extract_sld_svg_and_metadata(sld)
             switch_states = extract_vl_switch_states(n, voltage_level_id)
             injections = extract_vl_injections(n, voltage_level_id)
+            feeder_labels = build_feeder_labels(n, voltage_level_id)
             result = {
                 "svg": svg,
                 "sld_metadata": sld_metadata,
@@ -527,6 +531,7 @@ class DiagramMixin(_Base):
                 "disconnected_elements": list(norm),
                 "switch_states": switch_states,
                 "injections": injections,
+                "feeder_labels": feeder_labels,
             }
             self._attach_flow_deltas_vs_base(result, n, voltage_level_ids=[voltage_level_id])
             return result
@@ -556,6 +561,7 @@ class DiagramMixin(_Base):
         svg, sld_metadata = extract_sld_svg_and_metadata(sld)
         switch_states = extract_vl_switch_states(network, voltage_level_id)
         injections = extract_vl_injections(network, voltage_level_id)
+        feeder_labels = build_feeder_labels(network, voltage_level_id)
 
         result = {
             "svg": svg,
@@ -564,6 +570,7 @@ class DiagramMixin(_Base):
             "voltage_level_id": voltage_level_id,
             "switch_states": switch_states,
             "injections": injections,
+            "feeder_labels": feeder_labels,
         }
         self._attach_convergence_from_obs(result, obs)
 
@@ -711,12 +718,14 @@ class DiagramMixin(_Base):
             svg, sld_metadata = extract_sld_svg_and_metadata(sld)
             switch_states = extract_vl_switch_states(network, voltage_level_id)
             injections = extract_vl_injections(network, voltage_level_id)
+            feeder_labels = build_feeder_labels(network, voltage_level_id)
             return {
                 "svg": svg,
                 "sld_metadata": sld_metadata,
                 "voltage_level_id": voltage_level_id,
                 "switch_states": switch_states,
                 "injections": injections,
+                "feeder_labels": feeder_labels,
                 "stale_flows": True,
             }
         finally:

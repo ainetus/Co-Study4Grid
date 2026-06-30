@@ -203,7 +203,12 @@ Diagram & topology:
   — each response now carries a `switch_states` map (per-VL
   operable-switch booleans) AND an `injections` map (per-VL load /
   generator active-power baseline: `kind`, `p`, gen `min_p` / `max_p` /
-  `energy_source`), driving the interactive SLD-edit baseline.
+  `energy_source`), driving the interactive SLD-edit baseline, AND a
+  `feeder_labels` map (`build_feeder_labels` — per-branch
+  `{name, other_vl, label}`: `label` = far-end VL name + parallel index
+  for feeder relabelling, `name` = friendly/operator name bridging
+  friendly-named overloads to the IIDM-id-keyed SLD cell). See
+  `docs/features/sld-diagram-feeder-labels.md`.
 - `POST /api/sld-topology-preview` — re-renders the VL SLD with the
   user's staged switch overrides applied on a throwaway variant
   (topological-colouring, NO load flow). Response carries

@@ -33,6 +33,7 @@ from expert_backend.services.simulation_helpers import (
     classify_action_content,
     clamp_tap,
     compute_action_metrics,
+    disconnected_branch_names_from_obs,
     compute_combined_rho,
     compute_reduction_setpoint,
     compute_redispatch_setpoint,
@@ -295,6 +296,13 @@ class SimulationMixin(_Base):
             action_ids, self._dict_action, recent_actions
         )
 
+        # A line the action physically disconnects carries no flow, but
+        # grid2op's forecast ``obs.rho`` can stay non-zero (backend obs-vs-
+        # variant desync). Read connectivity from the post-action variant —
+        # the same state the SLD / NAD draw — and zero those loadings so the
+        # card agrees with the diagrams (0 %, not e.g. 33 %).
+        disconnected_line_names = disconnected_branch_names_from_obs(obs_simu_action)
+
         metrics = compute_action_metrics(
             obs,
             obs_simu_defaut,
@@ -305,6 +313,7 @@ class SimulationMixin(_Base):
             branches_with_limits,
             monitoring_factor,
             worsening_threshold,
+            disconnected_line_names=disconnected_line_names,
         )
         non_convergence = normalise_non_convergence(info_action.get("exception"))
 

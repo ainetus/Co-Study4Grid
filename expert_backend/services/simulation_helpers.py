@@ -307,6 +307,30 @@ def _to_1d(arr: Any) -> np.ndarray:
     return np.atleast_1d(arr)
 
 
+def _zero_disconnected_rho(
+    action_rho: np.ndarray,
+    action_names: np.ndarray,
+    disconnected_line_names: set[str] | None,
+) -> np.ndarray:
+    """Return ``action_rho`` with disconnected branches' entries forced to 0.
+
+    Returns the input untouched (no copy) when there is nothing to zero, so the
+    common no-disconnection path stays allocation-free.
+    """
+    if not disconnected_line_names:
+        return action_rho
+    try:
+        disc_mask = np.isin(action_names, list(disconnected_line_names))
+        if not disc_mask.any():
+            return action_rho
+        zeroed = np.array(action_rho, dtype=float, copy=True)
+        zeroed[disc_mask] = 0.0
+        return zeroed
+    except Exception as e:
+        logger.debug("_zero_disconnected_rho: skipped (%s)", e)
+        return action_rho
+
+
 def build_care_mask(
     action_names: np.ndarray,
     action_rho: np.ndarray,
@@ -414,6 +438,83 @@ def resolve_lines_overloaded(
     return ids, names
 
 
+def build_branch_connectivity(network: Any) -> dict[str, bool]:
+    """Return ``{branch_id_or_name: is_disconnected}`` for lines + 2-winding
+    transformers of ``network`` (in its currently-active variant).
+
+    A branch is *disconnected* when either terminal is open
+    (``connected1 AND connected2`` is False) — the same rule the action-patch
+    pipeline uses to mark dashed branches. Keys cover BOTH the IIDM id and the
+    friendly ``name`` so a caller holding a grid2op / operator name (e.g.
+    ``MARSIL61PRAGN``) can look the branch up directly.
+
+    Returns ``{}`` on any pypowsybl failure — the loading-coherence fix this
+    drives is additive and must never break a simulation.
+    """
+    out: dict[str, bool] = {}
+    for getter in ("get_lines", "get_2_windings_transformers"):
+        try:
+            df = getattr(network, getter)(attributes=["name", "connected1", "connected2"])
+        except Exception as e:
+            logger.debug("build_branch_connectivity: %s(attrs) failed: %s", getter, e)
+            try:
+                df = getattr(network, getter)()
+            except Exception as e2:
+                logger.debug("build_branch_connectivity: %s fallback failed: %s", getter, e2)
+                continue
+        try:
+            cols = list(getattr(df, "columns", []))
+            if "connected1" not in cols or "connected2" not in cols:
+                continue
+            has_name = "name" in cols
+            for eid, row in df.iterrows():
+                disconnected = not (bool(row["connected1"]) and bool(row["connected2"]))
+                out[str(eid)] = disconnected
+                if has_name:
+                    nm = row.get("name")
+                    if nm is not None and str(nm) != "nan":
+                        out[str(nm)] = disconnected
+        except Exception as e:
+            logger.debug("build_branch_connectivity: scan failed for %s: %s", getter, e)
+            continue
+    return out
+
+
+def disconnected_branch_names_from_obs(obs: Any) -> set:
+    """Return the set of branch ids / names disconnected in ``obs``'s
+    post-action pypowsybl variant.
+
+    Mirrors exactly what ``get_action_variant_diagram`` /
+    ``get_action_variant_sld`` read (``obs._network_manager`` on
+    ``obs._variant_id``), so the action card's loadings can be re-aligned with
+    the diagrams for any line the action physically disconnects. Best-effort —
+    returns an empty set on any failure, and always restores the network
+    manager's working variant so the shared network is never left mutated.
+    """
+    nm = getattr(obs, "_network_manager", None)
+    variant_id = getattr(obs, "_variant_id", None)
+    network = getattr(nm, "network", None) if nm is not None else None
+    if network is None or variant_id is None:
+        return set()
+    try:
+        original = network.get_working_variant_id()
+    except Exception as e:
+        logger.debug("disconnected_branch_names_from_obs: cannot read working variant: %s", e)
+        return set()
+    try:
+        nm.set_working_variant(variant_id)
+        conn = build_branch_connectivity(network)
+    except Exception as e:
+        logger.debug("disconnected_branch_names_from_obs: connectivity read failed: %s", e)
+        return set()
+    finally:
+        try:
+            nm.set_working_variant(original)
+        except Exception as e:
+            logger.debug("disconnected_branch_names_from_obs: variant restore failed: %s", e)
+    return {key for key, disconnected in conn.items() if disconnected}
+
+
 def compute_action_metrics(
     obs: Any,
     obs_simu_defaut: Any,
@@ -424,6 +525,7 @@ def compute_action_metrics(
     branches_with_limits: Any,
     monitoring_factor: float,
     worsening_threshold: float,
+    disconnected_line_names: set[str] | None = None,
 ) -> dict[str, Any]:
     """Post-process a single-action simulation result into a scalar summary.
 
@@ -431,6 +533,16 @@ def compute_action_metrics(
     ``max_rho_line``, ``is_rho_reduction``, ``is_islanded``,
     ``n_components_after``, ``disconnected_mw``, ``lines_overloaded_after``.
     Handles the non-convergence case by zeroing action-side fields.
+
+    ``disconnected_line_names`` — when given, the post-action ``obs.rho`` of
+    any branch in this set is forced to 0 before every downstream statistic
+    (``rho_after`` / ``max_rho`` / ``lines_overloaded_after``). A branch the
+    action physically disconnects carries no flow, but grid2op's forecast
+    ``obs.rho`` can stay non-zero (a backend obs-vs-variant desync) — which is
+    why the card used to report e.g. 33 % on a line the SLD / NAD correctly
+    draw with zero flow. Reading connectivity from the post-action variant
+    (see :func:`build_branch_connectivity`) and zeroing here re-aligns the
+    card's loadings with the diagrams.
     """
     mf = float(monitoring_factor)
     rho_before = (
@@ -471,7 +583,14 @@ def compute_action_metrics(
             result["is_islanded"] = True
             result["disconnected_mw"] = disconnected_mw
 
-    rho_after = (_to_1d(obs_simu_action.rho)[lines_overloaded_ids] * mf).tolist()
+    action_names = _to_1d(obs_simu_action.name_line)
+    # Single source of truth for the post-action loading vector. Force every
+    # branch the action disconnects to 0 so the card matches the diagrams.
+    action_rho = _zero_disconnected_rho(
+        _to_1d(obs_simu_action.rho), action_names, disconnected_line_names
+    )
+
+    rho_after = (action_rho[lines_overloaded_ids] * mf).tolist() if lines_overloaded_ids else []
     result["rho_after"] = rho_after
     if rho_before:
         try:
@@ -481,8 +600,6 @@ def compute_action_metrics(
         except Exception as e:
             logger.debug("compute_action_metrics: rho reduction check failed: %s", e)
 
-    action_names = _to_1d(obs_simu_action.name_line)
-    action_rho = _to_1d(obs_simu_action.rho)
     base_rho = _to_1d(obs.rho)
     care_mask = build_care_mask(
         action_names,

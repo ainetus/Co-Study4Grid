@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useRef, useEffect, type MutableRefObject } from 'react';
 import { api } from '../api';
-import type { VlOverlay, SldTab, FlowDelta, AssetDelta, TabId, VlInjection } from '../types';
+import type { VlOverlay, SldTab, FlowDelta, AssetDelta, TabId, VlInjection, FeederLabel } from '../types';
 import { interactionLogger } from '../utils/interactionLogger';
 
 export interface SldOverlayState {
@@ -64,6 +64,7 @@ export function useSldOverlay(activeTab: TabId, liveSelectedActionId?: string | 
             let changedSwitches: Record<string, { from_open: boolean; to_open: boolean }> | undefined;
             let switchStates: Record<string, boolean> | undefined;
             let injections: Record<string, VlInjection> | undefined;
+            let feederLabels: Record<string, FeederLabel> | undefined;
 
             if (sldTab === 'n') {
                 const res = await api.getNSld(vlName);
@@ -71,6 +72,7 @@ export function useSldOverlay(activeTab: TabId, liveSelectedActionId?: string | 
                 metaData = res.sld_metadata ?? null;
                 switchStates = res.switch_states;
                 injections = res.injections;
+                feederLabels = res.feeder_labels;
             } else if (sldTab === 'contingency') {
                 const res = await api.getContingencySld(contingencyElements, vlName);
                 svgData = res.svg;
@@ -80,6 +82,7 @@ export function useSldOverlay(activeTab: TabId, liveSelectedActionId?: string | 
                 assetDeltas = res.asset_deltas;
                 switchStates = res.switch_states;
                 injections = res.injections;
+                feederLabels = res.feeder_labels;
             } else {
                 // Fallback to the live selectedActionId if the
                 // overlay was opened from a tab where no action
@@ -107,6 +110,7 @@ export function useSldOverlay(activeTab: TabId, liveSelectedActionId?: string | 
                 changedSwitches = res.changed_switches;
                 switchStates = res.switch_states;
                 injections = res.injections;
+                feederLabels = res.feeder_labels;
                 // Persist the resolved actionId back onto the
                 // overlay so subsequent re-renders and highlight
                 // passes can find it on `vlOverlay.actionId`.
@@ -124,6 +128,7 @@ export function useSldOverlay(activeTab: TabId, liveSelectedActionId?: string | 
                         changed_switches: changedSwitches,
                         switch_states: switchStates,
                         injections,
+                        feeder_labels: feederLabels,
                     }
                     : prev
             );

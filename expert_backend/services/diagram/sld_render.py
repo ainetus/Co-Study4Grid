@@ -9,9 +9,28 @@ from __future__ import annotations
 
 import logging
 import math
+import re
+from collections import defaultdict
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# A pypowsybl ``name`` field is "not a real name" when it is missing, equal to
+# the element id, or still a raw OSM identifier (``way/...`` / ``relation_...``)
+# the PyPSA→IIDM conversion left in place. Mirrors ``network_service`` so the
+# feeder relabelling and the NAD composite-name logic agree on what counts as a
+# human-readable name.
+_RAW_OSM_RE = re.compile(r"^(way|relation)[/_]")
+
+
+def _is_real_name(name: Any, element_id: Any) -> bool:
+    """True when ``name`` is a human-readable label (not blank / id / raw OSM)."""
+    if name is None:
+        return False
+    s = str(name).strip()
+    if s == "" or s == "nan" or s == str(element_id):
+        return False
+    return not _RAW_OSM_RE.match(s)
 
 
 def _finite_float(value: Any) -> float | None:
@@ -159,6 +178,137 @@ def extract_vl_injections(network: Any, voltage_level_id: str) -> dict[str, dict
     _collect_vl_generators(network, voltage_level_id, injections)
     _collect_vl_loads(network, voltage_level_id, injections)
     return injections
+
+
+def _vl_name_map(network: Any) -> dict[str, str]:
+    """Return ``{vl_id: friendly_name}`` for every voltage level with a real name.
+
+    Best-effort: returns ``{}`` on any pypowsybl failure (feeder relabelling
+    is additive and must never break SLD rendering).
+    """
+    try:
+        vls = network.get_voltage_levels(attributes=["name"])
+    except Exception as e:
+        logger.debug("get_voltage_levels(name) failed: %s", e)
+        try:
+            vls = network.get_voltage_levels()
+        except Exception as e2:
+            logger.debug("get_voltage_levels fallback failed: %s", e2)
+            return {}
+    out: dict[str, str] = {}
+    try:
+        if vls is None or "name" not in getattr(vls, "columns", []):
+            return out
+        for vl_id, row in vls.iterrows():
+            nm = row.get("name")
+            if _is_real_name(nm, vl_id):
+                out[str(vl_id)] = str(nm)
+    except Exception as e:
+        logger.debug("VL name map build failed: %s", e)
+    return out
+
+
+def _collect_vl_branches(network: Any, voltage_level_id: str) -> list[dict]:
+    """Return ``[{eid, name, other_vl}]`` for every line / 2-winding transformer
+    that has a terminal in ``voltage_level_id``.
+
+    ``other_vl`` is the voltage-level id at the FAR end of the branch (the same
+    VL for a self-loop). ``name`` is the branch's friendly name when it has one,
+    else ``None``.
+    """
+    branches: list[dict] = []
+    for getter in ("get_lines", "get_2_windings_transformers"):
+        try:
+            df = getattr(network, getter)(
+                attributes=["name", "voltage_level1_id", "voltage_level2_id"]
+            )
+        except Exception as e:
+            logger.debug("%s(attrs) failed: %s", getter, e)
+            try:
+                df = getattr(network, getter)()
+            except Exception as e2:
+                logger.debug("%s fallback failed: %s", getter, e2)
+                continue
+        try:
+            cols = list(getattr(df, "columns", []))
+            if "voltage_level1_id" not in cols or "voltage_level2_id" not in cols:
+                continue
+            mask = (df["voltage_level1_id"] == voltage_level_id) | (
+                df["voltage_level2_id"] == voltage_level_id
+            )
+            sub = df[mask]
+            has_name = "name" in cols
+            for eid, row in sub.iterrows():
+                vl1 = str(row["voltage_level1_id"])
+                vl2 = str(row["voltage_level2_id"])
+                other = vl2 if vl1 == voltage_level_id else vl1
+                line_name = row.get("name") if has_name else None
+                branches.append(
+                    {
+                        "eid": str(eid),
+                        "name": str(line_name) if _is_real_name(line_name, eid) else None,
+                        "other_vl": other,
+                    }
+                )
+        except Exception as e:
+            logger.debug("branch collection failed for %s: %s", getter, e)
+            continue
+    return branches
+
+
+def build_feeder_labels(network: Any, voltage_level_id: str) -> dict[str, dict]:
+    """Return ``{equipment_id: {name, other_vl, label}}`` for the branch feeders
+    of ``voltage_level_id``.
+
+    ``label`` is the **name of the voltage level at the OTHER end** of the
+    branch — far more interpretable than the raw IIDM branch id pypowsybl draws
+    by default (e.g. ``relation_8423569-225``). When several branches of this VL
+    terminate at the SAME far-end VL (parallel circuits) the label is
+    disambiguated with a 1-based index (``"MARSILLON 225kV 1"`` / ``" 2"``).
+
+    Resolution / fall-backs for ``label``:
+      1. far-end VL friendly name (+ parallel index when needed);
+      2. the branch's own friendly name (already unique → no index) when the
+         far-end VL has no human-readable name;
+      3. ``None`` — the frontend then keeps pypowsybl's default id label.
+
+    ``name`` carries the branch's friendly name (the grid2op / operator name
+    such as ``MARSIL61PRAGN``) so the frontend can map an overloaded line —
+    reported by friendly name — back to the IIDM-id-keyed SLD cell and draw its
+    overload halo.
+
+    Returns ``{}`` on any pypowsybl failure: relabelling is additive, the SLD
+    must still render.
+    """
+    if not voltage_level_id:
+        return {}
+    vl_names = _vl_name_map(network)
+    branches = _collect_vl_branches(network, voltage_level_id)
+
+    by_other: dict[str, list[dict]] = defaultdict(list)
+    for b in branches:
+        by_other[b["other_vl"]].append(b)
+
+    result: dict[str, dict] = {}
+    for other_vl, members in by_other.items():
+        members.sort(key=lambda b: b["eid"])
+        multiple = len(members) > 1
+        other_name = vl_names.get(other_vl)
+        for idx, b in enumerate(members, start=1):
+            if other_name:
+                label = f"{other_name} {idx}" if multiple else other_name
+            elif b["name"]:
+                # Far-end VL is unnamed — fall back to the branch's own name.
+                # Parallel branches already carry distinct names, so no index.
+                label = b["name"]
+            else:
+                label = None
+            result[b["eid"]] = {
+                "name": b["name"],
+                "other_vl": other_vl or None,
+                "label": label,
+            }
+    return result
 
 
 def extract_sld_svg_and_metadata(sld: Any) -> tuple:
