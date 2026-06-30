@@ -23,17 +23,21 @@ friendly operator name (`MARSIL61PRAGN`):
   was missing on the constrained feeder because the overload list uses
   grid2op friendly names while the SLD cells are keyed by IIDM id; the two
   are now bridged so the halo lands on the right feeder.
-- **A disconnected overloaded line reports 0 % loading.** When an action
-  disconnects the overloaded line itself, the card showed a stale grid2op
-  loading (e.g. 33 %) while the SLD / NAD correctly drew zero flow. The
-  card now reads connectivity from the post-action variant — the same
-  state the diagrams read — and reports 0 %, so all three agree.
+- **The "after" loading of a line opened at one end is now explained.**
+  When an action opens the overloaded line at one end, the card showed e.g.
+  33 % while the SLD / NAD drew zero flow. That is not a bug — a line open
+  at one end carries no active power (what the diagrams draw) but its
+  capacitance still draws real reactive charging current at the live end,
+  which the current-based loading reflects. The value is kept and annotated:
+  the card now adds *"open one end · 16.8 MVAr capacitive"* so it reads as
+  charging current, not a residual overload.
 
 Implementation: every SLD endpoint now returns a `feeder_labels` map
 (`build_feeder_labels`); the frontend relabel + overload-bridge live in
-`utils/svg/feederLabels.ts` + `hooks/useSldFeederRelabel.ts`; the loading
-fix is `build_branch_connectivity` / `disconnected_branch_names_from_obs`
-feeding `compute_action_metrics`. See
+`utils/svg/feederLabels.ts` + `hooks/useSldFeederRelabel.ts`; the charging-
+current annotation is `build_half_open_reactive` / `half_open_overload_notes`
+surfaced as `half_open_overloads` on the action result and rendered by
+`ActionCard`. See
 [`docs/features/sld-diagram-feeder-labels.md`](docs/features/sld-diagram-feeder-labels.md).
 
 ### Direct SLD editing — switches & injections without a mode toggle

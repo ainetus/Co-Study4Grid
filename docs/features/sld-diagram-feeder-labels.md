@@ -44,34 +44,47 @@ bridge friendly name → IIDM id via the `feeder_labels` map (each entry's
 The overload-highlight pass in `SldOverlay.tsx` now resolves through that
 bridge before `findCellForEquipment`.
 
-## 3. Disconnected-overload loading matches the diagrams
+## 3. Explaining the "after" loading of a line opened at one end
 
-When an action **disconnects the overloaded line itself**, the line
-carries no flow — the SLD / NAD correctly draw it dashed with zero flow.
-But the action card reported e.g. `33 %` for it, because grid2op's
-forecast `obs.rho` can stay non-zero on a line opened by a switch action
-(a backend obs-vs-variant desync).
+When an action **opens the overloaded line at one end** (a breaker
+manoeuvre), the action card reported e.g. `33 %` for it while the SLD / NAD
+showed it dashed with **zero flow** — which read as a contradiction.
 
-The fix reads connectivity from the **post-action pypowsybl variant** —
-the exact state the diagrams read — and zeroes those loadings so the card
-agrees with the diagrams:
+It is **not** a bug: it is real physics. A line open at one end is out of
+service for *active*-power transfer (`p ≈ 0`, which is what the diagrams
+draw) but its line capacitance stays energised from the live end, so
+pypowsybl reports a genuine **reactive charging current** there. On the
+reported case that current is `i1 ≈ 43 A` with `q1 ≈ -16.8 MVAr` and
+`p1 = 0`, and the current-based loading `rho = max(|i1|,|i2|)/limit =
+43/130 ≈ 33 %`. (Confirmed by reproducing the scenario against
+`expert_op4grid_recommender`'s `PypowsyblObservation` on the real grid; the
+library is correct and was left unchanged.)
 
-- `simulation_helpers.build_branch_connectivity(network)` →
-  `{branch_id_or_name: is_disconnected}` (a branch is disconnected when
-  either terminal is open), keyed by both IIDM id and friendly name.
-- `simulation_helpers.disconnected_branch_names_from_obs(obs)` switches to
-  `obs._variant_id` on `obs._network_manager` (restoring the working
-  variant in a `finally`), reads connectivity, and returns the
-  disconnected set.
-- `compute_action_metrics(..., disconnected_line_names=…)` forces those
-  branches' post-action rho to 0 before computing `rho_after`, `max_rho`
-  and `lines_overloaded_after`, so the card, the SLD and the NAD all agree.
+So the value is kept and **explained** rather than suppressed: when a
+still-"overloaded" line ends up open at one end with a loading above ~1 %,
+the card annotates it with the live-end reactive power.
+
+- `simulation_helpers.build_half_open_reactive(network)` →
+  `{branch_id_or_name: live_end_reactive_mvar}` for lines / transformers
+  open at EXACTLY one terminal (`abs(q)` at the connected end), keyed by
+  both IIDM id and friendly name.
+- `simulation_helpers.half_open_branch_reactive_from_obs(obs)` reads it from
+  `obs._variant_id` on `obs._network_manager` (restoring the working variant
+  in a `finally`).
+- `simulation_helpers.half_open_overload_notes(obs, names, rho_after)` keeps
+  only the overloaded lines that are half-open with `rho_after > 0.01`, and
+  `simulate_manual_action` attaches the result as `half_open_overloads` on
+  the action result.
+- The frontend `ActionCard.renderRho` appends an italic note — *"open one
+  end · 16.8 MVAr capacitive"* — next to the loading, with a tooltip
+  explaining it is charging current, not real flow. The field rides the
+  save / reload triad (`sessionUtils` + `useSession`) so it survives a
+  session reload.
 
 ## Tests
 
-- Backend: `test_feeder_labels.py`, `test_disconnected_overload_loading.py`,
-  and the `compute_action_metrics` / `build_branch_connectivity` cases in
-  `test_simulation_helpers.py`.
-- Frontend: `utils/svg/feederLabels.test.ts` and the
-  "feeder relabelling" / "overload halo via friendly name" suites in
-  `components/SldOverlay.test.tsx`.
+- Backend: `test_feeder_labels.py`, `test_half_open_overload.py`, and the
+  `build_half_open_reactive` cases in `test_simulation_helpers.py`.
+- Frontend: `utils/svg/feederLabels.test.ts`, the "feeder relabelling" /
+  "overload halo via friendly name" suites in `components/SldOverlay.test.tsx`,
+  and the "half-open overload annotation" suite in `components/ActionCard.test.tsx`.

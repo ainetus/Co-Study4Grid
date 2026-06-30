@@ -18,7 +18,7 @@ from unittest.mock import MagicMock
 
 from expert_backend.services.simulation_helpers import (
     TOPO_KEYS,
-    build_branch_connectivity,
+    build_half_open_reactive,
     build_care_mask,
     build_combined_description,
     canonicalize_action_id,
@@ -540,114 +540,71 @@ class TestComputeActionMetrics:
         assert metrics["max_rho_line"] == "L2"
         assert metrics["max_rho"] == pytest.approx(1.3 * 0.95)
 
-    # -- disconnected-line loading coherence (Issue 3) --
-
-    def test_disconnected_overloaded_line_reports_zero_loading(self):
-        """A line the action disconnects shows 0 % loading even when grid2op's
-        forecast rho stays non-zero — the card-vs-diagram coherence fix.
-
-        Reproduces the reported case: MARSIL61PRAGN overloaded at 106 % in N-1,
-        disconnected by the action, yet grid2op's obs.rho stays at 0.35 (→ 33 %).
-        """
-        names = ["MARSIL61PRAGN", "L2", "L3"]
-        metrics = compute_action_metrics(
-            obs=self._obs([0.1, 0.1, 0.1], names=names),
-            obs_simu_defaut=self._obs([1.06, 0.5, 0.5], names=names),
-            obs_simu_action=self._obs([0.35, 0.5, 0.5], names=names),  # stale grid2op rho
-            info_action={"exception": None},
-            lines_overloaded_ids=[0],
-            lines_we_care_about=set(names),
-            branches_with_limits=set(names),
-            monitoring_factor=0.95,
-            worsening_threshold=0.02,
-            disconnected_line_names={"MARSIL61PRAGN"},
-        )
-        assert metrics["rho_after"] == pytest.approx([0.0])
-        assert "MARSIL61PRAGN" not in metrics["lines_overloaded_after"]
-
-    def test_loading_unchanged_without_disconnect_set(self):
-        """Without the disconnect set the (stale) grid2op loading is reported
-        as-is — the fix is opt-in and changes nothing for non-disconnections."""
-        names = ["MARSIL61PRAGN", "L2", "L3"]
-        metrics = compute_action_metrics(
-            obs=self._obs([0.1, 0.1, 0.1], names=names),
-            obs_simu_defaut=self._obs([1.06, 0.5, 0.5], names=names),
-            obs_simu_action=self._obs([0.35, 0.5, 0.5], names=names),
-            info_action={"exception": None},
-            lines_overloaded_ids=[0],
-            lines_we_care_about=set(names),
-            branches_with_limits=set(names),
-            monitoring_factor=0.95,
-            worsening_threshold=0.02,
-        )
-        assert metrics["rho_after"] == pytest.approx([0.35 * 0.95])
-
-    def test_disconnected_line_excluded_from_max_rho(self):
-        """When the action disconnects the worst line, max_rho drops to the
-        next-highest connected line instead of reporting the stale value."""
-        names = ["A", "B", "C"]
-        metrics = compute_action_metrics(
-            obs=self._obs([0.1, 0.1, 0.1], names=names),
-            obs_simu_defaut=self._obs([0.1, 0.1, 0.1], names=names),
-            obs_simu_action=self._obs([1.4, 0.9, 0.5], names=names),  # A highest but disconnected
-            info_action={"exception": None},
-            lines_overloaded_ids=[],
-            lines_we_care_about=set(names),
-            branches_with_limits=set(names),
-            monitoring_factor=0.95,
-            worsening_threshold=0.02,
-            disconnected_line_names={"A"},
-        )
-        assert metrics["max_rho_line"] == "B"
-        assert metrics["max_rho"] == pytest.approx(0.9 * 0.95)
-
 
 # ----------------------------------------------------------------------
-# build_branch_connectivity
+# build_half_open_reactive  (Issue 3 — charging-current annotation)
 # ----------------------------------------------------------------------
 
-class TestBuildBranchConnectivity:
+class TestBuildHalfOpenReactive:
     def _net(self, lines, trafos=None):
         net = MagicMock()
         net.get_lines.return_value = pd.DataFrame.from_dict(lines, orient="index")
         net.get_2_windings_transformers.return_value = (
             pd.DataFrame.from_dict(trafos, orient="index")
             if trafos
-            else pd.DataFrame(columns=["name", "connected1", "connected2"])
+            else pd.DataFrame(columns=["name", "connected1", "connected2", "q1", "q2"])
         )
         return net
 
-    def test_keys_by_id_and_friendly_name(self):
+    def test_half_open_line_returns_live_end_reactive(self):
+        # Reproduces the reported case: MARSIL61PRAGN open at s2 (connected2=False),
+        # live end s1 draws q1 = -16.8 MVAr of capacitive charging current.
         net = self._net(
             {
                 "relation_8423569-225": {
-                    "name": "MARSIL61PRAGN", "connected1": True, "connected2": False,
+                    "name": "MARSIL61PRAGN",
+                    "connected1": True, "connected2": False,
+                    "q1": -16.8, "q2": 0.0,
                 },
-                "L2": {"name": "L2NAME", "connected1": True, "connected2": True},
             }
         )
-        conn = build_branch_connectivity(net)
-        # Disconnected (one terminal open) — reachable by IIDM id AND friendly name.
-        assert conn["relation_8423569-225"] is True
-        assert conn["MARSIL61PRAGN"] is True
-        # Fully connected.
-        assert conn["L2"] is False
-        assert conn["L2NAME"] is False
+        out = build_half_open_reactive(net)
+        # abs(live-end q), reachable by both IIDM id and friendly name.
+        assert out["relation_8423569-225"] == pytest.approx(16.8)
+        assert out["MARSIL61PRAGN"] == pytest.approx(16.8)
+
+    def test_picks_the_connected_terminal_reactive(self):
+        net = self._net(
+            {"L": {"name": "L", "connected1": False, "connected2": True, "q1": 0.0, "q2": -9.5}}
+        )
+        out = build_half_open_reactive(net)
+        assert out["L"] == pytest.approx(9.5)  # live end is s2 → |q2|
+
+    def test_fully_connected_and_fully_open_are_excluded(self):
+        net = self._net(
+            {
+                "connected": {"name": "C", "connected1": True, "connected2": True, "q1": 5.0, "q2": -5.0},
+                "fully_open": {"name": "O", "connected1": False, "connected2": False, "q1": 0.0, "q2": 0.0},
+            }
+        )
+        out = build_half_open_reactive(net)
+        assert "connected" not in out and "C" not in out
+        assert "fully_open" not in out and "O" not in out
 
     def test_transformers_included(self):
         net = self._net(
-            {"L1": {"name": "L1", "connected1": True, "connected2": True}},
-            trafos={"T1": {"name": "TR1", "connected1": False, "connected2": True}},
+            {"L1": {"name": "L1", "connected1": True, "connected2": True, "q1": 1.0, "q2": 1.0}},
+            trafos={"T1": {"name": "TR1", "connected1": True, "connected2": False, "q1": 4.2, "q2": 0.0}},
         )
-        conn = build_branch_connectivity(net)
-        assert conn["T1"] is True
-        assert conn["TR1"] is True
+        out = build_half_open_reactive(net)
+        assert out["T1"] == pytest.approx(4.2)
+        assert out["TR1"] == pytest.approx(4.2)
 
     def test_pypowsybl_failure_degrades_to_empty(self):
         net = MagicMock()
         net.get_lines.side_effect = RuntimeError("boom")
         net.get_2_windings_transformers.side_effect = RuntimeError("boom")
-        assert build_branch_connectivity(net) == {}
+        assert build_half_open_reactive(net) == {}
 
 
 # ----------------------------------------------------------------------

@@ -183,6 +183,7 @@ export const api = {
         non_convergence: string | null;
         lines_overloaded: string[];
         lines_overloaded_after?: string[];
+        half_open_overloads?: Record<string, number>;
         action_topology?: import('./types').ActionTopology;
         load_shedding_details?: import('./types').LoadSheddingDetail[];
         curtailment_details?: import('./types').CurtailmentDetail[];

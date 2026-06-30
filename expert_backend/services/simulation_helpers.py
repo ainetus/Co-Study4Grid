@@ -17,6 +17,7 @@ Extracting them:
 from __future__ import annotations
 
 import logging
+import math
 import re
 from typing import Any
 
@@ -307,28 +308,62 @@ def _to_1d(arr: Any) -> np.ndarray:
     return np.atleast_1d(arr)
 
 
-def _zero_disconnected_rho(
-    action_rho: np.ndarray,
-    action_names: np.ndarray,
-    disconnected_line_names: set[str] | None,
-) -> np.ndarray:
-    """Return ``action_rho`` with disconnected branches' entries forced to 0.
+def build_half_open_reactive(network: Any) -> dict[str, float]:
+    """Return ``{branch_id_or_name: live_end_reactive_mvar}`` for lines + 2-winding
+    transformers that are open at EXACTLY ONE terminal in the current variant.
 
-    Returns the input untouched (no copy) when there is nothing to zero, so the
-    common no-disconnection path stays allocation-free.
+    A branch open at one end is out of service for active-power transfer, but its
+    line capacitance stays energised from the live end, so pypowsybl reports a
+    real REACTIVE charging current there (e.g. a 225 kV line opened at one end
+    shows ~16 MVAr at the connected terminal while p ~ 0). The current-based
+    loading ``rho`` then reads a small non-zero value — physically correct, but
+    easy to misread as a residual overload when the operator opened the line to
+    relieve one. Returning the live-end reactive power lets the UI explain that
+    an "after" loading on such a branch is capacitive charging current, not flow.
+
+    The value is ``abs(q)`` at the still-connected terminal. Keys cover BOTH the
+    IIDM id and the friendly ``name`` so a caller holding a grid2op / operator
+    name (``MARSIL61PRAGN``) can look the branch up. Returns ``{}`` on any
+    pypowsybl failure — the annotation is additive and must not break a run.
     """
-    if not disconnected_line_names:
-        return action_rho
-    try:
-        disc_mask = np.isin(action_names, list(disconnected_line_names))
-        if not disc_mask.any():
-            return action_rho
-        zeroed = np.array(action_rho, dtype=float, copy=True)
-        zeroed[disc_mask] = 0.0
-        return zeroed
-    except Exception as e:
-        logger.debug("_zero_disconnected_rho: skipped (%s)", e)
-        return action_rho
+    out: dict[str, float] = {}
+    for getter in ("get_lines", "get_2_windings_transformers"):
+        try:
+            df = getattr(network, getter)(
+                attributes=["name", "connected1", "connected2", "q1", "q2"]
+            )
+        except Exception as e:
+            logger.debug("build_half_open_reactive: %s(attrs) failed: %s", getter, e)
+            try:
+                df = getattr(network, getter)()
+            except Exception as e2:
+                logger.debug("build_half_open_reactive: %s fallback failed: %s", getter, e2)
+                continue
+        try:
+            cols = list(getattr(df, "columns", []))
+            if "connected1" not in cols or "connected2" not in cols:
+                continue
+            has_name = "name" in cols
+            for eid, row in df.iterrows():
+                c1, c2 = bool(row["connected1"]), bool(row["connected2"])
+                if c1 == c2:
+                    continue  # both connected, or both open — not "half open"
+                q_live = row.get("q1") if c1 else row.get("q2")
+                try:
+                    reactive = abs(float(q_live))
+                except (TypeError, ValueError):
+                    reactive = 0.0
+                if not math.isfinite(reactive):
+                    reactive = 0.0
+                out[str(eid)] = reactive
+                if has_name:
+                    nm = row.get("name")
+                    if nm is not None and str(nm) != "nan":
+                        out[str(nm)] = reactive
+        except Exception as e:
+            logger.debug("build_half_open_reactive: scan failed for %s: %s", getter, e)
+            continue
+    return out
 
 
 def build_care_mask(
@@ -438,81 +473,66 @@ def resolve_lines_overloaded(
     return ids, names
 
 
-def build_branch_connectivity(network: Any) -> dict[str, bool]:
-    """Return ``{branch_id_or_name: is_disconnected}`` for lines + 2-winding
-    transformers of ``network`` (in its currently-active variant).
+def half_open_overload_notes(
+    obs: Any, lines_overloaded_names: list[str], rho_after: list[float]
+) -> dict[str, float]:
+    """Return ``{line_name: live_end_reactive_mvar}`` for still-"overloaded" lines
+    the action leaves open at ONE end with a loading above ~1 %.
 
-    A branch is *disconnected* when either terminal is open
-    (``connected1 AND connected2`` is False) — the same rule the action-patch
-    pipeline uses to mark dashed branches. Keys cover BOTH the IIDM id and the
-    friendly ``name`` so a caller holding a grid2op / operator name (e.g.
-    ``MARSIL61PRAGN``) can look the branch up directly.
-
-    Returns ``{}`` on any pypowsybl failure — the loading-coherence fix this
-    drives is additive and must never break a simulation.
+    Such a line carries no real flow (the diagrams show p = 0) but its capacitance
+    draws reactive charging current from the live end, so its current-based
+    loading stays non-zero (the reported ~33 %). Surfacing the live-end reactive
+    power lets the ActionCard annotate the value as capacitive charging current
+    rather than it reading as a residual overload. Reads the post-action variant
+    via :func:`half_open_branch_reactive_from_obs`.
     """
-    out: dict[str, bool] = {}
-    for getter in ("get_lines", "get_2_windings_transformers"):
+    if not lines_overloaded_names:
+        return {}
+    half_open = half_open_branch_reactive_from_obs(obs)
+    if not half_open:
+        return {}
+    notes: dict[str, float] = {}
+    for i, name in enumerate(lines_overloaded_names):
         try:
-            df = getattr(network, getter)(attributes=["name", "connected1", "connected2"])
-        except Exception as e:
-            logger.debug("build_branch_connectivity: %s(attrs) failed: %s", getter, e)
-            try:
-                df = getattr(network, getter)()
-            except Exception as e2:
-                logger.debug("build_branch_connectivity: %s fallback failed: %s", getter, e2)
-                continue
-        try:
-            cols = list(getattr(df, "columns", []))
-            if "connected1" not in cols or "connected2" not in cols:
-                continue
-            has_name = "name" in cols
-            for eid, row in df.iterrows():
-                disconnected = not (bool(row["connected1"]) and bool(row["connected2"]))
-                out[str(eid)] = disconnected
-                if has_name:
-                    nm = row.get("name")
-                    if nm is not None and str(nm) != "nan":
-                        out[str(nm)] = disconnected
-        except Exception as e:
-            logger.debug("build_branch_connectivity: scan failed for %s: %s", getter, e)
-            continue
-    return out
+            rho = float(rho_after[i]) if i < len(rho_after) else 0.0
+        except (TypeError, ValueError):
+            rho = 0.0
+        if name in half_open and rho > 0.01:
+            notes[name] = half_open[name]
+    return notes
 
 
-def disconnected_branch_names_from_obs(obs: Any) -> set:
-    """Return the set of branch ids / names disconnected in ``obs``'s
-    post-action pypowsybl variant.
+def half_open_branch_reactive_from_obs(obs: Any) -> dict[str, float]:
+    """Return ``{branch_id_or_name: live_end_reactive_mvar}`` for branches open at
+    exactly one terminal in ``obs``'s post-action pypowsybl variant (see
+    :func:`build_half_open_reactive`).
 
-    Mirrors exactly what ``get_action_variant_diagram`` /
-    ``get_action_variant_sld`` read (``obs._network_manager`` on
-    ``obs._variant_id``), so the action card's loadings can be re-aligned with
-    the diagrams for any line the action physically disconnects. Best-effort —
-    returns an empty set on any failure, and always restores the network
-    manager's working variant so the shared network is never left mutated.
+    Reads the SAME variant the SLD / NAD diagrams render
+    (``obs._network_manager`` on ``obs._variant_id``). Best-effort — returns
+    ``{}`` on any failure and always restores the network manager's working
+    variant so the shared network is never left mutated.
     """
     nm = getattr(obs, "_network_manager", None)
     variant_id = getattr(obs, "_variant_id", None)
     network = getattr(nm, "network", None) if nm is not None else None
     if network is None or variant_id is None:
-        return set()
+        return {}
     try:
         original = network.get_working_variant_id()
     except Exception as e:
-        logger.debug("disconnected_branch_names_from_obs: cannot read working variant: %s", e)
-        return set()
+        logger.debug("half_open_branch_reactive_from_obs: cannot read working variant: %s", e)
+        return {}
     try:
         nm.set_working_variant(variant_id)
-        conn = build_branch_connectivity(network)
+        return build_half_open_reactive(network)
     except Exception as e:
-        logger.debug("disconnected_branch_names_from_obs: connectivity read failed: %s", e)
-        return set()
+        logger.debug("half_open_branch_reactive_from_obs: read failed: %s", e)
+        return {}
     finally:
         try:
             nm.set_working_variant(original)
         except Exception as e:
-            logger.debug("disconnected_branch_names_from_obs: variant restore failed: %s", e)
-    return {key for key, disconnected in conn.items() if disconnected}
+            logger.debug("half_open_branch_reactive_from_obs: variant restore failed: %s", e)
 
 
 def compute_action_metrics(
@@ -525,7 +545,6 @@ def compute_action_metrics(
     branches_with_limits: Any,
     monitoring_factor: float,
     worsening_threshold: float,
-    disconnected_line_names: set[str] | None = None,
 ) -> dict[str, Any]:
     """Post-process a single-action simulation result into a scalar summary.
 
@@ -533,16 +552,6 @@ def compute_action_metrics(
     ``max_rho_line``, ``is_rho_reduction``, ``is_islanded``,
     ``n_components_after``, ``disconnected_mw``, ``lines_overloaded_after``.
     Handles the non-convergence case by zeroing action-side fields.
-
-    ``disconnected_line_names`` — when given, the post-action ``obs.rho`` of
-    any branch in this set is forced to 0 before every downstream statistic
-    (``rho_after`` / ``max_rho`` / ``lines_overloaded_after``). A branch the
-    action physically disconnects carries no flow, but grid2op's forecast
-    ``obs.rho`` can stay non-zero (a backend obs-vs-variant desync) — which is
-    why the card used to report e.g. 33 % on a line the SLD / NAD correctly
-    draw with zero flow. Reading connectivity from the post-action variant
-    (see :func:`build_branch_connectivity`) and zeroing here re-aligns the
-    card's loadings with the diagrams.
     """
     mf = float(monitoring_factor)
     rho_before = (
@@ -583,14 +592,7 @@ def compute_action_metrics(
             result["is_islanded"] = True
             result["disconnected_mw"] = disconnected_mw
 
-    action_names = _to_1d(obs_simu_action.name_line)
-    # Single source of truth for the post-action loading vector. Force every
-    # branch the action disconnects to 0 so the card matches the diagrams.
-    action_rho = _zero_disconnected_rho(
-        _to_1d(obs_simu_action.rho), action_names, disconnected_line_names
-    )
-
-    rho_after = (action_rho[lines_overloaded_ids] * mf).tolist() if lines_overloaded_ids else []
+    rho_after = (_to_1d(obs_simu_action.rho)[lines_overloaded_ids] * mf).tolist()
     result["rho_after"] = rho_after
     if rho_before:
         try:
@@ -600,6 +602,8 @@ def compute_action_metrics(
         except Exception as e:
             logger.debug("compute_action_metrics: rho reduction check failed: %s", e)
 
+    action_names = _to_1d(obs_simu_action.name_line)
+    action_rho = _to_1d(obs_simu_action.rho)
     base_rho = _to_1d(obs.rho)
     care_mask = build_care_mask(
         action_names,
@@ -703,6 +707,7 @@ def serialize_action_result(action_id: str, action_data: dict) -> dict:
         "non_convergence": action_data.get("non_convergence"),
         "lines_overloaded": sanitize_for_json(action_data.get("lines_overloaded_after", [])),
         "lines_overloaded_after": sanitize_for_json(action_data.get("lines_overloaded_after", [])),
+        "half_open_overloads": sanitize_for_json(action_data.get("half_open_overloads", {})),
         "is_estimated": False,
         "action_topology": action_data.get("action_topology"),
         "curtailment_details": action_data.get("curtailment_details"),

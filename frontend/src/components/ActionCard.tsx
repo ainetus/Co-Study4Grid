@@ -108,8 +108,14 @@ const ActionCard: React.FC<ActionCardProps> = ({
 
     const renderRho = (arr: number[] | null, actionId: string, tab: 'action' | 'contingency' = 'action'): React.ReactNode => {
         if (!arr || arr.length === 0) return '—';
+        const halfOpen = details.half_open_overloads;
         return arr.map((v, i) => {
             const lineName = linesOverloaded[i] || `line ${i}`;
+            // A line the action left open at one end shows a non-zero loading
+            // that is pure capacitive charging current (the diagrams show p = 0).
+            // Annotate it with the live-end reactive power so the operator reads
+            // it as charging current, not a residual overload.
+            const reactiveMvar = halfOpen ? halfOpen[lineName] : undefined;
             return (
                 <React.Fragment key={i}>
                     {i > 0 && ', '}
@@ -119,6 +125,14 @@ const ActionCard: React.FC<ActionCardProps> = ({
                         onClick={(e) => { e.stopPropagation(); onAssetClick(actionId, lineName, tab); }}
                     >{displayName(lineName)}</button>
                     {`: ${(v * 100).toFixed(1)}%`}
+                    {reactiveMvar != null && (
+                        <span
+                            style={{ color: colors.textTertiary, fontStyle: 'italic' }}
+                            title="Line open at one end — this loading is the line's capacitive charging current (reactive power), not real power flow. The line carries no active power (the diagrams show 0)."
+                        >
+                            {` — open one end · ${reactiveMvar.toFixed(1)} MVAr capacitive`}
+                        </span>
+                    )}
                 </React.Fragment>
             );
         });

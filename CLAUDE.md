@@ -171,7 +171,7 @@ Co-Study4Grid/
 | `docs/features/adding-action-type.md` | Cross-cutting checklist for adding/upgrading a remedial-action type (lib → backend → frontend → save/log/reload triad → regression specs) |
 | `docs/features/interaction-logging.md` | Replay-ready event log contract |
 | `docs/features/sld-topology-edit.md` | Interactive SLD topology edit → manual action card |
-| `docs/features/sld-diagram-feeder-labels.md` | SLD feeders relabelled by far-end VL name (+ parallel index), overload-halo friendly-name↔IIDM-id bridge, and disconnected-overload loading coherence with the diagrams |
+| `docs/features/sld-diagram-feeder-labels.md` | SLD feeders relabelled by far-end VL name (+ parallel index), overload-halo friendly-name↔IIDM-id bridge, and the charging-current annotation explaining the "after" loading of a line opened at one end |
 | `docs/features/vl-disk-interactions.md` | Interactive VL disks on the NAD (hover name / click → Inspect / double-click → SLD) + delegation performance contract |
 | `docs/features/game-mode-codabench.md` | Timed, scored Game Mode (`?game=1`) + Codabench benchmark bundle |
 | `deploy/huggingface/` | HuggingFace Docker Space deployment (Space README + `SETUP.md`) |

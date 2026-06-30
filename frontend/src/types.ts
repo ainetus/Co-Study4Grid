@@ -108,6 +108,16 @@ export interface ActionDetail {
     non_convergence?: string | null;
     action_topology?: ActionTopology;
     lines_overloaded_after?: string[];
+    /**
+     * ``{line_name: live_end_reactive_mvar}`` for still-"overloaded" lines the
+     * action leaves open at ONE end with a loading above ~1 %. Such a line is
+     * out of service for active power (the SLD / NAD show p = 0) but its
+     * capacitance draws reactive charging current from the live end, so its
+     * current-based loading stays non-zero (the reported ~33 %). The ActionCard
+     * annotates the loading with the reactive amount so it reads as charging
+     * current, not a residual overload. Backend: ``half_open_branch_reactive_from_obs``.
+     */
+    half_open_overloads?: Record<string, number>;
     load_shedding_details?: LoadSheddingDetail[];
     curtailment_details?: CurtailmentDetail[];
     redispatch_details?: RedispatchDetail[];
@@ -487,6 +497,16 @@ export interface SavedActionEntry {
     non_convergence?: string | null;
     action_topology?: ActionTopology;
     lines_overloaded_after?: string[];
+    /**
+     * ``{line_name: live_end_reactive_mvar}`` for still-"overloaded" lines the
+     * action leaves open at ONE end with a loading above ~1 %. Such a line is
+     * out of service for active power (the SLD / NAD show p = 0) but its
+     * capacitance draws reactive charging current from the live end, so its
+     * current-based loading stays non-zero (the reported ~33 %). The ActionCard
+     * annotates the loading with the reactive amount so it reads as charging
+     * current, not a residual overload. Backend: ``half_open_branch_reactive_from_obs``.
+     */
+    half_open_overloads?: Record<string, number>;
     load_shedding_details?: LoadSheddingDetail[];
     curtailment_details?: CurtailmentDetail[];
     redispatch_details?: RedispatchDetail[];

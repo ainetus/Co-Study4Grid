@@ -33,12 +33,12 @@ from expert_backend.services.simulation_helpers import (
     classify_action_content,
     clamp_tap,
     compute_action_metrics,
-    disconnected_branch_names_from_obs,
     compute_combined_rho,
     compute_reduction_setpoint,
     compute_redispatch_setpoint,
     compute_target_max_rho,
     extract_action_topology,
+    half_open_overload_notes,
     is_injection_action,
     is_pst_action,
     is_switch_only_content,
@@ -296,13 +296,6 @@ class SimulationMixin(_Base):
             action_ids, self._dict_action, recent_actions
         )
 
-        # A line the action physically disconnects carries no flow, but
-        # grid2op's forecast ``obs.rho`` can stay non-zero (backend obs-vs-
-        # variant desync). Read connectivity from the post-action variant —
-        # the same state the SLD / NAD draw — and zero those loadings so the
-        # card agrees with the diagrams (0 %, not e.g. 33 %).
-        disconnected_line_names = disconnected_branch_names_from_obs(obs_simu_action)
-
         metrics = compute_action_metrics(
             obs,
             obs_simu_defaut,
@@ -313,9 +306,18 @@ class SimulationMixin(_Base):
             branches_with_limits,
             monitoring_factor,
             worsening_threshold,
-            disconnected_line_names=disconnected_line_names,
         )
         non_convergence = normalise_non_convergence(info_action.get("exception"))
+
+        # When the action leaves a still-"overloaded" line open at ONE end, its
+        # loading is real but is pure capacitive CHARGING current (the line is
+        # energised from the live end only) — the SLD / NAD show p = 0 while the
+        # card shows e.g. 33 %. Capture the live-end reactive power for any such
+        # line whose loading stays above ~1 % so the UI can annotate the value
+        # instead of it reading as a residual overload.
+        half_open_overloads = half_open_overload_notes(
+            obs_simu_action, lines_overloaded_names, metrics.get("rho_after") or []
+        )
 
         topo = extract_action_topology(action, action_id, self._dict_action)
         description, content = self._resolve_action_description_and_content(
@@ -339,6 +341,7 @@ class SimulationMixin(_Base):
             "n_components": metrics["n_components_after"],
             "non_convergence": non_convergence,
             "lines_overloaded_after": sanitize_for_json(metrics["lines_overloaded_after"]),
+            "half_open_overloads": sanitize_for_json(half_open_overloads),
             "is_estimated": False,
         }
 
