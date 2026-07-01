@@ -15,16 +15,27 @@ import { colors } from '../../styles/tokens';
  *               `nad-hide-vl-labels` class, toggled by the `🏷 VL`
  *               button). When the labels are visible the name is already
  *               drawn, so the tooltip stays out of the way.
- *   2. Click  — single-click selects the VL (drives the Inspect field /
- *               auto-zoom, exactly like typing it in the Inspect box).
- *   3. Dbl-clk — double-click opens the VL's Single Line Diagram.
+ *   2. Click  — single-click on the DISK selects the VL (drives the
+ *               Inspect field / auto-zoom, exactly like typing it in the
+ *               Inspect box); single-click on the VL NAME BOX opens its
+ *               Single Line Diagram directly.
+ *   3. Dbl-clk — double-click on the disk (or name box) opens the VL's SLD.
+ *
+ * The disk is interactive across its WHOLE area, even where a branch is
+ * drawn on top of it: when the direct hit-test lands on an occluding edge
+ * (not the disk), we fall back to `document.elementsFromPoint` and pick the
+ * first VL disk / name box in the paint stack under the cursor. This runs
+ * only on discrete pointer events (never per frame), so the performance
+ * contract below is untouched.
  *
  * Performance contract (the whole point of the delegation design):
  *   - A FIXED handful of listeners on the container, never one-per-node,
  *     so a 5000-VL grid costs the same as a 5-VL grid to wire up.
  *   - NO `mousemove` / per-frame work: the tooltip is positioned once on
  *     `mouseover` and the cursor affordance is a static CSS rule
- *     (`.svg-container .nad-vl-nodes { cursor: pointer }` in App.css).
+ *     (`.svg-container .nad-vl-nodes` / `.nad-label-box { cursor: pointer }`
+ *     in App.css). The `elementsFromPoint` fallback fires only when the
+ *     direct hit-test misses a VL, i.e. on an occluding edge or empty space.
  *   - Pan/zoom gestures add `.svg-interacting`, which sets
  *     `pointer-events: none` on every SVG child, so none of these
  *     handlers resolve a node mid-gesture — fluidity is untouched.
@@ -74,19 +85,46 @@ export const attachVlInteractions = (
     if (!container || !metaIndex || metaIndex.nodesBySvgId.size === 0) return NOOP;
 
     const { nodesBySvgId } = metaIndex;
+    const textNodesBySvgId = metaIndex.textNodesBySvgId ?? new Map<string, NodeMeta>();
     const { onSelect, onOpenSld, displayName } = handlers;
 
-    // Climb from the event target to the enclosing VL node group (the
-    // element whose id is a known node svgId), if any.
-    const resolveVl = (target: EventTarget | null): NodeMeta | null => {
+    // What a hit resolved to: the VL, and whether it landed on the name box
+    // (`viaText`) rather than the disk — the two get different click actions.
+    interface Resolved { node: NodeMeta; viaText: boolean; }
+
+    // Climb from the event target to the enclosing VL node group (disk) or VL
+    // name box (`nad-label-box`, keyed by its text-node svgId), if any.
+    const resolveDirect = (target: EventTarget | null): Resolved | null => {
         let el = target as Element | null;
         while (el && el !== container) {
             const id = el.id;
             if (id) {
                 const node = nodesBySvgId.get(id);
-                if (node) return node;
+                if (node) return { node, viaText: false };
+                const textNode = textNodesBySvgId.get(id);
+                if (textNode) return { node: textNode, viaText: true };
             }
             el = el.parentElement;
+        }
+        return null;
+    };
+
+    // Resolve a VL under the pointer even when a branch is drawn ON TOP of its
+    // disk: the direct hit-test then lands on the edge, so we walk the whole
+    // paint stack at (clientX, clientY) and take the first element that resolves
+    // to a VL. Only runs when the direct hit misses — never per frame.
+    const resolveDeep = (
+        target: EventTarget | null,
+        clientX: number,
+        clientY: number,
+    ): Resolved | null => {
+        const direct = resolveDirect(target);
+        if (direct) return direct;
+        if (typeof document.elementsFromPoint !== 'function') return null;
+        for (const el of document.elementsFromPoint(clientX, clientY)) {
+            if (el === container || !container.contains(el)) continue;
+            const hit = resolveDirect(el);
+            if (hit) return hit;
         }
         return null;
     };
@@ -139,20 +177,22 @@ export const attachVlInteractions = (
     };
 
     const onOver = (evt: MouseEvent) => {
-        const node = resolveVl(evt.target);
-        if (!node) return;
-        hoveredSvgId = node.svgId;
-        // The name is already drawn when labels are visible — only
-        // surface the tooltip when the static labels are hidden.
-        if (container.classList.contains(HIDE_VL_LABELS_CLASS)) {
-            showTooltip(node, evt.clientX, evt.clientY);
-        }
+        // The name is already drawn when labels are visible — only surface the
+        // tooltip when the static labels are hidden. Gating the (slightly more
+        // expensive) `elementsFromPoint` fallback on that keeps hover cheap.
+        const labelsHidden = container.classList.contains(HIDE_VL_LABELS_CLASS);
+        const res = labelsHidden
+            ? resolveDeep(evt.target, evt.clientX, evt.clientY)
+            : resolveDirect(evt.target);
+        if (!res) return;
+        hoveredSvgId = res.node.svgId;
+        if (labelsHidden) showTooltip(res.node, evt.clientX, evt.clientY);
     };
 
     const onOut = (evt: MouseEvent) => {
         // Ignore transitions that stay inside the same VL group.
-        const to = resolveVl(evt.relatedTarget);
-        if (to && to.svgId === hoveredSvgId) return;
+        const to = resolveDirect(evt.relatedTarget);
+        if (to && to.node.svgId === hoveredSvgId) return;
         hoveredSvgId = null;
         hideTooltip();
     };
@@ -171,21 +211,30 @@ export const attachVlInteractions = (
     let downX = 0;
     let downY = 0;
     let downVl: NodeMeta | null = null;
+    let downViaText = false;
     let clickTimer: ReturnType<typeof setTimeout> | null = null;
 
     const onDown = (evt: MouseEvent) => {
         downX = evt.clientX;
         downY = evt.clientY;
-        downVl = resolveVl(evt.target);
+        const res = resolveDeep(evt.target, evt.clientX, evt.clientY);
+        downVl = res ? res.node : null;
+        downViaText = res ? res.viaText : false;
     };
 
     const onClick = (evt: MouseEvent) => {
         // A pan (pointer travelled) is not a selection.
         if (Math.hypot(evt.clientX - downX, evt.clientY - downY) > DRAG_THRESHOLD_PX) return;
-        // Second click of a double-click — let `dblclick` take over.
-        if (clickTimer !== null) return;
         const node = downVl;
         if (!node) return;
+        // Clicking the VL NAME BOX opens its SLD directly — no double-click
+        // window to guard (the box carries no competing single-click action).
+        if (downViaText) {
+            onOpenSld?.(node.equipmentId);
+            return;
+        }
+        // Second click of a double-click — let `dblclick` take over.
+        if (clickTimer !== null) return;
         const vlId = node.equipmentId;
         clickTimer = setTimeout(() => {
             clickTimer = null;

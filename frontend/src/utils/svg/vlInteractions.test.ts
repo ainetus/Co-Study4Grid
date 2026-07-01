@@ -271,6 +271,52 @@ describe('attachVlInteractions', () => {
         expect(onSelect).toHaveBeenCalledWith('VL_225');
     });
 
+    it('resolves the disk under an occluding edge via the paint stack', () => {
+        const { container, disk } = makeContainer();
+        // A branch drawn on top of the disk steals the direct hit-test.
+        const edge = document.createElementNS(SVG_NS, 'path');
+        edge.id = 'edge-1';
+        container.querySelector('svg')!.appendChild(edge);
+
+        const onSelect = vi.fn();
+        cleanups.push(attachVlInteractions(container, makeMetaIndex(), { onSelect }));
+
+        // elementsFromPoint returns the occluding edge first, then the disk.
+        const orig = document.elementsFromPoint;
+        document.elementsFromPoint = vi.fn(() => [edge, disk]) as typeof document.elementsFromPoint;
+
+        edge.dispatchEvent(mouse('mousedown'));
+        edge.dispatchEvent(mouse('click'));
+        vi.advanceTimersByTime(VL_SINGLE_CLICK_DELAY_MS);
+        expect(onSelect).toHaveBeenCalledWith('VL_400');
+        document.elementsFromPoint = orig;
+    });
+
+    it('opens the SLD (not select) when the VL name box is clicked', () => {
+        const { container } = makeContainer();
+        const fo = document.createElementNS(SVG_NS, 'foreignObject');
+        fo.setAttribute('class', 'nad-text-nodes');
+        const box = document.createElement('div');
+        box.id = 'vl1-label';
+        box.className = 'nad-label-box';
+        box.textContent = 'PARIS 400kV';
+        fo.appendChild(box);
+        container.querySelector('svg')!.appendChild(fo);
+
+        const meta = makeMetaIndex();
+        meta.textNodesBySvgId = new Map([['vl1-label', meta.nodesBySvgId.get('vl1-svg')!]]);
+
+        const onSelect = vi.fn();
+        const onOpenSld = vi.fn();
+        cleanups.push(attachVlInteractions(container, meta, { onSelect, onOpenSld }));
+
+        box.dispatchEvent(mouse('mousedown'));
+        box.dispatchEvent(mouse('click'));
+        vi.advanceTimersByTime(VL_SINGLE_CLICK_DELAY_MS);
+        expect(onOpenSld).toHaveBeenCalledWith('VL_400');
+        expect(onSelect).not.toHaveBeenCalled();
+    });
+
     it('does not fire a queued single-click after teardown', () => {
         const { container, disk } = makeContainer();
         const onSelect = vi.fn();

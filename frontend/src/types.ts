@@ -308,6 +308,10 @@ export interface MetadataIndex {
     nodesBySvgId: Map<string, NodeMeta>;
     edgesByEquipmentId: Map<string, EdgeMeta>;
     edgesByNode: Map<string, EdgeMeta[]>;
+    /** VL text-label (name box) svgId → its VL NodeMeta, so the label box can
+     *  be interactive (open the SLD) exactly like the VL disk. Optional because
+     *  the many hand-built MetadataIndex test fixtures omit it. */
+    textNodesBySvgId?: Map<string, NodeMeta>;
 }
 
 export interface DiagramPatch {

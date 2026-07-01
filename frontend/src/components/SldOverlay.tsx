@@ -1034,13 +1034,16 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
         }
     });
 
+    // Relabel branch feeders with the far-end VL name + wrap long feeder names
+    // (Issue 1) — pass + its self-gate live in the hook (see
+    // utils/svg/feederLabels.ts for the swap). Runs BEFORE the injection-name
+    // buttons below so those compute their bounding box on the wrapped,
+    // multi-line name rather than the original single line.
+    useSldFeederRelabel(overlayBodyRef, vlOverlay.feeder_labels, activeSvg, vlOverlay.tab, vlOverlay.actionId, previewActive);
+
     // Render every editable injection's NAME as a clickable button (opens the
     // active-power editor) — pass + its self-gate live in the hook.
     useSldInjectionNameButtons(overlayBodyRef, vlOverlay.injections, editMode, activeSvg, vlOverlay.tab, vlOverlay.actionId, previewActive);
-
-    // Relabel branch feeders with the far-end VL name (Issue 1) — pass + its
-    // self-gate live in the hook (see utils/svg/feederLabels.ts for the swap).
-    useSldFeederRelabel(overlayBodyRef, vlOverlay.feeder_labels, activeSvg, vlOverlay.tab, vlOverlay.actionId, previewActive);
 
     // Click a relabelled feeder name → open the far-end VL's SLD. Registered
     // BEFORE the edit-mode click effect below so its stop-immediate wins on a

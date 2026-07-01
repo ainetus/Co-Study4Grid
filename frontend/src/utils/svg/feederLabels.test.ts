@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { describe, it, expect } from 'vitest';
-import { buildFriendlyToEquip, overloadCandidates, applyFeederRelabels, wrapFeederLabel } from './feederLabels';
+import { buildFriendlyToEquip, overloadCandidates, applyFeederRelabels, applyFeederLabelWrap, wrapFeederLabel } from './feederLabels';
 import type { FeederLabel } from '../../types';
 
 const fl = (over: Partial<Record<string, FeederLabel>> = {}): Record<string, FeederLabel> => ({
@@ -51,9 +51,17 @@ describe('wrapFeederLabel', () => {
         expect(wrapFeederLabel('MARSILLON 225kV')).toEqual(['MARSILLON 225kV']);
     });
 
-    it('never wraps a single word (no spaces)', () => {
-        expect(wrapFeederLabel('virtual_relation_8423568_a_0-225'))
-            .toEqual(['virtual_relation_8423568_a_0-225']);
+    it('keeps a short single word (no spaces) on one line', () => {
+        expect(wrapFeederLabel('relation_842')).toEqual(['relation_842']);
+    });
+
+    it('breaks a long single word on its separators and preserves every char', () => {
+        const lines = wrapFeederLabel('virtual_relation_8423568_a_0-225');
+        expect(lines.length).toBeGreaterThan(1);
+        expect(lines.length).toBeLessThanOrEqual(3);
+        expect(lines.join('')).toBe('virtual_relation_8423568_a_0-225');
+        // Each line stays within the wrap budget (last one may fold overflow).
+        expect(lines[0].length).toBeLessThanOrEqual(15);
     });
 
     it('wraps a long label on spaces and preserves every token', () => {
@@ -134,5 +142,91 @@ describe('applyFeederRelabels', () => {
             'relation_8423569-225': { name: 'X', other_vl: null, label: 'X' },
         }, '<svg/>');
         expect(container.querySelector('#t')!.getAttribute('data-feeder-nav')).toBeNull();
+    });
+});
+
+describe('applyFeederLabelWrap', () => {
+    const mount = (svg: string): HTMLElement => {
+        const div = document.createElement('div');
+        div.innerHTML = svg;
+        return div;
+    };
+
+    it('wraps a long generator / load name inside a feeder cell', () => {
+        const container = mount(
+            '<svg><g class="sld-extern-cell">'
+            + '<text id="g">G_virtual_relation_8423568_a_0-225</text>'
+            + '</g></svg>',
+        );
+        applyFeederLabelWrap(container, '<svg/>');
+        const t = container.querySelector('#g')!;
+        expect(t.getAttribute('data-feeder-wrap')).toBe('1');
+        expect(t.querySelectorAll('tspan').length).toBeGreaterThan(1);
+        expect(t.getAttribute('data-feeder-wrap-orig')).toBe('G_virtual_relation_8423568_a_0-225');
+    });
+
+    it('leaves a short name untouched', () => {
+        const container = mount(
+            '<svg><g class="sld-extern-cell"><text id="s">IGNERES 225kV</text></g></svg>',
+        );
+        applyFeederLabelWrap(container, '<svg/>');
+        const t = container.querySelector('#s')!;
+        expect(t.hasAttribute('data-feeder-wrap')).toBe(false);
+        expect(t.textContent).toBe('IGNERES 225kV');
+    });
+
+    it('skips the numeric P/Q flow labels', () => {
+        const container = mount(
+            '<svg><g class="sld-extern-cell">'
+            + '<g class="sld-active-power"><text id="p">-1234567.89</text></g>'
+            + '<text id="q">-16.8 MVAr</text>'
+            + '</g></svg>',
+        );
+        applyFeederLabelWrap(container, '<svg/>');
+        expect(container.querySelector('#p')!.hasAttribute('data-feeder-wrap')).toBe(false);
+        expect(container.querySelector('#q')!.hasAttribute('data-feeder-wrap')).toBe(false);
+    });
+
+    it('leaves an already-relabelled feeder alone (relabel wraps its own)', () => {
+        const container = mount(
+            '<svg><g class="sld-extern-cell">'
+            + '<text id="r" data-feeder-relabel="1">LANNEMEZAN 225kV 1</text>'
+            + '</g></svg>',
+        );
+        applyFeederLabelWrap(container, '<svg/>');
+        expect(container.querySelector('#r')!.hasAttribute('data-feeder-wrap')).toBe(false);
+    });
+
+    it('ignores long text outside a feeder cell (e.g. the busbar label)', () => {
+        const container = mount(
+            '<svg><text id="bb">VL_virtual_relation_8423568_a_0-225_BBS1</text></svg>',
+        );
+        applyFeederLabelWrap(container, '<svg/>');
+        expect(container.querySelector('#bb')!.hasAttribute('data-feeder-wrap')).toBe(false);
+    });
+
+    it('restores the original text on a subsequent call with no svg', () => {
+        const container = mount(
+            '<svg><g class="sld-extern-cell">'
+            + '<text id="g">G_virtual_relation_8423568_a_0-225</text>'
+            + '</g></svg>',
+        );
+        applyFeederLabelWrap(container, '<svg/>');
+        applyFeederLabelWrap(container, null);
+        const t = container.querySelector('#g')!;
+        expect(t.hasAttribute('data-feeder-wrap')).toBe(false);
+        expect(t.textContent).toBe('G_virtual_relation_8423568_a_0-225');
+    });
+
+    it('skips highlight clones', () => {
+        const container = mount(
+            '<svg><g class="sld-extern-cell">'
+            + '<g class="sld-highlight-clone"><text>G_virtual_relation_8423568_a_0-225</text></g>'
+            + '<text id="orig">G_virtual_relation_8423568_a_0-225</text>'
+            + '</g></svg>',
+        );
+        applyFeederLabelWrap(container, '<svg/>');
+        expect(container.querySelector('#orig')!.getAttribute('data-feeder-wrap')).toBe('1');
+        expect(container.querySelector('.sld-highlight-clone text')!.hasAttribute('data-feeder-wrap')).toBe(false);
     });
 });

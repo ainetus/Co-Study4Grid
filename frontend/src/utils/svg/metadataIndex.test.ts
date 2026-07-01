@@ -66,5 +66,31 @@ describe('buildMetadataIndex', () => {
         const idx = buildMetadataIndex({})!;
         expect(idx.nodesByEquipmentId.size).toBe(0);
         expect(idx.edgesByEquipmentId.size).toBe(0);
+        expect(idx.textNodesBySvgId?.size).toBe(0);
+    });
+
+    it('maps VL text-label nodes to their VL via the vlNode link', () => {
+        const idx = buildMetadataIndex({
+            nodes: [{ equipmentId: 'VL_A', svgId: 'svg-a', x: 0, y: 0 }],
+            textNodes: [{ svgId: 'text-a', equipmentId: 'VL_A', vlNode: 'svg-a' }],
+            edges: [],
+        })!;
+        expect(idx.textNodesBySvgId?.get('text-a')?.equipmentId).toBe('VL_A');
+    });
+
+    it('falls back to equipmentId when a text node has no vlNode link', () => {
+        const idx = buildMetadataIndex({
+            nodes: [{ equipmentId: 'VL_A', svgId: 'svg-a', x: 0, y: 0 }],
+            textNodes: [{ svgId: 'text-a', equipmentId: 'VL_A' }],
+        })!;
+        expect(idx.textNodesBySvgId?.get('text-a')?.svgId).toBe('svg-a');
+    });
+
+    it('skips text nodes that resolve to no known VL', () => {
+        const idx = buildMetadataIndex({
+            nodes: [{ equipmentId: 'VL_A', svgId: 'svg-a', x: 0, y: 0 }],
+            textNodes: [{ svgId: 'text-x', equipmentId: 'VL_MISSING', vlNode: 'svg-missing' }],
+        })!;
+        expect(idx.textNodesBySvgId?.size).toBe(0);
     });
 });

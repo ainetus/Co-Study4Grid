@@ -49,23 +49,56 @@ const FEEDER_WRAP_CHARS = 15;
 const FEEDER_MAX_LINES = 3;
 
 /**
+ * Break a single word wider than ``budget`` into pieces no wider than it,
+ * preferring a natural separator (``_`` ``-`` ``.``) at or before the budget so
+ * an id like ``virtual_relation_8423568`` splits between segments rather than
+ * mid-token; falls back to a hard character cut when a chunk has no separator.
+ * The separator stays attached to the preceding piece so the pieces re-join
+ * exactly into the original word.
+ */
+function breakLongWord(word: string, budget: number): string[] {
+    if (word.length <= budget) return [word];
+    const pieces: string[] = [];
+    let rest = word;
+    while (rest.length > budget) {
+        let cut = -1;
+        for (let i = Math.min(budget, rest.length - 1); i >= 1; i--) {
+            const ch = rest[i];
+            if (ch === '_' || ch === '-' || ch === '.') { cut = i + 1; break; }
+        }
+        if (cut <= 0) cut = budget; // no separator in range → hard split
+        pieces.push(rest.slice(0, cut));
+        rest = rest.slice(cut);
+    }
+    if (rest) pieces.push(rest);
+    return pieces;
+}
+
+/**
  * Break a feeder label into at most ``FEEDER_MAX_LINES`` lines no wider than
- * ``FEEDER_WRAP_CHARS``, splitting on whitespace. A single word longer than the
- * budget is left intact on its own line (hard-splitting an id / name reads
- * worse than one slightly-long line). Overflow past the line cap is folded back
- * into the last line.
+ * ``FEEDER_WRAP_CHARS``. Splits on whitespace first, and a single word still
+ * wider than the budget (a long raw IIDM id — ``L_virtual_relation_8423568…``)
+ * is further broken on its ``_`` / ``-`` / ``.`` separators so it stops running
+ * horizontally off its feeder and overprinting the neighbour. Overflow past the
+ * line cap is folded back into the last line.
  */
 export function wrapFeederLabel(label: string): string[] {
-    if (label.length <= FEEDER_WRAP_CHARS || !label.includes(' ')) return [label];
-    const words = label.split(/\s+/).filter(Boolean);
+    if (label.length <= FEEDER_WRAP_CHARS) return [label];
     const lines: string[] = [];
     let cur = '';
-    for (const w of words) {
-        if (!cur) cur = w;
-        else if ((cur + ' ' + w).length <= FEEDER_WRAP_CHARS) cur += ' ' + w;
-        else { lines.push(cur); cur = w; }
+    for (const word of label.split(/\s+/).filter(Boolean)) {
+        // A word that still fits on the current line joins it with a space.
+        if (cur && (cur + ' ' + word).length <= FEEDER_WRAP_CHARS) {
+            cur += ' ' + word;
+            continue;
+        }
+        if (cur) { lines.push(cur); cur = ''; }
+        const pieces = breakLongWord(word, FEEDER_WRAP_CHARS);
+        for (let i = 0; i < pieces.length - 1; i++) lines.push(pieces[i]);
+        cur = pieces[pieces.length - 1];
     }
     if (cur) lines.push(cur);
+    if (lines.length === 0) return [label];
     if (lines.length > FEEDER_MAX_LINES) {
         const head = lines.slice(0, FEEDER_MAX_LINES - 1);
         head.push(lines.slice(FEEDER_MAX_LINES - 1).join(' '));
@@ -149,4 +182,49 @@ export function applyFeederRelabels(
             textEl.classList.add('sld-feeder-navigable');
         }
     }
+}
+
+/** Feeder cells whose name label sits at the diagram extremity. */
+const FEEDER_CELL_SELECTOR = '.sld-extern-cell, .sld-intern-cell, .sld-shunt-cell';
+/** A flow value (``-14`` / ``16.8 MVAr``) rather than an equipment name. */
+const NUMERIC_LABEL_RE = /^[+-]?[\d.,\s]+(?:\s*[A-Za-z%°]+)?$/;
+
+/**
+ * Wrap every long feeder NAME label at a substation's extremities so the names
+ * stop overlapping — the generator / load / unmatched-branch names that
+ * :func:`applyFeederRelabels` does NOT rewrite (only far-end-named branches get
+ * relabelled). Targets the equipment-name ``<text>`` inside each feeder cell
+ * (excluding the numeric P/Q flow labels and the already-relabelled feeders,
+ * which wrap themselves) and rewrites it with the same centred multi-line
+ * ``<tspan>`` block used for relabels.
+ *
+ * Idempotent: the original text is stashed in ``data-feeder-wrap-orig`` and
+ * restored first, and highlight clones (removed on the next render) are skipped.
+ * Run AFTER :func:`applyFeederRelabels` so relabelled feeders are left alone.
+ */
+export function applyFeederLabelWrap(
+    container: HTMLElement,
+    activeSvg: string | null,
+): void {
+    container.querySelectorAll('[data-feeder-wrap]').forEach(el => {
+        const orig = el.getAttribute('data-feeder-wrap-orig');
+        if (orig !== null) el.textContent = orig;  // replacing textContent drops any wrap <tspan>s
+        el.removeAttribute('data-feeder-wrap');
+        el.removeAttribute('data-feeder-wrap-orig');
+    });
+    if (!activeSvg) return;
+
+    container.querySelectorAll<SVGElement>(FEEDER_CELL_SELECTOR).forEach(cell => {
+        cell.querySelectorAll<SVGTextElement>('text').forEach(textEl => {
+            if (textEl.closest('.sld-highlight-clone')) return;
+            if (textEl.hasAttribute('data-feeder-relabel')) return;       // relabel wraps its own
+            if (textEl.closest('.sld-active-power, .sld-reactive-power')) return; // flow value
+            const raw = (textEl.textContent ?? '').trim();
+            if (raw.length <= FEEDER_WRAP_CHARS || NUMERIC_LABEL_RE.test(raw)) return;
+            if (wrapFeederLabel(raw).length <= 1) return;
+            textEl.setAttribute('data-feeder-wrap-orig', textEl.textContent ?? '');
+            textEl.setAttribute('data-feeder-wrap', '1');
+            setFeederText(textEl, raw);
+        });
+    });
 }
