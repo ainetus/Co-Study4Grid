@@ -556,4 +556,44 @@ describe('ActionCard', () => {
             expect(screen.queryByTestId('action-card-act_1-origin')).not.toBeInTheDocument();
         });
     });
+
+    describe('half-open overload annotation (charging current)', () => {
+        it('annotates the loading with reactive power when a line is open one end', () => {
+            const details: ActionDetail = {
+                ...baseDetails,
+                rho_after: [0.333],
+                half_open_overloads: { LINE_A: 16.8 },
+            };
+            render(
+                <ActionCard
+                    {...defaultProps}
+                    details={details}
+                    linesOverloaded={['LINE_A']}
+                    isViewing={true}
+                />,
+            );
+            // The 33.3 % is kept (it is physically real) AND explained.
+            expect(screen.getByText(/33\.3%/)).toBeInTheDocument();
+            expect(screen.getByText(/open one end/i)).toBeInTheDocument();
+            expect(screen.getByText(/16\.8 MVAr/)).toBeInTheDocument();
+        });
+
+        it('does not annotate a normally-loaded line', () => {
+            const details: ActionDetail = {
+                ...baseDetails,
+                rho_after: [0.85],
+                // no half_open_overloads
+            };
+            render(
+                <ActionCard
+                    {...defaultProps}
+                    details={details}
+                    linesOverloaded={['LINE_A']}
+                    isViewing={true}
+                />,
+            );
+            expect(screen.queryByText(/open one end/i)).not.toBeInTheDocument();
+            expect(screen.queryByText(/MVAr/i)).not.toBeInTheDocument();
+        });
+    });
 });

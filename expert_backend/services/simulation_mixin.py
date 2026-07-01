@@ -38,6 +38,7 @@ from expert_backend.services.simulation_helpers import (
     compute_redispatch_setpoint,
     compute_target_max_rho,
     extract_action_topology,
+    half_open_overload_notes,
     is_injection_action,
     is_pst_action,
     is_switch_only_content,
@@ -308,6 +309,16 @@ class SimulationMixin(_Base):
         )
         non_convergence = normalise_non_convergence(info_action.get("exception"))
 
+        # When the action leaves a still-"overloaded" line open at ONE end, its
+        # loading is real but is pure capacitive CHARGING current (the line is
+        # energised from the live end only) — the SLD / NAD show p = 0 while the
+        # card shows e.g. 33 %. Capture the live-end reactive power for any such
+        # line whose loading stays above ~1 % so the UI can annotate the value
+        # instead of it reading as a residual overload.
+        half_open_overloads = half_open_overload_notes(
+            obs_simu_action, lines_overloaded_names, metrics.get("rho_after") or []
+        )
+
         topo = extract_action_topology(action, action_id, self._dict_action)
         description, content = self._resolve_action_description_and_content(
             action_id, description_unitaire, topo
@@ -330,6 +341,7 @@ class SimulationMixin(_Base):
             "n_components": metrics["n_components_after"],
             "non_convergence": non_convergence,
             "lines_overloaded_after": sanitize_for_json(metrics["lines_overloaded_after"]),
+            "half_open_overloads": sanitize_for_json(half_open_overloads),
             "is_estimated": False,
         }
 

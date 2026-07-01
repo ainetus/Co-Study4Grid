@@ -158,6 +158,7 @@ export function buildSessionResult(input: SessionInput): SessionResult {
                         n_components: detail.n_components,
                         disconnected_mw: detail.disconnected_mw,
                         lines_overloaded_after: detail.lines_overloaded_after,
+                        half_open_overloads: detail.half_open_overloads,
                         load_shedding_details: detail.load_shedding_details,
                         curtailment_details: detail.curtailment_details,
                         pst_details: detail.pst_details,

@@ -7,6 +7,39 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### SLD readability & loading coherence on the PyPSA grids
+
+Three related fixes for the Single Line Diagram on the PyPSA-EUR grids,
+where equipment carries both a raw IIDM id (`relation_8423569-225`) and a
+friendly operator name (`MARSIL61PRAGN`):
+
+- **Feeders labelled by the far-end voltage level.** Branch feeders now
+  show the name of the voltage level at the OTHER end of the line (e.g.
+  `MARSILLON 225kV`) instead of pypowsybl's raw IIDM branch id, with a
+  `1`/`2` index kept when several parallel circuits reach the same far-end
+  VL. Falls back to the branch's own name, then to the raw id, so
+  already-readable grids are untouched.
+- **Overload halo now shows on the extremity SLD.** The N-1 overload halo
+  was missing on the constrained feeder because the overload list uses
+  grid2op friendly names while the SLD cells are keyed by IIDM id; the two
+  are now bridged so the halo lands on the right feeder.
+- **The "after" loading of a line opened at one end is now explained.**
+  When an action opens the overloaded line at one end, the card showed e.g.
+  33 % while the SLD / NAD drew zero flow. That is not a bug — a line open
+  at one end carries no active power (what the diagrams draw) but its
+  capacitance still draws real reactive charging current at the live end,
+  which the current-based loading reflects. The value is kept and annotated:
+  the card now adds *"open one end · 16.8 MVAr capacitive"* so it reads as
+  charging current, not a residual overload.
+
+Implementation: every SLD endpoint now returns a `feeder_labels` map
+(`build_feeder_labels`); the frontend relabel + overload-bridge live in
+`utils/svg/feederLabels.ts` + `hooks/useSldFeederRelabel.ts`; the charging-
+current annotation is `build_half_open_reactive` / `half_open_overload_notes`
+surfaced as `half_open_overloads` on the action result and rendered by
+`ActionCard`. See
+[`docs/features/sld-diagram-feeder-labels.md`](docs/features/sld-diagram-feeder-labels.md).
+
 ### Direct SLD editing — switches & injections without a mode toggle
 
 The interactive Single Line Diagram editor is now reachable straight

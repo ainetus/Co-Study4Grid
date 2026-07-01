@@ -70,8 +70,15 @@ frontend/
     │   ├── useOverflowIframe.ts    # Interactive overflow viewer: iframe
     │   │                           # lifecycle, layer toggles, hierarchical ↔
     │   │                           # geo switch, postMessage bridge, pin overlay
-    │   └── useTheme.ts             # Light/dark theme toggle + persistence
-    │                               # (0.8.0; see docs/features/dark-mode.md)
+    │   ├── useTheme.ts             # Light/dark theme toggle + persistence
+    │   │                           # (0.8.0; see docs/features/dark-mode.md)
+    │   ├── useSldFeederRelabel.ts  # Relabel SLD branch feeders with the far-
+    │   │                           # end VL name (Issue 1; render-every-time
+    │   │                           # self-gate, delegates the DOM swap to
+    │   │                           # utils/svg/feederLabels.applyFeederRelabels)
+    │   └── useSldInjectionNameButtons.ts # Render editable-injection NAME
+    │                               # buttons on the SLD (extracted from
+    │                               # SldOverlay to keep it under the LoC ceiling)
     ├── components/           # Presentational components (no API calls)
     │   ├── Header.tsx, ActionFeed.tsx, OverloadPanel.tsx,
     │   ├── VisualizationPanel.tsx, ActionCard.tsx, ActionCardPopover.tsx,
@@ -153,8 +160,11 @@ frontend/
         │   ├── actionPinData.ts       # - deltaVisuals: flow-delta colouring
         │   ├── actionPinRender.ts     # - actionPin{Data,Render}: overview pin layer
         │   ├── highlights.ts          # - highlights: contingency / overload halos
-        │   └── edgeInfoDeclutter.ts   # - flow-value de-collision (slide along edge;
-        │                              #   load-time pass invoked by svgBoost §6)
+        │   ├── edgeInfoDeclutter.ts   # - flow-value de-collision (slide along edge;
+        │   │                          #   load-time pass invoked by svgBoost §6)
+        │   └── feederLabels.ts        # - SLD feeder relabel + friendly-name↔IIDM-id
+        │                              #   overload bridge (see useSldFeederRelabel +
+        │                              #   docs/features/sld-diagram-feeder-labels.md)
         ├── svgPatch.ts                # SVG DOM recycling: clone N-state SVG
         │                              # and patch per-branch deltas on N-1 / action
         │                              # tab switches (PR #108). Used by useContingencyFetch.

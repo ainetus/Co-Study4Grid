@@ -403,6 +403,7 @@ export function useSession(): SessionState {
             // rendered empty and the SLD/NAD tab lost its post-action
             // overload halos until the user re-ran analysis.
             lines_overloaded_after: entry.lines_overloaded_after,
+            half_open_overloads: entry.half_open_overloads,
             load_shedding_details: entry.load_shedding_details,
             curtailment_details: entry.curtailment_details,
             redispatch_details: entry.redispatch_details,

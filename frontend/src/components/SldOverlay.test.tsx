@@ -1320,4 +1320,145 @@ describe('SldOverlay', () => {
             }
         });
     });
+
+    describe('feeder relabelling — other-end VL name (Issue 1)', () => {
+        const buildRelabelOverlay = (
+            feederLabels: VlOverlay['feeder_labels'],
+            tab: SldTab = 'n',
+        ): VlOverlay => ({
+            vlName: 'VL_PRAGN',
+            actionId: null,
+            svg:
+                '<svg xmlns="http://www.w3.org/2000/svg">'
+                + '<g class="sld-extern-cell"><text id="lbl_marsil">relation_8423569-225</text></g>'
+                + '<g class="sld-extern-cell"><text id="lbl_load">L_way_207479669-225</text></g>'
+                + '</svg>',
+            sldMetadata: null,
+            loading: false,
+            error: null,
+            tab,
+            feeder_labels: feederLabels,
+        });
+
+        it('replaces the raw branch id with the far-end VL name', () => {
+            const overlay = buildRelabelOverlay({
+                'relation_8423569-225': {
+                    name: 'MARSIL61PRAGN', other_vl: 'VL_MARSIL', label: 'MARSILLON 225kV',
+                },
+            });
+            const { container } = render(<SldOverlay {...defaultProps} vlOverlay={overlay} />);
+            const lbl = container.querySelector('#lbl_marsil');
+            expect(lbl?.textContent).toBe('MARSILLON 225kV');
+            expect(lbl?.getAttribute('data-feeder-orig')).toBe('relation_8423569-225');
+        });
+
+        it('preserves a parallel-circuit index in the label', () => {
+            const overlay = buildRelabelOverlay({
+                'relation_8423569-225': {
+                    name: 'LANNEL61PRAGN', other_vl: 'VL_LANNE', label: 'LANNEMEZAN 225kV 2',
+                },
+            });
+            const { container } = render(<SldOverlay {...defaultProps} vlOverlay={overlay} />);
+            expect(container.querySelector('#lbl_marsil')?.textContent).toBe('LANNEMEZAN 225kV 2');
+        });
+
+        it('leaves the id untouched when the label is null', () => {
+            const overlay = buildRelabelOverlay({
+                'relation_8423569-225': { name: null, other_vl: null, label: null },
+            });
+            const { container } = render(<SldOverlay {...defaultProps} vlOverlay={overlay} />);
+            expect(container.querySelector('#lbl_marsil')?.textContent).toBe('relation_8423569-225');
+        });
+
+        it('leaves feeders without an entry untouched', () => {
+            const overlay = buildRelabelOverlay({
+                'relation_8423569-225': {
+                    name: 'MARSIL61PRAGN', other_vl: 'VL_MARSIL', label: 'MARSILLON 225kV',
+                },
+            });
+            const { container } = render(<SldOverlay {...defaultProps} vlOverlay={overlay} />);
+            // The load feeder has no feeder_labels entry → keep its own id label.
+            expect(container.querySelector('#lbl_load')?.textContent).toBe('L_way_207479669-225');
+        });
+
+        it('does nothing when feeder_labels is absent', () => {
+            const overlay = buildRelabelOverlay(undefined);
+            const { container } = render(<SldOverlay {...defaultProps} vlOverlay={overlay} />);
+            expect(container.querySelector('#lbl_marsil')?.textContent).toBe('relation_8423569-225');
+            expect(container.querySelector('[data-feeder-relabel]')).toBeNull();
+        });
+    });
+
+    describe('overload halo via friendly name (Issue 2)', () => {
+        // SLD cell keyed by IIDM id; the overload is reported by the grid2op /
+        // operator FRIENDLY name. Without the feeder_labels bridge the halo
+        // never lands (the friendly name does not match the metadata id).
+        const buildOverlay = (withFeederLabels: boolean): VlOverlay => ({
+            vlName: 'VL_PRAGN',
+            actionId: null,
+            svg:
+                '<svg xmlns="http://www.w3.org/2000/svg">'
+                + '<g><rect id="cell_marsil" width="10" height="10"/></g>'
+                + '</svg>',
+            sldMetadata: JSON.stringify({
+                nodes: [{ id: 'cell_marsil', equipmentId: 'relation_8423569-225' }],
+            }),
+            loading: false,
+            error: null,
+            tab: 'contingency',
+            feeder_labels: withFeederLabels
+                ? {
+                    'relation_8423569-225': {
+                        name: 'MARSIL61PRAGN', other_vl: 'VL_MARSIL', label: 'MARSILLON 225kV',
+                    },
+                }
+                : undefined,
+        });
+
+        const resultWith = (overloaded: string[]) =>
+            ({
+                actions: {},
+                lines_overloaded: overloaded,
+                pdf_path: null,
+                pdf_url: null,
+                message: '',
+                dc_fallback: false,
+            } as unknown as AnalysisResult);
+
+        it('highlights the feeder when the overload is reported by friendly name', () => {
+            const { container } = render(
+                <SldOverlay
+                    {...defaultProps}
+                    vlOverlay={buildOverlay(true)}
+                    result={resultWith(['MARSIL61PRAGN'])}
+                    selectedContingency={['LANNEL61PRAGN']}
+                />,
+            );
+            expect(container.querySelector('#cell_marsil.sld-highlight-overloaded-original')).toBeTruthy();
+        });
+
+        it('does NOT highlight without the bridge (reproduces the bug)', () => {
+            const { container } = render(
+                <SldOverlay
+                    {...defaultProps}
+                    vlOverlay={buildOverlay(false)}
+                    result={resultWith(['MARSIL61PRAGN'])}
+                    selectedContingency={['LANNEL61PRAGN']}
+                />,
+            );
+            expect(container.querySelector('#cell_marsil.sld-highlight-overloaded-original')).toBeNull();
+        });
+
+        it('still highlights when the overload is reported by raw IIDM id', () => {
+            const { container } = render(
+                <SldOverlay
+                    {...defaultProps}
+                    vlOverlay={buildOverlay(true)}
+                    result={resultWith(['relation_8423569-225'])}
+                    selectedContingency={['LANNEL61PRAGN']}
+                />,
+            );
+            expect(container.querySelector('#cell_marsil.sld-highlight-overloaded-original')).toBeTruthy();
+        });
+    });
 });

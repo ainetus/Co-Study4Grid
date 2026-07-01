@@ -17,6 +17,7 @@ Extracting them:
 from __future__ import annotations
 
 import logging
+import math
 import re
 from typing import Any
 
@@ -307,6 +308,64 @@ def _to_1d(arr: Any) -> np.ndarray:
     return np.atleast_1d(arr)
 
 
+def build_half_open_reactive(network: Any) -> dict[str, float]:
+    """Return ``{branch_id_or_name: live_end_reactive_mvar}`` for lines + 2-winding
+    transformers that are open at EXACTLY ONE terminal in the current variant.
+
+    A branch open at one end is out of service for active-power transfer, but its
+    line capacitance stays energised from the live end, so pypowsybl reports a
+    real REACTIVE charging current there (e.g. a 225 kV line opened at one end
+    shows ~16 MVAr at the connected terminal while p ~ 0). The current-based
+    loading ``rho`` then reads a small non-zero value — physically correct, but
+    easy to misread as a residual overload when the operator opened the line to
+    relieve one. Returning the live-end reactive power lets the UI explain that
+    an "after" loading on such a branch is capacitive charging current, not flow.
+
+    The value is ``abs(q)`` at the still-connected terminal. Keys cover BOTH the
+    IIDM id and the friendly ``name`` so a caller holding a grid2op / operator
+    name (``MARSIL61PRAGN``) can look the branch up. Returns ``{}`` on any
+    pypowsybl failure — the annotation is additive and must not break a run.
+    """
+    out: dict[str, float] = {}
+    for getter in ("get_lines", "get_2_windings_transformers"):
+        try:
+            df = getattr(network, getter)(
+                attributes=["name", "connected1", "connected2", "q1", "q2"]
+            )
+        except Exception as e:
+            logger.debug("build_half_open_reactive: %s(attrs) failed: %s", getter, e)
+            try:
+                df = getattr(network, getter)()
+            except Exception as e2:
+                logger.debug("build_half_open_reactive: %s fallback failed: %s", getter, e2)
+                continue
+        try:
+            cols = list(getattr(df, "columns", []))
+            if "connected1" not in cols or "connected2" not in cols:
+                continue
+            has_name = "name" in cols
+            for eid, row in df.iterrows():
+                c1, c2 = bool(row["connected1"]), bool(row["connected2"])
+                if c1 == c2:
+                    continue  # both connected, or both open — not "half open"
+                q_live = row.get("q1") if c1 else row.get("q2")
+                try:
+                    reactive = abs(float(q_live))
+                except (TypeError, ValueError):
+                    reactive = 0.0
+                if not math.isfinite(reactive):
+                    reactive = 0.0
+                out[str(eid)] = reactive
+                if has_name:
+                    nm = row.get("name")
+                    if nm is not None and str(nm) != "nan":
+                        out[str(nm)] = reactive
+        except Exception as e:
+            logger.debug("build_half_open_reactive: scan failed for %s: %s", getter, e)
+            continue
+    return out
+
+
 def build_care_mask(
     action_names: np.ndarray,
     action_rho: np.ndarray,
@@ -412,6 +471,68 @@ def resolve_lines_overloaded(
     ids = np.where(mask)[0].tolist()
     names = action_names[mask].tolist()
     return ids, names
+
+
+def half_open_overload_notes(
+    obs: Any, lines_overloaded_names: list[str], rho_after: list[float]
+) -> dict[str, float]:
+    """Return ``{line_name: live_end_reactive_mvar}`` for still-"overloaded" lines
+    the action leaves open at ONE end with a loading above ~1 %.
+
+    Such a line carries no real flow (the diagrams show p = 0) but its capacitance
+    draws reactive charging current from the live end, so its current-based
+    loading stays non-zero (the reported ~33 %). Surfacing the live-end reactive
+    power lets the ActionCard annotate the value as capacitive charging current
+    rather than it reading as a residual overload. Reads the post-action variant
+    via :func:`half_open_branch_reactive_from_obs`.
+    """
+    if not lines_overloaded_names:
+        return {}
+    half_open = half_open_branch_reactive_from_obs(obs)
+    if not half_open:
+        return {}
+    notes: dict[str, float] = {}
+    for i, name in enumerate(lines_overloaded_names):
+        try:
+            rho = float(rho_after[i]) if i < len(rho_after) else 0.0
+        except (TypeError, ValueError):
+            rho = 0.0
+        if name in half_open and rho > 0.01:
+            notes[name] = half_open[name]
+    return notes
+
+
+def half_open_branch_reactive_from_obs(obs: Any) -> dict[str, float]:
+    """Return ``{branch_id_or_name: live_end_reactive_mvar}`` for branches open at
+    exactly one terminal in ``obs``'s post-action pypowsybl variant (see
+    :func:`build_half_open_reactive`).
+
+    Reads the SAME variant the SLD / NAD diagrams render
+    (``obs._network_manager`` on ``obs._variant_id``). Best-effort — returns
+    ``{}`` on any failure and always restores the network manager's working
+    variant so the shared network is never left mutated.
+    """
+    nm = getattr(obs, "_network_manager", None)
+    variant_id = getattr(obs, "_variant_id", None)
+    network = getattr(nm, "network", None) if nm is not None else None
+    if network is None or variant_id is None:
+        return {}
+    try:
+        original = network.get_working_variant_id()
+    except Exception as e:
+        logger.debug("half_open_branch_reactive_from_obs: cannot read working variant: %s", e)
+        return {}
+    try:
+        nm.set_working_variant(variant_id)
+        return build_half_open_reactive(network)
+    except Exception as e:
+        logger.debug("half_open_branch_reactive_from_obs: read failed: %s", e)
+        return {}
+    finally:
+        try:
+            nm.set_working_variant(original)
+        except Exception as e:
+            logger.debug("half_open_branch_reactive_from_obs: variant restore failed: %s", e)
 
 
 def compute_action_metrics(
@@ -586,6 +707,7 @@ def serialize_action_result(action_id: str, action_data: dict) -> dict:
         "non_convergence": action_data.get("non_convergence"),
         "lines_overloaded": sanitize_for_json(action_data.get("lines_overloaded_after", [])),
         "lines_overloaded_after": sanitize_for_json(action_data.get("lines_overloaded_after", [])),
+        "half_open_overloads": sanitize_for_json(action_data.get("half_open_overloads", {})),
         "is_estimated": False,
         "action_topology": action_data.get("action_topology"),
         "curtailment_details": action_data.get("curtailment_details"),

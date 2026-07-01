@@ -12,11 +12,13 @@ no network loading. They guarantee the decomposition preserves the
 behaviour the orchestrator methods relied on.
 """
 import numpy as np
+import pandas as pd
 import pytest
 from unittest.mock import MagicMock
 
 from expert_backend.services.simulation_helpers import (
     TOPO_KEYS,
+    build_half_open_reactive,
     build_care_mask,
     build_combined_description,
     canonicalize_action_id,
@@ -537,6 +539,72 @@ class TestComputeActionMetrics:
         )
         assert metrics["max_rho_line"] == "L2"
         assert metrics["max_rho"] == pytest.approx(1.3 * 0.95)
+
+
+# ----------------------------------------------------------------------
+# build_half_open_reactive  (Issue 3 — charging-current annotation)
+# ----------------------------------------------------------------------
+
+class TestBuildHalfOpenReactive:
+    def _net(self, lines, trafos=None):
+        net = MagicMock()
+        net.get_lines.return_value = pd.DataFrame.from_dict(lines, orient="index")
+        net.get_2_windings_transformers.return_value = (
+            pd.DataFrame.from_dict(trafos, orient="index")
+            if trafos
+            else pd.DataFrame(columns=["name", "connected1", "connected2", "q1", "q2"])
+        )
+        return net
+
+    def test_half_open_line_returns_live_end_reactive(self):
+        # Reproduces the reported case: MARSIL61PRAGN open at s2 (connected2=False),
+        # live end s1 draws q1 = -16.8 MVAr of capacitive charging current.
+        net = self._net(
+            {
+                "relation_8423569-225": {
+                    "name": "MARSIL61PRAGN",
+                    "connected1": True, "connected2": False,
+                    "q1": -16.8, "q2": 0.0,
+                },
+            }
+        )
+        out = build_half_open_reactive(net)
+        # abs(live-end q), reachable by both IIDM id and friendly name.
+        assert out["relation_8423569-225"] == pytest.approx(16.8)
+        assert out["MARSIL61PRAGN"] == pytest.approx(16.8)
+
+    def test_picks_the_connected_terminal_reactive(self):
+        net = self._net(
+            {"L": {"name": "L", "connected1": False, "connected2": True, "q1": 0.0, "q2": -9.5}}
+        )
+        out = build_half_open_reactive(net)
+        assert out["L"] == pytest.approx(9.5)  # live end is s2 → |q2|
+
+    def test_fully_connected_and_fully_open_are_excluded(self):
+        net = self._net(
+            {
+                "connected": {"name": "C", "connected1": True, "connected2": True, "q1": 5.0, "q2": -5.0},
+                "fully_open": {"name": "O", "connected1": False, "connected2": False, "q1": 0.0, "q2": 0.0},
+            }
+        )
+        out = build_half_open_reactive(net)
+        assert "connected" not in out and "C" not in out
+        assert "fully_open" not in out and "O" not in out
+
+    def test_transformers_included(self):
+        net = self._net(
+            {"L1": {"name": "L1", "connected1": True, "connected2": True, "q1": 1.0, "q2": 1.0}},
+            trafos={"T1": {"name": "TR1", "connected1": True, "connected2": False, "q1": 4.2, "q2": 0.0}},
+        )
+        out = build_half_open_reactive(net)
+        assert out["T1"] == pytest.approx(4.2)
+        assert out["TR1"] == pytest.approx(4.2)
+
+    def test_pypowsybl_failure_degrades_to_empty(self):
+        net = MagicMock()
+        net.get_lines.side_effect = RuntimeError("boom")
+        net.get_2_windings_transformers.side_effect = RuntimeError("boom")
+        assert build_half_open_reactive(net) == {}
 
 
 # ----------------------------------------------------------------------

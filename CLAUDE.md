@@ -171,6 +171,7 @@ Co-Study4Grid/
 | `docs/features/adding-action-type.md` | Cross-cutting checklist for adding/upgrading a remedial-action type (lib → backend → frontend → save/log/reload triad → regression specs) |
 | `docs/features/interaction-logging.md` | Replay-ready event log contract |
 | `docs/features/sld-topology-edit.md` | Interactive SLD topology edit → manual action card |
+| `docs/features/sld-diagram-feeder-labels.md` | SLD feeders relabelled by far-end VL name (+ parallel index), overload-halo friendly-name↔IIDM-id bridge, and the charging-current annotation explaining the "after" loading of a line opened at one end |
 | `docs/features/vl-disk-interactions.md` | Interactive VL disks on the NAD (hover name / click → Inspect / double-click → SLD) + delegation performance contract |
 | `docs/features/game-mode-codabench.md` | Timed, scored Game Mode (`?game=1`) + Codabench benchmark bundle |
 | `deploy/huggingface/` | HuggingFace Docker Space deployment (Space README + `SETUP.md`) |
@@ -297,9 +298,9 @@ Both scripts run in CI (`.github/workflows/code-quality.yml` and
 | POST | `/api/action-variant-diagram-patch` | Per-branch delta + VL-subtree splice for action DOM recycling |
 | POST | `/api/focused-diagram` | Generate NAD sub-diagram focused on a specific element |
 | POST | `/api/action-variant-focused-diagram` | Focused NAD for specific VL in post-action state |
-| POST | `/api/n-sld` | Single Line Diagram for voltage level in N state. Response includes `switch_states` (per-switch open/closed map) **and** `injections` (per-load/generator active-power baseline) used by the interactive SLD-edit feature. |
-| POST | `/api/contingency-sld` | Single Line Diagram in N-1 state (with flow deltas + `switch_states` + `injections`). |
-| POST | `/api/action-variant-sld` | SLD in post-action state (with flow deltas, `changed_switches`, `switch_states`, `injections`). |
+| POST | `/api/n-sld` | Single Line Diagram for voltage level in N state. Response includes `switch_states` (per-switch open/closed map), `injections` (per-load/generator active-power baseline) used by the interactive SLD-edit feature, **and** `feeder_labels` (per-branch `{name, other_vl, label}` — `label` = far-end VL name + parallel index, used to relabel feeders and bridge friendly-named overloads to the SLD cell). |
+| POST | `/api/contingency-sld` | Single Line Diagram in N-1 state (with flow deltas + `switch_states` + `injections` + `feeder_labels`). |
+| POST | `/api/action-variant-sld` | SLD in post-action state (with flow deltas, `changed_switches`, `switch_states`, `injections`, `feeder_labels`). |
 | POST | `/api/sld-topology-preview` | Target-topology preview SLD for the interactive SLD-edit feature: applies staged switch overrides on a throwaway variant and re-renders with topological colouring (no load flow; `stale_flows: true`). |
 | GET  | `/api/actions` | Return all available action IDs and descriptions |
 | POST | `/api/regenerate-overflow-graph` | Regenerate (or serve from cache) the overflow graph in hierarchical / geo layout — drives the toggle on the Overflow Analysis tab |
