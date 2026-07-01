@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { describe, it, expect } from 'vitest';
-import { buildFriendlyToEquip, overloadCandidates, applyFeederRelabels } from './feederLabels';
+import { buildFriendlyToEquip, overloadCandidates, applyFeederRelabels, wrapFeederLabel } from './feederLabels';
 import type { FeederLabel } from '../../types';
 
 const fl = (over: Partial<Record<string, FeederLabel>> = {}): Record<string, FeederLabel> => ({
@@ -43,6 +43,29 @@ describe('overloadCandidates', () => {
     it('falls back to the raw value when unmapped (already id-keyed)', () => {
         const map = buildFriendlyToEquip(fl());
         expect(overloadCandidates('relation_8423569-225', map)).toEqual(['relation_8423569-225']);
+    });
+});
+
+describe('wrapFeederLabel', () => {
+    it('keeps a short label on a single line', () => {
+        expect(wrapFeederLabel('MARSILLON 225kV')).toEqual(['MARSILLON 225kV']);
+    });
+
+    it('never wraps a single word (no spaces)', () => {
+        expect(wrapFeederLabel('virtual_relation_8423568_a_0-225'))
+            .toEqual(['virtual_relation_8423568_a_0-225']);
+    });
+
+    it('wraps a long label on spaces and preserves every token', () => {
+        const lines = wrapFeederLabel('LANNEMEZAN 225kV 2');
+        expect(lines.length).toBeGreaterThan(1);
+        expect(lines.join(' ')).toBe('LANNEMEZAN 225kV 2');
+    });
+
+    it('caps at three lines, folding the overflow into the last one', () => {
+        const lines = wrapFeederLabel('ONE TWO THREE FOUR FIVE SIX SEVEN EIGHT');
+        expect(lines.length).toBeLessThanOrEqual(3);
+        expect(lines.join(' ')).toBe('ONE TWO THREE FOUR FIVE SIX SEVEN EIGHT');
     });
 });
 
@@ -86,5 +109,30 @@ describe('applyFeederRelabels', () => {
         const container = mount('<svg><text id="t">relation_8423569-225</text></svg>');
         applyFeederRelabels(container, fl(), null);
         expect(container.querySelector('#t')!.textContent).toBe('relation_8423569-225');
+    });
+
+    it('tags the relabelled feeder with the far-end VL id for navigation', () => {
+        const container = mount('<svg><text id="t">relation_8423569-225</text></svg>');
+        applyFeederRelabels(container, fl(), '<svg/>');
+        const t = container.querySelector('#t')!;
+        expect(t.getAttribute('data-feeder-nav')).toBe('VL_MARSIL');
+        expect(t.classList.contains('sld-feeder-navigable')).toBe(true);
+    });
+
+    it('drops the navigation tag on restore', () => {
+        const container = mount('<svg><text id="t">relation_8423569-225</text></svg>');
+        applyFeederRelabels(container, fl(), '<svg/>');
+        applyFeederRelabels(container, {}, '<svg/>');
+        const t = container.querySelector('#t')!;
+        expect(t.getAttribute('data-feeder-nav')).toBeNull();
+        expect(t.classList.contains('sld-feeder-navigable')).toBe(false);
+    });
+
+    it('does not tag navigation when the far-end VL is unknown', () => {
+        const container = mount('<svg><text id="t">relation_8423569-225</text></svg>');
+        applyFeederRelabels(container, {
+            'relation_8423569-225': { name: 'X', other_vl: null, label: 'X' },
+        }, '<svg/>');
+        expect(container.querySelector('#t')!.getAttribute('data-feeder-nav')).toBeNull();
     });
 });

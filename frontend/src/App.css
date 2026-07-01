@@ -426,6 +426,18 @@ circle.nad-highlight {
     cursor: pointer;
 }
 
+/* Relabelled branch feeder names are clickable: a click navigates the SLD
+   overlay to that voltage level (the branch's other extremity). The dashed
+   underline + pointer cursor signal the affordance without recolouring. */
+.sld-feeder-navigable {
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+}
+.sld-feeder-navigable:hover {
+    fill: var(--color-brand-strong) !important;
+}
+
 /* Injection name rendered as a button (same dark blue + white text as the
    former "Manual action" button): a rounded rect injected behind the name
    <text>, with the label recoloured on top. */

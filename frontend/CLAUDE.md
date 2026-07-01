@@ -73,9 +73,14 @@ frontend/
     │   ├── useTheme.ts             # Light/dark theme toggle + persistence
     │   │                           # (0.8.0; see docs/features/dark-mode.md)
     │   ├── useSldFeederRelabel.ts  # Relabel SLD branch feeders with the far-
-    │   │                           # end VL name (Issue 1; render-every-time
-    │   │                           # self-gate, delegates the DOM swap to
+    │   │                           # end VL name + wrap long labels (Issue 1;
+    │   │                           # render-every-time self-gate, delegates the
+    │   │                           # DOM swap to
     │   │                           # utils/svg/feederLabels.applyFeederRelabels)
+    │   ├── useSldFeederNav.ts       # Click a relabelled feeder name → open the
+    │   │                           # far-end VL's SLD (reads data-feeder-nav;
+    │   │                           # capture-phase, keeps the current sub-tab so
+    │   │                           # the overload stays visible from both ends)
     │   └── useSldInjectionNameButtons.ts # Render editable-injection NAME
     │                               # buttons on the SLD (extracted from
     │                               # SldOverlay to keep it under the LoC ceiling)

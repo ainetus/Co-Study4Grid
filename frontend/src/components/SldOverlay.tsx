@@ -10,6 +10,7 @@ import type { DiagramData, AnalysisResult, ActionDetail, VlOverlay, SldTab, SldF
 import { isCouplingAction } from '../utils/svgUtils';
 import { buildFriendlyToEquip, overloadCandidates } from '../utils/svg/feederLabels';
 import { useSldFeederRelabel } from '../hooks/useSldFeederRelabel';
+import { useSldFeederNav } from '../hooks/useSldFeederNav';
 import { useSldInjectionNameButtons } from '../hooks/useSldInjectionNameButtons';
 import { colors } from '../styles/tokens';
 import SldEditPanel from './SldEditPanel';
@@ -93,6 +94,14 @@ export interface SldOverlayProps {
     onSwitchFocus?: (equipmentId: string | null) => void;
     onSwitchRemove?: (equipmentId: string) => void;
     onSwitchRemoveMany?: (equipmentIds: string[]) => void;
+    /**
+     * Navigate to the voltage level at a branch extremity. Fired when the
+     * operator clicks a (relabelled) feeder name — the far-end VL id is
+     * resolved from ``data-feeder-nav`` (set by ``applyFeederRelabels``). The
+     * host re-opens the SLD for that VL keeping the current tab, so the same
+     * overload stays visible from the other end.
+     */
+    onNavigateToVl?: (vlId: string) => void;
 }
 
 const SldOverlay: React.FC<SldOverlayProps> = ({
@@ -121,6 +130,7 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
     onSwitchFocus,
     onSwitchRemove,
     onSwitchRemoveMany,
+    onNavigateToVl,
 }) => {
     const overlayBodyRef = useRef<HTMLDivElement>(null);
     // True once a press-drag has moved the pointer beyond a small slop
@@ -1032,6 +1042,11 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
     // self-gate live in the hook (see utils/svg/feederLabels.ts for the swap).
     useSldFeederRelabel(overlayBodyRef, vlOverlay.feeder_labels, activeSvg, vlOverlay.tab, vlOverlay.actionId, previewActive);
 
+    // Click a relabelled feeder name → open the far-end VL's SLD. Registered
+    // BEFORE the edit-mode click effect below so its stop-immediate wins on a
+    // shared capture-phase click.
+    useSldFeederNav(overlayBodyRef, onNavigateToVl, panMovedRef);
+
     // Delegate switch clicks on the SVG body when edit mode is on.
     // We attach to the body container (capture phase) so taps on the
     // breaker's nested children still fire. The ``equipmentId`` is
@@ -1113,6 +1128,10 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
             // React stopPropagation on the bubble can't stop a capture-phase
             // native listener, so we filter here.
             if (target.closest('[data-testid="sld-injection-popover"]')) return;
+
+            // A feeder-name click navigates to the far-end VL (handled by
+            // useSldFeederNav) — never treat it as a topology maneuver.
+            if (target.closest('[data-feeder-nav]')) return;
 
             // Injection NAME button (rect / label tagged with
             // data-injection-equip) — opens the active-power editor.

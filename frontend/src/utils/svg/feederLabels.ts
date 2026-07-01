@@ -41,13 +41,72 @@ export function overloadCandidates(
     return mapped && mapped.length > 0 ? [lineId, ...mapped] : [lineId];
 }
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+/** Wrap a relabelled feeder onto multiple lines past this width so a long
+ *  far-end VL name (e.g. "LANNEMEZAN 225kV 1") stops overprinting the adjacent
+ *  feeder's label at the top / bottom of the SLD. */
+const FEEDER_WRAP_CHARS = 15;
+const FEEDER_MAX_LINES = 3;
+
+/**
+ * Break a feeder label into at most ``FEEDER_MAX_LINES`` lines no wider than
+ * ``FEEDER_WRAP_CHARS``, splitting on whitespace. A single word longer than the
+ * budget is left intact on its own line (hard-splitting an id / name reads
+ * worse than one slightly-long line). Overflow past the line cap is folded back
+ * into the last line.
+ */
+export function wrapFeederLabel(label: string): string[] {
+    if (label.length <= FEEDER_WRAP_CHARS || !label.includes(' ')) return [label];
+    const words = label.split(/\s+/).filter(Boolean);
+    const lines: string[] = [];
+    let cur = '';
+    for (const w of words) {
+        if (!cur) cur = w;
+        else if ((cur + ' ' + w).length <= FEEDER_WRAP_CHARS) cur += ' ' + w;
+        else { lines.push(cur); cur = w; }
+    }
+    if (cur) lines.push(cur);
+    if (lines.length > FEEDER_MAX_LINES) {
+        const head = lines.slice(0, FEEDER_MAX_LINES - 1);
+        head.push(lines.slice(FEEDER_MAX_LINES - 1).join(' '));
+        return head;
+    }
+    return lines;
+}
+
+/**
+ * Write ``label`` into ``textEl``, wrapping onto multiple ``<tspan>`` lines when
+ * it is long. The block is vertically centred on the original baseline (first
+ * line lifted by half the block height) so the wrapped label sits where the
+ * single-line id used to, spreading up AND down rather than only downward into
+ * the diagram.
+ */
+function setFeederText(textEl: SVGTextElement, label: string): void {
+    const lines = wrapFeederLabel(label);
+    if (lines.length <= 1) {
+        textEl.textContent = label;
+        return;
+    }
+    const x = textEl.getAttribute('x') ?? '0';
+    textEl.textContent = '';
+    lines.forEach((line, i) => {
+        const tspan = document.createElementNS(SVG_NS, 'tspan');
+        tspan.setAttribute('x', x);
+        tspan.setAttribute('dy', i === 0 ? `${(-0.6 * (lines.length - 1)).toFixed(2)}em` : '1.2em');
+        tspan.textContent = line;
+        textEl.appendChild(tspan);
+    });
+}
+
 /**
  * Relabel branch feeders with the NAME of the voltage level at the OTHER end of
  * the branch (e.g. "MARSILLON 225kV") instead of pypowsybl's default raw IIDM
  * branch id (e.g. "relation_8423569-225"), which is hard to interpret on the
  * PyPSA grids (Issue 1). The backend (``build_feeder_labels``) resolves the
- * far-end VL name + parallel-circuit index; here we just swap the matching
- * ``<text>`` content.
+ * far-end VL name + parallel-circuit index; here we swap the matching
+ * ``<text>`` content, wrapping long labels so they don't occlude their
+ * neighbours, and tag each with ``data-feeder-nav`` (the far-end VL id) so a
+ * click can navigate to that VL's SLD.
  *
  * Idempotent: the original text is stashed in ``data-feeder-orig`` so a tab /
  * VL / preview switch restores cleanly, and highlight clones (which carry a
@@ -61,9 +120,11 @@ export function applyFeederRelabels(
     // Restore any previous relabel first, then re-apply against the current SVG.
     container.querySelectorAll('[data-feeder-relabel]').forEach(el => {
         const orig = el.getAttribute('data-feeder-orig');
-        if (orig !== null) el.textContent = orig;
+        if (orig !== null) el.textContent = orig;  // replacing textContent drops any wrap <tspan>s
         el.removeAttribute('data-feeder-relabel');
         el.removeAttribute('data-feeder-orig');
+        el.removeAttribute('data-feeder-nav');
+        el.classList.remove('sld-feeder-navigable');
     });
     const entries = feederLabels
         ? Object.entries(feederLabels).filter(([, info]) => !!info && !!info.label)
@@ -82,6 +143,10 @@ export function applyFeederRelabels(
         if (!textEl) continue;
         textEl.setAttribute('data-feeder-orig', textEl.textContent ?? '');
         textEl.setAttribute('data-feeder-relabel', '1');
-        textEl.textContent = label;
+        setFeederText(textEl, label);
+        if (info.other_vl) {
+            textEl.setAttribute('data-feeder-nav', info.other_vl);
+            textEl.classList.add('sld-feeder-navigable');
+        }
     }
 }
