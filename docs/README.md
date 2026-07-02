@@ -74,6 +74,7 @@ folder's index for the full list.
 
 | File | Topic |
 |------|-------|
+| [`2026-07-full-repo-review.md`](architecture/2026-07-full-repo-review.md) | Full-repository review (2026-07): 12-dimension audit (architecture, API contract, UX, perf, docs, delivery, security + data pipeline / Game Mode / deployment gaps) with adversarially verified findings, a sequenced deep-revision roadmap (D1–D9), and 25 quick wins. |
 | [`app-refactoring-plan.md`](architecture/app-refactoring-plan.md) | Historical: Phase 1 + Phase 2 hook extraction from `App.tsx` (shipped). |
 | [`phase2-state-management-optimization.md`](architecture/phase2-state-management-optimization.md) | Memoize wrapper functions with `useCallback` (shipped 0.5.0). |
 | [`code-quality-analysis.md`](architecture/code-quality-analysis.md) | Continuous audit; latest deltas (§14–15) cover the 0.7.0 release + the function-LoC ceiling, postMessage envelope, FastAPI return-type follow-ups. |
