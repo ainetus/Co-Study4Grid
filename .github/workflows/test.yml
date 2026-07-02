@@ -1,8 +1,12 @@
 name: Tests
 
 on:
+  # Also run on pushes to the `claude/**` working branches so a PR stacked
+  # onto another working branch still gets commit-level checks (a `pull_request`
+  # whose base is not `main` is matched against the base branch's own trigger,
+  # which stays `main`-only).
   push:
-    branches: [ main ]
+    branches: [ main, 'claude/**' ]
   # Run on every PR regardless of its base branch (e.g. PRs stacked onto a
   # `claude/*` working branch, not just those targeting main).
   pull_request:
