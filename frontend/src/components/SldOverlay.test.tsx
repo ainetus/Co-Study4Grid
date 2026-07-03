@@ -1352,14 +1352,47 @@ describe('SldOverlay', () => {
             expect(lbl?.getAttribute('data-feeder-orig')).toBe('relation_8423569-225');
         });
 
-        it('preserves a parallel-circuit index in the label', () => {
+        it('preserves a parallel-circuit index in the label (wrapped over lines)', () => {
             const overlay = buildRelabelOverlay({
                 'relation_8423569-225': {
                     name: 'LANNEL61PRAGN', other_vl: 'VL_LANNE', label: 'LANNEMEZAN 225kV 2',
                 },
             });
             const { container } = render(<SldOverlay {...defaultProps} vlOverlay={overlay} />);
-            expect(container.querySelector('#lbl_marsil')?.textContent).toBe('LANNEMEZAN 225kV 2');
+            const lbl = container.querySelector('#lbl_marsil')!;
+            // Long labels wrap onto <tspan> lines so they don't occlude a
+            // neighbouring feeder; the full label (index included) is preserved.
+            const tspans = Array.from(lbl.querySelectorAll('tspan'));
+            expect(tspans.length).toBeGreaterThan(1);
+            expect(tspans.map(t => t.textContent).join(' ')).toBe('LANNEMEZAN 225kV 2');
+        });
+
+        it('tags a relabelled feeder for navigation to the far-end VL', () => {
+            const overlay = buildRelabelOverlay({
+                'relation_8423569-225': {
+                    name: 'MARSIL61PRAGN', other_vl: 'VL_MARSIL', label: 'MARSILLON 225kV',
+                },
+            });
+            const { container } = render(<SldOverlay {...defaultProps} vlOverlay={overlay} />);
+            const lbl = container.querySelector('#lbl_marsil');
+            expect(lbl?.getAttribute('data-feeder-nav')).toBe('VL_MARSIL');
+            expect(lbl?.classList.contains('sld-feeder-navigable')).toBe(true);
+        });
+
+        it('navigates to the far-end VL when a feeder name is clicked', () => {
+            const overlay = buildRelabelOverlay({
+                'relation_8423569-225': {
+                    name: 'MARSIL61PRAGN', other_vl: 'VL_MARSIL', label: 'MARSILLON 225kV',
+                },
+            });
+            const onNavigateToVl = vi.fn();
+            const { container } = render(
+                <SldOverlay {...defaultProps} vlOverlay={overlay} onNavigateToVl={onNavigateToVl} />,
+            );
+            container.querySelector<SVGTextElement>('#lbl_marsil')!.dispatchEvent(
+                new MouseEvent('click', { bubbles: true }),
+            );
+            expect(onNavigateToVl).toHaveBeenCalledWith('VL_MARSIL');
         });
 
         it('leaves the id untouched when the label is null', () => {

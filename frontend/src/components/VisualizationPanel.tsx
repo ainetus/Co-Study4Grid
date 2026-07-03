@@ -121,6 +121,8 @@ interface VisualizationPanelProps {
     onSldSwitchFocus?: (equipmentId: string | null) => void;
     onSldSwitchRemove?: (equipmentId: string) => void;
     onSldSwitchRemoveMany?: (equipmentIds: string[]) => void;
+    /** Navigate the SLD overlay to a branch extremity's voltage level. */
+    onSldNavigateToVl?: (vlId: string) => void;
     voltageLevels: string[];
     onVlOpen: (vlName: string) => void;
     /**
@@ -283,6 +285,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     onSldSwitchFocus,
     onSldSwitchRemove,
     onSldSwitchRemoveMany,
+    onSldNavigateToVl,
     voltageLevels,
     onVlOpen,
     onOverflowPinPreview,
@@ -1404,6 +1407,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         onSwitchFocus={onSldSwitchFocus}
                         onSwitchRemove={onSldSwitchRemove}
                         onSwitchRemoveMany={onSldSwitchRemoveMany}
+                        onNavigateToVl={onSldNavigateToVl}
                     />
                 )}
 
