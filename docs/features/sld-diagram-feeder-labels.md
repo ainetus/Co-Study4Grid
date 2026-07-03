@@ -30,11 +30,25 @@ operator reads *where the line goes*, e.g. `MARSILLON 225kV`).
   highlight clones skipped) — the same render-every-time + self-gate
   pattern as the other SLD label passes.
 - **Long labels wrap instead of occluding neighbours.** A relabelled name
-  wider than ~15 chars (`wrapFeederLabel`) is split on whitespace onto up to
-  three `<tspan>` lines, vertically centred on the original baseline (first
-  line lifted by half the block height) so it spreads up AND down rather than
-  overprinting the adjacent feeder's label — the fix for the top/bottom label
-  pile-up on dense VLs like `VL_way_207479669-225`.
+  wider than ~15 chars (`wrapFeederLabel`) is split onto up to three `<tspan>`
+  lines, vertically centred on the original baseline (first line lifted by half
+  the block height) so it spreads up AND down rather than overprinting the
+  adjacent feeder's label — the fix for the top/bottom label pile-up on dense
+  VLs like `VL_way_207479669-225`. Wrapping breaks on whitespace first and, for
+  a long single word with no spaces (a raw IIDM id like
+  `L_virtual_relation_8423568_a_0-225`), on its `_` / `-` / `.` separators.
+- **Every long feeder NAME wraps, not just the relabelled branches.**
+  `applyFeederLabelWrap` (in `feederLabels.ts`, run right after
+  `applyFeederRelabels` from `useSldFeederRelabel`) wraps the remaining long
+  feeder names at a substation's extremities — generators, loads, and branches
+  whose far-end VL is unnamed (so they were never relabelled) — which is the
+  overlap that survived Issue 1's branch-only relabelling. It targets the
+  equipment-name `<text>` inside each feeder cell (`.sld-extern-cell` /
+  `.sld-intern-cell` / `.sld-shunt-cell`), skipping the numeric P/Q flow labels,
+  the already-relabelled feeders (which wrap themselves), and highlight clones.
+  Idempotent via `data-feeder-wrap` / `data-feeder-wrap-orig`. It runs BEFORE
+  the injection-name-button pass so those buttons size their box to the wrapped
+  multi-line name.
 
 ## 1b. Navigate to a branch's other extremity by clicking its feeder name
 

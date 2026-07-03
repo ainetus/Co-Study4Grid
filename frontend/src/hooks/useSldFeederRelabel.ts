@@ -7,12 +7,14 @@
 
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 import type { FeederLabel, SldTab } from '../types';
-import { applyFeederRelabels } from '../utils/svg/feederLabels';
+import { applyFeederRelabels, applyFeederLabelWrap } from '../utils/svg/feederLabels';
 
 /**
- * Relabel SLD branch feeders with the far-end VL name (Issue 1). Owns the
- * render-every-time + signature self-gate so a pan reconciliation that drops
- * the relabel re-applies it, mirroring the other SldOverlay label passes.
+ * Relabel SLD branch feeders with the far-end VL name (Issue 1) AND wrap every
+ * remaining long feeder NAME (generators / loads / unmatched branches) so the
+ * names stop overlapping at the substation extremities. Owns the
+ * render-every-time + self-gate so a pan reconciliation that drops either pass
+ * re-applies it, mirroring the other SldOverlay label passes.
  */
 export function useSldFeederRelabel(
     bodyRef: RefObject<HTMLDivElement | null>,
@@ -22,7 +24,7 @@ export function useSldFeederRelabel(
     actionId: string | null,
     preview: boolean,
 ): void {
-    const sigRef = useRef<string>('');
+    const stateRef = useRef({ sig: '', relabel: false, wrap: false });
     useLayoutEffect(() => {
         const container = bodyRef.current;
         if (!container) return;
@@ -36,10 +38,20 @@ export function useSldFeederRelabel(
             preview,
             labels: entries.map(([eid, info]) => `${eid}=${info.label}`).sort(),
         });
-        const applied = container.querySelector('[data-feeder-relabel]') !== null;
-        const expect = entries.length > 0 && !!activeSvg;
-        if (sig === sigRef.current && (expect ? applied : !applied)) return;
-        sigRef.current = sig;
+        const relabelPresent = container.querySelector('[data-feeder-relabel]') !== null;
+        const wrapPresent = container.querySelector('[data-feeder-wrap]') !== null;
+        // Re-run when the inputs changed, or when a reconciliation dropped the
+        // marks we last produced (the DOM diverged from our recorded state).
+        const consistent =
+            stateRef.current.relabel === relabelPresent &&
+            stateRef.current.wrap === wrapPresent;
+        if (sig === stateRef.current.sig && consistent) return;
         applyFeederRelabels(container, feederLabels, activeSvg);
+        applyFeederLabelWrap(container, activeSvg);
+        stateRef.current = {
+            sig,
+            relabel: container.querySelector('[data-feeder-relabel]') !== null,
+            wrap: container.querySelector('[data-feeder-wrap]') !== null,
+        };
     });
 }

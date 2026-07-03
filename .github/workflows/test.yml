@@ -3,8 +3,10 @@ name: Tests
 on:
   push:
     branches: [ main ]
+  # Run on every PR regardless of its base branch (e.g. PRs stacked onto a
+  # `claude/*` working branch, not just those targeting main).
   pull_request:
-    branches: [ main ]
+    branches: [ '**' ]
 
 jobs:
   # ------------------------------------------------------------------
