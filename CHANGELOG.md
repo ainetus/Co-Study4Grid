@@ -7,6 +7,19 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Compatibility with the `expert_op4grid_recommender` typed-pipeline refactor
+
+- **`run_analysis_step1` now tolerates the library's new single-value return.**
+  Upstream `expert_op4grid_recommender` replaced the analysis pipeline's
+  `(res_step1, context)` 2-tuple with a single `AnalysisContext` (proceed) or
+  `AnalysisResult` (no-overload short-circuit). `AnalysisMixin.run_analysis_step1`
+  now normalises both shapes via `_normalize_step1_outcome`, so the backend
+  keeps working against both the legacy and the refactored recommender releases
+  (same version-tolerance pattern as `_upstream_step1_supports_prebuilt_obs`).
+  The `AnalysisContext` / `AnalysisResult` dataclasses keep a dict-compatible
+  view, so every `context[...]` / `result.get(...)` access in the service layer
+  is unchanged.
+
 ### SLD readability & loading coherence on the PyPSA grids
 
 Three related fixes for the Single Line Diagram on the PyPSA-EUR grids,

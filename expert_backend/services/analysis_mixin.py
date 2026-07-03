@@ -89,6 +89,40 @@ def _upstream_step1_supports_prebuilt_obs() -> bool:
         return False
 
 
+def _normalize_step1_outcome(outcome: Any) -> tuple[Any, Any]:
+    """Normalise ``run_analysis_step1``'s return across recommender versions.
+
+    Older ``expert_op4grid_recommender`` releases returned a
+    ``(res_step1, context)`` 2-tuple where a non-``None`` ``res_step1`` meant
+    "no actionable overload". Newer releases (the typed-pipeline refactor)
+    return a **single** value instead: an ``AnalysisResult`` (the no-overload
+    short-circuit) or an ``AnalysisContext`` (proceed to step 2). This
+    normaliser accepts either shape and always returns the legacy
+    ``(res_step1, context)`` pair so the rest of the wrapper is
+    version-agnostic — the same tolerance pattern as
+    ``_upstream_step1_supports_prebuilt_obs``.
+    """
+    # Legacy contract: an explicit (res_step1, context) tuple.
+    if isinstance(outcome, tuple) and len(outcome) == 2:
+        return outcome
+    # Newer contract: a single AnalysisResult / AnalysisContext. Detect the
+    # short-circuit result by type when the class is importable, else probe
+    # structurally (a result exposes ``prioritized_actions`` and carries no
+    # live observation, whereas a context always carries ``obs``).
+    try:
+        from expert_op4grid_recommender.main import AnalysisResult
+        is_early_result = isinstance(outcome, AnalysisResult)
+    except (ImportError, TypeError):
+        is_early_result = (
+            hasattr(outcome, "get")
+            and "obs" not in outcome
+            and outcome.get("prioritized_actions") is not None
+        )
+    if is_early_result:
+        return outcome, None
+    return None, outcome
+
+
 if TYPE_CHECKING:
     from expert_backend.services._recommender_state import RecommenderState
 
@@ -484,7 +518,9 @@ class AnalysisMixin(_Base):
                     "expert_op4grid_recommender lacks ``prebuilt_obs_simu_defaut`` "
                     "support — falling back to the full contingency simulation."
                 )
-            res_step1, context = run_analysis_step1(**step1_kwargs)
+            res_step1, context = _normalize_step1_outcome(
+                run_analysis_step1(**step1_kwargs)
+            )
             self._last_disconnected_elements = list(norm)
             # Stash the wall-clock so step 2 can forward it to the result
             # event — the React UI shows the full breakdown including

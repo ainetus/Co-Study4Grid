@@ -53,6 +53,7 @@ Configuration in `frontend/vite.config.ts` (Vitest plugin).
 |------|-------------|
 | `test_recommender_simulation.py` | Real data simulation with small test grid |
 | `test_split_analysis.py` | Two-step analysis workflow (step1 overload detect, step2 resolve) |
+| `test_step1_outcome_normalization.py` | `_normalize_step1_outcome` — tolerates the recommender's typed-pipeline return (single `AnalysisContext`/`AnalysisResult`) as well as the legacy `(res, context)` 2-tuple; tuple + isinstance + structural-fallback paths, plus the service short-circuit/proceed decision. Real-dataclass cases skip under the mock layer. |
 | `test_combined_actions_integration.py` | Combined action workflow integration (incl. PR #114 LS/curtailment in combined pairs) |
 | `test_combined_actions_scenario.py` | Real-world combined action scenarios |
 | `test_stream_pdf_integration.py` | Streaming NDJSON + PDF event integration |
