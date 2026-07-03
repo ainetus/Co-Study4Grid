@@ -80,6 +80,7 @@ folder's index for the full list.
 | [`code-quality-analysis.md`](architecture/code-quality-analysis.md) | Continuous audit; latest deltas (§14–15) cover the 0.7.0 release + the function-LoC ceiling, postMessage envelope, FastAPI return-type follow-ups. |
 | [`development-cycle.md`](architecture/development-cycle.md) | Chronological retrospective covering the four development phases through 0.7.0 (minimal end-to-end → features → consolidation → PyPSA-EUR + interactive overflow). |
 | [`simulation-pipeline.md`](architecture/simulation-pipeline.md) | End-to-end backend simulation pipeline: state lifecycle, two-step analysis, manual-action flow, superposition, available modes, hypotheses, UI → config mapping. Companion to the lib's `docs/architecture/simulation-pipeline.md` (physical / numerical layer). |
+| [`ronci-beon-reproducibility.md`](architecture/ronci-beon-reproducibility.md) | Calibration case `P.SAOL31RONCI` → `BEON L31CPVAN` overload: reference values per grid (reduced 98.75 % / full 96.1 %), the Hades2 SecurityAnalysis recipe, fast/slow modes, the full-grid slow-mode divergence (20→100 outer-iter fix) and the `CHALOY631` remedial action. Reproduced by `scripts/reproduce_ronci_overload.py`. |
 
 ## Proposals (`proposals/`)
 
