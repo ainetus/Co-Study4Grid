@@ -316,6 +316,21 @@ When to flip the UI checkbox off:
   `DC_VALUES` fallback is the closest you can get to the lib's
   reference `run_load_flow` semantics.
 
+> **Caveat — the diagram / overload path on large grids.** The N-1
+> *diagram* path (`recommender_service._get_contingency_variant` →
+> `_run_ac_with_fallback`) runs `create_olf_rte_parameter()` from the
+> lib's `make_env_utils`, which keeps OpenLoadFlow's **stock 20
+> `maxOuterLoopIterations`** — unlike the analysis path's
+> `_create_default_lf_parameters` (raised to **100**, lib doc § 3.6).
+> On the full French grid this made **slow mode diverge**
+> (`MAX_ITERATION_REACHED` → null flows) for `P.SAOL31RONCI`, while
+> fast mode converges at 95.4 %. **`_run_ac_with_fallback` now forces
+> `maxOuterLoopIterations=100`** so the diagram path converges in slow
+> mode too (95.84 %). The exact Hades2 reference (96.1 %) still needs
+> `pypowsybl-rte` / the `parameters_hades2` recipe and
+> `SecurityAnalysis`. Full write-up + reproduction:
+> [`ronci-beon-reproducibility.md`](ronci-beon-reproducibility.md).
+
 ## 5. Manual action simulation
 
 `POST /api/simulate-manual-action {action_id, disconnected_elements, action_content?, lines_overloaded?, target_mw?, target_tap?}`

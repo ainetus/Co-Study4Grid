@@ -526,7 +526,20 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
 
     def _run_ac_with_fallback(self, network, params):
         import pypowsybl.loadflow as lf
-        
+
+        # Raise OpenLoadFlow's outer-loop iteration cap on the diagram / overload
+        # path. create_olf_rte_parameter() (make_env_utils) inherits the stock
+        # maxOuterLoopIterations=20; on the full French grid the
+        # IncrementalTransformerVoltageControl outer loop needs ~40-50 iterations
+        # to settle after a contingency, so slow-mode AC otherwise returns
+        # MAX_ITERATION_REACHED / null flows (reproduced on P.SAOL31RONCI). Mirror
+        # the lib analysis-path default of 100 (lib
+        # docs/architecture/simulation-pipeline.md §3.6; see
+        # docs/architecture/ronci-beon-reproducibility.md).
+        provider = dict(params.provider_parameters)
+        provider["maxOuterLoopIterations"] = "100"
+        params.provider_parameters = provider
+
         is_fast_mode = getattr(config, 'PYPOWSYBL_FAST_MODE', False)
         if is_fast_mode:
             fast_params = lf.Parameters.from_json(params.to_json())
