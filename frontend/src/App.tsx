@@ -1609,6 +1609,14 @@ function App() {
     handleVlDoubleClick(selectedActionId || '', vlName);
   }, [handleVlDoubleClick, selectedActionId]);
 
+  // Clicking a (relabelled) feeder name on the SLD jumps to the far-end VL's
+  // SLD, keeping the current sub-tab so the same contingency / overload stays
+  // in view from the other extremity.
+  const handleSldNavigateToVl = useCallback((vlId: string) => {
+    if (!vlOverlay) return;
+    handleVlDoubleClick(vlOverlay.actionId || selectedActionId || '', vlId, vlOverlay.tab);
+  }, [vlOverlay, handleVlDoubleClick, selectedActionId]);
+
   // Keep the VL-disk interaction callbacks in refs so the delegated
   // listeners below re-bind ONLY when a diagram / its metadata actually
   // changes — never on an unrelated App render, which would needlessly
@@ -2024,6 +2032,7 @@ function App() {
             onSldSwitchFocus={sldTopologyEdit.setFocusedSwitch}
             onSldSwitchRemove={sldTopologyEdit.removeSwitch}
             onSldSwitchRemoveMany={sldTopologyEdit.removeSwitches}
+            onSldNavigateToVl={handleSldNavigateToVl}
             voltageLevels={voltageLevels}
             onVlOpen={handleVlOpen}
             onOverflowPinPreview={handlePinPreview}

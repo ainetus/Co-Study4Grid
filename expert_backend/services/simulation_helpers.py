@@ -515,7 +515,7 @@ def half_open_branch_reactive_from_obs(obs: Any) -> dict[str, float]:
     nm = getattr(obs, "_network_manager", None)
     variant_id = getattr(obs, "_variant_id", None)
     network = getattr(nm, "network", None) if nm is not None else None
-    if network is None or variant_id is None:
+    if nm is None or network is None or variant_id is None:
         return {}
     try:
         original = network.get_working_variant_id()

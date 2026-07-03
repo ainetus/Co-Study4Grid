@@ -8,11 +8,34 @@ each disk:
 | Gesture | Effect |
 |---------|--------|
 | **Hover** | Shows the VL name in a small floating tooltip — but only while the on-diagram VL labels are hidden (the `🏷 VL` toggle). When the labels are visible the name is already drawn, so the tooltip stays out of the way. |
-| **Single-click** | Selects the VL: fills the bottom-left **Inspect** field with the VL id, auto-zooms / highlights it, and surfaces the `📄 SLD` shortcut — exactly as typing the name into the Inspect box would. |
-| **Double-click** | Opens the VL's Single Line Diagram overlay (the same entry point as the `📄 SLD` button / `onVlOpen`). |
+| **Single-click (disk)** | Selects the VL: fills the bottom-left **Inspect** field with the VL id, auto-zooms / highlights it, and surfaces the `📄 SLD` shortcut — exactly as typing the name into the Inspect box would. |
+| **Single-click (name box)** | Opens the VL's Single Line Diagram overlay directly — the name label next to the disk is a second, larger click target for the SLD. |
+| **Double-click (disk or name box)** | Opens the VL's Single Line Diagram overlay (the same entry point as the `📄 SLD` button / `onVlOpen`). |
 
 This is the disk-driven complement to the **Inspect** search field: the
 field finds an asset by name; the disk finds it by pointing at it.
+
+### The whole disk is a target, even under a branch
+
+A branch is often drawn ON TOP of a VL disk, which would otherwise steal
+the pointer hit-test from the disk beneath it. The handlers resolve this:
+when the direct hit-test lands on something that is not a VL (an occluding
+edge, or empty space), they fall back to `document.elementsFromPoint` and
+take the **first VL disk / name box in the paint stack** under the cursor.
+So the disk is interactive across its whole area regardless of what is
+painted over it. The fallback only runs on discrete pointer events
+(`mousedown` / hover-while-labels-hidden), never per frame, so the
+performance contract below is unchanged.
+
+### The name box is resolved through the metadata
+
+pypowsybl renders each VL name as a `<div class="nad-label-box" id="…">`
+inside a root-level `<foreignObject class="nad-text-nodes">`. The box `id`
+is the NAD metadata **text-node** svgId, which the metadata index
+(`metaIndex.textNodesBySvgId`, built from `metadata.textNodes` via each
+entry's `vlNode` link / `equipmentId`) maps to the same VL `NodeMeta` the
+disk resolves to. A delegated handler climbs from the click target to the
+first ancestor whose `id` is a known disk **or** text-node svgId.
 
 ## Where it lives
 
@@ -21,15 +44,19 @@ field finds an asset by name; the disk finds it by pointing at it.
 - **`frontend/src/App.tsx`** — a single effect binds the three NAD
   containers, mapping each gesture to the existing handlers:
   - `onSelect(vlId)` → `handleInspectQueryChangeFor(tab, vlId)` (drives
-    the per-tab Inspect query + auto-zoom in `useDiagrams`).
+    the per-tab Inspect query + auto-zoom in `useDiagrams`). Fired by a
+    single-click on the **disk**.
   - `onOpenSld(vlId)` → `handleVlOpen(vlId)` → `useSldOverlay.handleVlDoubleClick`.
+    Fired by a **double-click** on the disk / name box **and** by a
+    single-click on the **name box**.
   The callbacks are held in refs (`vlSelectRef` / `vlOpenSldRef` /
   `vlDisplayNameRef`) so the listeners re-bind **only** when a diagram
   or its metadata index changes — never on an unrelated render, which
   would needlessly tear down the listeners and cancel an in-flight
   single-click timer.
-- **`frontend/src/App.css`** — `.svg-container .nad-vl-nodes { cursor: pointer }`
-  is the (static) pointer-cursor affordance.
+- **`frontend/src/App.css`** — `.svg-container .nad-vl-nodes, .svg-container
+  .nad-label-box { cursor: pointer }` is the (static) pointer-cursor
+  affordance on both the disk and the name box.
 
 `onSelect` / `onOpenSld` reuse pre-existing interaction events
 (`inspect_query_changed`, `sld_overlay_opened`), so the replay log stays

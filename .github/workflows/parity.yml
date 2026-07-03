@@ -26,8 +26,10 @@ name: Parity
 on:
   push:
     branches: [main]
+  # Run on every PR regardless of its base branch (e.g. PRs stacked onto a
+  # `claude/*` working branch, not just those targeting main).
   pull_request:
-    branches: [main]
+    branches: ['**']
   schedule:
     # Nightly at 02:30 UTC — catches drift introduced between PRs
     # (e.g. docs/features/interaction-logging.md updates without a code change).
