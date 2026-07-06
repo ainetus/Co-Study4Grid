@@ -7,6 +7,34 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Performance — Analyze & Suggest on the 2-vCPU Space (30 s → 75 s regression)
+
+- **Step-2 result payload no longer ships full-grid per-branch arrays.** Each
+  combined-action pair carried `p_or_combined` / `p_ex_combined` — one float per
+  line of the grid (~6–8k) × ~100 pairs ≈ **29 MB** on the European grid — that
+  the frontend never reads (`CombinedAction` uses only betas / max_rho /
+  rho_before / rho_after; session-reload rebuilds them as `[]`). New
+  `services/analysis/combined_pairs.slim_combined_actions_for_payload()` empties
+  them at the step-2 API boundary. On the reported case (`eu-pyrenees`): payload
+  **29 269 KiB → 267 KiB**, `sanitize_for_json` **2.57 s → 0.01 s**, and the
+  "Other (network / streaming)" bucket **3.80 s → 0.51 s** — plus a proportional
+  cut to the real browser transfer. Covered by
+  `tests/test_combined_actions_payload_slim.py`.
+- **Reassessment forced serial on the Space** via
+  `EXPERT_OP4GRID_REASSESSMENT_PARALLEL=0` in the `Dockerfile`. The library's
+  new container-aware detection already picks serial on 2 vCPUs; the env pin
+  makes it explicit. (The 47 s assessment was ~10 worker threads over-subscribing
+  2 vCPUs, each cloning a full network — see the `expert_op4grid_recommender`
+  changelog.)
+- **New benchmark** `benchmarks/bench_analyze_suggest.py` drives the exact
+  `/api/config → step1 → step2` path via `TestClient` and prints the UI
+  execution-time breakdown with "Other" decomposed (discovery-overhead /
+  sanitize / transport); `--serial`, `--compare`, `--tier`, `--study`. Full
+  write-up in `docs/performance/history/analyze-suggest-2vcpu.md`.
+- The step-2 `result` event now also carries `reassessment_parallelism`
+  (`{parallel, workers, cores_available, n_actions}`) so a client can confirm
+  serial vs parallel and on how many effective cores.
+
 ### Compatibility with the `expert_op4grid_recommender` typed-pipeline refactor
 
 - **`run_analysis_step1` now tolerates the library's new single-value return.**

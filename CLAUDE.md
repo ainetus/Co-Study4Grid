@@ -429,6 +429,50 @@ NAD/SLD payloads:
 
 ---
 
+## Contributing & Pull Requests
+
+- **Upstream is `ainetus`; `marota` is the working fork.** Development branches
+  are pushed to `marota/Co-Study4Grid`, but **pull requests are opened directly
+  against the upstream `ainetus/Co-Study4Grid`** (base = its default branch,
+  head = `marota:<branch>`) — *not* against `marota`. The sibling library
+  `Expert_op4grid_recommender` follows the same rule against
+  `ainetus/Expert_op4grid_recommender`.
+- **Load `ainetus` as an initial source.** A cross-fork PR into `ainetus` can
+  only be created from a session/tool context that has the `ainetus` repo in
+  scope, so a new working session should be started with
+  **`ainetus/Co-Study4Grid` and `ainetus/Expert_op4grid_recommender` as the
+  initial sources** (they should always be auto-loaded). A session rooted only
+  at `marota` cannot target `ainetus` (cross-tier adds are blocked) and the PR
+  step fails with an access-denied error.
+- **Sync `marota` with `ainetus` before starting new work.** PRs merge into
+  `ainetus/main`, but development happens on `marota`, so `marota/main` drifts
+  behind `ainetus/main` after every merged PR (this applies to **both** repos —
+  Co-Study4Grid and Expert_op4grid_recommender). **At the start of a dev session,
+  bring `marota/main` up to date with `ainetus/main`** — GitHub "Sync fork", or
+  locally `git fetch ainetus main && git merge --ff-only ainetus/main` then push
+  `marota/main` — and branch from there. Skipping this makes a new branch collide
+  with the already-merged revisions when it is PR'd into `ainetus`. If the sync
+  was missed and the PR already shows conflicts, merge `ainetus/main` into the
+  branch (or rebase onto it) and resolve, then force-with-lease push.
+- **DCO sign-off is required on every commit.** The `ainetus` repos enforce the
+  [Developer Certificate of Origin](https://developercertificate.org/): every
+  commit must carry a `Signed-off-by: <Name> <amarot91@gmail.com>` trailer, and
+  because the DCO check matches the sign-off against the commit **author**, the
+  commit must also be *authored* under that same identity (author email =
+  `amarot91@gmail.com`):
+
+  ```bash
+  git config user.name  "<Name>"
+  git config user.email "amarot91@gmail.com"
+  git commit -s -m "..."          # -s appends the Signed-off-by trailer
+  ```
+
+  To sign off commits already made under a different identity, re-author and add
+  the trailer (`git rebase --exec 'git commit --amend --no-edit --reset-author \
+  -s' <base>`), then force-with-lease push.
+
+---
+
 ## Standalone Interface Parity Audit
 
 The detailed audit — feature inventory, mirror-status table, Layer

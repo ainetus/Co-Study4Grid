@@ -36,7 +36,34 @@ export BENCH_CONTINGENCY=DISCO_NAME                  # only for bench_n1_diagram
 | `bench_n1_diagram.py` | Full `get_n1_diagram(contingency)` cold + warm, per-sub-step breakdown. Validates the 3 N-1 fast-path patches. | `docs/performance/history/n1-diagram-fast-path.md` |
 | `bench_nad_n_state.py` | `get_network_diagram()` cold + warm on the N-state. Captures NAD / SVG / Meta sub-timings from the `[RECO]` log lines. | `docs/performance/nad-profile-bare-env.md` |
 | `bench_nad_toggles.py` | Matrix of `NadParameters` toggle combinations — quantifies per-flag impact on NAD gen + SVG size, surfaces the cost of `injections_added=True`. | `docs/performance/nad-profile-bare-env.md` |
+| `bench_analyze_suggest.py` | **Full "Analyze & Suggest" for a Game Mode study** — drives `/api/config` → `step1` → `step2` (streaming NDJSON) through the FastAPI `TestClient` and prints the UI's execution-time breakdown (step1 / overflow / prediction / **assessment** / enrichment / **Other**), with "Other" decomposed into discovery-overhead / result `sanitize_for_json` / transport. `--serial` forces serial reassessment; `--compare` runs parallel-vs-serial. This is the case the 30 s → 75 s regression was reported on. | `docs/performance/history/analyze-suggest-2vcpu.md` |
 | `run_all.py` | Drives every benchmark above sequentially. | — |
+
+### `bench_analyze_suggest.py`
+
+```bash
+# The reported "this case, first scenario": Pyrenees LANNEL61PRAGN on the
+# medium/European grid (its network.xiidm ships as a Git-LFS zip — run
+# `git lfs pull` first, or use --tier high for the uncompressed French grid).
+python benchmarks/bench_analyze_suggest.py                 # medium tier, first study
+python benchmarks/bench_analyze_suggest.py --tier high     # French grid, first study
+python benchmarks/bench_analyze_suggest.py --compare       # parallel vs serial, same case
+```
+
+Two levers this benchmark validates:
+
+- **Per-action reassessment goes serial on a CPU-limited host.** The tail line
+  reports `reassessment: serial|parallel — N worker(s) / M effective core(s)`.
+  On a 2-vCPU host the recommender's container-aware detection picks serial;
+  even on a 4-core dev box `--compare` shows parallel is no faster than serial
+  (each worker clones a full network), so over-subscribing 2 vCPUs with ~10
+  workers was the 47 s assessment in the regression.
+- **The step-2 result payload no longer ships full-grid per-branch arrays.**
+  Each combined-action pair used to carry `p_or_combined` / `p_ex_combined`
+  (one float per line × ~100 pairs ≈ **29 MB** on the European grid); the
+  frontend reads neither, so they are emptied at the API boundary. Watch
+  `payload=… KiB` and the `result sanitize_for_json` sub-line drop
+  (29 269 KiB / 2.57 s → 267 KiB / 0.01 s).
 
 ## Reference measurements
 
