@@ -30,6 +30,9 @@ from collections.abc import Iterator
 from typing import Any
 
 from expert_backend.recommenders.registry import build_recommender
+from expert_backend.services.analysis.combined_pairs import (
+    slim_combined_actions_for_payload,
+)
 from expert_backend.services.model_selection_mixin import ModelSelectionMixin
 from expert_backend.services.recommender_service import (
     RecommenderService,
@@ -278,6 +281,10 @@ def _run_analysis_step2_with_model(
         # `target_max_rho` decoration; for random models the call is a
         # no-op (combined_actions is empty), so we keep it unconditional.
         self._augment_combined_actions_with_target_max_rho(results, context)
+        # Drop the per-branch full-grid arrays the frontend never reads BEFORE
+        # they hit sanitize_for_json / the wire — the single biggest lever on
+        # the "Other (network / streaming)" time on large grids.
+        slim_combined_actions_for_payload(results.get("combined_actions"))
         action_scores = self._compute_mw_start_for_scores(
             results.get("action_scores", {})
         )
@@ -311,6 +318,11 @@ def _run_analysis_step2_with_model(
             "overflow_graph_time": overflow_graph_time,
             "action_prediction_time": action_prediction_time,
             "assessment_time": assessment_time,
+            # How the per-action reassessment was parallelised — lets the client
+            # confirm serial vs parallel and on how many effective cores
+            # ({"parallel": bool, "workers": int, "cores_available": int,
+            # "n_actions": int}). None on older recommender releases.
+            "reassessment_parallelism": results.get("reassessment_parallelism"),
         })
     except Exception as e:
         logger.exception("Backend Error in Analysis Resolution")

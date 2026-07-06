@@ -75,7 +75,15 @@ COPY --chown=user --from=frontend /build/dist ./frontend/dist
 COPY --chown=user frontend/src/utils/svg/pinGlyph.js ./frontend/src/utils/svg/pinGlyph.js
 
 # The backend serves this directory at "/" (same origin as the API).
+#
+# EXPERT_OP4GRID_REASSESSMENT_PARALLEL=0 forces the per-action reassessment to
+# run SERIALLY. The Space runs on 2 vCPUs; the recommender's container-aware
+# detection already picks serial there, but pinning it makes the guarantee
+# explicit and independent of the host's cgroup exposure — parallel worker
+# threads each clone a full pypowsybl network, so on 2 vCPUs they over-subscribe
+# the CPU and are far SLOWER than serial (the 47 s → ~15 s assessment win).
 ENV COSTUDY4GRID_FRONTEND_DIST=/home/user/app/frontend/dist \
+    EXPERT_OP4GRID_REASSESSMENT_PARALLEL=0 \
     PORT=7860
 
 EXPOSE 7860
