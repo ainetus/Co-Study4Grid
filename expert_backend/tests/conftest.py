@@ -41,7 +41,10 @@ _MOCK_MODULES = [
     "expert_op4grid_recommender.action_evaluation",
     "expert_op4grid_recommender.action_evaluation.classifier",
     "expert_op4grid_recommender.environment_pypowsybl",
-    "expert_op4grid_recommender.utils.simulation_pypowsybl",
+    # utils.simulation is the single backend-agnostic simulation module since the
+    # recommender's R4 refactor unified the grid2op/pypowsybl pair (the old
+    # utils.simulation_pypowsybl was deleted).
+    "expert_op4grid_recommender.utils.simulation",
     "expert_op4grid_recommender.environment",
     "expert_op4grid_recommender.pypowsybl_backend",
     "expert_op4grid_recommender.pypowsybl_backend.simulation_env",
