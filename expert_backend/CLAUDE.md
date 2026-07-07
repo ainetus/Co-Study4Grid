@@ -160,10 +160,44 @@ The shared Network is safe because:
 2. `recommender_service` switches variants inside
    `_get_n_variant` / `_get_n1_variant` but always restores the
    original variant in a `try/finally`.
+3. **Concurrent** callers are serialized by a service-level re-entrant
+   lock — see "Concurrency ownership" below.
 
 `pn.load()` is called WITHOUT `allow_variant_multi_thread_access=True`
 on purpose — see the long comment at `network_service.py:30-43` for
 why enabling that is unsafe for the FastAPI thread pool today.
+
+## Concurrency ownership (D3, 2026-07)
+
+The single-user, single-flight assumption above no longer holds
+(FastAPI threadpool + frontend `Promise.all` batches + one-process
+multi-visitor HuggingFace Space). Three primitives in
+`services/service_lock.py` restore ownership — full rationale in
+[`docs/architecture/shared-network-concurrency.md`](../docs/architecture/shared-network-concurrency.md):
+
+1. **`self._network_lock`** (a re-entrant `RLock`) serializes every
+   entry point that variant-switches the shared Network. Decorate a
+   sync entry point with `@with_network_lock`; a streaming one with
+   `@with_network_lock_stream` (holds the lock per resumption, not
+   across `yield`s — and acquires/releases inside one `__next__` so
+   Starlette's per-`next()` threadpool hopping is safe). **Any new
+   method that switches variants MUST wear one of these.**
+   `/api/config` additionally wraps its `reset → load → update`
+   sequence in `recommender_service.network_lock()`.
+2. **Study-mutation busy gate** (`try_begin_study_mutation` /
+   `end_study_mutation`, a plain `Lock`): `/api/config` + the three
+   analysis entry points claim it non-blocking and return **HTTP 409**
+   on conflict instead of queueing a second multi-second mutation.
+   Streaming endpoints release it in the generator's `finally`.
+3. **Contingency-variant LRU** (`_touch_contingency_variant`, cap
+   `MAX_CONTINGENCY_VARIANTS`): bounds the variant set the shared
+   Network accumulates within a session; eviction calls
+   `remove_variant` + drops the `_lf_status_by_variant` entry.
+
+**Lock-ordering caveat**: the NAD-prefetch worker takes the same
+`_network_lock`, so `reset()` must NOT join it (deadlock). Staleness is
+handled by the `_prefetch_generation` counter instead; the drain is a
+no-op when the lock is present.
 
 ## State lifecycle: load → reset → reload
 

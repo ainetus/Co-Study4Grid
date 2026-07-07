@@ -1543,6 +1543,87 @@ class TestRegenerateOverflowGraph:
         assert "pdf_url" not in response.json()
 
 
+class TestStudyMutationBusyGate:
+    """The study-mutation gate (D3, 2026-07): config load + the analysis
+    pipeline mutate shared singleton state, so at most one runs at a
+    time; a second concurrent one is rejected with HTTP 409 rather than
+    queued behind seconds of work."""
+
+    def test_config_returns_409_when_busy(self, client, mock_services):
+        _, mock_rs = mock_services
+        mock_rs.try_begin_study_mutation.return_value = False
+        response = client.post(
+            "/api/config",
+            json={"network_path": "/n", "action_file_path": "/a"},
+        )
+        assert response.status_code == 409
+        assert "in progress" in response.json()["detail"]
+        # A rejected request must NOT release a gate it never acquired.
+        mock_rs.end_study_mutation.assert_not_called()
+
+    def test_step1_returns_409_when_busy(self, client, mock_services):
+        _, mock_rs = mock_services
+        mock_rs.try_begin_study_mutation.return_value = False
+        response = client.post(
+            "/api/run-analysis-step1",
+            json={"disconnected_elements": ["LINE_A"]},
+        )
+        assert response.status_code == 409
+        mock_rs.run_analysis_step1.assert_not_called()
+        mock_rs.end_study_mutation.assert_not_called()
+
+    def test_step1_releases_gate_on_success(self, client, mock_services):
+        _, mock_rs = mock_services
+        mock_rs.try_begin_study_mutation.return_value = True
+        mock_rs.run_analysis_step1.return_value = {
+            "lines_overloaded": [], "can_proceed": False, "step1_time": 0.1,
+        }
+        response = client.post(
+            "/api/run-analysis-step1",
+            json={"disconnected_elements": ["LINE_A"]},
+        )
+        assert response.status_code == 200
+        mock_rs.end_study_mutation.assert_called_once()
+
+    def test_step1_releases_gate_on_error(self, client, mock_services):
+        _, mock_rs = mock_services
+        mock_rs.try_begin_study_mutation.return_value = True
+        mock_rs.run_analysis_step1.side_effect = ValueError("boom")
+        response = client.post(
+            "/api/run-analysis-step1",
+            json={"disconnected_elements": ["LINE_A"]},
+        )
+        assert response.status_code == 400
+        # Gate released even when the analysis raised.
+        mock_rs.end_study_mutation.assert_called_once()
+
+    def test_step2_returns_409_when_busy(self, client, mock_services):
+        _, mock_rs = mock_services
+        mock_rs.try_begin_study_mutation.return_value = False
+        response = client.post(
+            "/api/run-analysis-step2",
+            json={"selected_overloads": ["LINE_A"]},
+        )
+        assert response.status_code == 409
+        mock_rs.run_analysis_step2.assert_not_called()
+
+    def test_step2_releases_gate_after_stream(self, client, mock_services):
+        _, mock_rs = mock_services
+        mock_rs.try_begin_study_mutation.return_value = True
+        mock_rs.run_analysis_step2.return_value = iter([
+            {"type": "pdf", "pdf_path": None},
+            {"type": "result", "actions": {}},
+        ])
+        with client.stream(
+            "POST", "/api/run-analysis-step2",
+            json={"selected_overloads": ["LINE_A"]},
+        ) as response:
+            assert response.status_code == 200
+            _ = list(response.iter_lines())
+        # Gate released in the generator's finally once the stream drains.
+        mock_rs.end_study_mutation.assert_called_once()
+
+
 class TestPickPath:
     """Native file/folder picker — must succeed on macOS via osascript
     (no tkinter dependency) and on other platforms via the existing

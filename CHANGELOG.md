@@ -7,6 +7,34 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Concurrency — D3: ownership for the shared pypowsybl Network (2026-07 review)
+
+- **Service-level re-entrant network lock** (`services/service_lock.py`)
+  serializes the ~13 entry points that variant-switch the shared
+  `Network` (all diagram/SLD getters + `run_analysis_step1` /
+  `run_analysis` + `simulate_manual_action` / `compute_superposition`).
+  Streaming endpoints hold it per-resumption via a per-`next()`
+  iterator adapter so Starlette's threadpool hopping stays safe.
+  `/api/config` holds it across the whole `reset → load → update`.
+- **Study-mutation busy gate → HTTP 409**: `/api/config` and the three
+  analysis entry points refuse a second concurrent study operation
+  instead of queueing it behind seconds of work.
+- **Bounded variant lifecycle**: contingency variants on the shared
+  Network are now LRU-capped (`MAX_CONTINGENCY_VARIANTS`) with
+  `remove_variant` on eviction — previously they grew without bound
+  within a session.
+- **Fixed the unguarded variant switch** in
+  `diagram_mixin._get_contingency_flows` (added the missing
+  try/finally) so an exception can't leave the shared handle stuck on a
+  contingency variant.
+- **Fixed a latent reset/prefetch deadlock**: `reset()` no longer joins
+  the NAD-prefetch worker (which now takes the same network lock);
+  staleness is handled by a `_prefetch_generation` counter instead.
+- Full rationale in
+  [`docs/architecture/shared-network-concurrency.md`](docs/architecture/shared-network-concurrency.md).
+  Covered by `test_service_concurrency.py` +
+  `test_api_endpoints.py::TestStudyMutationBusyGate`.
+
 ### Architecture — D1: de-ghosted the pluggable-recommender subsystem (2026-07 review)
 
 - **Explicit composition replaces import-time monkey-patching.**

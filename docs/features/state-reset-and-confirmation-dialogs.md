@@ -111,9 +111,14 @@ The `/api/config` endpoint now **always reloads the network** and **resets the r
 - Leftover `_base_network`, `_last_disconnected_element`, `_dict_action`, `_analysis_context`
 
 The `RecommenderService.reset()` method clears, in order:
-1. `_drain_pending_base_nad_prefetch()` — first, so a still-running
-   prefetch thread cannot finish after reset and write into the next
-   study's cache.
+0. `_reset_model_settings()` — model selection (active model +
+   `compute_overflow_graph` toggle) back to defaults (`ModelSelectionMixin`).
+1. Bumps `_prefetch_generation` (so any in-flight NAD-prefetch worker
+   discards its result under the service lock instead of writing into
+   the next study's cache), then `_drain_pending_base_nad_prefetch()` —
+   a no-op when the concurrency lock is present (lock ownership already
+   excludes the worker), a `join` fallback for lock-less test hosts.
+   See [docs/architecture/shared-network-concurrency.md](../architecture/shared-network-concurrency.md).
 2. Per-study analysis state: `_last_result`, `_is_running`,
    `_generator`, `_base_network`, `_simulation_env`,
    `_last_disconnected_element`, `_dict_action`, `_analysis_context`,
@@ -150,6 +155,12 @@ The `RecommenderService.reset()` method clears, in order:
      monitor_deselected, additional_lines_to_cut)` that gates the
      Step-2 overflow-graph cache reuse. Cleared so a freshly loaded
      study never reuses the previous study's overflow graph.
+7. Concurrency lifecycle (D3): `_contingency_variant_lru` — emptied
+   because the contingency variants it tracks die with the Network
+   being dropped. The `_network_lock` / `_study_gate` themselves are
+   NOT cleared — they guard the reset itself and persist for the
+   process. See
+   [docs/architecture/shared-network-concurrency.md](../architecture/shared-network-concurrency.md).
 
 Adding a new per-study cache? It MUST be listed in
 `RecommenderService.reset()` (see

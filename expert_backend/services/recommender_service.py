@@ -21,8 +21,11 @@ This file contains the core class definition, state management,
 configuration, and network/environment lifecycle.
 """
 
+import contextlib
 import logging
 import os
+import threading
+from collections.abc import Iterator
 from pathlib import Path
 
 import numpy as np
@@ -49,6 +52,14 @@ from expert_backend.services.simulation_mixin import SimulationMixin
 from expert_backend.services.model_selection_mixin import ModelSelectionMixin
 
 logger = logging.getLogger(__name__)
+
+# Contingency variants kept alive on the shared Network beyond the N
+# baseline. Each cached variant costs pypowsybl-side memory proportional
+# to the grid; within a long operator session the set previously grew
+# without bound (one per contingency ever viewed). Oldest-unused is
+# evicted with `remove_variant` once the cap is exceeded — recreating an
+# evicted contingency later just pays its AC load flow again.
+MAX_CONTINGENCY_VARIANTS = 8
 
 
 class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin, ModelSelectionMixin):
@@ -136,17 +147,44 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin, ModelSele
         # /api/config is called sees a consistent state.
         self._reset_model_settings()
 
+        # --- Concurrency ownership (D3, 2026-07) — see services/service_lock.py ---
+        # Re-entrant service lock serializing every entry point that
+        # variant-switches the shared Network. NOT cleared on reset() —
+        # the lock guards the reset itself.
+        self._network_lock = threading.RLock()
+        # Busy gate for study-level mutations (/api/config, step-1/2,
+        # legacy analysis stream): non-blocking acquire → HTTP 409.
+        # A plain Lock (not RLock) so a streaming mutation can release
+        # from whatever threadpool thread finishes the stream.
+        self._study_gate = threading.Lock()
+        # Monotonic counter invalidating in-flight NAD-prefetch workers.
+        # Bumped by reset() and by every new prefetch; a worker whose
+        # captured generation is stale discards its result instead of
+        # poisoning the next study's cache (replaces the join-based
+        # drain, which would deadlock against the service lock).
+        self._prefetch_generation = 0
+        # LRU of contingency variant ids kept on the shared Network
+        # (oldest first). See MAX_CONTINGENCY_VARIANTS.
+        self._contingency_variant_lru: list[str] = []
+
     def reset(self) -> None:
         """Clear all cached analysis state. Called when loading a new study."""
         # Model selection goes back to the defaults FIRST — same ordering
         # as the rest of this method (state cleared before the caller
         # loads the next study's configuration).
         self._reset_model_settings()
+        # Invalidate any in-flight NAD prefetch: a worker that finishes
+        # after reset() re-checks this generation (under the service
+        # lock) and discards its result instead of writing into the next
+        # study's `_prefetched_base_nad` and serving stale SVG.
+        self._prefetch_generation += 1
         # Drain any in-flight NAD prefetch thread BEFORE we tear down the
-        # network it depends on. A dangling thread that finishes after
-        # reset() would write into the next study's `_prefetched_base_nad`
-        # and serve stale SVG.
+        # network it depends on (no-op join when the service lock is
+        # active — lock ownership already excludes the worker, and the
+        # generation bump above handles staleness).
         self._drain_pending_base_nad_prefetch()
+        # Contingency variants die with the network we're about to drop.
+        self._contingency_variant_lru = []
 
         self._last_result = None
         self._is_running = False
@@ -220,13 +258,70 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin, ModelSele
         return {idx: (float(row["x"]), float(row["y"])) for idx, row in df.iterrows()}
 
     # ------------------------------------------------------------------
+    # Concurrency ownership (D3, 2026-07) — see services/service_lock.py
+    # ------------------------------------------------------------------
+
+    @contextlib.contextmanager
+    def network_lock(self) -> "Iterator[None]":
+        """Hold the service network lock across a multi-call sequence.
+
+        Used by the ``/api/config`` route to make the whole
+        ``reset() → load_network() → update_config()`` sequence atomic
+        with respect to every variant-switching entry point — without
+        it, a diagram request could interleave between reset and reload
+        and observe (or re-populate) torn state. Re-entrant, so the
+        decorated methods called inside acquire the same lock for free.
+        """
+        with self._network_lock:
+            yield
+
+    def try_begin_study_mutation(self, label: str = "") -> bool:
+        """Non-blocking claim of the study-mutation gate.
+
+        Returns False when another study-level mutation (config load,
+        step-1/step-2 analysis, legacy analysis stream) is in flight —
+        the API layer maps that to HTTP 409 rather than silently
+        queueing a second multi-second mutation behind the first.
+        Call :meth:`end_study_mutation` in a ``finally`` when it
+        returned True.
+        """
+        acquired = self._study_gate.acquire(blocking=False)
+        if not acquired:
+            logger.info("[study-gate] rejected %r: another study mutation in flight", label)
+        return acquired
+
+    def end_study_mutation(self) -> None:
+        """Release the study-mutation gate (idempotent-safe: releasing an
+        unheld plain Lock raises, so only call after a successful
+        :meth:`try_begin_study_mutation`)."""
+        try:
+            self._study_gate.release()
+        except RuntimeError:
+            logger.warning("[study-gate] release without matching begin — ignored")
+
+    # ------------------------------------------------------------------
     # Base-NAD prefetch (concurrent with update_config's env-setup phase)
     # ------------------------------------------------------------------
 
     def _drain_pending_base_nad_prefetch(self) -> None:
-        """Wait for the in-flight NAD prefetch thread to finish and discard
-        its result. Called on `reset()` so a still-running prefetch cannot
-        leak into the next study by writing into fresh prefetch state."""
+        """Ensure no NAD-prefetch worker is concurrently touching the Network.
+
+        Two regimes:
+
+        - **Service lock active** (normal `RecommenderService`): the
+          worker takes the same `_network_lock` around its whole body,
+          so a caller that holds the lock is ALREADY mutually excluded
+          from the worker — and joining here would deadlock (the worker
+          may be blocked on the very lock this thread holds; the old
+          `join(timeout=60)` turned that into a 60 s stall). Staleness
+          across `reset()` is handled by `_prefetch_generation` instead
+          of by joining, so this is a no-op.
+        - **No lock** (bare-mixin test hosts): fall back to the
+          historical join so single-threaded tests keep their
+          "prefetch finished before we proceed" guarantee.
+        """
+        if getattr(self, "_network_lock", None) is not None:
+            return
         thread = self._prefetched_base_nad_thread
         if thread is not None and thread.is_alive():
             # join is safe here — the thread only calls pypowsybl and
@@ -241,22 +336,31 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin, ModelSele
         pypowsybl work overlap and the client's subsequent
         `/api/network-diagram` XHR becomes a near-instant cache hit.
 
-        Thread-safety notes:
-          - `self._base_network` is pre-loaded in the main thread *before*
+        Thread-safety notes (D3, 2026-07):
+          - `self._base_network` is pre-loaded in the calling thread *before*
             the worker starts (see below), so the worker never races on the
             lazy-init path of `_get_base_network()`.
-          - The grid2op environment built in parallel uses its own
-            pypowsybl network instance (grid2op backends wrap their own
-            `pp.network.load()`), so variant switching inside
-            `_generate_diagram` does not collide with env setup.
+          - The worker takes the service `_network_lock` around its whole
+            body (when present), so its variant switching serializes with
+            every other entry point — including the remainder of
+            `update_config` (env setup shares the SAME Network instance
+            since grid2op-shared-network.md, so the historical "runs in
+            parallel with env setup" overlap was itself a latent race;
+            the lock trades a slice of that overlap for correctness).
+          - A worker that loses the `_prefetch_generation` race (a
+            `reset()` or a newer prefetch superseded it) discards its
+            work instead of writing into fresh prefetch state.
           - We swallow exceptions in the worker and surface them on the
             foreground call to `get_prefetched_base_nad()`; the foreground
             thread MUST NOT see a partially-populated cache.
         """
         import threading
 
-        # Cancel any in-flight previous prefetch (defensive; reset() normally
-        # runs first, but a direct re-call of update_config would bypass it).
+        # Cancel any in-flight previous prefetch: bump the generation so
+        # a superseded worker discards itself (the drain below is a
+        # no-op join when the service lock is active — see its docstring).
+        self._prefetch_generation = getattr(self, "_prefetch_generation", 0) + 1
+        my_generation = self._prefetch_generation
         self._drain_pending_base_nad_prefetch()
 
         # Pre-warm the network cache in the main thread so the worker only
@@ -281,9 +385,25 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin, ModelSele
         self._prefetched_base_nad_event = event
 
         def _worker() -> None:
+            lock = getattr(self, "_network_lock", None) or contextlib.nullcontext()
             try:
-                diagram = self.get_network_diagram()
-                self._prefetched_base_nad = diagram
+                with lock:
+                    if getattr(self, "_prefetch_generation", my_generation) != my_generation:
+                        # Superseded while we waited for the lock (reset()
+                        # or a newer prefetch) — skip the compute entirely.
+                        logger.info(
+                            "[prefetch_base_nad_async] prefetch generation "
+                            "superseded before compute; discarding worker."
+                        )
+                        return
+                    diagram = self.get_network_diagram()
+                    if getattr(self, "_prefetch_generation", my_generation) == my_generation:
+                        self._prefetched_base_nad = diagram
+                    else:
+                        logger.info(
+                            "[prefetch_base_nad_async] prefetch result stale "
+                            "(generation changed mid-compute); discarded."
+                        )
             except Exception as exc:  # noqa: BLE001 — any failure is surfaced to the caller
                 logger.warning(f"[prefetch_base_nad_async] NAD prefetch failed: {exc}")
                 self._prefetched_base_nad_error = exc
@@ -826,7 +946,56 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin, ModelSele
                     logger.debug(f"Could not cache LF status for {variant_id}: {e}")
             finally:
                 n.set_working_variant(original_variant)
+        self._touch_contingency_variant(n, variant_id)
         return variant_id
+
+    def _touch_contingency_variant(self, n, variant_id: str) -> None:
+        """Mark ``variant_id`` most-recently-used and evict beyond the cap.
+
+        Keeps the shared Network's variant set bounded to N + the last
+        ``MAX_CONTINGENCY_VARIANTS`` contingency variants (D3, 2026-07).
+        Eviction removes the pypowsybl variant AND its `_lf_status_by_variant`
+        entry; a later request for an evicted contingency transparently
+        re-clones and re-runs its load flow. The single-slot
+        post-contingency obs cache (`_cached_obs_n1*`) is left untouched —
+        the observation lives on the grid2op env's own variant and stays
+        valid for its element list regardless of our variant's lifetime.
+
+        Only variants created by `_get_contingency_variant` are managed
+        here — never the N baseline, never the env/action variants owned
+        by the simulation pipeline, never the throwaway SLD-preview
+        variants (they remove themselves).
+        """
+        lru = getattr(self, "_contingency_variant_lru", None)
+        if lru is None:
+            return
+        if variant_id in lru:
+            lru.remove(variant_id)
+        lru.append(variant_id)
+
+        while len(lru) > MAX_CONTINGENCY_VARIANTS:
+            evicted = None
+            current = None
+            try:
+                current = n.get_working_variant_id()
+            except Exception as e:
+                logger.debug("variant LRU: cannot read working variant: %s", e)
+            for candidate in lru:
+                # Never evict the variant we're handing back, nor the one
+                # the Network is currently positioned on.
+                if candidate != variant_id and candidate != current:
+                    evicted = candidate
+                    break
+            if evicted is None:
+                break
+            lru.remove(evicted)
+            self._lf_status_by_variant.pop(evicted, None)
+            try:
+                n.remove_variant(evicted)
+                logger.info("[variant-lru] evicted contingency variant %s "
+                            "(cap %d)", evicted, MAX_CONTINGENCY_VARIANTS)
+            except Exception as e:
+                logger.warning("[variant-lru] remove_variant(%s) failed: %s", evicted, e)
 
     # ------------------------------------------------------------------
     # Variant-state guard for analyze/simulate entry points

@@ -26,6 +26,7 @@ from expert_op4grid_recommender.utils.superposition import (
 from typing import TYPE_CHECKING
 
 from expert_backend.services.sanitize import sanitize_for_json
+from expert_backend.services.service_lock import with_network_lock
 from expert_backend.services.simulation_helpers import (
     build_combined_description,
     build_manual_action_description,
@@ -142,6 +143,7 @@ class SimulationMixin(_Base):
         entry["content"] = content if content else {}
         return entry
 
+    @with_network_lock
     def simulate_manual_action(
         self,
         raw_action_id: str,
@@ -738,6 +740,7 @@ class SimulationMixin(_Base):
             self._dict_action[action_id] = action_data
 
 
+    @with_network_lock
     def compute_superposition(self, action1_id: str, action2_id: str, disconnected_elements):
         """Compute the combined effect of two actions via the superposition theorem.
 

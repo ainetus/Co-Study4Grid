@@ -64,6 +64,7 @@ from expert_backend.services.diagram.sld_render import (
 from typing import TYPE_CHECKING
 
 from expert_backend.services.sanitize import sanitize_for_json
+from expert_backend.services.service_lock import with_network_lock
 from expert_backend.services.simulation_helpers import canonicalize_action_id
 
 logger = logging.getLogger(__name__)
@@ -154,9 +155,15 @@ class DiagramMixin(_Base):
         var_id = self._get_contingency_variant(disconnected_elements)
         original_variant = n.get_working_variant_id()
 
+        # try/finally so an exception in get_network_flows cannot leave the
+        # shared Network stuck on the contingency variant — that would
+        # silently corrupt every subsequent read on the shared handle
+        # (network_service, grid2op backend). See D3 / grid2op-shared-network.md.
         n.set_working_variant(var_id)
-        flows = get_network_flows(n)
-        n.set_working_variant(original_variant)
+        try:
+            flows = get_network_flows(n)
+        finally:
+            n.set_working_variant(original_variant)
         return flows
 
     # ------------------------------------------------------------------
@@ -201,6 +208,7 @@ class DiagramMixin(_Base):
     # Public NAD endpoints
     # ------------------------------------------------------------------
 
+    @with_network_lock
     def get_network_diagram(self, voltage_level_ids=None, depth=0):
         """Base-state (N) NAD."""
         n = self._get_base_network()
@@ -221,6 +229,7 @@ class DiagramMixin(_Base):
         finally:
             n.set_working_variant(original_variant)
 
+    @with_network_lock
     def get_contingency_diagram(self, disconnected_elements, voltage_level_ids=None, depth=0):
         """Post-contingency NAD (N-1, N-2, ..., N-K) with flow deltas vs N."""
         norm = self._normalize_contingency_elements(disconnected_elements)
@@ -287,6 +296,7 @@ class DiagramMixin(_Base):
         if prewarmed is not None:
             self._cached_obs_n1, self._cached_obs_n1_id, self._cached_obs_n1_elements = prewarmed
 
+    @with_network_lock
     def get_action_variant_diagram(self, action_id, voltage_level_ids=None, depth=0, mode="network"):
         """Generate a NAD showing the network state after applying a remedial action.
 
@@ -441,6 +451,7 @@ class DiagramMixin(_Base):
         finally:
             n.set_working_variant(original_variant)
 
+    @with_network_lock
     def get_contingency_diagram_patch(self, disconnected_elements) -> dict:
         """Return the contingency patch payload (SVG-less).
 
@@ -475,6 +486,7 @@ class DiagramMixin(_Base):
             action_lines_conn_snap, action_trafos_conn_snap,
         )
 
+    @with_network_lock
     def get_action_variant_diagram_patch(self, action_id: str) -> dict:
         """Return the action-variant patch payload (SVG-less).
 
@@ -489,6 +501,7 @@ class DiagramMixin(_Base):
     # Public SLD endpoints
     # ------------------------------------------------------------------
 
+    @with_network_lock
     def get_n_sld(self, voltage_level_id: str) -> dict:
         """Single Line Diagram in the base N state."""
         n = self._get_base_network()
@@ -511,6 +524,7 @@ class DiagramMixin(_Base):
             "feeder_labels": feeder_labels,
         }
 
+    @with_network_lock
     def get_contingency_sld(self, disconnected_elements, voltage_level_id: str) -> dict:
         """Single Line Diagram in the contingency state (N-1 / N-K)."""
         norm = self._normalize_contingency_elements(disconnected_elements)
@@ -538,6 +552,7 @@ class DiagramMixin(_Base):
         finally:
             n.set_working_variant(original_variant)
 
+    @with_network_lock
     def get_action_variant_sld(self, action_id: str, voltage_level_id: str) -> dict:
         """Single Line Diagram in the post-action state, with flow deltas vs N-1.
 
@@ -676,6 +691,7 @@ class DiagramMixin(_Base):
             logger.debug("Topological SLD params unavailable, using default: %s", e)
             return network.get_single_line_diagram(voltage_level_id)
 
+    @with_network_lock
     def get_topology_preview_sld(
         self, disconnected_elements, voltage_level_id, switches, base_action_id=None
     ) -> dict:

@@ -46,6 +46,15 @@ app = FastAPI()
 _GZIP_MIN_BYTES = 10_000
 _GZIP_LEVEL = 5
 
+# Study-mutation busy-gate detail (HTTP 409). Study-level operations
+# (config load + the analysis pipeline) mutate the shared singleton
+# state, so at most one runs at a time; a second is rejected rather
+# than queued behind seconds of work (D3, 2026-07).
+_STUDY_BUSY_DETAIL = (
+    "Another study operation (configuration load or analysis) is already "
+    "in progress. Retry when it completes."
+)
+
 
 def _maybe_gzip_svg_text(diagram: dict, request: Request) -> Response:
     diagram = dict(diagram)
@@ -309,11 +318,20 @@ def list_models() -> dict:
 @app.post("/api/config")
 def update_config(config: ConfigRequest) -> dict:
     global last_network_path
+    # Study-level mutation gate: reject (409) a concurrent config load or
+    # in-flight analysis rather than tearing down the shared Network while
+    # another request is mid-analysis on it (D3, 2026-07).
+    if not recommender_service.try_begin_study_mutation("config"):
+        raise HTTPException(status_code=409, detail=_STUDY_BUSY_DETAIL)
     try:
-        recommender_service.reset()
-        network_service.load_network(config.network_path)
-        last_network_path = config.network_path
-        recommender_service.update_config(config)
+        # Hold the network lock across the whole reset → load → update
+        # sequence so no diagram request can interleave and observe (or
+        # re-populate) torn state between the reset and the reload.
+        with recommender_service.network_lock():
+            recommender_service.reset()
+            network_service.load_network(config.network_path)
+            last_network_path = config.network_path
+            recommender_service.update_config(config)
 
         from expert_op4grid_recommender import config as recommender_config
         total_lines = len(network_service.get_disconnectable_elements())
@@ -370,6 +388,8 @@ def update_config(config: ConfigRequest) -> dict:
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        recommender_service.end_study_mutation()
 
 
 class RecommenderModelRequest(BaseModel):
@@ -620,6 +640,12 @@ from fastapi.responses import StreamingResponse
 import json
 @app.post("/api/run-analysis")
 async def run_analysis(request: AnalysisRequest) -> StreamingResponse:
+    # Study-mutation gate (D3): reject a second analysis / config load
+    # in flight rather than queueing it behind this one. Held for the
+    # whole stream; released in the generator's finally.
+    if not recommender_service.try_begin_study_mutation("run-analysis"):
+        raise HTTPException(status_code=409, detail=_STUDY_BUSY_DETAIL)
+
     def event_generator() -> Iterator[Any]:
         try:
             for event in recommender_service.run_analysis(request.disconnected_elements):
@@ -630,20 +656,29 @@ async def run_analysis(request: AnalysisRequest) -> StreamingResponse:
                 yield json.dumps(event) + "\n"
         except Exception as e:
             yield json.dumps({"type": "error", "message": str(e)}) + "\n"
+        finally:
+            recommender_service.end_study_mutation()
 
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")
 
 @app.post("/api/run-analysis-step1")
 async def run_analysis_step1(request: AnalysisRequest) -> dict:
+    if not recommender_service.try_begin_study_mutation("run-analysis-step1"):
+        raise HTTPException(status_code=409, detail=_STUDY_BUSY_DETAIL)
     try:
         result = recommender_service.run_analysis_step1(request.disconnected_elements)
         return result
     except Exception as e:
         logger.exception("API boundary error")
         raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        recommender_service.end_study_mutation()
 
 @app.post("/api/run-analysis-step2")
 async def run_analysis_step2(request: AnalysisStep2Request) -> StreamingResponse:
+    if not recommender_service.try_begin_study_mutation("run-analysis-step2"):
+        raise HTTPException(status_code=409, detail=_STUDY_BUSY_DETAIL)
+
     def event_generator() -> Iterator[Any]:
         try:
             for event in recommender_service.run_analysis_step2(
@@ -659,6 +694,8 @@ async def run_analysis_step2(request: AnalysisStep2Request) -> StreamingResponse
                 yield json.dumps(event) + "\n"
         except Exception as e:
             yield json.dumps({"type": "error", "message": str(e)}) + "\n"
+        finally:
+            recommender_service.end_study_mutation()
 
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")
 
