@@ -699,8 +699,15 @@ async def run_analysis(request: AnalysisRequest) -> StreamingResponse:
 
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")
 
+# NB: sync `def` (not `async def`) — this endpoint runs seconds of
+# synchronous pypowsybl / grid2op work (contingency simulation + overload
+# detection). A `def` route is dispatched to Starlette's threadpool, so
+# it does NOT block the event loop; an `async def` would freeze every
+# other request for the duration (QW2, 2026-07). The other analysis
+# routes stay `async def` because they return a StreamingResponse
+# immediately and their sync generators are iterated in the threadpool.
 @app.post("/api/run-analysis-step1")
-async def run_analysis_step1(request: AnalysisRequest) -> dict:
+def run_analysis_step1(request: AnalysisRequest) -> dict:
     if not recommender_service.try_begin_study_mutation("run-analysis-step1"):
         raise AppHTTPException(status_code=409, detail=_STUDY_BUSY_DETAIL, code=CODE_STUDY_BUSY)
     try:

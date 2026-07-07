@@ -176,9 +176,9 @@ within a session) is the longer tail. → **D3** + quick wins QW2, QW5.
 lock-ordering caveat turned out to be a latent reset/prefetch deadlock —
 see Part V). **QW5** (try/finally on `diagram_mixin._get_contingency_flows`)
 was folded into D3 and is done. **QW2** (`async def`→`def` on
-`run_analysis_step1` to stop blocking the event loop) is **still open** —
-D3 added the coarse lock but deliberately did not touch step-1's
-`async def`, so the event-loop blocking remains a live one-keyword fix.
+`run_analysis_step1` to stop blocking the event loop) was also landed
+(2026-07-07) as a follow-up — the endpoint is now a sync `def` route,
+guarded by `TestEventLoopSafety`.
 
 ### T4. Error paths were never designed as UX
 Backend: everything → 400, details leak absolute paths. Contract: five error
@@ -370,7 +370,7 @@ are each substantially mitigated. Residual defects are specific and fixable.*
 
 | Sev | Finding | Verdict |
 |---|---|---|
-| high | `/api/run-analysis-step1` is `async def` running seconds of sync pypowsybl/grid2op — blocks the entire event loop (all endpoints freeze) | ✅ — no `await`/`to_thread` anywhere in the backend |
+| high | `/api/run-analysis-step1` is `async def` running seconds of sync pypowsybl/grid2op — blocks the entire event loop (all endpoints freeze) | ✅ → **RESOLVED (QW2, 2026-07-07)**: changed to a sync `def` route (dispatched to the threadpool); guarded by `TestEventLoopSafety`. |
 | med | Shared Network variant-switched from threadpool workers, no lock; `diagram_mixin.py:151-160` lacks try/finally | 🟡 → **RESOLVED (D3)**: service-level `RLock` on all variant-switching entry points + try/finally added to `_get_contingency_flows`. |
 | med | Pandas row-iteration reintroduced in newer helpers — worst case an 85,304-iteration `.loc` loop per action-SLD view (`_diff_switches`) | ✅ |
 | med | Streaming endpoints ship the full 20–28 MB action NAD JSON-escaped, uncompressed | ✅ |
@@ -668,10 +668,10 @@ Day-one (each ≤ ~2 h, near-zero risk):
 | # | Fix | Where |
 |---|---|---|
 | QW1 | Collect root `tests/` (add to `pytest.ini` testpaths or move files) — *the highest value-per-hour change in this review* | pytest.ini / CI |
-| QW2 | `async def` → `def` on `run_analysis_step1` (one keyword, unblocks the event loop) | `main.py:635` |
+| QW2 | ✅ **DONE (2026-07-07)** — `async def` → `def` on `run_analysis_step1` (unblocks the event loop; `TestEventLoopSafety` guard) | `main.py` |
 | QW3 | CORS default `*` → loopback origins; wildcard becomes explicit opt-in | `main.py:141` |
 | QW4 | Render `useAnalysis.error` in `StatusToasts`; add `setError` to the two swallowed catches | `App.tsx` |
-| QW5 | try/finally on the unguarded variant switch | `diagram_mixin.py:151-160` |
+| QW5 | ✅ **DONE (2026-07-07, folded into D3)** — try/finally on the unguarded variant switch | `diagram_mixin.py` `_get_contingency_flows` |
 | QW6 | Replace `detail=str(e)` with generic messages + server-side `logger.exception` | `main.py` |
 | QW7 | Reject path separators/`..` in `session_name`; resolve+relative_to on session dirs (mirror the existing `/results/pdf` guard) | `main.py` |
 | QW8 | Pin `expert_op4grid_recommender` per-PR; float it in a separate canary job | CI ×3 + Dockerfile |

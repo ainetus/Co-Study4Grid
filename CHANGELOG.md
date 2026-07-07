@@ -7,6 +7,16 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Performance — QW2: `/api/run-analysis-step1` no longer blocks the event loop (2026-07 review)
+
+- The endpoint ran seconds of synchronous pypowsybl / grid2op work inside an
+  `async def`, freezing the entire event loop (every other request) for its
+  duration. Changed to a sync `def` route so FastAPI dispatches it to the
+  threadpool. One-keyword fix; guarded by
+  `test_api_endpoints.py::TestEventLoopSafety`. The streaming analysis routes
+  stay `async def` — they return a `StreamingResponse` immediately and their
+  sync generators are already iterated in the threadpool.
+
 ### API contract — D2: machine-checked, one error envelope (2026-07 review, partial)
 
 - **Unified error envelope**: `services/api_errors.py` installs FastAPI

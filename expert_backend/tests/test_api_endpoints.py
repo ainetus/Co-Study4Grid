@@ -1543,6 +1543,26 @@ class TestRegenerateOverflowGraph:
         assert "pdf_url" not in response.json()
 
 
+class TestEventLoopSafety:
+    """`/api/run-analysis-step1` runs seconds of synchronous pypowsybl /
+    grid2op work, so it MUST be a sync `def` route (dispatched to
+    Starlette's threadpool) — an `async def` would run that blocking work
+    on the event loop and freeze every other request for its duration
+    (QW2, 2026-07). The streaming analysis routes stay `async def`: they
+    return a StreamingResponse immediately and their sync generators are
+    iterated in the threadpool."""
+
+    def test_run_analysis_step1_is_sync_def(self):
+        import inspect
+
+        from expert_backend import main
+
+        assert not inspect.iscoroutinefunction(main.run_analysis_step1), (
+            "run_analysis_step1 must be a sync `def` route so its blocking "
+            "pypowsybl work runs in the threadpool, not on the event loop."
+        )
+
+
 class TestStudyMutationBusyGate:
     """The study-mutation gate (D3, 2026-07): config load + the analysis
     pipeline mutate shared singleton state, so at most one runs at a
