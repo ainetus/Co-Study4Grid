@@ -30,8 +30,9 @@ expert_backend/
     ├── random_overflow.py             # RandomOverflowRecommender (3-layer chain)
     ├── overflow_path_filter.py        # Layer 2 of the sampling filter chain
     ├── network_existence.py           # Layer 3 of the sampling filter chain
-    ├── synthetic_actions.py           # Synthetic reco / shed / curtail builders
-    └── _service_integration.py        # Patches RecommenderService for model dispatch
+    └── synthetic_actions.py           # Synthetic reco / shed / curtail builders
+                                       # (model dispatch is explicit composition on
+                                       #  RecommenderService — no patching module)
 ```
 
 ---
@@ -62,8 +63,9 @@ Two top-level singletons drive every request:
     `run_analysis_step2`, action enrichment
   - `SimulationMixin` → `simulate_manual_action`, `compute_superposition`
   - `ModelSelectionMixin` → recommender name + `compute_overflow_graph`
-    toggle, attached at import time by
-    `expert_backend/recommenders/_service_integration.py`
+    toggle, inherited directly by `RecommenderService` (explicit
+    composition — the former import-time patching module
+    `_service_integration.py` was removed in the 2026-07 D1 revision)
 
 The mixin pattern keeps each concern ≤ 500 lines and unit-testable in
 isolation (see `expert_backend/tests/`).
@@ -166,11 +168,11 @@ class RecommenderService(
 ```
 
 Each mixin owns a few attributes (`_dict_action`, `_analysis_context`,
-`_last_result`, ...) and a small surface area. The
-`ModelSelectionMixin` is attached at import time from
-`expert_backend/recommenders/_service_integration.py` so the
-`recommender_service.py` file stays untouched by the pluggable-model
-change — see [`recommender_models.md`](recommender_models.md) §4.
+`_last_result`, ...) and a small surface area. `ModelSelectionMixin`
+is a regular base class of `RecommenderService`; `update_config` /
+`reset` call `_apply_model_settings` / `_reset_model_settings`
+explicitly and the model-aware `run_analysis_step2` lives on
+`AnalysisMixin` — see [`recommender_models.md`](recommender_models.md) §4.
 
 ### Pre-extraction + idempotent helpers
 
@@ -259,29 +261,36 @@ Full reference:
 
 ## Testing
 
-The backend test suite lives under `tests/` (not the legacy
-`expert_backend/tests/` location which holds older tests). All tests
-are mock-based and do NOT require a live pypowsybl / grid2op stack:
+The recommender-subsystem tests live in the canonical
+`expert_backend/tests/` suite (they were rescued from an orphaned root
+`tests/` package — which no pytest config collected — in the 2026-07
+D1 revision) and run in CI with the rest of the backend suite. They
+need the real `expert_op4grid_recommender` package (the registry
+imports the concrete model classes) and skip under the conftest mock
+layer:
 
 - `test_recommenders_registry.py` — register / unregister / build /
-  list_models / canonical-three.
+  list_models / canonical-three + `params_spec()` failure resilience.
 - `test_random_recommenders.py` — Random + RandomOverflow metadata,
   sampling cardinality, three-layer filter chain, None-vs-`[]`
   fallback semantics, drop-on-unknown-VL regression.
 - `test_overflow_path_filter.py` — `_resolve_node_to_name` covering
   every shape the distribution graph may return, including the
-  `numpy.str_` regression.
+  `numpy.str_` regression and the underscore-in-substation-name
+  segment-scan fix.
 - `test_network_existence.py` — `filter_to_existing_network_elements`,
   conservative fallback on introspection failure.
 - `test_action_enrichment.py` — `extract_action_topology` with
   numpy-array attribute tolerance + 4-way `set_bus` backfill +
   `voltage_level_id` surfacing.
 - `test_model_selection_mixin.py` — state defaults, settings parsing.
-- `test_service_integration.py` — patch wiring (mixin attached,
-  `update_config` / `reset` wrapped, `run_analysis_step2` replaced).
+- `test_model_composition.py` — explicit composition wiring (mixin
+  inherited, `update_config` / `reset` delegate to the mixin, single
+  model-aware `run_analysis_step2`, overflow-graph cache fast path,
+  `antenna_meta` pass-through regression).
 - `test_models_api.py` — `ConfigRequest` schema + `GET /api/models`.
 
-Run: `pytest tests/`.
+Run: `pytest expert_backend/tests` (or plain `pytest`).
 
 ---
 

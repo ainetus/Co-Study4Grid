@@ -107,6 +107,22 @@ Configuration in `frontend/vite.config.ts` (Vitest plugin).
 | `test_obs_prewarm_for_step1.py` | Post-contingency obs prewarm + reuse pipeline: `_cache_obs_for_variant` env-resolution + fallback, `RecommenderService.reset()` clears `_cached_obs_n1_elements`, `run_analysis_step1` forwards `prebuilt_obs_simu_defaut` on cache hit, omits it on miss / when `DO_RECO_MAINTENANCE=True`, falls back to slow path when the upstream library doesn't accept the kwarg. |
 | `test_n1_diagram_fast_path.py` | Fast-path guards for the N-1 diagram pipeline |
 
+#### Pluggable recommenders (rescued from the orphaned root `tests/` — 2026-07 D1)
+These need the real `expert_op4grid_recommender` (the recommenders
+package `__init__` imports the concrete model classes) and
+`pytest.importorskip`-skip under the mock layer:
+
+| File | Description |
+|------|-------------|
+| `test_recommenders_registry.py` | register / unregister / build_recommender / list_models shape + canonical three models + `params_spec()` failure resilience (a broken model degrades to an empty param list instead of 500-ing `/api/models`) |
+| `test_model_composition.py` | Explicit RecommenderService ⇄ registry composition: `ModelSelectionMixin` in the MRO, no import-time wrappers, `update_config`/`reset` delegate to the mixin, model-aware `run_analysis_step2` (unknown-model error event, overflow-graph cache fast path, `antenna_meta` pass-through regression) |
+| `test_model_selection_mixin.py` | `ModelSelectionMixin` state defaults + `_apply_model_settings` parsing edge cases |
+| `test_models_api.py` | `ConfigRequest` schema (model / compute_overflow_graph fields) + `GET /api/models` endpoint shape |
+| `test_random_recommenders.py` | RandomRecommender / RandomOverflowRecommender metadata, sampling, 3-layer filter chain |
+| `test_overflow_path_filter.py` | Path-based candidate narrowing incl. the `numpy.str_` regression and the underscore-in-substation-name segment scan |
+| `test_network_existence.py` | Drop dict_action entries targeting elements unknown to the loaded network |
+| `test_action_enrichment.py` | `extract_action_topology` backfill + `voltage_level_id` hint propagation |
+
 #### Performance & Regression
 | File | Description |
 |------|-------------|

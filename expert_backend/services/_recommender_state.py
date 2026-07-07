@@ -61,9 +61,9 @@ class RecommenderState:
     _saved_computed_pairs: Any
     _simulation_env: Any
 
-    # --- methods bound dynamically by recommenders/_service_integration ---
-    # (attached to the live RecommenderService per active model; declared
-    # here so the call sites in main.py type-check)
+    # --- methods inherited from ModelSelectionMixin (explicit composition
+    # on RecommenderService; declared here so mixin-internal call sites
+    # like AnalysisMixin.run_analysis_step2 type-check in isolation) ---
     def get_active_model_name(self, *args: Any, **kwargs: Any) -> Any: ...
     def get_compute_overflow_graph(self, *args: Any, **kwargs: Any) -> Any: ...
     def _apply_model_settings(self, *args: Any, **kwargs: Any) -> Any: ...

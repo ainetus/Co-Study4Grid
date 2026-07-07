@@ -21,12 +21,24 @@ Co-Study4Grid/
 │   ├── main.py                # FastAPI app: endpoints, CORS, gzip helpers, NDJSON streaming
 │   ├── requirements.txt
 │   ├── test_backend.py        # Ad-hoc integration script (not part of pytest)
+│   ├── recommenders/          # Pluggable recommendation-model registry: registry.py,
+│   │   │                      # random_basic / random_overflow canonical examples,
+│   │   │                      # overflow_path_filter + network_existence sampling
+│   │   │                      # filters, synthetic_actions builders. Models are
+│   │   │                      # registered at package import; the service integration
+│   │   │                      # is EXPLICIT composition (RecommenderService inherits
+│   │   │                      # ModelSelectionMixin; AnalysisMixin.run_analysis_step2
+│   │   │                      # consumes the registry — no import-time patching).
+│   │   │                      # Full reference: docs/backend/recommender_models.md
 │   ├── services/
 │   │   ├── network_service.py     # pypowsybl Network singleton + metadata queries
-│   │   ├── recommender_service.py # Analysis orchestrator (composes the 3 mixins below)
+│   │   ├── recommender_service.py # Analysis orchestrator (composes the 4 mixins below)
 │   │   ├── diagram_mixin.py       # NAD/SLD orchestrator — delegates to services/diagram/
-│   │   ├── analysis_mixin.py      # Two-step analysis orchestrator — delegates to services/analysis/
+│   │   ├── analysis_mixin.py      # Two-step analysis orchestrator (model-aware step-2
+│   │   │                          # dispatch through the recommenders registry) —
+│   │   │                          # delegates to services/analysis/
 │   │   ├── simulation_mixin.py    # Manual-action + superposition orchestrator
+│   │   ├── model_selection_mixin.py # Active recommender model + overflow-graph toggle
 │   │   ├── simulation_helpers.py  # Stateless helpers extracted from simulation_mixin (PR #104)
 │   │   ├── overflow_overlay.py    # Pin / filter overlay injector for the interactive
 │   │   │                          # HTML overflow viewer (PR #116, 0.7.0)

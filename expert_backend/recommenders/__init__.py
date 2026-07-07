@@ -34,18 +34,22 @@ from expert_backend.recommenders.registry import (
 )
 
 # Register the default (expert) and canonical random examples.
-# This module is imported by the FastAPI startup path so every server
-# process has the three built-in models available immediately.
+# This module is imported by the FastAPI startup path — and lazily by
+# ``AnalysisMixin.run_analysis_step2`` via
+# ``expert_backend.recommenders.registry`` — so every consumer of
+# ``build_recommender`` sees the three built-in models registered.
+#
+# The service-side integration is EXPLICIT composition (no import-time
+# monkey-patching): ``RecommenderService`` inherits
+# ``ModelSelectionMixin`` directly, ``update_config`` / ``reset`` call
+# ``_apply_model_settings`` / ``_reset_model_settings`` themselves, and
+# the single model-aware ``run_analysis_step2`` lives on
+# ``AnalysisMixin``. (The former ``_service_integration.py`` module that
+# grafted all of this onto the class at import time was removed in the
+# 2026-07 D1 revision.)
 register(ExpertRecommender)
 register(RandomRecommender)
 register(RandomOverflowRecommender)
-
-# Side-effect: patches RecommenderService to consume the registry
-# (state + getters + update_config wrap + reset wrap + model-aware
-# run_analysis_step2). Imported AFTER the models are registered so the
-# patched method can find them. See _service_integration.py for the
-# full integration.
-from expert_backend.recommenders import _service_integration  # noqa: F401, E402
 
 __all__ = [
     "DEFAULT_MODEL",

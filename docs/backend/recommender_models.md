@@ -215,19 +215,23 @@ step.
 
 ### `RecommenderService` integration
 
-Three concerns, kept in `expert_backend/recommenders/_service_integration.py`
-to avoid touching the (large) `recommender_service.py` / `analysis_mixin.py`
-files:
+Explicit composition (2026-07 D1 revision — the former
+`_service_integration.py` module that grafted all of this onto the
+class at import time was removed):
 
-1. **State + getters** via `ModelSelectionMixin` —
-   `_recommender_model_name` and `_compute_overflow_graph` (with
-   defaults `"expert"` and `True`). Public getters
-   `get_active_model_name()` and `get_compute_overflow_graph()` are
-   echoed back by `/api/config`.
-2. **`update_config` wrap** — captures the two new ConfigRequest
-   fields every time the operator applies settings.
-3. **`run_analysis_step2` replacement** — model-aware generator that:
-   - builds the recommender from the registry,
+1. **State + getters** via `ModelSelectionMixin`, a regular base class
+   of `RecommenderService` — `_recommender_model_name` and
+   `_compute_overflow_graph` (with defaults `"expert"` and `True`).
+   Public getters `get_active_model_name()` and
+   `get_compute_overflow_graph()` are echoed back by `/api/config`.
+2. **`update_config` / `reset`** call `_apply_model_settings(settings)`
+   / `_reset_model_settings()` explicitly, so the two ConfigRequest
+   fields are captured every time the operator applies settings and
+   cleared on every study reload.
+3. **`AnalysisMixin.run_analysis_step2`** is the single, model-aware
+   generator (no shadowed legacy copy). It:
+   - builds the recommender from the registry (lazy import, so the
+     mock-layer test sandbox can still import `analysis_mixin`),
    - conditionally skips the overflow-graph step
      (`needs_graph = requires_overflow_graph OR get_compute_overflow_graph()`
      — a model that requires the graph can never be skipped, even via
@@ -486,15 +490,15 @@ grid2op needed.
 - `test_model_selection_mixin.py` — default state, `_apply_model_settings`
   with explicit / empty / whitespace / non-string values, missing
   attrs use defaults.
-- `test_service_integration.py` — side-effects of importing
-  `expert_backend.recommenders`: mixin attached, `update_config` /
-  `reset` wrapped, `run_analysis_step2` replaced, unknown model
-  emits an error event.
+- `test_model_composition.py` — the explicit composition: mixin
+  inherited, `update_config` / `reset` delegate to it, single
+  model-aware `run_analysis_step2`, unknown model emits an error
+  event, overflow-graph cache fast path, `antenna_meta` pass-through.
 - `test_models_api.py` — `ConfigRequest` defaults / accepts custom
   model / round-trips through JSON; `GET /api/models` shape and
   canonical content.
 
-Run the suite: `pytest tests/` from the repo root.
+Run the suite: `pytest expert_backend/tests` (or plain `pytest`) from the repo root — the files above live in the canonical suite and run in CI.
 
 ---
 
@@ -552,10 +556,10 @@ session save (see [Save Results § analysis](../features/save-results.md#analysi
 | Stage | Where it's measured | Covers |
 |---|---|---|
 | `step1_time` | `expert_backend/services/analysis_mixin.py` (wrapper) | Contingency simulation + overload detection (`run_analysis_step1`). Near-zero when the obs is pre-warmed (see below). |
-| `overflow_graph_time` | `expert_backend/recommenders/_service_integration.py` | `_narrow_context_to_selected_overloads` + `run_analysis_step2_graph` + the PDF mtime poll. **`null`** when the active model doesn't consume the overflow graph; **`0.0`** on a cached re-run. |
-| `action_prediction_time` | `_service_integration.py` (direct call into upstream primitives) | `recommender.recommend(inputs, params)` — the model's intrinsic selection step. For Expert-style models, includes the internal candidate simulation used to score topology actions. |
-| `assessment_time` | `_service_integration.py` | `reassess_prioritized_actions` + `propagate_non_convergence_to_scores` + `compute_combined_pairs`. Each prioritized action is re-simulated to compute its final `rho_before` / `rho_after`. **Scales linearly with the number of prioritized actions.** |
-| `enrichment_time` | `_service_integration.py` | Co-Study4Grid post-processing: `_enrich_actions` + `_augment_combined_actions_with_target_max_rho` + `_compute_mw_start_for_scores`. UI-facing decoration only. |
+| `overflow_graph_time` | `expert_backend/services/analysis_mixin.py` | `_narrow_context_to_selected_overloads` + `run_analysis_step2_graph` + the PDF mtime poll. **`null`** when the active model doesn't consume the overflow graph; **`0.0`** on a cached re-run. |
+| `action_prediction_time` | `analysis_mixin.py` (upstream-reported) | `recommender.recommend(inputs, params)` — the model's intrinsic selection step. For Expert-style models, includes the internal candidate simulation used to score topology actions. |
+| `assessment_time` | `analysis_mixin.py` (upstream-reported) | `reassess_prioritized_actions` + `propagate_non_convergence_to_scores` + `compute_combined_pairs`. Each prioritized action is re-simulated to compute its final `rho_before` / `rho_after`. **Scales linearly with the number of prioritized actions.** |
+| `enrichment_time` | `analysis_mixin.py` | Co-Study4Grid post-processing: `_enrich_actions` + `_augment_combined_actions_with_target_max_rho` + `_compute_mw_start_for_scores`. UI-facing decoration only. |
 | `wall_clock_time` | `frontend/src/hooks/useAnalysis.ts` | `performance.now()` from the "Analyze & Suggest" click until the `result` NDJSON event arrives. Includes every backend stage + network round-trip + NDJSON streaming overhead. |
 
 The headline number in the ActionFeed reminder (`Suggestions produced
@@ -628,8 +632,8 @@ synced-pull requirement for operators.
 
 ### Action-discovery seam (`run_analysis_step2_discovery`)
 
-The model-aware step-2 generator (`_run_analysis_step2_with_model` in
-`expert_backend/recommenders/_service_integration.py`) drives action
+The model-aware step-2 generator (`AnalysisMixin.run_analysis_step2`
+in `expert_backend/services/analysis_mixin.py`) drives action
 discovery **through** the upstream `run_analysis_step2_discovery`
 wrapper rather than calling its sub-primitives
 (`build_recommender_inputs`, `reassess_prioritized_actions`,

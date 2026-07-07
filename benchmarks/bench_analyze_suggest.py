@@ -178,8 +178,11 @@ class _Instrument:
         self._patches = []
 
     def __enter__(self):
-        from expert_backend.recommenders import _service_integration as si
+        # The model-aware step2 generator lives on AnalysisMixin (explicit
+        # composition since the 2026-07 D1 revision), so both patches
+        # target the analysis_mixin module namespace.
         from expert_backend.services import analysis_mixin as am
+        si = am
 
         orig_sanitize = si.sanitize_for_json
 

@@ -14,6 +14,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
+# The random recommenders subclass the upstream RecommenderModel base —
+# skip in mock-only environments.
+pytest.importorskip("expert_op4grid_recommender.models.base")
+
 from expert_op4grid_recommender.models.base import RecommenderInputs
 from expert_backend.recommenders.random_basic import RandomRecommender
 from expert_backend.recommenders.random_overflow import RandomOverflowRecommender

@@ -7,6 +7,36 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Architecture — D1: de-ghosted the pluggable-recommender subsystem (2026-07 review)
+
+- **Explicit composition replaces import-time monkey-patching.**
+  `RecommenderService` now inherits `ModelSelectionMixin` directly;
+  `update_config` / `reset` call `_apply_model_settings` /
+  `_reset_model_settings` themselves; and the single, model-aware
+  `run_analysis_step2` lives on `AnalysisMixin` (delegating to new
+  `_run_step2_discovery` / `_enrich_step2_results` helpers). The
+  `expert_backend/recommenders/_service_integration.py` module — which
+  rewrote the service class as a side-effect of importing the package —
+  was **deleted**, along with the shadowed ~190-line legacy step-2
+  generator it had been mirroring.
+- **Fixed the `antenna_meta` mirror-drift bug**: the islanded-pocket
+  metadata added to the legacy generator in `2dd2ced` never made it
+  into the production (monkey-patched) generator, so the frontend's
+  AntennaNotice was dead in production. The unified generator emits it
+  again; guarded by a regression test
+  (`test_model_composition.py::test_result_event_restores_antenna_meta_from_discovery`).
+- **Rescued the orphaned root `tests/` package** (8 files, 144 test
+  functions — collected by no pytest config and no CI) into
+  `expert_backend/tests/`, merging the `test_recommenders_registry.py`
+  filename collision and rewriting `test_service_integration.py` as
+  `test_model_composition.py`. The rescue immediately caught a real
+  bug: the overflow-path filter's segment scan split action ids on
+  `_`, so substation names *containing* underscores (`VL_LOOP`) never
+  matched and UUID-prefixed coupling actions were silently dropped —
+  fixed in `overflow_path_filter._action_touches_path`.
+- Docs updated across both CLAUDE.md trees, `docs/backend/README.md`,
+  `docs/backend/recommender_models.md` and the README file tree.
+
 ### Performance — Analyze & Suggest on the 2-vCPU Space (30 s → 75 s regression)
 
 - **Step-2 result payload no longer ships full-grid per-branch arrays.** Each

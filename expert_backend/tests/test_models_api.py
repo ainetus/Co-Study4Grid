@@ -6,6 +6,11 @@ from __future__ import annotations
 
 import pytest
 
+# expert_backend.main imports the recommenders package, whose __init__
+# registers the concrete upstream model classes — skip in mock-only
+# environments (same convention as test_recommenders_registry.py).
+pytest.importorskip("expert_op4grid_recommender.models.base")
+
 fastapi_testclient = pytest.importorskip("fastapi.testclient")
 TestClient = fastapi_testclient.TestClient
 

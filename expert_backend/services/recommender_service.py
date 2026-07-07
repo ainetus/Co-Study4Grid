@@ -13,6 +13,9 @@ modules.  Business logic lives in mixin classes:
 - DiagramMixin   (diagram_mixin.py)  — NAD/SLD generation, flow deltas
 - AnalysisMixin  (analysis_mixin.py) — contingency analysis, action enrichment
 - SimulationMixin(simulation_mixin.py) — manual simulation, superposition
+- ModelSelectionMixin (model_selection_mixin.py) — active recommender
+  model + overflow-graph toggle (consumed by the pluggable-recommender
+  registry in ``expert_backend/recommenders/``)
 
 This file contains the core class definition, state management,
 configuration, and network/environment lifecycle.
@@ -43,17 +46,21 @@ from expert_backend.services.sanitize import sanitize_for_json
 from expert_backend.services.diagram_mixin import DiagramMixin
 from expert_backend.services.analysis_mixin import AnalysisMixin
 from expert_backend.services.simulation_mixin import SimulationMixin
+from expert_backend.services.model_selection_mixin import ModelSelectionMixin
 
 logger = logging.getLogger(__name__)
 
 
-class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
+class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin, ModelSelectionMixin):
     """Central service for grid contingency analysis and remedial action recommendation.
 
     Inherits domain logic from:
-    - DiagramMixin:    diagram generation and flow analysis
-    - AnalysisMixin:   contingency analysis and action enrichment
-    - SimulationMixin: manual action simulation and superposition
+    - DiagramMixin:        diagram generation and flow analysis
+    - AnalysisMixin:       contingency analysis and action enrichment
+    - SimulationMixin:     manual action simulation and superposition
+    - ModelSelectionMixin: active recommender model + overflow-graph toggle
+      (explicit composition — formerly grafted at import time by
+      ``expert_backend/recommenders/_service_integration.py``)
     """
 
     def __init__(self):
@@ -123,9 +130,18 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
         # ``run_analysis_step2`` can echo it in the result event next to
         # its own per-stage timings.
         self._last_step1_time: float | None = None
+        # Pluggable-recommender selection (ModelSelectionMixin): active
+        # model name + compute_overflow_graph toggle start at their
+        # defaults so any code that pokes at the getters before
+        # /api/config is called sees a consistent state.
+        self._reset_model_settings()
 
     def reset(self) -> None:
         """Clear all cached analysis state. Called when loading a new study."""
+        # Model selection goes back to the defaults FIRST — same ordering
+        # as the rest of this method (state cleared before the caller
+        # loads the next study's configuration).
+        self._reset_model_settings()
         # Drain any in-flight NAD prefetch thread BEFORE we tear down the
         # network it depends on. A dangling thread that finishes after
         # reset() would write into the next study's `_prefetched_base_nad`
@@ -333,6 +349,10 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin):
         return self._saved_computed_pairs
 
     def update_config(self, settings) -> None:
+        # Capture the model selection FIRST so any downstream logging in
+        # this method sees the resolved values (ModelSelectionMixin).
+        self._apply_model_settings(settings)
+
         # Update the global config of the package
         path_obj = Path(settings.network_path)
         config.ENV_NAME = path_obj.name

@@ -72,6 +72,11 @@ expert_backend/
 │   │                              # (setpoint math incl. redispatch, PST parsing,
 │   │                              # care mask, metrics, result serialisation,
 │   │                              # is_injection_action for the GST path, …)
+│   ├── model_selection_mixin.py   # Active recommender model + overflow-graph
+│   │                              # toggle. A regular base class of
+│   │                              # RecommenderService (explicit composition);
+│   │                              # update_config / reset call
+│   │                              # _apply_model_settings / _reset_model_settings
 │   ├── overflow_overlay.py        # PR #116 (0.7.0) — pin / filter overlay
 │   │                              # injector for the interactive HTML overflow
 │   │                              # viewer. `inject_overlay(html)` grafts the
@@ -88,6 +93,17 @@ expert_backend/
 │   │                              # React Action Overview tab.
 │   └── sanitize.py                # NumPy → native-Python recursive coercion
 │                                  # (`sanitize_for_json`)
+├── recommenders/               # Pluggable recommendation-model subsystem:
+│   ├── __init__.py                # registers the built-in models (expert /
+│   │                              # random / random_overflow) at import —
+│   │                              # pure registration, NO service patching
+│   ├── registry.py                # register / unregister / build_recommender /
+│   │                              # list_models (drives GET /api/models)
+│   ├── random_basic.py            # RandomRecommender (canonical example)
+│   ├── random_overflow.py         # RandomOverflowRecommender (3-layer chain)
+│   ├── overflow_path_filter.py    # Path-based candidate narrowing (layer 2)
+│   ├── network_existence.py       # Drop actions targeting unknown elements (layer 3)
+│   └── synthetic_actions.py       # Synthetic reco / shed / curtail builders
 └── tests/                     # pytest suite — see tests/CLAUDE.md
 ```
 
@@ -98,12 +114,22 @@ module-level singletons**: `network_service` (raw pypowsybl Network +
 metadata queries) and `recommender_service` (everything that needs
 analysis state — base network, action dictionary, observation cache,
 last-result, NAD prefetch, layout cache, …). `RecommenderService`
-inherits from three mixins (`DiagramMixin`, `AnalysisMixin`,
-`SimulationMixin`) each owning a slice of behaviour but operating on
-the same `self`. The composition is intentional: state lifecycle
-(`__init__`, `reset`, `update_config`) stays in `recommender_service.py`
-and the mixins reach into it through `self`. Treat the mixins as one
-class split across files for readability.
+inherits from four mixins (`DiagramMixin`, `AnalysisMixin`,
+`SimulationMixin`, `ModelSelectionMixin`) each owning a slice of
+behaviour but operating on the same `self`. The composition is
+intentional: state lifecycle (`__init__`, `reset`, `update_config`)
+stays in `recommender_service.py` and the mixins reach into it through
+`self`. Treat the mixins as one class split across files for
+readability. The pluggable-recommender subsystem in `recommenders/`
+plugs in through that same composition: `ModelSelectionMixin` holds
+the active model + overflow-graph toggle, and
+`AnalysisMixin.run_analysis_step2` builds the recommender from
+`recommenders/registry.py` at dispatch time (full reference:
+`docs/backend/recommender_models.md`). There is deliberately NO
+import-time monkey-patching anywhere in this integration — the former
+`recommenders/_service_integration.py` module that rewrote the service
+class at import was removed in the 2026-07 D1 revision after it
+shipped two mirror-drift bugs.
 
 **Mixin → helper-package decomposition (PR #104 / #106).** Each
 mixin is now a **thin orchestrator** that delegates stateless pure

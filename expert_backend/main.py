@@ -30,8 +30,10 @@ from expert_backend.services.overflow_overlay import inject_overlay
 from expert_backend.services.recommender_service import recommender_service
 
 # Importing `expert_backend.recommenders` registers ExpertRecommender,
-# RandomRecommender and RandomOverflowRecommender at import time. The
-# registry is queried by `update_config` (model selection) and by the
+# RandomRecommender and RandomOverflowRecommender at import time (pure
+# registration — the service integration is explicit composition on
+# RecommenderService, not an import side-effect). The registry is
+# queried by `run_analysis_step2` (model dispatch) and by the
 # `/api/models` endpoint below.
 from expert_backend.recommenders import list_models as _list_recommender_models
 

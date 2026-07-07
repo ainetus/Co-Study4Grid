@@ -185,11 +185,17 @@ def _action_touches_path(
             break
 
     # 4. UUID-prefixed coupling action IDs of the form
-    # ``<uuid>_<VL>_<switch>`` or ``<uuid>_<VL>_coupling``. Split on
-    # underscores and check whether any segment matches a relevant
-    # substation. Conservative: a hit on a relevant_sub is enough.
-    for chunk in str(action_id).split("_"):
-        if chunk and chunk in relevant_subs:
+    # ``<uuid>_<VL>_<switch>`` or ``<uuid>_<VL>_coupling``. Check whether
+    # any relevant substation appears as an underscore-delimited segment
+    # of the action id. Substation names themselves routinely contain
+    # underscores (``VL_LOOP``), so a naive per-chunk split would never
+    # match them — pad both sides with ``_`` and substring-match instead
+    # (the padding keeps the match anchored to segment boundaries, so
+    # ``VL_LOOP`` cannot fire on ``XVL_LOOPY``). Conservative: a hit on
+    # a relevant_sub is enough.
+    padded_id = f"_{action_id}_"
+    for sub in relevant_subs:
+        if sub and f"_{sub}_" in padded_id:
             return True
 
     return False

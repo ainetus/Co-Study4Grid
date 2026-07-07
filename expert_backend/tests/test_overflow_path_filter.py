@@ -16,6 +16,11 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
+# Importing any expert_backend.recommenders submodule triggers the
+# package __init__, which registers the concrete upstream model
+# classes — skip in mock-only environments.
+pytest.importorskip("expert_op4grid_recommender.models.base")
+
 from expert_backend.recommenders.overflow_path_filter import (
     _action_touches_path,
     _extract_path_targets,
