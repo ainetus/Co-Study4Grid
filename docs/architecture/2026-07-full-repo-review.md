@@ -83,6 +83,12 @@ scoring function, annotated file trees vs. the tree).
 
 The five headline issues, all verified:
 
+> **Remediation status (2026-07-07).** Headline #1 is **fixed** (D1),
+> #3 is **fixed** (D3), and #2 is **partly fixed** (D2 — the error
+> contract + a machine-checked OpenAPI snapshot landed; TS-generation and
+> blanket-handler removal remain). #4 (invisible failures — D5) and #5
+> (trust model — D7) are still open. See Part V for the per-item detail.
+
 1. **The pluggable-recommender subsystem is a ghost.**
    `expert_backend/recommenders/_service_integration.py` rewrites
    `RecommenderService` at import time (setattr-grafts a mixin, wraps
@@ -140,7 +146,9 @@ One root cause, four symptoms: import-time monkey-patching makes the production
 code path undiscoverable from the service sources; the shadowed legacy generator
 invites divergence (and has already diverged once); the covering tests never run;
 the docs don't admit the subsystem exists. Any fix that addresses only one symptom
-leaves the trap armed. → Deep revision **D1**.
+leaves the trap armed. → Deep revision **D1**. ✅ **Resolved 2026-07-07** —
+and the port surfaced a second shipped bug from the same root cause
+(`antenna_meta`); see Part V Observations.
 
 ### T2. Hand-maintained mirrors as the dominant failure mode
 Count the copies: 2× `run_analysis_step2`, 5× NDJSON parser, 2× scoring function
@@ -153,6 +161,10 @@ has drifted, and two drifts already shipped bugs. The systemic fix is to replace
 mirrors with either a single source (extract the shared parser; delete the
 shadowed generator; one CI) or a machine check (OpenAPI artifact diff; docs-tree
 checker; scoring golden fixture). → **D1, D2, D8, D9** + quick wins.
+✅ **Partly addressed 2026-07-07**: the shadowed step-2 generator is gone
+(D1) and the OpenAPI artifact diff now exists (D2). The five NDJSON parser
+copies (QW10/D5), the two CIs (D8/QW23), and the scoring golden fixture
+(D8) are still open.
 
 ### T3. Concurrency debt meeting a new deployment reality
 The single-user, single-flight assumption was a documented, reasonable 2025
@@ -160,6 +172,13 @@ decision. The 0.8.0 Space deployment and the frontend's own `Promise.all` batche
 invalidated it. The event-loop-blocking `async def` is a one-keyword fix; the
 missing coarse lock is a day; the variant/observation lifecycle (unbounded growth
 within a session) is the longer tail. → **D3** + quick wins QW2, QW5.
+✅ **D3 resolved 2026-07-07** (lock + 409 gate + variant LRU; the
+lock-ordering caveat turned out to be a latent reset/prefetch deadlock —
+see Part V). **QW5** (try/finally on `diagram_mixin._get_contingency_flows`)
+was folded into D3 and is done. **QW2** (`async def`→`def` on
+`run_analysis_step1` to stop blocking the event loop) is **still open** —
+D3 added the coarse lock but deliberately did not touch step-1's
+`async def`, so the event-loop blocking remains a live one-keyword fix.
 
 ### T4. Error paths were never designed as UX
 Backend: everything → 400, details leak absolute paths. Contract: five error
@@ -229,15 +248,15 @@ monkey-patching) has already shipped a bug.*
 
 | Sev | Finding | Verdict |
 |---|---|---|
-| high | Production behavior of `run_analysis_step2` defined by import-time monkey-patching (`_service_integration.py:46-88, :323`), with a live ~190-line near-duplicate on `AnalysisMixin` — already caused the shipped cache-drift bug fixed in `401045f` | ✅ |
-| high | Zero synchronization on globally-shared mutable state despite real request concurrency (threadpool + `Promise.all` + Space) | ✅ |
-| high | Root `tests/` package (8 files) covering exactly this integration runs in no pytest config and no CI | ✅ |
+| high | Production behavior of `run_analysis_step2` defined by import-time monkey-patching (`_service_integration.py:46-88, :323`), with a live ~190-line near-duplicate on `AnalysisMixin` — already caused the shipped cache-drift bug fixed in `401045f` | ✅ → **RESOLVED (D1)**: monkey-patch module deleted; single model-aware method on `AnalysisMixin`. Surfaced a *second* shipped bug from the same cause (`antenna_meta`) — see Part V Observations. |
+| high | Zero synchronization on globally-shared mutable state despite real request concurrency (threadpool + `Promise.all` + Space) | ✅ → **RESOLVED (D3)**: service-level `RLock` + 409 study gate + variant LRU (`services/service_lock.py`). |
+| high | Root `tests/` package (8 files) covering exactly this integration runs in no pytest config and no CI | ✅ → **RESOLVED (D1)**: rescued into `expert_backend/tests/`; caught a live bug on arrival (Part V Observation 2). |
 | med | `reset()` misses `_n_state_currents` and `_last_action_path` | 🟡 — real, but `_last_action_path` is functionally harmless (the reload check also tests `_dict_action is None`); `_n_state_currents` staleness window is narrow. No test guards either. |
 | med | `Overflow_Graph` dir resolved three different ways (module path, CWD, relative) | ✅ |
-| med | All failures collapse to HTTP 400; broad exception swallowing; three error contracts | ✅ |
+| med | All failures collapse to HTTP 400; broad exception swallowing; three error contracts | ✅ → **PARTLY RESOLVED (D2)**: one `{detail, code}` envelope + non-leaking logged 500 (`services/api_errors.py`); the per-endpoint `str(e)`→400 handlers are not yet deleted (tracked). |
 | med | `/api/config` route embeds domain logic, private-attribute reaches, a vestigial global | ✅ |
 | med | `update_config` is a ~190-line god-method that silently rewrites the user's action file on disk | ✅ |
-| med | Backend CLAUDE.md drifted (composition model wrong, line anchors hundreds off) | ✅ |
+| med | Backend CLAUDE.md drifted (composition model wrong, line anchors hundreds off) | ✅ → **PARTLY RESOLVED (D1)**: both CLAUDE.md trees updated for the explicit composition + the `recommenders/` subsystem; broader anchor-staleness is D9. |
 | low | Vestigial vertical slice: legacy `/api/run-analysis`, root `inspect_action.py`, hand-maintained type shim | ▫ |
 | low | `overflow_overlay.py` embeds ~916 lines of CSS/JS in an f-string, tested via a hand-mirrored Python re-implementation | ▫ |
 
@@ -289,8 +308,8 @@ absence of any machine-checked response contract.*
 
 | Sev | Finding | Verdict |
 |---|---|---|
-| high | Error contract collapses to 400 and fragments into five client-visible shapes; backend relies on 400-as-please-resimulate | 🟡 — ~26 blanket handlers (not 32); one endpoint does split 400/500; core confirmed |
-| high | No `response_model` anywhere; `types.ts` is an unenforced hand mirror; stream events landed via `as unknown as` casts | ✅ |
+| high | Error contract collapses to 400 and fragments into five client-visible shapes; backend relies on 400-as-please-resimulate | 🟡 → **PARTLY RESOLVED (D2)**: one `{detail, code}` envelope; resimulate dependency preserved via `code=ACTION_RESULT_UNAVAILABLE`; blanket-handler deletion tracked. |
+| high | No `response_model` anywhere; `types.ts` is an unenforced hand mirror; stream events landed via `as unknown as` casts | ✅ → **PARTLY RESOLVED (D2)**: `openapi.snapshot.json` + CI diff now machine-checks the contract; response models on 3 control endpoints; `types.ts` generation still to do. |
 | med | Five duplicated NDJSON parsers (see above) | 🟡 |
 | med | Desktop-era filesystem RPCs unauthenticated on the public Space | 🟡 — real, but the 300 s tkinter hang doesn't occur headless (tkinter absent, fails in ms); blast radius is one ephemeral single-player container |
 | med | Dead surface: 4 of ~34 endpoints have zero callers | 🟡 — the focused-diagram pair backs a documented proposal and its internals are exercised by the live patch pipeline; truly dead ≈ `/api/run-analysis` + `element-voltage-levels` routes |
@@ -352,7 +371,7 @@ are each substantially mitigated. Residual defects are specific and fixable.*
 | Sev | Finding | Verdict |
 |---|---|---|
 | high | `/api/run-analysis-step1` is `async def` running seconds of sync pypowsybl/grid2op — blocks the entire event loop (all endpoints freeze) | ✅ — no `await`/`to_thread` anywhere in the backend |
-| med | Shared Network variant-switched from threadpool workers, no lock; `diagram_mixin.py:151-160` lacks try/finally | 🟡 — accepted-and-documented single-user constraint, but invalidated by Space concurrency; one path genuinely unguarded |
+| med | Shared Network variant-switched from threadpool workers, no lock; `diagram_mixin.py:151-160` lacks try/finally | 🟡 → **RESOLVED (D3)**: service-level `RLock` on all variant-switching entry points + try/finally added to `_get_contingency_flows`. |
 | med | Pandas row-iteration reintroduced in newer helpers — worst case an 85,304-iteration `.loc` loop per action-SLD view (`_diff_switches`) | ✅ |
 | med | Streaming endpoints ship the full 20–28 MB action NAD JSON-escaped, uncompressed | ✅ |
 | med | Obs prewarm (`env.get_obs`) runs synchronously inside every contingency-diagram request | ✅ |
@@ -441,8 +460,8 @@ disabled under the wildcard; injected overlay renders untrusted data via
 |---|---|---|
 | high | CORS `*` + no auth + arbitrary-file endpoints = drive-by local file read/write from any web page against a localhost install | ✅ |
 | high | Unauthenticated arbitrary filesystem access survives on the public Space (Game Mode gates only the UI); `../` traversal in `session_name` | ✅ |
-| med | Singleton state shared across concurrent users, no locking (cross-ref T3) | ✅ |
-| med | `detail=str(e)` leaks absolute server paths | ✅ |
+| med | Singleton state shared across concurrent users, no locking (cross-ref T3) | ✅ → **RESOLVED (D3)**: service-level `RLock` + 409 study-mutation gate. |
+| med | `detail=str(e)` leaks absolute server paths | ✅ → **PARTLY RESOLVED (D2)**: the global unhandled-exception handler now returns a generic 500 (no `str(e)`); the per-endpoint `except → 400, str(e)` handlers still echo the message and are tracked for removal. |
 | med | `/api/pick-path` spawns a subprocess per request | 🟡 — headless child fails in ms (tkinter absent); low-severity dead weight, not a DoS vector |
 | low | `load-session` imports arbitrary HTML into the same-origin-served dir; `update_config` writes back to the caller-supplied action path | ▫ |
 
@@ -493,7 +512,13 @@ tests); `PORT` is decorative; no `HEALTHCHECK`; config upgrades never merge.
 
 Ordered by leverage; each unblocks or de-risks the ones after it.
 
-**D1. De-ghost the recommender subsystem** *(2–3 days — do first)*
+> **Progress (2026-07-07).** D1 and D3 are **shipped in full**; D2 is
+> **partially shipped** (the machine-check backbone + error contract; the
+> incremental TS-generation / blanket-handler-removal remainder is
+> tracked in its own doc). Status is noted per-item below and mirrored in
+> the dimension-finding tables in Part IV. D4–D9 remain open.
+
+**D1. De-ghost the recommender subsystem** *(2–3 days — do first)* — ✅ **DONE (2026-07-07)**
 Replace import-time monkey-patching with explicit composition:
 `RecommenderService` inherits `ModelSelectionMixin` directly (it is already
 written as a mixin); `update_config`/`reset` call `_apply_model_settings`/
@@ -502,8 +527,18 @@ generator in `analysis_mixin.py:565-756`. Rescue the root `tests/` into
 `expert_backend/tests/` (resolving the one filename collision) so CI covers the
 integration. Update both CLAUDE.md trees. This closes T1 entirely and removes the
 mirror that already shipped a bug.
+> **Shipped**: `_service_integration.py` deleted; the single model-aware
+> `run_analysis_step2` now lives on `AnalysisMixin` (split into
+> `_run_step2_discovery` / `_enrich_step2_results` to stay under the LoC
+> ceiling). All 8 root-`tests/` files rescued into `expert_backend/tests/`
+> (`test_service_integration.py` → `test_model_composition.py`;
+> `test_recommenders_registry.py` merged). **Two extra findings surfaced
+> and fixed during the port** (see the Observations note at the end of
+> this section): the `antenna_meta` mirror-drift bug and an
+> underscore-in-substation-name bug in the overflow-path filter that the
+> orphaned test had been silently guarding against with zero CI coverage.
 
-**D2. Machine-check the API contract** *(4–6 days)*
+**D2. Machine-check the API contract** *(4–6 days)* — 🟡 **PARTIALLY DONE (2026-07-07)**
 (a) Pydantic response models on the ~12 highest-traffic endpoints (preserving
 `sanitize_for_json` coercion); (b) commit an `app.openapi()` dump + CI diff so
 response-shape changes become reviewable; (c) generate the TS types from OpenAPI
@@ -512,13 +547,80 @@ middleware mapping domain errors → 400/404/409 with `{detail, code}`, everythi
 else → 500 + `logger.exception`, deleting the ~26 blanket handlers; one frontend
 error extractor. Note the frontend's documented 400-triggers-resimulate dependency
 (`main.py:706-715`) must be preserved via an explicit error code.
+> **Shipped**: (d) the unified `{detail, code}` envelope
+> (`services/api_errors.py`) — every `HTTPException` carries a code,
+> uncaught exceptions → clean logged `500` with no `str(e)` path leak
+> (also closes QW6), the resimulate dependency preserved via an explicit
+> `ACTION_RESULT_UNAVAILABLE` code, and one frontend extractor
+> (`utils/apiError.ts`) replacing ~10 scattered reads; (b) the
+> `openapi.snapshot.json` + `check_openapi_contract.py` + a pytest CI
+> diff; (a) response models on 3 safe control endpoints (seed).
+> **Deferred** (tracked in
+> [`api-contract-machine-check.md`](api-contract-machine-check.md)): the
+> `str(e)`-preserving per-endpoint 400 handlers are NOT yet deleted (each
+> needs a coordinated backend + test + frontend change — the envelope
+> unified the *shape* but genuine bugs still surface as 400, not 500);
+> response models on the gzipped diagram/analysis endpoints (blocked on
+> the `Response`-bypasses-`response_model` + NumPy-coercion constraint);
+> and generating `types.ts` from the snapshot.
 
-**D3. Concurrency ownership for the shared Network** *(3–5 days)*
+**D3. Concurrency ownership for the shared Network** *(3–5 days)* — ✅ **DONE (2026-07-07)**
 One service-level `RLock` (decorator on the ~12 variant-switching entry points),
 a 409 "busy" contract for overlapping study mutations, try/finally on the
 unguarded path (`diagram_mixin.py:151-160`), then LRU lifecycle for variants +
 cached observations (keep N + last K, `remove_variant` on eviction). Watch
 lock-ordering against the NAD-prefetch drain.
+> **Shipped**: `services/service_lock.py` — `@with_network_lock` /
+> `@with_network_lock_stream` on the 13 variant-switching entry points
+> (the streaming decorator holds the lock per-`next()` so Starlette's
+> per-step threadpool hopping stays safe), the 409 study-mutation gate,
+> the try/finally fix in `_get_contingency_flows`, and the
+> `MAX_CONTINGENCY_VARIANTS` LRU with `remove_variant` on eviction.
+> **Observation on the lock-ordering warning** (which the roadmap flagged):
+> it was worse than a warning — the existing `reset()` **joined** the
+> NAD-prefetch worker, and once that worker also takes the network lock
+> the join becomes a 60 s deadlock. Resolved by replacing the join with a
+> `_prefetch_generation` counter (the worker discards stale results under
+> the lock); the drain is now a no-op when the lock is present. Full
+> rationale: [`shared-network-concurrency.md`](shared-network-concurrency.md).
+> The observation cache LRU was scoped down: the single-slot
+> `_cached_obs_n1*` is already bounded (one entry, keyed by contingency),
+> so only the unbounded *variant* set needed an LRU — see the doc.
+
+### Observations surfaced while implementing D1–D3
+
+1. **The `antenna_meta` mirror-drift bug (D1) — a second shipped bug from
+   the same root cause the review named.** The islanded-pocket metadata
+   added to the legacy `AnalysisMixin.run_analysis_step2` in commit
+   `2dd2ced` (2026-06-18) was never mirrored into the *production*
+   monkey-patched generator in `_service_integration.py`. Because the
+   monkey-patch shadowed the legacy method at import, the frontend's
+   `AntennaNotice` was **dead in production** for ~3 weeks while looking
+   correct in the (shadowed, still-tested) legacy path. This is a
+   second instance of exactly the "shadowed generator invites divergence"
+   failure the review attributed to `401045f` — the de-ghosting removes
+   the trap. Regression-guarded by
+   `test_model_composition.py::test_result_event_restores_antenna_meta_from_discovery`.
+
+2. **The orphaned `tests/` were not merely uncollected — one guarded a
+   live bug (D1).** `test_overflow_path_filter.py::test_action_matches_by_uuid_segment_scan`
+   *failed* against the current code: `_action_touches_path` split action
+   ids on `_` and checked each chunk against the relevant-substation set,
+   so any substation whose name contains an underscore (`VL_LOOP`, i.e.
+   essentially all of them) never matched — UUID-prefixed coupling
+   actions were being silently dropped from the `RandomOverflowRecommender`
+   candidate set. Fixed with an anchored substring match. The test had
+   been asserting the correct behavior all along; nothing ran it. This
+   concretely validates the review's "green-by-omission" framing for the
+   root `tests/` package.
+
+3. **`run_analysis_step2` was over the function-LoC ceiling after the
+   port (D1) and `analysis_mixin.py` was over the module ceiling after
+   D3's imports.** Both were resolved by extraction (`_run_step2_discovery`
+   / `_enrich_step2_results`; moving `augment_combined_actions_with_target_max_rho`
+   into `analysis/combined_pairs.py`) rather than by raising a ceiling —
+   consistent with the review's "ratchet down, never up" finding about
+   the quality gate.
 
 **D4. Relieve the two frontend hubs** *(6–10 days, stageable)*
 Execute the already-scoped "Option 3" extraction: move
