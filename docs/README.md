@@ -75,6 +75,7 @@ folder's index for the full list.
 | File | Topic |
 |------|-------|
 | [`2026-07-full-repo-review.md`](architecture/2026-07-full-repo-review.md) | Full-repository review (2026-07): 12-dimension audit (architecture, API contract, UX, perf, docs, delivery, security + data pipeline / Game Mode / deployment gaps) with adversarially verified findings, a sequenced deep-revision roadmap (D1–D9), and 25 quick wins. Progress tracked inline in Part V. |
+| [`api-contract-machine-check.md`](architecture/api-contract-machine-check.md) | Deep revision **D2**: the unified `{detail, code}` error envelope, the `openapi.snapshot.json` machine-check + CI diff, the single frontend error extractor, and the tracked follow-ups (response models on the gzipped endpoints, `types.ts` generation, blanket-handler removal). |
 | [`shared-network-concurrency.md`](architecture/shared-network-concurrency.md) | Deep revision **D3**: concurrency ownership for the shared pypowsybl `Network` — the service-level re-entrant lock over the ~13 variant-switching entry points, the HTTP-409 study-mutation busy gate, the bounded contingency-variant LRU, and the lock-ordering fix vs the NAD-prefetch drain. |
 | [`app-refactoring-plan.md`](architecture/app-refactoring-plan.md) | Historical: Phase 1 + Phase 2 hook extraction from `App.tsx` (shipped). |
 | [`phase2-state-management-optimization.md`](architecture/phase2-state-management-optimization.md) | Memoize wrapper functions with `useCallback` (shipped 0.5.0). |

@@ -7,6 +7,36 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### API contract — D2: machine-checked, one error envelope (2026-07 review, partial)
+
+- **Unified error envelope**: `services/api_errors.py` installs FastAPI
+  handlers so every error renders as `{detail, code}`. Uncaught
+  exceptions become a clean `500` with a generic message (no more
+  `detail=str(e)` leaking absolute server paths) + a server-side
+  `logger.exception`. The post-reload `action-variant-diagram` failure
+  the frontend branches on now carries an explicit
+  `code="ACTION_RESULT_UNAVAILABLE"`; the 409 study-busy gate carries
+  `code="STUDY_BUSY"`. `detail` is unchanged, so existing clients keep
+  working — `code` is additive.
+- **One frontend error extractor**: `frontend/src/utils/apiError.ts`
+  (`extractApiError` / `apiErrorMessage` / `hasErrorCode`) replaced ~10
+  scattered `err?.response?.data?.detail || '…'` reads across `App.tsx`,
+  `useSession`, `useSldOverlay`, `ActionFeed`, `CombinedActionsModal`.
+- **OpenAPI contract snapshot**: `scripts/check_openapi_contract.py`
+  renders `app.openapi()` to the committed
+  `expert_backend/openapi.snapshot.json`; `test_openapi_contract.py`
+  diffs it in CI so any endpoint / request-/response-model / status
+  change is a reviewable diff instead of silent drift from `types.ts`.
+  Regenerate intentionally with `--write`.
+- **Response models (seed)**: attached to the safe native-dict control
+  endpoints (`recommender-model`, `restore-analysis-context`,
+  `save-session`).
+- Remaining (tracked in
+  [`docs/architecture/api-contract-machine-check.md`](docs/architecture/api-contract-machine-check.md)):
+  response models on the gzipped diagram/analysis endpoints, generating
+  `types.ts` from the snapshot, and retiring the ~26 blanket
+  `except Exception → 400` handlers.
+
 ### Concurrency — D3: ownership for the shared pypowsybl Network (2026-07 review)
 
 - **Service-level re-entrant network lock** (`services/service_lock.py`)

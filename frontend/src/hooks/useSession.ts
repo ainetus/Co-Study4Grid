@@ -9,6 +9,7 @@ import { useState, useCallback, useMemo, type Dispatch, type SetStateAction, typ
 import { api } from '../api';
 import { buildSessionResult } from '../utils/sessionUtils';
 import { interactionLogger } from '../utils/interactionLogger';
+import { apiErrorMessage } from '../utils/apiError';
 import type { AnalysisResult, CombinedAction, ActionDetail, SessionResult, DiagramData } from '../types';
 
 export interface SessionState {
@@ -205,7 +206,7 @@ export function useSession(): SessionState {
         params.setInfoMessage(`SUCCESS: Session saved to: ${res.session_folder}${pdfMsg}`);
       } catch (err: unknown) {
         const e = err as { response?: { data?: { detail?: string } }; message?: string };
-        params.setError('Failed to save session: ' + (e.response?.data?.detail || e.message));
+        params.setError('Failed to save session: ' + apiErrorMessage(e));
       }
     } else {
       const blob = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
@@ -231,7 +232,7 @@ export function useSession(): SessionState {
       setSessionList(res.sessions);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } }; message?: string };
-      setError('Failed to list sessions: ' + (e.response?.data?.detail || e.message));
+      setError('Failed to list sessions: ' + apiErrorMessage(e));
       setShowReloadModal(false);
     } finally {
       setSessionListLoading(false);
@@ -518,7 +519,7 @@ export function useSession(): SessionState {
       // expected.
       ctx.restoringSessionRef.current = false;
       const e = err as { response?: { data?: { detail?: string } }; message?: string };
-      ctx.setError('Failed to restore session: ' + (e.response?.data?.detail || e.message));
+      ctx.setError('Failed to restore session: ' + apiErrorMessage(e));
     } finally {
       setSessionRestoring(false);
     }

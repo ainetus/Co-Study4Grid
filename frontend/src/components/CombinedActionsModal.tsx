@@ -20,6 +20,7 @@ import ComputedPairsTable, { type ComputedPairEntry } from './ComputedPairsTable
 import ExplorePairsTab from './ExplorePairsTab';
 import ActionFilterRings from './ActionFilterRings';
 import { colors } from '../styles/tokens';
+import { apiErrorMessage } from '../utils/apiError';
 
 interface SimulationFeedback {
     max_rho: number | null;
@@ -302,7 +303,7 @@ const CombinedActionsModal: React.FC<Props> = ({
             }
         } catch (e: unknown) {
             const err = e as { response?: { data?: { detail?: string } }, message?: string };
-            setError(err?.response?.data?.detail || err.message || 'Failed to compute superposition');
+            setError(apiErrorMessage(err, 'Failed to compute superposition'));
             setPreview(null);
         } finally {
             setLoading(false);
@@ -431,7 +432,7 @@ const CombinedActionsModal: React.FC<Props> = ({
             }
         } catch (e: unknown) {
             const err = e as { response?: { data?: { detail?: string } }, message?: string };
-            setError(err?.response?.data?.detail || err?.message || 'Simulation failed');
+            setError(apiErrorMessage(err, 'Simulation failed'));
         } finally {
             setSimulating(false);
         }

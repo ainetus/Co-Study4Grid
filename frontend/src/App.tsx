@@ -34,6 +34,7 @@ import { interactionLogger } from './utils/interactionLogger';
 import { gameBridge } from './game/gameBridge';
 import type { GameStudy } from './game/types';
 import { DEFAULT_ACTION_OVERVIEW_FILTERS } from './utils/actionTypes';
+import { apiErrorMessage } from './utils/apiError';
 import { attachVlInteractions } from './utils/svgUtils';
 import {
     buildOverflowPinPayload,
@@ -665,7 +666,7 @@ function App() {
       } catch (e: unknown) {
         console.error('Unsimulated pin simulation failed:', e);
         const err = e as { response?: { data?: { detail?: string } } };
-        setError(err?.response?.data?.detail || 'Simulation failed');
+        setError(apiErrorMessage(err, 'Simulation failed'));
       }
     },
     [selectedContingency, result?.lines_overloaded, result?.active_model, diagrams, voltageLevels.length, wrappedManualActionAdded]
@@ -876,7 +877,7 @@ function App() {
     } catch (e: unknown) {
       console.error('SLD topology edit simulation failed:', e);
       const err = e as { response?: { data?: { detail?: string } } };
-      setError(err?.response?.data?.detail || 'Simulation failed');
+      setError(apiErrorMessage(err, 'Simulation failed'));
     } finally {
       setSldEditBusy(false);
     }
@@ -1222,7 +1223,7 @@ function App() {
       setIsSettingsOpen(false);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } }; message?: string };
-      setError('Failed to apply settings: ' + (e.response?.data?.detail || e.message));
+      setError('Failed to apply settings: ' + apiErrorMessage(e));
     }
   }, [networkPath, actionPath, buildConfigRequest, configRequestFromUserConfig, applyConfigResponse, createCurrentBackup, setError, setSettingsBackup, setIsSettingsOpen, diagrams, configFilePath, lastActiveConfigFilePath, changeConfigFilePath, resetAllState, buildConfigInteractionDetails]);
 
@@ -1295,7 +1296,7 @@ function App() {
       interactionLogger.record('config_loaded', buildConfigInteractionDetails());
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } }; message?: string };
-      setError('Failed to load config: ' + (e.response?.data?.detail || e.message));
+      setError('Failed to load config: ' + apiErrorMessage(e));
     } finally {
       setConfigLoading(false);
     }
@@ -1454,7 +1455,7 @@ function App() {
       }
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } }; message?: string };
-      const msg = 'Failed to load study: ' + (e.response?.data?.detail || e.message);
+      const msg = 'Failed to load study: ' + apiErrorMessage(e);
       setError(msg);
       throw new Error(msg);
     } finally {
