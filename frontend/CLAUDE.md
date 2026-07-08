@@ -195,7 +195,8 @@ frontend/
         │                              # apiErrorMessage / hasErrorCode. Replaces
         │                              # scattered err?.response?.data?.detail reads;
         │                              # hasErrorCode branches on codes like
-        │                              # ACTION_RESULT_UNAVAILABLE / STUDY_BUSY.
+        │                              # ACTION_RESULT_UNAVAILABLE / STUDY_BUSY /
+        │                              # LOCKED_DOWN (D7 hosted-deploy guard).
         ├── ndjsonStream.ts            # D5 (2026-07) — parseNdjsonStream: the ONE
         │                              # NDJSON reader (buffer carry-over, trailing
         │                              # flush, AbortSignal) replacing five drifted

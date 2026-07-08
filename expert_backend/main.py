@@ -27,6 +27,7 @@ from pydantic import BaseModel
 from expert_backend.services.api_errors import (
     AppHTTPException,
     CODE_ACTION_RESULT_UNAVAILABLE,
+    CODE_LOCKED_DOWN,
     CODE_STUDY_BUSY,
     install_error_handlers,
 )
@@ -196,6 +197,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- Deployment lockdown profile (D7, 2026-07) ---------------------------
+# The filesystem RPCs (custom config-file path, session save/list/load,
+# native file picker) assume "the client is the operator on their own
+# machine". That assumption breaks on the public HuggingFace Space, where
+# they would give an anonymous visitor read/write access to the container
+# filesystem. When COSTUDY4GRID_LOCKDOWN is set (the Dockerfile sets it),
+# those endpoints are disabled with a 403 `{code: "LOCKED_DOWN"}`. Local
+# and dev installs leave it unset, so nothing changes there. The read-only
+# app config (`GET /api/user-config`, `GET /api/config-file-path`) stays
+# available so the SPA still boots.
+_LOCKDOWN = os.environ.get("COSTUDY4GRID_LOCKDOWN", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _reject_when_locked_down() -> None:
+    """Guard the desktop-era filesystem RPCs on a hosted deployment."""
+    if _LOCKDOWN:
+        raise AppHTTPException(
+            status_code=403,
+            detail="This operation is disabled on the hosted deployment.",
+            code=CODE_LOCKED_DOWN,
+        )
+
+
 _OVERFLOW_DIR = (Path(__file__).resolve().parent.parent / "Overflow_Graph").resolve()
 _OVERFLOW_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -245,6 +269,7 @@ def get_config_file_path() -> dict:
 
 @app.post("/api/config-file-path")
 def set_config_file_path(path: str = Body(..., embed=True)) -> dict:
+    _reject_when_locked_down()
     try:
         new_path = Path(path.strip())
         if not new_path.suffix:
@@ -519,6 +544,7 @@ def get_voltage_level_substations() -> dict:
 
 @app.get("/api/pick-path")
 def pick_path(type: str = Query("file", enum=["file", "dir"])) -> dict:
+    _reject_when_locked_down()
     try:
         if platform.system() == "Darwin":
             return _pick_path_macos(type)
@@ -609,6 +635,7 @@ def _safe_session_dir(base_folder: str, session_name: str) -> str:
 
 @app.post("/api/save-session", response_model=SaveSessionResponse)
 def save_session(request: SaveSessionRequest) -> dict:
+    _reject_when_locked_down()
     import shutil
 
     if not request.output_folder_path:
@@ -648,6 +675,7 @@ def save_session(request: SaveSessionRequest) -> dict:
 
 @app.get("/api/list-sessions")
 def list_sessions(folder_path: str = Query(...)) -> dict:
+    _reject_when_locked_down()
     if not folder_path or not os.path.isdir(folder_path):
         raise HTTPException(status_code=400, detail=f"Invalid folder path: {folder_path}")
 
@@ -667,6 +695,7 @@ def list_sessions(folder_path: str = Query(...)) -> dict:
 
 @app.post("/api/load-session")
 def load_session(folder_path: str = Body(...), session_name: str = Body(...)) -> dict:
+    _reject_when_locked_down()
     import json as json_module
     import shutil
     import glob

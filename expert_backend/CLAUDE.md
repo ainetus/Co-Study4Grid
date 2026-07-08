@@ -230,8 +230,10 @@ follow-ups in
 - Raise `AppHTTPException(status, detail, code)` when a client **branches
   on the specific failure** — today that's the post-reload
   `action-variant-diagram` 400 (`code=ACTION_RESULT_UNAVAILABLE`, which
-  the frontend uses to fall back to a live simulation) and the 409
-  study-busy gate (`code=STUDY_BUSY`).
+  the frontend uses to fall back to a live simulation), the 409
+  study-busy gate (`code=STUDY_BUSY`), and the 403
+  `code=LOCKED_DOWN` raised by `_reject_when_locked_down()` on a
+  locked-down deployment (see "Deployment lockdown" below).
 - **Never** put `str(exception)` in a client-visible detail for an
   UNEXPECTED error — it leaks absolute server paths. Uncaught exceptions
   are turned into a generic `500` (`"Internal server error."`,
@@ -362,6 +364,16 @@ Session & user config:
 OS pickers & static:
 - `GET  /api/pick-path?type=file|dir` — spawns a tkinter subprocess.
 - Static mount at `/results/pdf/` → `Overflow_Graph/`.
+- **Deployment lockdown (D7, 2026-07)**: the desktop-era filesystem RPCs
+  (`POST /api/config-file-path`, `POST /api/save-session`,
+  `GET /api/list-sessions`, `POST /api/load-session`, `GET /api/pick-path`)
+  each call `_reject_when_locked_down()` first, which raises
+  `403 {code: LOCKED_DOWN}` when `COSTUDY4GRID_LOCKDOWN` is truthy
+  (`main._LOCKDOWN`, set in the `Dockerfile` for the public Space). The
+  read-only app config (`GET /api/user-config`, `GET /api/config-file-path`)
+  stays open so the SPA boots. Unset locally → unchanged. Any NEW
+  filesystem-touching RPC MUST wear the guard. See
+  [`docs/architecture/deployment-trust.md`](../docs/architecture/deployment-trust.md).
 - **Optional same-origin SPA mount (0.8.0)**: when `COSTUDY4GRID_FRONTEND_DIST`
   (default `frontend/dist/`) holds an `index.html`, the built React app is
   mounted at `/` via `StaticFiles(html=True)`. Mounted **last** so every

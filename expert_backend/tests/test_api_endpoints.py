@@ -1726,6 +1726,51 @@ class TestCorsDefault:
         assert resp.headers.get("access-control-allow-origin") == "http://localhost:5173"
 
 
+class TestLockdownProfile:
+    """D7: on a locked-down (hosted, anonymous-visitor) deployment the
+    desktop-era filesystem RPCs are disabled with a 403 `{code:
+    LOCKED_DOWN}`, while the read-only app config stays available so the
+    SPA still boots. Toggled by `COSTUDY4GRID_LOCKDOWN` (read into
+    `main._LOCKDOWN` at import; patched here)."""
+
+    def test_filesystem_rpcs_are_403_when_locked_down(self, client, mock_services, monkeypatch, tmp_path):
+        from expert_backend import main
+        monkeypatch.setattr(main, "_LOCKDOWN", True)
+
+        cases = [
+            ("post", "/api/config-file-path", {"json": {"path": "/etc/evil.json"}}),
+            ("get", "/api/pick-path", {"params": {"type": "file"}}),
+            ("post", "/api/save-session", {"json": {
+                "session_name": "s", "json_content": "{}", "output_folder_path": str(tmp_path),
+            }}),
+            ("get", "/api/list-sessions", {"params": {"folder_path": str(tmp_path)}}),
+            ("post", "/api/load-session", {"json": {"folder_path": str(tmp_path), "session_name": "s"}}),
+        ]
+        for method, path, kwargs in cases:
+            resp = getattr(client, method)(path, **kwargs)
+            assert resp.status_code == 403, f"{path} should be 403 when locked down"
+            assert resp.json()["code"] == "LOCKED_DOWN", f"{path} should carry the LOCKED_DOWN code"
+        # Nothing was written under the locked-down deployment.
+        assert not (tmp_path / "s").exists()
+
+    def test_read_only_config_still_available_when_locked_down(self, client, mock_services, monkeypatch):
+        from expert_backend import main
+        monkeypatch.setattr(main, "_LOCKDOWN", True)
+        # The SPA boot reads still work.
+        assert client.get("/api/user-config").status_code == 200
+        assert client.get("/api/config-file-path").status_code == 200
+
+    def test_filesystem_rpcs_work_when_not_locked_down(self, client, mock_services, monkeypatch, tmp_path):
+        from expert_backend import main
+        monkeypatch.setattr(main, "_LOCKDOWN", False)
+        resp = client.post("/api/save-session", json={
+            "session_name": "costudy4grid_session_ok", "json_content": "{}",
+            "output_folder_path": str(tmp_path),
+        })
+        assert resp.status_code == 200
+        assert (tmp_path / "costudy4grid_session_ok" / "session.json").is_file()
+
+
 class TestEventLoopSafety:
     """`/api/run-analysis-step1` runs seconds of synchronous pypowsybl /
     grid2op work, so it MUST be a sync `def` route (dispatched to

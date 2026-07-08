@@ -83,15 +83,16 @@ scoring function, annotated file trees vs. the tree).
 
 The five headline issues, all verified:
 
-> **Remediation status (2026-07-08).** Headline #1 is **fixed** (D1),
-> #3 is **fixed** (D3), and #2 is **partly fixed** (D2 — the error
-> contract + a machine-checked OpenAPI snapshot landed; TS-generation and
-> blanket-handler removal remain). #4 (invisible failures — D5) and #5
-> (trust model — D7) are still open at the deep-revision level, but their
-> cheap quick-win halves landed 2026-07-08: analysis errors are now
-> surfaced (QW4) and the two riskiest filesystem RPCs are hardened —
-> loopback-default CORS (QW3) + a session-path traversal guard (QW7).
-> See Part V for the per-item detail and Part VI for the quick wins.
+> **Remediation status (2026-07-08).** Headline **#1** (D1), **#3** (D3)
+> and **#4** (invisible failures — D5, one NDJSON reader + typed
+> notification store + cancellable analysis) are **fixed**. **#5** (trust
+> model — D7) is **mostly fixed**: loopback-default CORS (QW3), a
+> session-path traversal guard (QW7), and the **lockdown profile** that
+> disables the filesystem RPCs on the hosted Space now close it (the
+> pinned-Python-closure lockfile is the tracked remainder). **#2** (D2 —
+> error contract + machine-checked OpenAPI snapshot) is **partly fixed**;
+> TS-generation and blanket-handler removal remain. See Part V for
+> per-item detail and Part VI for the quick wins.
 
 1. **The pluggable-recommender subsystem is a ghost.**
    `expert_backend/recommenders/_service_integration.py` rewrites
@@ -201,7 +202,10 @@ only two places where the otherwise-excellent decomposition discipline stopped.
 State management is 100 % props (zero React context): an 88-prop
 `VisualizationPanel`, a 44-prop `ActionFeed`, a 44-setter session-restore bag.
 The repo's own deferred "Option 3" plan (`docs/architecture/app-refactoring-plan.md`)
-already scopes the fix. → **D4**.
+already scopes the fix. → **D4**. 🟡 **Stage 1 done 2026-07-08**: the
+`useManualSimulation` extraction removed the two stream-parser business
+flows from `App.tsx` (2,048 → 1,795; ceiling ratcheted to 1,850). The
+`useDiagrams` split and the exploded-props consolidation remain.
 
 ### T6. The docs strategy outgrew its maintenance model
 The doc *corpus* is a genuine strength (30+ indexed docs, accurate endpoint table,
@@ -465,8 +469,8 @@ disabled under the wildcard; injected overlay renders untrusted data via
 
 | Sev | Finding | Verdict |
 |---|---|---|
-| high | CORS `*` + no auth + arbitrary-file endpoints = drive-by local file read/write from any web page against a localhost install | ✅ → **PARTLY RESOLVED (QW3, 2026-07-08)**: the CORS default is now loopback dev origins (wildcard is explicit opt-in), closing the drive-by cross-origin read. The no-auth/arbitrary-file surface itself is the D7 lockdown profile. |
-| high | Unauthenticated arbitrary filesystem access survives on the public Space (Game Mode gates only the UI); `../` traversal in `session_name` | ✅ → **PARTLY RESOLVED (QW7, 2026-07-08)**: the `session_name` traversal is closed (`_safe_session_dir`). The broader unauthenticated-filesystem surface is the D7 lockdown profile. |
+| high | CORS `*` + no auth + arbitrary-file endpoints = drive-by local file read/write from any web page against a localhost install | ✅ → **RESOLVED (QW3 + D7, 2026-07-08)**: the CORS default is loopback dev origins (wildcard explicit opt-in), closing the drive-by cross-origin read; the arbitrary-file RPCs are disabled by the D7 lockdown profile on hosted deployments. |
+| high | Unauthenticated arbitrary filesystem access survives on the public Space (Game Mode gates only the UI); `../` traversal in `session_name` | ✅ → **RESOLVED (QW7 + D7, 2026-07-08)**: `session_name` traversal closed (`_safe_session_dir`), and the filesystem RPCs themselves return `403 LOCKED_DOWN` on the Space (`COSTUDY4GRID_LOCKDOWN`, set in the Dockerfile). |
 | med | Singleton state shared across concurrent users, no locking (cross-ref T3) | ✅ → **RESOLVED (D3)**: service-level `RLock` + 409 study-mutation gate. |
 | med | `detail=str(e)` leaks absolute server paths | ✅ → **PARTLY RESOLVED (D2)**: the global unhandled-exception handler now returns a generic 500 (no `str(e)`); the per-endpoint `except → 400, str(e)` handlers still echo the message and are tracked for removal. |
 | med | `/api/pick-path` spawns a subprocess per request | 🟡 — headless child fails in ms (tkinter absent); low-severity dead weight, not a DoS vector |
@@ -513,6 +517,13 @@ force-push = no rollback primitive**; the LFS zip-extraction step has two silent
 failure modes; the image ships dead weight (jupyter-widget stack, `scripts/`,
 tests); `PORT` is decorative; no `HEALTHCHECK`; config upgrades never merge.
 
+> 🟡 **Partly addressed by D7 (2026-07-08)**: the deploy is now test-gated
+> (`workflow_run` on a green **Tests** run) and tags each deploy on origin
+> (`space-deploy-*`) as a rollback pointer, and the trust hole is closed by
+> the lockdown profile. The reproducible-Python-closure lockfile is a
+> documented follow-up; the dead-weight / `HEALTHCHECK` / config-merge
+> items remain open. See [`deployment-trust.md`](deployment-trust.md).
+
 ---
 
 ## Part V — Deep revisions (sequenced roadmap)
@@ -520,11 +531,14 @@ tests); `PORT` is decorative; no `HEALTHCHECK`; config upgrades never merge.
 Ordered by leverage; each unblocks or de-risks the ones after it.
 
 > **Progress (2026-07-08).** D1, D3 and **D5** are **shipped in full**;
-> D2 is **partially shipped** (the machine-check backbone + error
-> contract; the incremental TS-generation / blanket-handler-removal
-> remainder is tracked in its own doc). Status is noted per-item below and
-> mirrored in the dimension-finding tables in Part IV. D4, D6–D9 remain
-> open.
+> **D7** is **mostly shipped** (lockdown profile + test-gated deploy +
+> rollback tag; the pinned-Python-closure lockfile is a documented
+> follow-up). **D2** and **D4** are **partially shipped** (D2 — the
+> machine-check backbone + error contract; D4 — stage 1, the
+> `useManualSimulation` extraction + ceiling ratchet, with the
+> `useDiagrams` split and props consolidation still open). Status is noted
+> per-item below and mirrored in the dimension-finding tables in Part IV.
+> D6, D8, D9 remain open.
 
 **D1. De-ghost the recommender subsystem** *(2–3 days — do first)* — ✅ **DONE (2026-07-07)**
 Replace import-time monkey-patching with explicit composition:
@@ -630,13 +644,24 @@ lock-ordering against the NAD-prefetch drain.
    consistent with the review's "ratchet down, never up" finding about
    the quality gate.
 
-**D4. Relieve the two frontend hubs** *(6–10 days, stageable)*
+**D4. Relieve the two frontend hubs** *(6–10 days, stageable)* — 🟡 **STAGE 1 DONE (2026-07-08)**
 Execute the already-scoped "Option 3" extraction: move
 `handleSimulateUnsimulatedAction` / `handleSimulateSldEdit` into a
 `useManualSimulation` hook; split `useDiagrams` into per-domain hooks behind the
 existing `DiagramsState` facade; replace exploded props with cohesive state-object
 props on `VisualizationPanel`/`ActionFeed` (the `SettingsModal` pattern the repo
 already uses). Then *lower* `APP_TSX_MAX` to lock in the win.
+> **Shipped (stage 1)**: `hooks/useManualSimulation.ts` extracts the two
+> operator "simulate now" flows + the shared interactive SLD-edit state
+> (edit-mode sync, debounced preview) out of App.tsx behind a typed
+> params object; App owns the collaborators and passes them in.
+> App.tsx **2048 → 1795** lines, `APP_TSX_MAX` ratcheted **2100 → 1850**.
+> Behaviour-preserving (full Vitest suite green); guarded by
+> `useManualSimulation.test.ts`. **Remaining (bigger bets, still open)**:
+> split `useDiagrams` (1,210 lines) into per-domain hooks behind the
+> `DiagramsState` facade, and consolidate the exploded
+> `VisualizationPanel` / `ActionFeed` props into cohesive state-object
+> props.
 
 **D5. One streaming + notification pipeline** *(3–4 days)* — ✅ **DONE (2026-07-08)**
 `utils/ndjsonStream.ts` (buffer carry-over, trailing flush, uniform error
@@ -662,11 +687,23 @@ re-serializing; route all ingestion paths through the element path that already
 exists for patches; then a VL-count heuristic to auto-select bitmap pan/zoom mode
 (or a discoverability nudge) once validated on operator hardware.
 
-**D7. Deployment trust & reproducibility** *(3–4 days)*
+**D7. Deployment trust & reproducibility** *(3–4 days)* — 🟡 **MOSTLY DONE (2026-07-08)**
 Lockdown profile (env flag set in the Dockerfile) disabling/confining the
 filesystem RPCs on non-local deployments; pin the Python closure (pip-compile
 lockfile consumed by both CI and Docker so "mirrors CI" becomes true); version
 tags + test-gated deploy + documented Space rollback.
+> **Shipped** — full write-up: [`deployment-trust.md`](deployment-trust.md).
+> The **lockdown profile** (`COSTUDY4GRID_LOCKDOWN`, set in the Dockerfile)
+> disables the filesystem RPCs (config-file path, session save/list/load,
+> pick-path) with a `403 {code: LOCKED_DOWN}` while keeping the read-only
+> app config reachable so the SPA boots — this closes the still-open half
+> of headline #5. The deploy is now **test-gated** (`workflow_run` on a
+> successful **Tests** run, not a bare merge) and **tags each deploy on
+> origin** (`space-deploy-*`) as the rollback pointer, with a
+> `workflow_dispatch` rollback path. Guarded by `TestLockdownProfile`.
+> **Remaining**: generate + wire the `requirements.lock` (must be resolved
+> on the image's Python 3.10, so documented as a follow-up rather than
+> shipped wrong).
 
 **D8. Reproducible data & benchmark supply chain** *(3–5 days)*
 Fix the layout scale in `build_pipeline.py` and absorb the two missing

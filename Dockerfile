@@ -84,7 +84,12 @@ COPY --chown=user frontend/src/utils/svg/pinGlyph.js ./frontend/src/utils/svg/pi
 # the CPU and are far SLOWER than serial (the 47 s → ~15 s assessment win).
 ENV COSTUDY4GRID_FRONTEND_DIST=/home/user/app/frontend/dist \
     EXPERT_OP4GRID_REASSESSMENT_PARALLEL=0 \
-    PORT=7860
+    PORT=7860 \
+    COSTUDY4GRID_LOCKDOWN=1
+# COSTUDY4GRID_LOCKDOWN=1 (D7): this is a public, anonymous-visitor
+# deployment, so the desktop-era filesystem RPCs (custom config path,
+# session save/list/load, native file picker) are disabled — see the
+# lockdown profile in expert_backend/main.py.
 
 EXPOSE 7860
 CMD ["uvicorn", "expert_backend.main:app", "--host", "0.0.0.0", "--port", "7860"]
