@@ -151,7 +151,11 @@ frontend/
     │   │                           # overloads, per-N-1 monitoring
     │   │                           # checkboxes, monitor-deselected
     │   │                           # switch, monitoring-coverage hint).
-    │   ├── StatusToasts.tsx        # Fixed-position error/info banners
+    │   ├── NotificationHost.tsx    # Renders the typed notification store
+    │   │                           # (D5) as dismissible bottom-right toasts
+    │   │                           # in an aria-live region (severity =
+    │   │                           # error/success/info). Replaced the old
+    │   │                           # StatusToasts dual error/info banners.
     │   └── modals/
     │       ├── SettingsModal.tsx          # 3-tab settings dialog
     │       ├── ReloadSessionModal.tsx     # Session reload list
@@ -192,6 +196,16 @@ frontend/
         │                              # scattered err?.response?.data?.detail reads;
         │                              # hasErrorCode branches on codes like
         │                              # ACTION_RESULT_UNAVAILABLE / STUDY_BUSY.
+        ├── ndjsonStream.ts            # D5 (2026-07) — parseNdjsonStream: the ONE
+        │                              # NDJSON reader (buffer carry-over, trailing
+        │                              # flush, AbortSignal) replacing five drifted
+        │                              # reader-loop copies.
+        ├── notifications.ts           # D5 (2026-07) — typed notification store
+        │                              # singleton (severity/sticky/dismiss/de-dupe)
+        │                              # + useNotifications() + notifyError/Info/
+        │                              # Success. Rendered by NotificationHost;
+        │                              # replaced the dual error/info toast channels
+        │                              # and the 'SUCCESS' string protocol.
         ├── mergeAnalysisResult.ts     # Merge step1 + step2 fields
         ├── fileRegistry.ts            # Structure-regression guard (tracks expected
         │                              # source-tree layout; fails the Vitest suite
@@ -723,10 +737,10 @@ architectural bet than Option 1+2 was.
   are added); explicitly flagged as "context only when prop-drilling
   becomes unbearable" in the Code-style section. Not recommended as
   the next step.
-- **`handleSimulateUnsimulatedAction` NDJSON parser (~90 lines).**
-  The inlined stream-consumer duplicates the parse loop from
-  `useAnalysis`. Candidate for extraction into a shared
-  `utils/ndjsonStream.ts` helper once a third caller exists.
+- ~~**`handleSimulateUnsimulatedAction` NDJSON parser (~90 lines).**~~
+  ✅ **Done (D5.1, 2026-07)** — all five reader-loop copies now consume
+  the shared `utils/ndjsonStream.ts` generator; see
+  [`docs/architecture/notifications-and-streaming.md`](../docs/architecture/notifications-and-streaming.md).
 
 ### One-off ESLint exception
 

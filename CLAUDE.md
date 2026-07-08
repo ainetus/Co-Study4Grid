@@ -92,7 +92,9 @@ Co-Study4Grid/
 │       │                          # (sticky strip — hosts Clear button + overload
 │       │                          # info bubble that absorbed the legacy
 │       │                          # OverloadPanel affordances),
-│       │                          # StatusToasts, VisualizationPanel, OverloadPanel
+│       │                          # NotificationHost (typed toast store —
+│       │                          # severity/dismiss/aria-live, PR D5),
+│       │                          # VisualizationPanel, OverloadPanel
 │       │                          # (kept on disk for unit-test backwards-compat;
 │       │                          # no longer rendered from App.tsx),
 │       │                          # CombinedActionsModal, ComputedPairsTable,
@@ -118,6 +120,8 @@ Co-Study4Grid/
 │                                  # (classifyActionType + DEFAULT_ACTION_OVERVIEW_FILTERS),
 │                                  # inspectables (filterInspectables — match an element
 │                                  # by its displayed name, not just its raw id),
+│                                  # ndjsonStream (single NDJSON reader, D5),
+│                                  # notifications (typed toast store, D5),
 │                                  # fileRegistry (structure regression guard)
 │           └── svg/               # PR #104 decomposition — idMap, metadataIndex,
 │                                  # svgBoost, fitRect, deltaVisuals, actionPinData,

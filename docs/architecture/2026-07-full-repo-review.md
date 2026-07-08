@@ -189,7 +189,10 @@ Backend: everything → 400, details leak absolute paths. Contract: five error
 shapes. Frontend: one error state rendered, one never rendered, catches swallowed,
 no cancellation, no aria-live. Each layer made a locally-reasonable choice; the
 composition means the operator sees either nothing or a raw exception string.
-→ **D5** + quick wins QW4, QW6.
+→ **D5** + quick wins QW4, QW6. ✅ **Frontend half resolved 2026-07-08 (D5)**:
+one NDJSON reader, one typed notification store (dismiss / severity /
+`aria-live`, no `'SUCCESS'` protocol), and cancellable analysis. The backend
+half (everything→400, `str(e)` leaks) is D2's tracked blanket-handler removal.
 
 ### T5. Scale strain on the two coordination hubs
 `App.tsx` (2,076 lines, 24 under its ceiling, hosting multi-hundred-line business
@@ -342,14 +345,14 @@ and five click grammars coexist.*
 
 | Sev | Finding | Verdict |
 |---|---|---|
-| high | Analysis failures invisible: `useAnalysis`'s `error` state set on three failure paths, rendered nowhere; `App.tsx` destructures a *different* local `error` | ✅ → **RESOLVED (QW4, 2026-07-08)**: `StatusToasts` now renders `error \|\| analysis.error` (cleared on contingency-clear); App-integration test guards it. Root fix (one notification pipeline) is still D5. |
+| high | Analysis failures invisible: `useAnalysis`'s `error` state set on three failure paths, rendered nowhere; `App.tsx` destructures a *different* local `error` | ✅ → **RESOLVED (QW4 → D5.2, 2026-07-08)**: the QW4 stopgap surfaced the hook error via `StatusToasts`; D5.2 then folded both error channels into the single `notifications` store rendered by `NotificationHost`, so there is now one error path. |
 | med | Re-simulation failures swallowed (`console.error` only) | ✅ → **RESOLVED (QW4, 2026-07-08)**: the pin / SLD-edit catches now `setError`, and the SLD-preview catch was the last silent one — now surfaced too. |
-| med | Toast design: error banner has no dismiss & no timeout; info fixed 3 s; no `aria-live`; magic `'SUCCESS'` string protocol | ✅ |
+| med | Toast design: error banner has no dismiss & no timeout; info fixed 3 s; no `aria-live`; magic `'SUCCESS'` string protocol | ✅ → **RESOLVED (D5.2)**: typed `notifications` store + `NotificationHost` — per-toast dismiss, severity-typed styling, auto-expiry, `aria-live`; the `'SUCCESS'` prefix is gone (explicit `notifySuccess`). |
 | med | Five single-vs-double-click grammars across surfaces; one documented backwards | 🟡 — grammars enumerated & confirmed; "backwards" doc claim narrowed |
-| med | No cancellation/abort for any long-running operation | ✅ |
+| med | No cancellation/abort for any long-running operation | ✅ → **RESOLVED (D5.3)**: analysis runs are cancellable end-to-end (AbortController through step 1 / step 2 fetch / stream) with a visible Cancel; an abort surfaces as a cancellation notice. |
 | med | Dark theme doesn't reach detached popups; hardcoded `'white'` literals | ✅ |
 | med | Keyboard/AT access near-absent; modals lack Escape & focus management | ✅ |
-| med | Divergent NDJSON consumers with different error semantics (cross-ref T2) | ✅ |
+| med | Divergent NDJSON consumers with different error semantics (cross-ref T2) | ✅ → **RESOLVED (D5.1)**: one `utils/ndjsonStream.ts` reader replaced all five drifted copies. |
 | low | Debug console noise in interaction hot paths; `'+'`-joined contingency ids | ▫ |
 
 ### 5. Backend performance
@@ -516,11 +519,12 @@ tests); `PORT` is decorative; no `HEALTHCHECK`; config upgrades never merge.
 
 Ordered by leverage; each unblocks or de-risks the ones after it.
 
-> **Progress (2026-07-07).** D1 and D3 are **shipped in full**; D2 is
-> **partially shipped** (the machine-check backbone + error contract; the
-> incremental TS-generation / blanket-handler-removal remainder is
-> tracked in its own doc). Status is noted per-item below and mirrored in
-> the dimension-finding tables in Part IV. D4–D9 remain open.
+> **Progress (2026-07-08).** D1, D3 and **D5** are **shipped in full**;
+> D2 is **partially shipped** (the machine-check backbone + error
+> contract; the incremental TS-generation / blanket-handler-removal
+> remainder is tracked in its own doc). Status is noted per-item below and
+> mirrored in the dimension-finding tables in Part IV. D4, D6–D9 remain
+> open.
 
 **D1. De-ghost the recommender subsystem** *(2–3 days — do first)* — ✅ **DONE (2026-07-07)**
 Replace import-time monkey-patching with explicit composition:
@@ -634,12 +638,23 @@ existing `DiagramsState` facade; replace exploded props with cohesive state-obje
 props on `VisualizationPanel`/`ActionFeed` (the `SettingsModal` pattern the repo
 already uses). Then *lower* `APP_TSX_MAX` to lock in the win.
 
-**D5. One streaming + notification pipeline** *(3–4 days)*
+**D5. One streaming + notification pipeline** *(3–4 days)* — ✅ **DONE (2026-07-08)**
 `utils/ndjsonStream.ts` (buffer carry-over, trailing flush, uniform error
 semantics, `AbortController`) replacing all five copies; a visible Cancel on
 long operations; a typed notification store (severity, sticky, dismiss,
 `aria-live`) replacing the dual error states and the `'SUCCESS'` string protocol.
 Fixes T4 at the root; QW4 below is the 2-hour stopgap.
+> **Shipped** in three slices — full write-up:
+> [`notifications-and-streaming.md`](notifications-and-streaming.md). (D5.1)
+> `parseNdjsonStream` replaced all five drifted reader loops (also
+> closes **QW10**); (D5.2) the `notifications` store singleton +
+> `NotificationHost` (severity / sticky / dismiss / `aria-live`, de-dupe)
+> replaced `StatusToasts` and the `'SUCCESS'` prefix protocol, and folded
+> the two error channels into one — subsuming the QW4 stopgap; (D5.3)
+> the analysis run is cancellable end-to-end (AbortController through
+> step 1 / step 2 fetch / stream read) with a visible Cancel, an abort
+> surfacing as a cancellation notice rather than an error. **QW14**
+> (highlight-pipeline pan/zoom churn) is independent and still open.
 
 **D6. Finish the SVG element-adoption pipeline** *(2–4 days)*
 Make `processSvg` return the already-parsed `SVGSVGElement` (adoptNode) instead of
@@ -685,7 +700,7 @@ Week-one (½–1 day each):
 
 | # | Fix | Where |
 |---|---|---|
-| QW10 | Extract `utils/ndjsonStream.ts`, delete the five copies (subset of D5, standalone-shippable) | frontend |
+| QW10 | ✅ **DONE (2026-07-08, D5.1)** — extracted `utils/ndjsonStream.ts`, deleted the five copies | frontend |
 | QW11 | Vectorize the reintroduced pandas loops (85 k-iteration `_diff_switches` first) | `diagram_mixin.py:876-892` |
 | QW12 | Memoize the per-study N-state flow/asset snapshot for patch + SLD delta endpoints | `diagram_mixin.py` |
 | QW13 | Ship the patch payload in `simulate-and-variant-diagram` when patchable (machinery exists in `action_patch.py`) — removes the 20–28 MB uncompressed stream event | backend + fallback wiring |
