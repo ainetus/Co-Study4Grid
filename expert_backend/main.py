@@ -173,13 +173,21 @@ _CORS_DEFAULT_ORIGINS = [
     "http://localhost:5173", "http://127.0.0.1:5173",  # Vite dev server
     "http://localhost:4173", "http://127.0.0.1:4173",  # Vite preview
 ]
-_CORS_ENV = os.environ.get("CORS_ALLOWED_ORIGINS", "").strip()
-if _CORS_ENV == "*":
-    _CORS_ORIGINS = ["*"]
-elif _CORS_ENV:
-    _CORS_ORIGINS = [o.strip() for o in _CORS_ENV.split(",") if o.strip()]
-else:
-    _CORS_ORIGINS = _CORS_DEFAULT_ORIGINS
+
+
+def _resolve_cors_origins(env_value: str | None) -> list[str]:
+    """Map the ``CORS_ALLOWED_ORIGINS`` env value to an allow-list:
+    ``"*"`` → wildcard (explicit opt-in), a comma-separated list → that
+    list, and unset/empty → the loopback dev-server default."""
+    env = (env_value or "").strip()
+    if env == "*":
+        return ["*"]
+    if env:
+        return [o.strip() for o in env.split(",") if o.strip()]
+    return list(_CORS_DEFAULT_ORIGINS)
+
+
+_CORS_ORIGINS = _resolve_cors_origins(os.environ.get("CORS_ALLOWED_ORIGINS"))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_CORS_ORIGINS,

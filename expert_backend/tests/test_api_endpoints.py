@@ -1659,6 +1659,72 @@ class TestSessionPathTraversal:
         assert resp.status_code == 200
         assert (tmp_path / "costudy4grid_session_ok" / "session.json").is_file()
 
+    def test_load_session_allows_plain_name(self, client, mock_services, tmp_path):
+        # The guard must not break a legitimate round-trip.
+        import json as _json
+        sess = tmp_path / "costudy4grid_session_ok"
+        sess.mkdir()
+        (sess / "session.json").write_text(_json.dumps({"hello": "world"}))
+        resp = client.post(
+            "/api/load-session",
+            json={"folder_path": str(tmp_path), "session_name": "costudy4grid_session_ok"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["hello"] == "world"
+
+
+class TestCorsDefault:
+    """CORS defaults to the loopback dev-server origins, NOT a wildcard
+    (QW3, 2026-07): a `*` default lets any web page the operator visits
+    read `/api/*` (incl. the filesystem RPCs) off the localhost backend,
+    so the wildcard is now explicit opt-in via `CORS_ALLOWED_ORIGINS`."""
+
+    def test_unset_env_resolves_to_loopback_not_wildcard(self):
+        from expert_backend import main
+        origins = main._resolve_cors_origins(None)
+        assert "*" not in origins
+        assert origins == main._CORS_DEFAULT_ORIGINS
+        assert "http://localhost:5173" in origins
+        assert "http://127.0.0.1:5173" in origins
+
+    def test_empty_env_resolves_to_loopback(self):
+        from expert_backend import main
+        assert main._resolve_cors_origins("   ") == main._CORS_DEFAULT_ORIGINS
+
+    def test_explicit_wildcard_is_opt_in(self):
+        from expert_backend import main
+        assert main._resolve_cors_origins("*") == ["*"]
+
+    def test_comma_separated_list_overrides(self):
+        from expert_backend import main
+        assert main._resolve_cors_origins("https://a.example, https://b.example") == [
+            "https://a.example",
+            "https://b.example",
+        ]
+
+    def test_live_app_default_is_not_wildcard(self):
+        # The app is configured at import from the (unset in tests) env.
+        from expert_backend import main
+        assert main._CORS_ORIGINS != ["*"]
+
+    def test_credentials_invariant(self):
+        # The middleware sets allow_credentials = (origins != ["*"]):
+        # ON for a concrete allow-list, OFF under the wildcard (browsers
+        # reject `*` + credentials anyway).
+        from expert_backend import main
+        assert (main._resolve_cors_origins("") != ["*"]) is True
+        assert (main._resolve_cors_origins("*") != ["*"]) is False
+
+    def test_disallowed_origin_gets_no_cors_header(self, client):
+        resp = client.get("/api/user-config", headers={"Origin": "http://evil.example"})
+        acao = resp.headers.get("access-control-allow-origin")
+        assert acao != "*"
+        assert acao != "http://evil.example"
+
+    def test_allowed_loopback_origin_is_reflected(self, client):
+        resp = client.get("/api/user-config", headers={"Origin": "http://localhost:5173"})
+        assert resp.headers.get("access-control-allow-origin") == "http://localhost:5173"
+
 
 class TestEventLoopSafety:
     """`/api/run-analysis-step1` runs seconds of synchronous pypowsybl /

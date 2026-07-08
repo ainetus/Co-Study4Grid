@@ -353,6 +353,39 @@ describe('Contingency Change Confirmation', () => {
       await screen.findByText(/Analysis failed: Backend crashed/, {}, { timeout: 3000 })
     ).toBeInTheDocument();
   });
+
+  it('dismisses a surfaced analysis error when the contingency is cleared (QW4)', async () => {
+    await renderAndLoadStudy();
+    await selectBranch('BRANCH_A');
+
+    const errStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(
+          JSON.stringify({ type: 'error', message: 'Backend crashed' }) + '\n'
+        ));
+        controller.close();
+      },
+    });
+    mockApi.runAnalysisStep2Stream.mockResolvedValue({ ok: true, body: errStream });
+    await act(async () => {
+      await userEvent.click(screen.getByText('🔍 Analyze & Suggest'));
+    });
+    await screen.findByText(/Analysis failed: Backend crashed/, {}, { timeout: 3000 });
+
+    // Clearing the contingency must also clear the analysis-hook error —
+    // otherwise the failure banner would outlive the state it describes.
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('sidebar-summary-clear'));
+    });
+    const maybeConfirm = screen.queryByText('Confirm');
+    if (maybeConfirm) {
+      await act(async () => { await userEvent.click(maybeConfirm); });
+    }
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Analysis failed: Backend crashed/)).not.toBeInTheDocument();
+    }, { timeout: 3000 });
+  });
 });
 
 describe('Overload Clearing Logic', () => {
