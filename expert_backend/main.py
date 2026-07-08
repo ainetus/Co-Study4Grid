@@ -160,10 +160,26 @@ def _save_user_config(data: dict) -> None:
 
 _ensure_user_config()
 
-_CORS_ENV = os.environ.get("CORS_ALLOWED_ORIGINS", "*").strip()
-_CORS_ORIGINS = (
-    ["*"] if _CORS_ENV == "*" else [o.strip() for o in _CORS_ENV.split(",") if o.strip()]
-)
+# CORS. The dev frontend (Vite) hits the backend cross-origin, so some
+# origins must be allowed — but a wildcard *default* is a drive-by
+# local-file-read vector: any web page the operator happens to visit
+# could read `/api/*` (including the filesystem RPCs) off the localhost
+# backend. So the default is now the local dev-server origins on
+# loopback; the wildcard is explicit opt-in via CORS_ALLOWED_ORIGINS="*".
+# A comma-separated list overrides both for a specific deployment. The
+# same-origin HuggingFace Space needs no entry here (same-origin requests
+# don't trigger CORS).
+_CORS_DEFAULT_ORIGINS = [
+    "http://localhost:5173", "http://127.0.0.1:5173",  # Vite dev server
+    "http://localhost:4173", "http://127.0.0.1:4173",  # Vite preview
+]
+_CORS_ENV = os.environ.get("CORS_ALLOWED_ORIGINS", "").strip()
+if _CORS_ENV == "*":
+    _CORS_ORIGINS = ["*"]
+elif _CORS_ENV:
+    _CORS_ORIGINS = [o.strip() for o in _CORS_ENV.split(",") if o.strip()]
+else:
+    _CORS_ORIGINS = _CORS_DEFAULT_ORIGINS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_CORS_ORIGINS,
@@ -562,6 +578,27 @@ if path:
         return {"path": "", "error": err}
     return {"path": proc.stdout.strip()}
 
+def _safe_session_dir(base_folder: str, session_name: str) -> str:
+    """Resolve ``<base_folder>/<session_name>`` while rejecting any
+    ``session_name`` that escapes ``base_folder`` — path separators,
+    ``..``, or an absolute path (``os.path.join`` silently drops the base
+    when the second arg is absolute). Mirrors the ``/results/pdf``
+    traversal guard. Returns the resolved absolute session directory."""
+    name = (session_name or "").strip()
+    # A session name is a single path component. basename() strips any
+    # directory part; '.' / '..' are rejected explicitly (basename keeps
+    # them). The resolve()+relative_to() below is the defense-in-depth
+    # backstop that also catches separators basename doesn't split on.
+    if not name or name in (".", "..") or os.path.basename(name) != name:
+        raise HTTPException(status_code=400, detail="Invalid session name")
+    base = Path(base_folder).resolve()
+    candidate = (base / name).resolve()
+    try:
+        candidate.relative_to(base)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid session name")
+    return str(candidate)
+
 @app.post("/api/save-session", response_model=SaveSessionResponse)
 def save_session(request: SaveSessionRequest) -> dict:
     import shutil
@@ -569,7 +606,7 @@ def save_session(request: SaveSessionRequest) -> dict:
     if not request.output_folder_path:
         raise HTTPException(status_code=400, detail="output_folder_path is required")
 
-    session_dir = os.path.join(request.output_folder_path, request.session_name)
+    session_dir = _safe_session_dir(request.output_folder_path, request.session_name)
     try:
         os.makedirs(session_dir, exist_ok=True)
     except OSError as e:
@@ -626,7 +663,7 @@ def load_session(folder_path: str = Body(...), session_name: str = Body(...)) ->
     import shutil
     import glob
 
-    session_dir = os.path.join(folder_path, session_name)
+    session_dir = _safe_session_dir(folder_path, session_name)
     json_path = os.path.join(session_dir, "session.json")
 
     if not os.path.isfile(json_path):

@@ -1590,6 +1590,76 @@ class TestResponseModels:
         assert resp.json()["pdf_copied"] is False
 
 
+class TestSessionPathTraversal:
+    """`session_name` is joined onto a caller-supplied folder to build the
+    session directory, so it must be a single path component — a `..`, a
+    path separator, or an absolute path (which `os.path.join` honours,
+    silently dropping the base) would let save/load escape the output
+    folder (QW7, 2026-07). `_safe_session_dir` rejects those with a 400
+    before any filesystem write."""
+
+    def test_save_session_rejects_parent_traversal(self, client, mock_services, tmp_path):
+        base = tmp_path / "sessions"
+        base.mkdir()
+        resp = client.post(
+            "/api/save-session",
+            json={
+                "session_name": "../escaped",
+                "json_content": "{}",
+                "output_folder_path": str(base),
+            },
+        )
+        assert resp.status_code == 400
+        assert resp.json()["detail"] == "Invalid session name"
+        # Nothing was written outside the base folder.
+        assert not (tmp_path / "escaped").exists()
+
+    def test_save_session_rejects_path_separator(self, client, mock_services, tmp_path):
+        resp = client.post(
+            "/api/save-session",
+            json={
+                "session_name": "nested/child",
+                "json_content": "{}",
+                "output_folder_path": str(tmp_path),
+            },
+        )
+        assert resp.status_code == 400
+        assert not (tmp_path / "nested").exists()
+
+    def test_save_session_rejects_absolute_name(self, client, mock_services, tmp_path):
+        evil = tmp_path / "abs_escape"
+        resp = client.post(
+            "/api/save-session",
+            json={
+                "session_name": str(evil),
+                "json_content": "{}",
+                "output_folder_path": str(tmp_path / "base"),
+            },
+        )
+        assert resp.status_code == 400
+        assert not evil.exists()
+
+    def test_load_session_rejects_parent_traversal(self, client, mock_services, tmp_path):
+        resp = client.post(
+            "/api/load-session",
+            json={"folder_path": str(tmp_path), "session_name": "../../etc"},
+        )
+        assert resp.status_code == 400
+        assert resp.json()["detail"] == "Invalid session name"
+
+    def test_save_session_allows_plain_name(self, client, mock_services, tmp_path):
+        resp = client.post(
+            "/api/save-session",
+            json={
+                "session_name": "costudy4grid_session_ok",
+                "json_content": "{}",
+                "output_folder_path": str(tmp_path),
+            },
+        )
+        assert resp.status_code == 200
+        assert (tmp_path / "costudy4grid_session_ok" / "session.json").is_file()
+
+
 class TestEventLoopSafety:
     """`/api/run-analysis-step1` runs seconds of synchronous pypowsybl /
     grid2op work, so it MUST be a sync `def` route (dispatched to

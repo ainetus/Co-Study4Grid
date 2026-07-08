@@ -19,7 +19,6 @@ Co-Study4Grid/
 ├── expert_backend/            # Python FastAPI backend
 │   ├── CLAUDE.md              # Backend-scoped guide (singletons, mixins, lifecycle)
 │   ├── main.py                # FastAPI app: endpoints, CORS, gzip helpers, NDJSON streaming
-│   ├── requirements.txt
 │   ├── test_backend.py        # Ad-hoc integration script (not part of pytest)
 │   ├── recommenders/          # Pluggable recommendation-model registry: registry.py,
 │   │   │                      # random_basic / random_overflow canonical examples,
@@ -203,7 +202,6 @@ Co-Study4Grid/
 - **Vite 7** - Build tool and dev server
 - **axios** - HTTP client
 - **react-select** - Searchable dropdown for branch selection
-- **react-zoom-pan-pinch** - Pan/zoom for visualizations
 - **vite-plugin-singlefile** - Auto-generated single-file standalone bundle
 - **Vitest** + **React Testing Library** - Unit / integration tests
 
@@ -402,13 +400,14 @@ NAD/SLD payloads:
   they sit.
 - **ViewBox zoom**: auto-centers on selected contingency targets with
   adjustable padding.
-- **Pan/zoom**: `react-zoom-pan-pinch` in both the React dev build
-  and the auto-generated standalone (they share the same source
-  tree).
+- **Pan/zoom**: the `usePanZoom` hook writes the SVG `viewBox`
+  directly (rAF-batched, cached CTM) — no pan/zoom library — in both
+  the React dev build and the auto-generated standalone (they share
+  the same source tree).
 
 ## Dependencies
 
-### Backend (`expert_backend/requirements.txt` + `overrides.txt`)
+### Backend (`pyproject.toml` + `overrides.txt`)
 - `fastapi`, `uvicorn`, `python-multipart`
 - `pypowsybl`, `expert_op4grid_recommender` (expected in venv)
 - `pandas>=2.2.2`, `numpy>=2.0.0`, `grid2op>=1.12.2`, `pandapower>=2.14.0`
@@ -428,7 +427,7 @@ NAD/SLD payloads:
 ## Notes for AI Assistants
 
 - The backend API base URL defaults to `http://127.0.0.1:8000` in `frontend/src/api.ts` (`API_BASE_URL`), overridable at build time via `VITE_API_BASE_URL` — set it to `""` for **same-origin** hosting where the backend serves the SPA (the HuggingFace Docker Space), so requests become relative `/api/...`
-- CORS is wide-open by default (`allow_origins=["*"]`) but configurable via the `CORS_ALLOWED_ORIGINS` env var (PR #104, see `.env.example`)
+- CORS defaults to the local Vite dev/preview origins on loopback (`localhost`/`127.0.0.1` on `:5173` / `:4173`); a wildcard is explicit opt-in and any other set is configurable via the `CORS_ALLOWED_ORIGINS` env var (see `.env.example`)
 - **Frontend architecture (Phase 2 hook extraction, PR #109)**: `App.tsx` is the state orchestration hub; it must NOT contain large inline JSX blocks. Extracted presentational components live in `components/` and `components/modals/`; cross-cutting state pipelines live in `hooks/` (notably `useContingencyFetch` and `useDiagramHighlights`). When adding new UI sections, create a new component file (or hook for stateful pipelines) and wire it in `App.tsx`.
 - **`useSettings` hook**: Exposes a `SettingsState` object with all settings fields + setters. This is passed wholesale to `SettingsModal` to avoid excessive prop drilling. Adding a new setting means: (1) add to `useSettings.ts`, (2) add to `SettingsModal.tsx`. No manual standalone mirror is required — the legacy hand-maintained file has been decommissioned and the auto-generated bundle inherits from the React source automatically.
 - **Standalone bundle (auto-generated)**: `npm run build:standalone` in `frontend/` produces `frontend/dist-standalone/standalone.html` — a single-file HTML with React + CSS inlined via `vite-plugin-singlefile`. This is the canonical distribution artifact replacing the former `standalone_interface.html`. The legacy file remains on disk as `standalone_interface_legacy.html` (tracked as a frozen snapshot — do NOT edit).

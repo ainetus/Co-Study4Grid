@@ -326,6 +326,33 @@ describe('Contingency Change Confirmation', () => {
     await userEvent.type(combobox, 'INVALID_NAME');
     expect(screen.queryByText('Change Contingency?')).not.toBeInTheDocument();
   });
+
+  it('surfaces an analysis stream error in the status toast (QW4)', async () => {
+    await renderAndLoadStudy();
+    await selectBranch('BRANCH_A');
+
+    // Step 2 emits an `error` event. `useAnalysis` records it on its OWN
+    // `error` state (not `infoMessage`), which nothing rendered before
+    // QW4; the fix wires that hook error into the shared StatusToasts
+    // channel so an analysis failure is no longer a silent dead spinner.
+    const errStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(
+          JSON.stringify({ type: 'error', message: 'Backend crashed' }) + '\n'
+        ));
+        controller.close();
+      },
+    });
+    mockApi.runAnalysisStep2Stream.mockResolvedValue({ ok: true, body: errStream });
+
+    await act(async () => {
+      await userEvent.click(screen.getByText('🔍 Analyze & Suggest'));
+    });
+
+    expect(
+      await screen.findByText(/Analysis failed: Backend crashed/, {}, { timeout: 3000 })
+    ).toBeInTheDocument();
+  });
 });
 
 describe('Overload Clearing Logic', () => {

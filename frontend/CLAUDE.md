@@ -17,7 +17,7 @@ frontend/
 ├── README.md
 ├── index.html                # Vite HTML entry point
 ├── package.json              # React 19, Vite 7, vitest, axios, react-select,
-│                             # react-zoom-pan-pinch, vite-plugin-singlefile
+│                             # vite-plugin-singlefile
 ├── vite.config.ts            # Vite + Vitest plugin (jsdom env)
 ├── eslint.config.js          # Flat config (v9+) — typescript-eslint,
 │                             # react-hooks, react-refresh
@@ -395,9 +395,10 @@ performance levers are applied today:
   on the ~12 MB French NAD. Falls back to the full NAD on any
   unsupported edge case.
 
-The visualization is rendered inside `react-zoom-pan-pinch`. Zoom
-state is owned by `usePanZoom` per tab (`nPZ`, `n1PZ`, `actionPZ`,
-plus `overviewPz` for the Action overview map). The
+Pan/zoom is implemented directly by `usePanZoom` — it writes the SVG
+`viewBox` on the container (rAF-batched, cached CTM), with no pan/zoom
+library. Zoom state is owned by `usePanZoom` per tab (`nPZ`, `n1PZ`,
+`actionPZ`, plus `overviewPz` for the Action overview map). The
 `useTiedTabsSync` hook mirrors viewBox changes from the active tab
 to any "tied" detached tab.
 
@@ -466,7 +467,7 @@ selector in Settings → Configurations, default `'off'`). See
 `useDetachedTabs` opens diagram tabs in popup windows
 (`window.open`). When popups are blocked, the error surfaces via
 `onPopupBlocked` callback. The detached tab gets its own
-`react-zoom-pan-pinch` instance; `useTiedTabsSync` keeps the
+`usePanZoom` viewBox state; `useTiedTabsSync` keeps the
 viewBoxes in sync. See `docs/features/detachable-viz-tabs.md`.
 
 ## Interaction logging

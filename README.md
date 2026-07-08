@@ -797,7 +797,6 @@ Co-Study4Grid consumes and produces.
 - **Vite 7** — build tool and dev server
 - **axios** — HTTP client
 - **react-select** — searchable dropdown for branch selection
-- **react-zoom-pan-pinch** — pan/zoom for SVG visualizations
 - **vite-plugin-singlefile** — auto-generated single-file standalone bundle
 - **Vitest** + **React Testing Library** — unit tests (~1000 specs)
 

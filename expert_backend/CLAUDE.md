@@ -17,7 +17,6 @@ expert_backend/
 ├── __init__.py
 ├── main.py                    # FastAPI app: endpoints, CORS, gzip helpers,
 │                              # config-file persistence, NDJSON streaming
-├── requirements.txt           # Pinned core deps (fastapi, uvicorn, multipart)
 ├── test_backend.py            # Ad-hoc integration script (not part of pytest)
 ├── services/
 │   ├── __init__.py
@@ -528,7 +527,11 @@ python -m expert_backend.main
 uvicorn expert_backend.main:app --host 0.0.0.0 --port 8000
 ```
 
-CORS defaults to wide-open (`allow_origins=["*"]`) because the dev
-frontend hits the backend cross-origin. It is configurable via the
-`CORS_ALLOWED_ORIGINS` env var (PR #104 — see `.env.example`).
-Tighten before any non-local deployment.
+CORS defaults to the local Vite dev/preview origins on loopback
+(`localhost` / `127.0.0.1` on `:5173` and `:4173`) so the dev frontend
+can hit the backend cross-origin without opening it to every web page.
+A wildcard (`allow_origins=["*"]`) is now explicit opt-in via
+`CORS_ALLOWED_ORIGINS="*"`; a comma-separated list overrides the default
+for a specific deployment (see `.env.example`). The same-origin
+HuggingFace Space needs no entry (same-origin requests don't trigger
+CORS).

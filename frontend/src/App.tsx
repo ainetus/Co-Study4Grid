@@ -328,6 +328,10 @@ function App() {
     // toggle matches the backend's freshly-cleared overflow cache.
     diagrams.setOverflowLayoutMode('hierarchical');
     setError('');
+    // The analysis hook owns its own `error` (surfaced via the shared
+    // StatusToasts channel — see the render site). Clear it here too so
+    // a failed-analysis banner doesn't survive a contingency clear.
+    analysis.setError('');
     analysis.setInfoMessage('');
     diagrams.setInspectQuery('');
     // Do NOT reset lastZoomState here.  Resetting it causes the auto-zoom
@@ -743,6 +747,7 @@ function App() {
         if (seq !== sldPreviewSeqRef.current) return;
         console.error('SLD topology preview failed:', e);
         setSldPreview(null);
+        setError(apiErrorMessage(e, 'Topology preview failed'));
       } finally {
         if (seq === sldPreviewSeqRef.current) setSldPreviewLoading(false);
       }
@@ -2078,7 +2083,7 @@ function App() {
         onCancel={handleCancelDialog}
         onConfirm={handleConfirmDialog}
       />
-      <StatusToasts error={error} infoMessage={infoMessage} />
+      <StatusToasts error={error || analysis.error} infoMessage={infoMessage} />
     </div>
   );
 }

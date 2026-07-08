@@ -83,11 +83,15 @@ scoring function, annotated file trees vs. the tree).
 
 The five headline issues, all verified:
 
-> **Remediation status (2026-07-07).** Headline #1 is **fixed** (D1),
+> **Remediation status (2026-07-08).** Headline #1 is **fixed** (D1),
 > #3 is **fixed** (D3), and #2 is **partly fixed** (D2 — the error
 > contract + a machine-checked OpenAPI snapshot landed; TS-generation and
 > blanket-handler removal remain). #4 (invisible failures — D5) and #5
-> (trust model — D7) are still open. See Part V for the per-item detail.
+> (trust model — D7) are still open at the deep-revision level, but their
+> cheap quick-win halves landed 2026-07-08: analysis errors are now
+> surfaced (QW4) and the two riskiest filesystem RPCs are hardened —
+> loopback-default CORS (QW3) + a session-path traversal guard (QW7).
+> See Part V for the per-item detail and Part VI for the quick wins.
 
 1. **The pluggable-recommender subsystem is a ghost.**
    `expert_backend/recommenders/_service_integration.py` rewrites
@@ -338,8 +342,8 @@ and five click grammars coexist.*
 
 | Sev | Finding | Verdict |
 |---|---|---|
-| high | Analysis failures invisible: `useAnalysis`'s `error` state set on three failure paths, rendered nowhere; `App.tsx` destructures a *different* local `error` | ✅ |
-| med | Re-simulation failures swallowed (`console.error` only) | ✅ |
+| high | Analysis failures invisible: `useAnalysis`'s `error` state set on three failure paths, rendered nowhere; `App.tsx` destructures a *different* local `error` | ✅ → **RESOLVED (QW4, 2026-07-08)**: `StatusToasts` now renders `error \|\| analysis.error` (cleared on contingency-clear); App-integration test guards it. Root fix (one notification pipeline) is still D5. |
+| med | Re-simulation failures swallowed (`console.error` only) | ✅ → **RESOLVED (QW4, 2026-07-08)**: the pin / SLD-edit catches now `setError`, and the SLD-preview catch was the last silent one — now surfaced too. |
 | med | Toast design: error banner has no dismiss & no timeout; info fixed 3 s; no `aria-live`; magic `'SUCCESS'` string protocol | ✅ |
 | med | Five single-vs-double-click grammars across surfaces; one documented backwards | 🟡 — grammars enumerated & confirmed; "backwards" doc claim narrowed |
 | med | No cancellation/abort for any long-running operation | ✅ |
@@ -458,8 +462,8 @@ disabled under the wildcard; injected overlay renders untrusted data via
 
 | Sev | Finding | Verdict |
 |---|---|---|
-| high | CORS `*` + no auth + arbitrary-file endpoints = drive-by local file read/write from any web page against a localhost install | ✅ |
-| high | Unauthenticated arbitrary filesystem access survives on the public Space (Game Mode gates only the UI); `../` traversal in `session_name` | ✅ |
+| high | CORS `*` + no auth + arbitrary-file endpoints = drive-by local file read/write from any web page against a localhost install | ✅ → **PARTLY RESOLVED (QW3, 2026-07-08)**: the CORS default is now loopback dev origins (wildcard is explicit opt-in), closing the drive-by cross-origin read. The no-auth/arbitrary-file surface itself is the D7 lockdown profile. |
+| high | Unauthenticated arbitrary filesystem access survives on the public Space (Game Mode gates only the UI); `../` traversal in `session_name` | ✅ → **PARTLY RESOLVED (QW7, 2026-07-08)**: the `session_name` traversal is closed (`_safe_session_dir`). The broader unauthenticated-filesystem surface is the D7 lockdown profile. |
 | med | Singleton state shared across concurrent users, no locking (cross-ref T3) | ✅ → **RESOLVED (D3)**: service-level `RLock` + 409 study-mutation gate. |
 | med | `detail=str(e)` leaks absolute server paths | ✅ → **PARTLY RESOLVED (D2)**: the global unhandled-exception handler now returns a generic 500 (no `str(e)`); the per-endpoint `except → 400, str(e)` handlers still echo the message and are tracked for removal. |
 | med | `/api/pick-path` spawns a subprocess per request | 🟡 — headless child fails in ms (tkinter absent); low-severity dead weight, not a DoS vector |
@@ -669,13 +673,13 @@ Day-one (each ≤ ~2 h, near-zero risk):
 |---|---|---|
 | QW1 | Collect root `tests/` (add to `pytest.ini` testpaths or move files) — *the highest value-per-hour change in this review* | pytest.ini / CI |
 | QW2 | ✅ **DONE (2026-07-07)** — `async def` → `def` on `run_analysis_step1` (unblocks the event loop; `TestEventLoopSafety` guard) | `main.py` |
-| QW3 | CORS default `*` → loopback origins; wildcard becomes explicit opt-in | `main.py:141` |
-| QW4 | Render `useAnalysis.error` in `StatusToasts`; add `setError` to the two swallowed catches | `App.tsx` |
+| QW3 | ✅ **DONE (2026-07-08)** — CORS default `*` → loopback dev origins (`localhost`/`127.0.0.1` :5173/:4173); wildcard is explicit opt-in (`CORS_ALLOWED_ORIGINS="*"`) | `main.py` |
+| QW4 | ✅ **DONE (2026-07-08)** — `useAnalysis.error` now surfaced through `StatusToasts` (`error \|\| analysis.error`, cleared on contingency-clear); the two `console.error`-only catches already carried `setError`, and the remaining SLD-preview catch got one. Guarded by a new App-integration test | `App.tsx` |
 | QW5 | ✅ **DONE (2026-07-07, folded into D3)** — try/finally on the unguarded variant switch | `diagram_mixin.py` `_get_contingency_flows` |
 | QW6 | Replace `detail=str(e)` with generic messages + server-side `logger.exception` | `main.py` |
-| QW7 | Reject path separators/`..` in `session_name`; resolve+relative_to on session dirs (mirror the existing `/results/pdf` guard) | `main.py` |
+| QW7 | ✅ **DONE (2026-07-08)** — `_safe_session_dir` rejects `..` / path separators / absolute names before any FS write, resolve()+relative_to() backstop (mirrors `/results/pdf`); applied to `save-session` + `load-session`. `TestSessionPathTraversal` guard | `main.py` |
 | QW8 | Pin `expert_op4grid_recommender` per-PR; float it in a separate canary job | CI ×3 + Dockerfile |
-| QW9 | Delete `inspect_action.py`, dead `requirements.txt` stub, `react-zoom-pan-pinch`; untrack generated outputs | repo root / frontend |
+| QW9 | 🟡 **PARTLY DONE (2026-07-08)** — deleted `inspect_action.py`, the dead `expert_backend/requirements.txt` stub, and the unused `react-zoom-pan-pinch` dep (+ doc/lockfile follow-through). Did **not** untrack the `Overflow_Graph/*.html`: it is a skip-guarded regression fixture (`test_overflow_html_dim_logic.py`) — untracking it would silently drop that CI coverage | repo root / frontend |
 
 Week-one (½–1 day each):
 

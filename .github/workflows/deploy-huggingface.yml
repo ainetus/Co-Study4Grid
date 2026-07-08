@@ -66,7 +66,7 @@ jobs:
           git add -A
           # Drop inert local dev artifacts from the deployed snapshot.
           git rm -q --cached --ignore-unmatch \
-            .claude/plan.md inspect_action.py profiling_patch_results.json || true
+            .claude/plan.md profiling_patch_results.json || true
           git commit -q -m "Deploy ${GITHUB_SHA::7}"
           test "$(git rev-list --count HEAD)" -eq 1   # sanity: exactly one commit
 
