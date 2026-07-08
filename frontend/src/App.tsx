@@ -12,7 +12,7 @@ import ActionFeed from './components/ActionFeed';
 import AntennaNotice from './components/AntennaNotice';
 import Header from './components/Header';
 import AppSidebar from './components/AppSidebar';
-import StatusToasts from './components/StatusToasts';
+import NotificationHost from './components/NotificationHost';
 import type { Notice } from './components/NoticesPanel';
 import SettingsModal from './components/modals/SettingsModal';
 import ReloadSessionModal from './components/modals/ReloadSessionModal';
@@ -36,6 +36,7 @@ import type { GameStudy } from './game/types';
 import { DEFAULT_ACTION_OVERVIEW_FILTERS } from './utils/actionTypes';
 import { apiErrorMessage } from './utils/apiError';
 import { parseNdjsonStream } from './utils/ndjsonStream';
+import { notifyError, notifications } from './utils/notifications';
 import { attachVlInteractions } from './utils/svgUtils';
 import {
     buildOverflowPinPayload,
@@ -102,7 +103,13 @@ function App() {
    *  a non-empty `result.actions` map. */
   const [overflowPinsEnabled, setOverflowPinsEnabled] = useState(false);
   const [configLoading, setConfigLoading] = useState(false);
-  const [error, setError] = useState('');
+  // Errors surface through the shared notification store (D5). This
+  // adapter preserves the historical `setError(msg)` / `setError('')`
+  // (raise / clear) contract used across App and threaded into hooks.
+  const setError = useCallback((message: string) => {
+    if (message) notifyError(message);
+    else notifications.clearSeverity('error');
+  }, []);
 
   /** Resolve an element or VL ID to its display name. Falls back to the ID. */
   const displayName = useCallback((id: string) => nameMap[id] || id, [nameMap]);
@@ -189,7 +196,7 @@ function App() {
   const analysis = useAnalysis();
   const {
     result, setResult, pendingAnalysisResult, analysisLoading,
-    infoMessage, selectedOverloads, monitorDeselected,
+    selectedOverloads, monitorDeselected,
     additionalLinesToCut, committedAdditionalLinesToCut,
   } = analysis;
 
@@ -328,11 +335,9 @@ function App() {
     // Fresh contingency / study starts in hierarchical mode so the
     // toggle matches the backend's freshly-cleared overflow cache.
     diagrams.setOverflowLayoutMode('hierarchical');
+    // Clear both notification channels so a failed-analysis error or a
+    // stale info toast doesn't outlive the contingency it described.
     setError('');
-    // The analysis hook owns its own `error` (surfaced via the shared
-    // StatusToasts channel — see the render site). Clear it here too so
-    // a failed-analysis banner doesn't survive a contingency clear.
-    analysis.setError('');
     analysis.setInfoMessage('');
     diagrams.setInspectQuery('');
     // Do NOT reset lastZoomState here.  Resetting it causes the auto-zoom
@@ -640,7 +645,7 @@ function App() {
         setError(apiErrorMessage(err, 'Simulation failed'));
       }
     },
-    [selectedContingency, result?.lines_overloaded, result?.active_model, diagrams, voltageLevels.length, wrappedManualActionAdded]
+    [selectedContingency, result?.lines_overloaded, result?.active_model, diagrams, voltageLevels.length, wrappedManualActionAdded, setError]
   );
 
   // Interactive SLD topology edit (useSldTopologyEdit). The baseline
@@ -840,7 +845,7 @@ function App() {
   }, [
     diagrams, sldTopologyEdit, selectedContingency, sldEditBaseActionId,
     result?.lines_overloaded, voltageLevels.length, wrappedManualActionAdded,
-    handleVlDoubleClick,
+    handleVlDoubleClick, setError,
   ]);
 
   // Re-simulation of an already-present action (edit Target MW / tap on a
@@ -976,7 +981,7 @@ function App() {
     n1OverloadsRho: n1Diagram?.lines_overloaded_rho,
     result, selectedActionIds, rejectedActionIds,
     manuallyAddedIds, suggestedByRecommenderIds,
-    setError, setInfoMessage: analysis.setInfoMessage,
+    setError,
   }), [
     networkPath, actionPath, layoutPath, outputFolderPath,
     minLineReconnections, minCloseCoupling, minOpenCoupling,
@@ -989,7 +994,7 @@ function App() {
     nDiagram, n1Diagram,
     result, selectedActionIds, rejectedActionIds,
     manuallyAddedIds, suggestedByRecommenderIds,
-    setError, analysis.setInfoMessage,
+    setError,
   ]);
 
   const wrappedSaveResults = useCallback(
@@ -1024,7 +1029,7 @@ function App() {
     restoringSessionRef: diagrams.restoringSessionRef,
     committedBranchRef: diagrams.committedBranchRef,
     committedNetworkPathRef,
-    setError, setInfoMessage: analysis.setInfoMessage,
+    setError,
     applyConfigResponse, setBranches, setVoltageLevels, setNameMap,
     setNominalVoltageMap: diagrams.setNominalVoltageMap,
     setUniqueVoltages: diagrams.setUniqueVoltages,
@@ -2034,7 +2039,7 @@ function App() {
         onCancel={handleCancelDialog}
         onConfirm={handleConfirmDialog}
       />
-      <StatusToasts error={error || analysis.error} infoMessage={infoMessage} />
+      <NotificationHost />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, type Dispatch, type 
 import type { ActionDetail, AnalysisResult, TabId } from '../types';
 import { interactionLogger } from '../utils/interactionLogger';
 import { parseNdjsonStream } from '../utils/ndjsonStream';
+import { notifications, notifyError, notifyInfo } from '../utils/notifications';
 
 export interface AnalysisState {
   result: AnalysisResult | null;
@@ -17,9 +18,9 @@ export interface AnalysisState {
   setPendingAnalysisResult: (v: AnalysisResult | null) => void;
   analysisLoading: boolean;
   setAnalysisLoading: (v: boolean) => void;
-  infoMessage: string;
+  /** Raise an auto-dismissing info toast (`''` clears the info channel). */
   setInfoMessage: (v: string) => void;
-  error: string;
+  /** Raise a sticky error toast (`''` clears the error channel). */
   setError: (v: string) => void;
 
   // Analysis flow
@@ -69,15 +70,24 @@ export function useAnalysis(): AnalysisState {
 
   const [pendingAnalysisResult, setPendingAnalysisResult] = useState<AnalysisResult | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
-  const [infoMessage, setInfoMessage] = useState('');
-  const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (infoMessage) {
-      const timer = setTimeout(() => { setInfoMessage(''); }, 3000);
-      return () => clearTimeout(timer);
+  // Errors / info route through the shared notification store (D5) rather
+  // than local `error` / `infoMessage` string state with a bespoke 3s
+  // timer. These adapters keep the historical `(v: string) => void`
+  // call-site contract: a message raises a toast; an empty string clears
+  // that channel (the "reset before a run" gesture).
+  const setError = useCallback((message: string) => {
+    if (message) notifyError(message);
+    else notifications.clearSeverity('error');
+  }, []);
+  const setInfoMessage = useCallback((message: string) => {
+    if (message) {
+      notifyInfo(message);
+    } else {
+      notifications.clearSeverity('info');
+      notifications.clearSeverity('success');
     }
-  }, [infoMessage]);
+  }, []);
 
   // Analysis flow
   const [selectedOverloads, setSelectedOverloads] = useState<Set<string>>(new Set());
@@ -243,7 +253,7 @@ export function useAnalysis(): AnalysisState {
     } finally {
       setAnalysisLoading(false);
     }
-  }, [selectedOverloads, monitorDeselected, additionalLinesToCut]);
+  }, [selectedOverloads, monitorDeselected, additionalLinesToCut, setError, setInfoMessage]);
 
   const handleToggleAdditionalLineToCut = useCallback((line: string) => {
     if (!line) return;
@@ -335,8 +345,8 @@ export function useAnalysis(): AnalysisState {
     result, setResult,
     pendingAnalysisResult, setPendingAnalysisResult,
     analysisLoading, setAnalysisLoading,
-    infoMessage, setInfoMessage,
-    error, setError,
+    setInfoMessage,
+    setError,
     selectedOverloads, setSelectedOverloads,
     monitorDeselected, setMonitorDeselected,
     additionalLinesToCut, setAdditionalLinesToCut,
@@ -347,7 +357,7 @@ export function useAnalysis(): AnalysisState {
     handleDisplayPrioritizedActions,
     handleToggleOverload,
   }), [
-    result, pendingAnalysisResult, analysisLoading, infoMessage, error,
+    result, pendingAnalysisResult, analysisLoading, setInfoMessage, setError,
     selectedOverloads, monitorDeselected, additionalLinesToCut,
     committedAdditionalLinesToCut,
     handleRunAnalysis, handleDisplayPrioritizedActions, handleToggleOverload,

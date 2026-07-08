@@ -9,6 +9,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useAnalysis } from './useAnalysis';
 import { interactionLogger } from '../utils/interactionLogger';
+import { notifications, DEFAULT_TIMEOUT_MS, type NotificationSeverity } from '../utils/notifications';
+
+/** Messages currently in the notification store for a given severity. */
+function toastMessages(severity: NotificationSeverity): string[] {
+    return notifications.getSnapshot().filter(n => n.severity === severity).map(n => n.message);
+}
 
 // Mock the api module (dynamic import in useAnalysis)
 const mockRunAnalysisStep1 = vi.fn();
@@ -36,13 +42,14 @@ describe('useAnalysis', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         interactionLogger.clear();
+        notifications.clear();
     });
 
     it('initializes with null result and no loading', () => {
         const { result } = renderHook(() => useAnalysis());
         expect(result.current.result).toBeNull();
         expect(result.current.analysisLoading).toBe(false);
-        expect(result.current.error).toBe('');
+        expect(notifications.getSnapshot()).toHaveLength(0);
     });
 
     it('does nothing when selectedBranch is empty', async () => {
@@ -73,7 +80,7 @@ describe('useAnalysis', () => {
             await result.current.handleRunAnalysis(['LINE_X'], clear, setSuggested);
         });
 
-        expect(result.current.error).toBe('Network not loaded');
+        expect(toastMessages('error')).toContain('Network not loaded');
         expect(result.current.analysisLoading).toBe(false);
         expect(mockRunAnalysisStep2Stream).not.toHaveBeenCalled();
     });
@@ -91,7 +98,7 @@ describe('useAnalysis', () => {
             await result.current.handleRunAnalysis(['LINE_X'], vi.fn(), vi.fn());
         });
 
-        expect(result.current.infoMessage).toBe('No overloads detected');
+        expect(toastMessages('info')).toContain('No overloads detected');
         expect(result.current.analysisLoading).toBe(false);
     });
 
@@ -307,7 +314,7 @@ describe('useAnalysis', () => {
             await result.current.handleRunAnalysis(['LINE_X'], vi.fn(), vi.fn());
         });
 
-        expect(result.current.error).toBe('Analysis failed: Backend crashed');
+        expect(toastMessages('error')).toContain('Analysis failed: Backend crashed');
     });
 
     it('sets error when step2 rejects', async () => {
@@ -322,7 +329,7 @@ describe('useAnalysis', () => {
             await result.current.handleRunAnalysis(['LINE_X'], vi.fn(), vi.fn());
         });
 
-        expect(result.current.error).toBe('Network error');
+        expect(toastMessages('error')).toContain('Network error');
         expect(result.current.analysisLoading).toBe(false);
     });
 
@@ -576,15 +583,15 @@ describe('useAnalysis', () => {
     });
 
     describe('info message auto-clear', () => {
-        it('clears info message after timeout', async () => {
+        it('raises an info toast that the store auto-dismisses after its timeout', () => {
             vi.useFakeTimers();
             const { result } = renderHook(() => useAnalysis());
 
             act(() => { result.current.setInfoMessage('Temporary message'); });
-            expect(result.current.infoMessage).toBe('Temporary message');
+            expect(toastMessages('info')).toContain('Temporary message');
 
-            act(() => { vi.advanceTimersByTime(3000); });
-            expect(result.current.infoMessage).toBe('');
+            act(() => { vi.advanceTimersByTime(DEFAULT_TIMEOUT_MS); });
+            expect(toastMessages('info')).not.toContain('Temporary message');
 
             vi.useRealTimers();
         });
