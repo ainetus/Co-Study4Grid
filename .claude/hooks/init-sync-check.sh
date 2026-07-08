@@ -86,4 +86,23 @@ echo "PRINCIPLE: always run a real 'git fetch' to confirm sync against the remot
 echo "           do not rely on a possibly-stale local origin ref."
 echo "───────────────────────────────────────────────────────────────────────"
 
+# ── PR target reminder ─────────────────────────────────────────────────
+# Pull requests for Co-Study4Grid are opened SYSTEMATICALLY on the upstream
+# `ainetus` repo (base = ainetus default branch, head = marota:<branch>),
+# never on the `marota` fork. A cross-fork PR into `ainetus` can only be
+# CREATED from a session that has the `ainetus` repo in scope, and
+# cross-tier repo adds are blocked mid-session — so a marota-only session
+# CANNOT open the PR (the create step fails with an access-denied error).
+echo "── PR target: ALWAYS ainetus (upstream), never the marota fork ────────"
+echo "  * Open PRs against ainetus/Co-Study4Grid (base = its default branch,"
+echo "    head = marota:<branch>). Same rule for Expert_op4grid_recommender."
+echo "  * To create one, START THE SESSION with ainetus/Co-Study4Grid (and"
+echo "    ainetus/Expert_op4grid_recommender) as the INITIAL sources — a"
+echo "    session rooted only at marota cannot add ainetus later (cross-tier"
+echo "    add is blocked) and the PR step will fail access-denied."
+echo "  * From a marota-only session: push the branch, then hand off a ready"
+echo "    PR compare link:"
+echo "    https://github.com/ainetus/Co-Study4Grid/compare/${default_branch}...marota:<branch>?expand=1"
+echo "───────────────────────────────────────────────────────────────────────"
+
 exit 0
