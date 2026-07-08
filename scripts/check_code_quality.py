@@ -125,7 +125,10 @@ FRONTEND_RECORD_UNKNOWN_MAX = 45  # `Record<string, unknown>` (most are legit fl
 # can't grow without bound. `utils/**` modules are gated by the
 # (looser) `FRONTEND_UTIL_MAX`; everything else by `FRONTEND_COMPONENT_MAX`.
 APP_TSX_PATH = "frontend/src/App.tsx"
-APP_TSX_MAX = 2100
+# Ratcheted 2100 → 1850 after the D4 `useManualSimulation` extraction
+# (App.tsx 2048 → 1795). Lower it again as further hubs are extracted;
+# never raise it.
+APP_TSX_MAX = 1850
 FRONTEND_UTIL_PREFIX = "frontend/src/utils/"
 
 
