@@ -282,7 +282,7 @@ class SimulationMixin(_Base):
         if not used_context_obs:
             n.set_working_variant(self._get_contingency_variant(norm_contingency))
 
-        actual_fast_mode = getattr(config, "PYPOWSYBL_FAST_MODE", False)
+        actual_fast_mode = getattr(config, "PYPOWSYBL_FAST_MODE", True)
         obs_simu_action, _, _, info_action = obs_simu_defaut.simulate(
             action,
             time_step=0,

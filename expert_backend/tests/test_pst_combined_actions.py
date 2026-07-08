@@ -292,9 +292,9 @@ class TestPypowsyblFastModeProtection:
             "PYPOWSYBL_FAST_MODE should not be overridden between tests"
 
     def test_fast_mode_affects_simulation(self):
-        """When PYPOWSYBL_FAST_MODE=True, _run_ac_with_fallback uses
-        fast parameters (no voltage control). Ensure the config value
-        is correctly read at simulation time."""
+        """When PYPOWSYBL_FAST_MODE=True, _run_ac_with_fallback uses the
+        fast tap-changer control mode (AFTER_GENERATOR_VOLTAGE_CONTROL).
+        Ensure the config value is correctly read at simulation time."""
         svc = RecommenderService()
 
         # The method reads config at call time, not import time

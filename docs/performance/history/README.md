@@ -35,6 +35,8 @@ manual-action simulation.
 | [`combined-action-endpoint.md`](combined-action-endpoint.md) | Stream `/api/simulate-and-variant-diagram` NDJSON. |
 | [`n1-diagram-fast-path.md`](n1-diagram-fast-path.md) | Vectorize flow extraction (13×), delta (47×), asset queries (1.1k×). |
 | [`loading-parallel.md`](loading-parallel.md) | Parallelize `/api/branches`, `/api/voltage-levels`, `/api/nominal-voltages`. |
+| [`analyze-suggest-2vcpu.md`](analyze-suggest-2vcpu.md) | Reassessment parallel→serial on a CPU-limited host + 29 MB step-2 payload slim. |
+| [`reassessment-fast-mode-tap-control.md`](reassessment-fast-mode-tap-control.md) | Action-assessment 6x slowdown = incremental tap-changer voltage control; fast mode redefined to `AFTER_GENERATOR_VOLTAGE_CONTROL` (~7x fewer LF iters, same currents). |
 
 ## Shipped — Frontend
 
