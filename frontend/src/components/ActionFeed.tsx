@@ -12,6 +12,7 @@ import { DEFAULT_ACTION_OVERVIEW_FILTERS, matchesActionTypeFilter, rowPassesActi
 import { api } from '../api';
 import type { ModelDescriptor } from '../api';
 import { interactionLogger } from '../utils/interactionLogger';
+import { parseNdjsonStream } from '../utils/ndjsonStream';
 import CombinedActionsModal from './CombinedActionsModal';
 import ActionCard from './ActionCard';
 import AdditionalLinesPicker from './AdditionalLinesPicker';
@@ -242,33 +243,21 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
             target_mw: targetMw ?? null,
             target_tap: targetTap ?? null,
         });
-        const reader = response.body!.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
         let metrics: Awaited<ReturnType<typeof api.simulateManualAction>> | null = null;
         let streamErr: string | null = null;
-        while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop()!;
-            for (const line of lines) {
-                if (!line.trim()) continue;
-                let event: Record<string, unknown>;
-                try { event = JSON.parse(line); } catch { continue; }
-                if (event.type === 'metrics') {
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    const { type: _t, ...rest } = event;
-                    metrics = rest as Awaited<ReturnType<typeof api.simulateManualAction>>;
-                } else if (event.type === 'diagram') {
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    const { type: _t, ...rest } = event;
-                    // `canPrimeDiagram` is verified before this helper is called.
-                    onActionDiagramPrimed!(actionId, rest as unknown as DiagramData & { svg: string }, voltageLevelsLength!);
-                } else if (event.type === 'error') {
-                    streamErr = (event.message as string) || 'stream error';
-                }
+        for await (const raw of parseNdjsonStream(response)) {
+            const event = raw as Record<string, unknown>;
+            if (event.type === 'metrics') {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { type: _t, ...rest } = event;
+                metrics = rest as Awaited<ReturnType<typeof api.simulateManualAction>>;
+            } else if (event.type === 'diagram') {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { type: _t, ...rest } = event;
+                // `canPrimeDiagram` is verified before this helper is called.
+                onActionDiagramPrimed!(actionId, rest as unknown as DiagramData & { svg: string }, voltageLevelsLength!);
+            } else if (event.type === 'error') {
+                streamErr = (event.message as string) || 'stream error';
             }
         }
         if (streamErr) throw new Error(streamErr);

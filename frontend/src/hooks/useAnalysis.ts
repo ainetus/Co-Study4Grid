@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, type Dispatch, type SetStateAction, type MutableRefObject } from 'react';
 import type { ActionDetail, AnalysisResult, TabId } from '../types';
 import { interactionLogger } from '../utils/interactionLogger';
+import { parseNdjsonStream } from '../utils/ndjsonStream';
 
 export interface AnalysisState {
   result: AnalysisResult | null;
@@ -174,73 +175,58 @@ export function useAnalysis(): AnalysisState {
         additional_lines_to_cut: additionalLinesArr,
       });
 
-      const reader = response2.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
       let step2ActionsCount = 0;
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop()!;
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const event = JSON.parse(line);
-            if (event.type === 'pdf') {
-              setResult((p: AnalysisResult | null) => ({
-                ...(p || {}),
-                pdf_url: event.pdf_url,
-                pdf_path: event.pdf_path,
-                // The overflow-graph build time is emitted on the
-                // ``pdf`` event (before discovery + assessment finish)
-                // so the iframe can display it below its title as soon
-                // as the file is ready.
-                ...(typeof event.overflow_graph_time === 'number'
-                    ? { overflow_graph_time: event.overflow_graph_time }
-                    : (event.overflow_graph_time === null
-                        ? { overflow_graph_time: null }
-                        : {})),
-              } as AnalysisResult));
-              if (setActiveTab) {
-                setActiveTab('overflow');
-              }
-            } else if (event.type === 'result') {
-              const actionsWithFlags = { ...event.actions };
-              // Provenance for recommender-produced actions: the model
-              // the backend actually ran (echoed as `active_model` on
-              // the result event). Preserve an existing `origin` so a
-              // "first guess" the operator added before analysis keeps
-              // its `"user"` provenance even when the model re-emits
-              // the same id.
-              const resultModel: string = event.active_model || 'expert';
-              for (const id in actionsWithFlags) {
-                const existing = (prevResultRef.current?.actions?.[id] || {}) as Partial<ActionDetail>;
-                actionsWithFlags[id] = {
-                  ...actionsWithFlags[id],
-                  is_manual: false,
-                  origin: existing.origin ?? resultModel,
-                  is_islanded: existing.is_islanded ?? actionsWithFlags[id].is_islanded,
-                  estimated_max_rho: existing.estimated_max_rho ?? actionsWithFlags[id].max_rho,
-                  estimated_max_rho_line: existing.estimated_max_rho_line ?? actionsWithFlags[id].max_rho_line,
-                };
-              }
-              setSuggestedByRecommenderIds(prev => new Set([...prev, ...Object.keys(actionsWithFlags)]));
-              step2ActionsCount = Object.keys(actionsWithFlags).length;
-              const wallClockTime = (performance.now() - wallClockStart) / 1000;
-              setPendingAnalysisResult({
-                ...event,
-                actions: actionsWithFlags,
-                wall_clock_time: wallClockTime,
-              });
-              if (event.message) setInfoMessage(event.message);
-            } else if (event.type === 'error') {
-              setError('Analysis failed: ' + event.message);
-            }
-          } catch {
-            // Silent catch for incomplete rows
+      for await (const raw of parseNdjsonStream(response2)) {
+        const event = raw as Partial<AnalysisResult> & { type?: string };
+        if (event.type === 'pdf') {
+          setResult((p: AnalysisResult | null) => ({
+            ...(p || {}),
+            pdf_url: event.pdf_url,
+            pdf_path: event.pdf_path,
+            // The overflow-graph build time is emitted on the
+            // ``pdf`` event (before discovery + assessment finish)
+            // so the iframe can display it below its title as soon
+            // as the file is ready.
+            ...(typeof event.overflow_graph_time === 'number'
+                ? { overflow_graph_time: event.overflow_graph_time }
+                : (event.overflow_graph_time === null
+                    ? { overflow_graph_time: null }
+                    : {})),
+          } as AnalysisResult));
+          if (setActiveTab) {
+            setActiveTab('overflow');
           }
+        } else if (event.type === 'result') {
+          const actionsWithFlags = { ...event.actions };
+          // Provenance for recommender-produced actions: the model
+          // the backend actually ran (echoed as `active_model` on
+          // the result event). Preserve an existing `origin` so a
+          // "first guess" the operator added before analysis keeps
+          // its `"user"` provenance even when the model re-emits
+          // the same id.
+          const resultModel: string = event.active_model || 'expert';
+          for (const id in actionsWithFlags) {
+            const existing = (prevResultRef.current?.actions?.[id] || {}) as Partial<ActionDetail>;
+            actionsWithFlags[id] = {
+              ...actionsWithFlags[id],
+              is_manual: false,
+              origin: existing.origin ?? resultModel,
+              is_islanded: existing.is_islanded ?? actionsWithFlags[id].is_islanded,
+              estimated_max_rho: existing.estimated_max_rho ?? actionsWithFlags[id].max_rho,
+              estimated_max_rho_line: existing.estimated_max_rho_line ?? actionsWithFlags[id].max_rho_line,
+            };
+          }
+          setSuggestedByRecommenderIds(prev => new Set([...prev, ...Object.keys(actionsWithFlags)]));
+          step2ActionsCount = Object.keys(actionsWithFlags).length;
+          const wallClockTime = (performance.now() - wallClockStart) / 1000;
+          setPendingAnalysisResult({
+            ...(event as AnalysisResult),
+            actions: actionsWithFlags,
+            wall_clock_time: wallClockTime,
+          });
+          if (event.message) setInfoMessage(event.message);
+        } else if (event.type === 'error') {
+          setError('Analysis failed: ' + event.message);
         }
       }
       // Replay contract (docs/features/interaction-logging.md):

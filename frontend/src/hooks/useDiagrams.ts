@@ -14,6 +14,7 @@ import {
 } from '../utils/svgUtils';
 import { processSvg } from '../utils/svgUtils';
 import { cloneBaseSvg, applyPatchToClone } from '../utils/svgPatch';
+import { parseNdjsonStream } from '../utils/ndjsonStream';
 import type { DiagramData, ViewBox, MetadataIndex, TabId, VlOverlay, SldTab, AnalysisResult, ActionDetail } from '../types';
 import { interactionLogger } from '../utils/interactionLogger';
 import { useSldOverlay } from './useSldOverlay';
@@ -631,68 +632,52 @@ export function useDiagrams(
             action_content: actionContent,
             lines_overloaded: linesOvl,
           });
-          const reader = response.body!.getReader();
-          const decoder = new TextDecoder();
-          let buffer = '';
           let streamErr: string | null = null;
-          while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop()!;
-            for (const line of lines) {
-              if (!line.trim()) continue;
-              let event: Record<string, unknown>;
-              try {
-                event = JSON.parse(line);
-              } catch {
-                continue; // incomplete row
-              }
-              if (event.type === 'metrics') {
-                const simRes = event as unknown as {
-                  description_unitaire: string;
-                  rho_before: number[] | null;
-                  rho_after: number[] | null;
-                  max_rho: number | null;
-                  max_rho_line: string;
-                  is_rho_reduction: boolean;
-                  non_convergence: string | null;
-                  is_islanded?: boolean;
-                  n_components?: number;
-                  disconnected_mw?: number;
+          for await (const raw of parseNdjsonStream(response)) {
+            const event = raw as Record<string, unknown>;
+            if (event.type === 'metrics') {
+              const simRes = event as unknown as {
+                description_unitaire: string;
+                rho_before: number[] | null;
+                rho_after: number[] | null;
+                max_rho: number | null;
+                max_rho_line: string;
+                is_rho_reduction: boolean;
+                non_convergence: string | null;
+                is_islanded?: boolean;
+                n_components?: number;
+                disconnected_mw?: number;
+              };
+              setResult(prev => {
+                if (!prev) return prev;
+                const existing = prev.actions[actionId] || {} as Partial<ActionDetail>;
+                const hasRho = (existing.rho_before?.length ?? 0) > 0;
+                return {
+                  ...prev,
+                  actions: {
+                    ...prev.actions,
+                    [actionId]: {
+                      ...existing,
+                      description_unitaire: existing.description_unitaire || simRes.description_unitaire,
+                      rho_before: hasRho ? existing.rho_before : simRes.rho_before,
+                      rho_after: hasRho ? existing.rho_after : simRes.rho_after,
+                      max_rho: hasRho ? existing.max_rho : simRes.max_rho,
+                      max_rho_line: hasRho ? existing.max_rho_line : simRes.max_rho_line,
+                      is_rho_reduction: hasRho ? existing.is_rho_reduction : simRes.is_rho_reduction,
+                      non_convergence: simRes.non_convergence,
+                      is_islanded: simRes.is_islanded,
+                      n_components: simRes.n_components,
+                      disconnected_mw: simRes.disconnected_mw,
+                    } as ActionDetail,
+                  },
                 };
-                setResult(prev => {
-                  if (!prev) return prev;
-                  const existing = prev.actions[actionId] || {} as Partial<ActionDetail>;
-                  const hasRho = (existing.rho_before?.length ?? 0) > 0;
-                  return {
-                    ...prev,
-                    actions: {
-                      ...prev.actions,
-                      [actionId]: {
-                        ...existing,
-                        description_unitaire: existing.description_unitaire || simRes.description_unitaire,
-                        rho_before: hasRho ? existing.rho_before : simRes.rho_before,
-                        rho_after: hasRho ? existing.rho_after : simRes.rho_after,
-                        max_rho: hasRho ? existing.max_rho : simRes.max_rho,
-                        max_rho_line: hasRho ? existing.max_rho_line : simRes.max_rho_line,
-                        is_rho_reduction: hasRho ? existing.is_rho_reduction : simRes.is_rho_reduction,
-                        non_convergence: simRes.non_convergence,
-                        is_islanded: simRes.is_islanded,
-                        n_components: simRes.n_components,
-                        disconnected_mw: simRes.disconnected_mw,
-                      } as ActionDetail,
-                    },
-                  };
-                });
-              } else if (event.type === 'diagram') {
-                const diag = event as unknown as DiagramData & { svg: string };
-                const { svg, viewBox } = processSvg(diag.svg, voltageLevelsLength);
-                setActionDiagram({ ...diag, svg, originalViewBox: viewBox });
-              } else if (event.type === 'error') {
-                streamErr = (event.message as string) || 'stream error';
-              }
+              });
+            } else if (event.type === 'diagram') {
+              const diag = event as unknown as DiagramData & { svg: string };
+              const { svg, viewBox } = processSvg(diag.svg, voltageLevelsLength);
+              setActionDiagram({ ...diag, svg, originalViewBox: viewBox });
+            } else if (event.type === 'error') {
+              streamErr = (event.message as string) || 'stream error';
             }
           }
           if (streamErr) {

@@ -35,6 +35,7 @@ import { gameBridge } from './game/gameBridge';
 import type { GameStudy } from './game/types';
 import { DEFAULT_ACTION_OVERVIEW_FILTERS } from './utils/actionTypes';
 import { apiErrorMessage } from './utils/apiError';
+import { parseNdjsonStream } from './utils/ndjsonStream';
 import { attachVlInteractions } from './utils/svgUtils';
 import {
     buildOverflowPinPayload,
@@ -589,54 +590,20 @@ function App() {
           target_mw: null,
           target_tap: null,
         });
-        const reader = response.body!.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
         let metrics: Awaited<ReturnType<typeof api.simulateManualAction>> | null = null;
         let streamErr: string | null = null;
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) {
-            // Flush any trailing content that lacked a final \n.
-            // Backend always appends \n today, but this guard keeps
-            // the path robust if a future change emits a final
-            // event without one.
-            if (buffer.trim()) {
-              try {
-                const event = JSON.parse(buffer) as Record<string, unknown>;
-                if (event.type === 'metrics') {
-                  const { type: _t, ...rest } = event;
-                  void _t;
-                  metrics = rest as Awaited<ReturnType<typeof api.simulateManualAction>>;
-                } else if (event.type === 'diagram') {
-                  const { type: _t, ...rest } = event;
-                  void _t;
-                  diagrams.primeActionDiagram(actionId, rest as unknown as DiagramData & { svg: string }, voltageLevels.length);
-                } else if (event.type === 'error') {
-                  streamErr = (event.message as string) || 'stream error';
-                }
-              } catch { /* ignore malformed trailing bytes */ }
-            }
-            break;
-          }
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop()!;
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            let event: Record<string, unknown>;
-            try { event = JSON.parse(line); } catch { continue; }
-            if (event.type === 'metrics') {
-              const { type: _t, ...rest } = event;
-              void _t;
-              metrics = rest as Awaited<ReturnType<typeof api.simulateManualAction>>;
-            } else if (event.type === 'diagram') {
-              const { type: _t, ...rest } = event;
-              void _t;
-              diagrams.primeActionDiagram(actionId, rest as unknown as DiagramData & { svg: string }, voltageLevels.length);
-            } else if (event.type === 'error') {
-              streamErr = (event.message as string) || 'stream error';
-            }
+        for await (const raw of parseNdjsonStream(response)) {
+          const event = raw as Record<string, unknown>;
+          if (event.type === 'metrics') {
+            const { type: _t, ...rest } = event;
+            void _t;
+            metrics = rest as Awaited<ReturnType<typeof api.simulateManualAction>>;
+          } else if (event.type === 'diagram') {
+            const { type: _t, ...rest } = event;
+            void _t;
+            diagrams.primeActionDiagram(actionId, rest as unknown as DiagramData & { svg: string }, voltageLevels.length);
+          } else if (event.type === 'error') {
+            streamErr = (event.message as string) || 'stream error';
           }
         }
         if (streamErr) throw new Error(streamErr);
@@ -807,15 +774,10 @@ function App() {
         target_tap: null,
         voltage_level_id: vlName,
       });
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
       let metrics: Awaited<ReturnType<typeof api.simulateManualAction>> | null = null;
       let streamErr: string | null = null;
-      const parseEvent = (line: string) => {
-        if (!line.trim()) return;
-        let event: Record<string, unknown>;
-        try { event = JSON.parse(line); } catch { return; }
+      for await (const raw of parseNdjsonStream(response)) {
+        const event = raw as Record<string, unknown>;
         if (event.type === 'metrics') {
           const { type: _t, ...rest } = event;
           void _t;
@@ -832,17 +794,6 @@ function App() {
         } else if (event.type === 'error') {
           streamErr = (event.message as string) || 'stream error';
         }
-      };
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) {
-          if (buffer.trim()) parseEvent(buffer);
-          break;
-        }
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop()!;
-        for (const line of lines) parseEvent(line);
       }
       if (streamErr) throw new Error(streamErr);
       if (!metrics) throw new Error('Stream ended without metrics event');
