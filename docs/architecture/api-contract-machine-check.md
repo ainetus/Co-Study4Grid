@@ -98,9 +98,16 @@ concrete response schema.
 
 ## Tests
 
+- `test_api_errors.py` — the envelope module directly: `AppHTTPException`
+  + `_code_for` (explicit + status-default + unmapped), the three
+  handlers, the **security-critical** "uncaught exception → generic 500,
+  no `str(exc)` leak", handler wiring on the app, the
+  `ACTION_RESULT_UNAVAILABLE` discriminator reaching the client, and a
+  response-validation-failure → generic-500 integration proof.
 - `test_openapi_contract.py` — snapshot-matches-live + the error
   envelope on 422 / 404.
 - `test_api_endpoints.py::TestStudyMutationBusyGate` — the `409` /
-  `STUDY_BUSY` envelope.
+  `STUDY_BUSY` envelope; `::TestResponseModels` — the D2 response models
+  serialize the exact field set (no drop / add).
 - `frontend/src/utils/apiError.test.ts` — the extractor across every
-  input shape.
+  input shape (envelope, discriminators, 422 array, fallback chain).

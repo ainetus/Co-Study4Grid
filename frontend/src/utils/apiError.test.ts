@@ -47,4 +47,27 @@ describe('extractApiError', () => {
     it('handles a plain Error', () => {
         expect(apiErrorMessage(new Error('plain'))).toBe('plain');
     });
+
+    it('surfaces the 409 STUDY_BUSY envelope with its status', () => {
+        const err = {
+            response: {
+                status: 409,
+                data: {
+                    detail: 'Another study operation is already in progress.',
+                    code: 'STUDY_BUSY',
+                },
+            },
+        };
+        const out = extractApiError(err);
+        expect(out.status).toBe(409);
+        expect(out.code).toBe('STUDY_BUSY');
+        expect(hasErrorCode(err, 'STUDY_BUSY')).toBe(true);
+    });
+
+    it('returns no code when the body omits one (pre-envelope backend)', () => {
+        const err = { response: { status: 400, data: { detail: 'legacy only' } } };
+        const out = extractApiError(err);
+        expect(out.message).toBe('legacy only');
+        expect(out.code).toBeUndefined();
+    });
 });

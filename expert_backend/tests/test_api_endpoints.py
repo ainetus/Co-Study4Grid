@@ -1543,6 +1543,53 @@ class TestRegenerateOverflowGraph:
         assert "pdf_url" not in response.json()
 
 
+class TestResponseModels:
+    """The D2 response models on the small control endpoints must serialize
+    the EXACT field set — a `response_model` silently drops any field the
+    handler returns that isn't declared, so these lock the shape (and the
+    OpenAPI snapshot documents it)."""
+
+    def test_recommender_model_response_exact_fields(self, client, mock_services):
+        _, mock_rs = mock_services
+        mock_rs.get_active_model_name.return_value = "random"
+        mock_rs.get_compute_overflow_graph.return_value = False
+        resp = client.post("/api/recommender-model", json={"model": "random"})
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "status": "success",
+            "active_model": "random",
+            "compute_overflow_graph": False,
+        }
+
+    def test_restore_analysis_context_response_exact_fields(self, client, mock_services):
+        resp = client.post(
+            "/api/restore-analysis-context",
+            json={
+                "lines_we_care_about": ["L1", "L2"],
+                "computed_pairs": {"a+b": {}},
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "status": "success",
+            "lines_we_care_about_count": 2,
+            "computed_pairs_count": 1,
+        }
+
+    def test_save_session_response_exact_fields(self, client, mock_services, tmp_path):
+        resp = client.post(
+            "/api/save-session",
+            json={
+                "session_name": "costudy4grid_session_x",
+                "json_content": "{}",
+                "output_folder_path": str(tmp_path),
+            },
+        )
+        assert resp.status_code == 200
+        assert set(resp.json().keys()) == {"session_folder", "pdf_copied"}
+        assert resp.json()["pdf_copied"] is False
+
+
 class TestEventLoopSafety:
     """`/api/run-analysis-step1` runs seconds of synchronous pypowsybl /
     grid2op work, so it MUST be a sync `def` route (dispatched to

@@ -185,6 +185,13 @@ frontend/
         │                              # inspect surface (N / N-1 / action + overview)
         ├── sessionUtils.ts            # buildSessionResult snapshot
         ├── interactionLogger.ts       # Singleton replay-ready event log
+        ├── apiError.ts                # D2 (2026-07) — single reader for the
+        │                              # backend's unified {detail, code} error
+        │                              # envelope: extractApiError /
+        │                              # apiErrorMessage / hasErrorCode. Replaces
+        │                              # scattered err?.response?.data?.detail reads;
+        │                              # hasErrorCode branches on codes like
+        │                              # ACTION_RESULT_UNAVAILABLE / STUDY_BUSY.
         ├── mergeAnalysisResult.ts     # Merge step1 + step2 fields
         ├── fileRegistry.ts            # Structure-regression guard (tracks expected
         │                              # source-tree layout; fails the Vitest suite
@@ -544,12 +551,19 @@ npm run test:watch   # watch mode
 ## Adding a new backend endpoint to the frontend
 
 1. Add the axios method to `api.ts` (mirror the URL exactly).
-2. Add response types to `types.ts` if they're new.
+2. Add response types to `types.ts` if they're new. The backend commits
+   an `openapi.snapshot.json` that machine-checks the wire contract — keep
+   `types.ts` consistent with it (generating `types.ts` from the snapshot
+   is a tracked D2 follow-up in `docs/architecture/api-contract-machine-check.md`).
 3. Call from the right hook (settings → `useSettings`, analysis →
    `useAnalysis`, diagrams → `useDiagrams`, session → `useSession`).
-4. Wire any new state through to presentational components via
+4. Handle errors through `utils/apiError.ts` — `apiErrorMessage(e, fallback)`
+   for the human string, `hasErrorCode(e, 'CODE')` when you must branch on
+   the specific failure (e.g. `ACTION_RESULT_UNAVAILABLE`). Do NOT re-read
+   `e.response.data.detail` inline.
+5. Wire any new state through to presentational components via
    typed props.
-5. ~~Mirror the call in `standalone_interface.html`~~ — no longer
+6. ~~Mirror the call in `standalone_interface.html`~~ — no longer
    required. The auto-generated `frontend/dist-standalone/standalone.html`
    inherits the new endpoint automatically after `npm run build:standalone`.
 

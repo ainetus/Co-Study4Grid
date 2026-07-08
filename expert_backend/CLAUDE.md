@@ -77,6 +77,17 @@ expert_backend/
 │   │                              # RecommenderService (explicit composition);
 │   │                              # update_config / reset call
 │   │                              # _apply_model_settings / _reset_model_settings
+│   ├── service_lock.py            # D3 (2026-07) — concurrency ownership for
+│   │                              # the shared Network: @with_network_lock /
+│   │                              # @with_network_lock_stream decorators over
+│   │                              # the variant-switching entry points. See the
+│   │                              # "Concurrency ownership" section below.
+│   ├── api_errors.py              # D2 (2026-07) — unified {detail, code} error
+│   │                              # envelope: AppHTTPException + the three
+│   │                              # FastAPI exception handlers installed by
+│   │                              # install_error_handlers(app). Uncaught
+│   │                              # exceptions → generic logged 500 (no str(e)
+│   │                              # path leak). See "API error contract" below.
 │   ├── overflow_overlay.py        # PR #116 (0.7.0) — pin / filter overlay
 │   │                              # injector for the interactive HTML overflow
 │   │                              # viewer. `inject_overlay(html)` grafts the
@@ -104,6 +115,12 @@ expert_backend/
 │   ├── overflow_path_filter.py    # Path-based candidate narrowing (layer 2)
 │   ├── network_existence.py       # Drop actions targeting unknown elements (layer 3)
 │   └── synthetic_actions.py       # Synthetic reco / shed / curtail builders
+├── openapi.snapshot.json       # D2 (2026-07) — committed app.openapi() dump.
+│                              # scripts/check_openapi_contract.py diffs the
+│                              # live spec against it; test_openapi_contract.py
+│                              # gates it in CI. Regenerate on a deliberate
+│                              # endpoint / model / status change:
+│                              #   python scripts/check_openapi_contract.py --write
 └── tests/                     # pytest suite — see tests/CLAUDE.md
 ```
 
@@ -198,6 +215,37 @@ multi-visitor HuggingFace Space). Three primitives in
 `_network_lock`, so `reset()` must NOT join it (deadlock). Staleness is
 handled by the `_prefetch_generation` counter instead; the drain is a
 no-op when the lock is present.
+
+## API error contract (D2, 2026-07)
+
+Every error the API returns has ONE shape: `{"detail": <human string>,
+"code": <STABLE_SLUG>}`, produced in ONE place (`services/api_errors.py`,
+installed once via `install_error_handlers(app)`). Full rationale +
+follow-ups in
+[`docs/architecture/api-contract-machine-check.md`](../docs/architecture/api-contract-machine-check.md).
+
+- Raise a plain `HTTPException` for the common case — the handler derives
+  a `code` from the status (`400→BAD_REQUEST`, `404→NOT_FOUND`,
+  `409→STUDY_BUSY`, `422→VALIDATION`, `500→INTERNAL`). `detail` is
+  unchanged, so `code` is purely additive.
+- Raise `AppHTTPException(status, detail, code)` when a client **branches
+  on the specific failure** — today that's the post-reload
+  `action-variant-diagram` 400 (`code=ACTION_RESULT_UNAVAILABLE`, which
+  the frontend uses to fall back to a live simulation) and the 409
+  study-busy gate (`code=STUDY_BUSY`).
+- **Never** put `str(exception)` in a client-visible detail for an
+  UNEXPECTED error — it leaks absolute server paths. Uncaught exceptions
+  are turned into a generic `500` (`"Internal server error."`,
+  `code=INTERNAL`) with the real traceback only `logger.exception`-logged.
+  The frontend reads all of this through one extractor,
+  `frontend/src/utils/apiError.ts`.
+- **Machine-check**: the OpenAPI contract is snapshotted to
+  `openapi.snapshot.json` and diffed in CI (`test_openapi_contract.py` /
+  `scripts/check_openapi_contract.py`). Any endpoint / request-model /
+  response-model / status change fails the check until you regenerate the
+  snapshot (`--write`). When you add or change an endpoint, run the
+  regenerate command and review the diff — it mirrors what `types.ts`
+  must track.
 
 ## State lifecycle: load → reset → reload
 
@@ -425,6 +473,20 @@ no prefetch was ever started (e.g. tests bypassing `update_config`).
 5. Add a test under `expert_backend/tests/` — see
    `tests/CLAUDE.md` for the mock layer that lets it run without
    `pypowsybl` installed.
+6. **Regenerate the OpenAPI contract snapshot** — the new route (and any
+   request/response model) changes `app.openapi()`, so
+   `test_openapi_contract.py` will fail until you run
+   `python scripts/check_openapi_contract.py --write` and commit the
+   updated `openapi.snapshot.json`. Review that diff — it's the record of
+   the contract change. If the response is a small, stable, NumPy-free
+   dict, prefer declaring a `response_model` (see the D2 seed models) so
+   the response shape is machine-checked too; large gzipped payloads keep
+   returning a bespoke `Response` and are covered structurally by the
+   snapshot only.
+7. Errors: raise a plain `HTTPException` (the handler adds the `code`), or
+   `AppHTTPException(status, detail, code)` when the frontend must branch
+   on the failure — see "API error contract" above. Never `str(e)` an
+   unexpected error into the client detail.
 
 ## Adding a new per-study cache
 

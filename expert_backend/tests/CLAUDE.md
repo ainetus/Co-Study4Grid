@@ -44,7 +44,10 @@ Configuration in `frontend/vite.config.ts` (Vitest plugin).
 #### API & Service Layer
 | File | Description |
 |------|-------------|
-| `test_api_endpoints.py` | FastAPI endpoint testing with TestClient and mocked services (covers the patch endpoints `/api/contingency-diagram-patch`, `/api/action-variant-diagram-patch`, `/api/simulate-and-variant-diagram`). |
+| `test_api_endpoints.py` | FastAPI endpoint testing with TestClient and mocked services (covers the patch endpoints `/api/contingency-diagram-patch`, `/api/action-variant-diagram-patch`, `/api/simulate-and-variant-diagram`; plus `TestStudyMutationBusyGate` for the D3 HTTP-409 gate, `TestResponseModels` for the D2 response-model field-completeness, and `TestEventLoopSafety` for the QW2 sync-`def` guard). |
+| `test_api_errors.py` | **D2 error contract** (`services/api_errors.py`): `AppHTTPException` + `_code_for` mapping, the three handlers, the security-critical "uncaught exception → generic 500, NO `str(e)` leak", the `ACTION_RESULT_UNAVAILABLE` discriminator reaching the client, and a response-validation-failure → generic-500 integration proof. |
+| `test_openapi_contract.py` | **D2 machine-check**: the live `app.openapi()` must equal the committed `openapi.snapshot.json` (regenerate with `check_openapi_contract.py --write`), plus the `{detail, code}` envelope on 422 / 404. |
+| `test_service_concurrency.py` | **D3 concurrency ownership** (`services/service_lock.py` + service wiring): re-entrant network lock, cross-thread study-gate release + HTTP-409 gate, `@with_network_lock[_stream]` serialization + per-`next()` lock release + no-op fallback, the contingency-variant LRU (eviction / reuse-reorder / never-evict-working / reset clears it), and the NAD-prefetch `_prefetch_generation` staleness discard (the lock-ordering deadlock fix). |
 | `test_recommender_service.py` | RecommenderService config updates and action enrichment |
 | `test_network_service.py` | NetworkService initialization, loading, and element lookup |
 
@@ -187,6 +190,7 @@ transitively by `useDiagrams` + the App-integration suite.
 | `mergeAnalysisResult.test.ts` | Step1+step2 field merging |
 | `overloadHighlights.test.ts` | N-1 overload classification |
 | `popoverPlacement.test.ts` | Pin-popover positioning |
+| `apiError.test.ts` | The D2 unified-error extractor (`utils/apiError.ts`): axios `{detail, code}` envelope, the `ACTION_RESULT_UNAVAILABLE` / `STUDY_BUSY` discriminators, FastAPI 422 `detail`-array flattening, and the fallback chain (axios message → provided fallback → plain `Error`). |
 | `fileRegistry.test.ts` | Structure-regression guard — fails if an expected source file disappears |
 | `specConformance.test.ts` | Layer-4 spec contracts for interaction-log events |
 | `userObservableInvariants.test.ts` | Runtime Vitest twin of `scripts/check_invariants.py` |

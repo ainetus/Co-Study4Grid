@@ -149,6 +149,8 @@ Co-Study4Grid/
 │                              # `check_session_fidelity.py`,
 │                              # `check_gesture_sequence.py`,
 │                              # `check_invariants.py`, `check_code_quality.py`,
+│                              # `check_openapi_contract.py` (D2 — diffs the live
+│                              # app.openapi() against expert_backend/openapi.snapshot.json),
 │                              # `code_quality_report.py`, `profile_diagram_perf.py`,
 │                              # `test_code_quality_report.py`,
 │                              # `test_estimation_vs_simulation_small_grid.py`,
@@ -334,6 +336,9 @@ Both scripts run in CI (`.github/workflows/code-quality.yml` and
 - **AC/DC fallback**: Analysis first tries AC load flow; falls back to DC if AC does not converge
 - **Threaded analysis**: `run_analysis` runs the computation in a background thread and polls for PDF generation
 - **JSON sanitization**: NumPy types are recursively converted to native Python types via `sanitize_for_json()`
+- **Unified error contract (D2, 2026-07)**: every error is `{"detail", "code"}` produced in one place (`services/api_errors.py`, `install_error_handlers(app)`). Raise a plain `HTTPException` (code derived from status: 400/404/409/422/500) or `AppHTTPException(status, detail, code)` when the frontend branches on the failure (e.g. `ACTION_RESULT_UNAVAILABLE`, `STUDY_BUSY`). Uncaught exceptions → generic logged 500 (never `str(e)` — it leaks paths). The frontend reads it via `frontend/src/utils/apiError.ts`.
+- **Machine-checked API contract (D2, 2026-07)**: `app.openapi()` is snapshotted to `expert_backend/openapi.snapshot.json` and diffed in CI (`scripts/check_openapi_contract.py`, `test_openapi_contract.py`). Regenerate on any deliberate endpoint / model / status change: `python scripts/check_openapi_contract.py --write`.
+- **Concurrency ownership (D3, 2026-07)**: a service-level re-entrant lock (`services/service_lock.py`, `@with_network_lock[_stream]`) serializes the variant-switching entry points on the shared `Network`; overlapping study mutations (config load / analysis) get **HTTP 409**. See [`docs/architecture/shared-network-concurrency.md`](docs/architecture/shared-network-concurrency.md).
 - **Mixin → helper-package decomposition (PR #104 / #106)**: `DiagramMixin`, `AnalysisMixin` and `SimulationMixin` are thin orchestrators. Pure numerics live in `services/diagram/`, `services/analysis/` and `services/simulation_helpers.py` respectively — dependency-injected so existing `@patch` tests keep working.
 - **SVG DOM recycling (PR #108)**: patch endpoints (`/api/contingency-diagram-patch`, `/api/action-variant-diagram-patch`) return per-branch deltas + optional VL-subtree splices so the frontend can clone the already-mounted N-state SVG instead of re-downloading the full NAD (~80 % faster tab switches on large grids).
 - **Interactive overflow viewer (PR #116, 0.7.0)**: `services/overflow_overlay.py` injects a Co-Study4Grid pin / filter overlay (`<style>` + `<script>` block) into the upstream `expert_op4grid_recommender` HTML viewer before serving it from `/results/pdf/{filename}`. `services/analysis/overflow_geo_transform.py` is a pure lxml transform that rewrites the hierarchical-layout SVG to geographic coordinates for the `/api/regenerate-overflow-graph` toggle; the geo cache is per-study and cleared on `reset()`.

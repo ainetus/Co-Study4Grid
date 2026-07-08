@@ -134,9 +134,13 @@ the historical join only for bare-mixin test hosts that never ran
 
 - [`test_service_concurrency.py`](../../expert_backend/tests/test_service_concurrency.py)
   — lock re-entrancy, cross-thread gate release, decorator
-  serialization + no-op fallback, the variant LRU (eviction, reuse
-  reorder, never-evict-working, reset clears it), prefetch-generation
-  bump.
+  serialization, the streaming decorator's **per-`next()` lock release**
+  (a long stream must not hold the lock across yields) + no-op fallback,
+  the variant LRU (eviction, reuse reorder, never-evict-working, reset
+  clears it), and the NAD-prefetch **generation-staleness discard** — a
+  worker whose generation was superseded mid-compute (as `reset()` does)
+  drops its result instead of poisoning the next study's cache (the
+  behaviour that replaced the deadlock-prone `join()`).
 - `test_api_endpoints.py::TestStudyMutationBusyGate` — the 409 contract
   on config / step-1 / step-2 and gate release on success, error, and
   after a stream drains.

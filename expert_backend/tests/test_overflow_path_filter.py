@@ -247,6 +247,26 @@ def test_action_matches_by_uuid_segment_scan():
     ) is True
 
 
+def test_action_matches_substation_as_trailing_segment():
+    """A relevant substation appearing as the LAST underscore-delimited
+    segment must still match (the padded-underscore anchoring)."""
+    assert _action_touches_path(
+        "coupling_VL_HUB", {"description": "..."}, RELEVANT_LINES, RELEVANT_SUBS,
+    ) is True
+
+
+def test_action_does_not_match_substation_as_non_segment_substring():
+    """Regression guard for the underscore-in-substation-name fix: a
+    relevant substation name (`VL_LOOP`) embedded as a NON-segment
+    substring (`XVL_LOOPY`) must NOT match — the anchored `_<sub>_`
+    match is what distinguishes a real segment from a coincidental
+    substring."""
+    aid = "549215c1_XVL_LOOPY_MOTTA"  # contains 'VL_LOOP' but not as a segment
+    assert _action_touches_path(
+        aid, {"description": "..."}, RELEVANT_LINES, RELEVANT_SUBS,
+    ) is False
+
+
 def test_action_rejects_when_nothing_matches():
     entry = {
         "VoltageLevelId": "FOREIGN_VL",

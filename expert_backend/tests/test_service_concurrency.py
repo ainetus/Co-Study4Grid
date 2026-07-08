@@ -156,6 +156,19 @@ def test_with_network_lock_stream_yields_all_values():
     assert list(host.stream_work(4)) == [0, 1, 2, 3]
 
 
+def test_with_network_lock_stream_releases_the_lock_between_steps():
+    """The streaming decorator must hold the lock PER resumption, not across
+    the whole generator — otherwise a long analysis stream would starve
+    every diagram request for its full duration. After each `next()`
+    returns, the lock must be released (not owned by this thread)."""
+    host = _LockHost()
+    it = iter(host.stream_work(3))
+    for _ in range(3):
+        next(it)
+        # Between yields the lock is released — the RLock is not owned.
+        assert host._network_lock._is_owned() is False
+
+
 def test_decorators_noop_without_lock():
     """Bare hosts (no _network_lock) degrade to a direct call so isolated
     mixin tests keep working single-threaded."""
@@ -278,3 +291,46 @@ def test_reset_bumps_prefetch_generation():
     gen_before = svc._prefetch_generation
     svc.reset()
     assert svc._prefetch_generation > gen_before
+
+
+# ---------------------------------------------------------------------
+# NAD-prefetch generation staleness (the D3 lock-ordering fix core)
+# ---------------------------------------------------------------------
+
+def test_prefetch_async_stores_result_and_bumps_generation():
+    from unittest.mock import patch
+
+    svc = RecommenderService()
+    gen0 = svc._prefetch_generation
+    with patch.object(svc, "_get_base_network", return_value=MagicMock()), \
+         patch.object(svc, "get_network_diagram", return_value={"svg": "FRESH"}):
+        svc.prefetch_base_nad_async()
+        result = svc.get_prefetched_base_nad(timeout=5)
+    assert result == {"svg": "FRESH"}
+    assert svc._prefetch_generation > gen0
+
+
+def test_prefetch_worker_discards_result_when_generation_superseded():
+    """A worker whose generation was bumped mid-compute (as `reset()` does)
+    must DISCARD its result instead of poisoning the next study's cache —
+    this is what replaced the deadlock-prone `join()` in `reset()`."""
+    from unittest.mock import patch
+
+    svc = RecommenderService()
+    started = threading.Event()
+    proceed = threading.Event()
+
+    def _slow_diagram():
+        started.set()
+        proceed.wait(timeout=5)
+        return {"svg": "STALE"}
+
+    with patch.object(svc, "_get_base_network", return_value=MagicMock()), \
+         patch.object(svc, "get_network_diagram", side_effect=_slow_diagram):
+        svc.prefetch_base_nad_async()
+        assert started.wait(timeout=5)          # worker is mid-compute
+        svc._prefetch_generation += 1           # simulate reset()/newer prefetch
+        proceed.set()
+        svc.get_prefetched_base_nad(timeout=5)   # let the worker finish
+    # Stale result discarded — the fresh study's cache stays clean.
+    assert svc._prefetched_base_nad is None

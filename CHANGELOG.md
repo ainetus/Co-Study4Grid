@@ -7,6 +7,28 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Tests + docs — coverage and reference for the 2026-07 deep revisions
+
+- **New `test_api_errors.py`** (D2): direct coverage of the error envelope —
+  `AppHTTPException`/`_code_for`, the three handlers, the security-critical
+  "uncaught exception → generic 500 with NO `str(exc)` leak", the
+  `ACTION_RESULT_UNAVAILABLE` discriminator reaching the client, and a
+  response-validation-failure → generic-500 integration proof.
+- **`test_service_concurrency.py`** (D3): added the streaming decorator's
+  per-`next()` lock-release guard and the NAD-prefetch generation-staleness
+  discard (the behaviour that replaced the deadlock-prone `join()`).
+- **`test_api_endpoints.py::TestResponseModels`** (D2): the response models
+  serialize the exact field set (no drop/add).
+- **`test_overflow_path_filter.py`**: anchoring guards for the
+  underscore-in-substation-name fix (segment match vs coincidental substring).
+- **`apiError.test.ts`** (frontend): 409/`STUDY_BUSY` discriminator + the
+  no-code (pre-envelope) fallback.
+- **Docs**: `api_errors.py` / `service_lock.py` / `openapi.snapshot.json` added
+  to the backend CLAUDE.md tree with an "API error contract" section + an
+  updated "Adding endpoints" checklist (regenerate the snapshot); the new test
+  files + `apiError.ts` documented in `tests/CLAUDE.md` and `frontend/CLAUDE.md`;
+  root CLAUDE.md gains the error-contract / OpenAPI / concurrency conventions.
+
 ### Performance — QW2: `/api/run-analysis-step1` no longer blocks the event loop (2026-07 review)
 
 - The endpoint ran seconds of synchronous pypowsybl / grid2op work inside an
