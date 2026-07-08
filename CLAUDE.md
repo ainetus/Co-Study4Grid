@@ -21,12 +21,24 @@ Co-Study4Grid/
 │   ├── main.py                # FastAPI app: endpoints, CORS, gzip helpers, NDJSON streaming
 │   ├── requirements.txt
 │   ├── test_backend.py        # Ad-hoc integration script (not part of pytest)
+│   ├── recommenders/          # Pluggable recommendation-model registry: registry.py,
+│   │   │                      # random_basic / random_overflow canonical examples,
+│   │   │                      # overflow_path_filter + network_existence sampling
+│   │   │                      # filters, synthetic_actions builders. Models are
+│   │   │                      # registered at package import; the service integration
+│   │   │                      # is EXPLICIT composition (RecommenderService inherits
+│   │   │                      # ModelSelectionMixin; AnalysisMixin.run_analysis_step2
+│   │   │                      # consumes the registry — no import-time patching).
+│   │   │                      # Full reference: docs/backend/recommender_models.md
 │   ├── services/
 │   │   ├── network_service.py     # pypowsybl Network singleton + metadata queries
-│   │   ├── recommender_service.py # Analysis orchestrator (composes the 3 mixins below)
+│   │   ├── recommender_service.py # Analysis orchestrator (composes the 4 mixins below)
 │   │   ├── diagram_mixin.py       # NAD/SLD orchestrator — delegates to services/diagram/
-│   │   ├── analysis_mixin.py      # Two-step analysis orchestrator — delegates to services/analysis/
+│   │   ├── analysis_mixin.py      # Two-step analysis orchestrator (model-aware step-2
+│   │   │                          # dispatch through the recommenders registry) —
+│   │   │                          # delegates to services/analysis/
 │   │   ├── simulation_mixin.py    # Manual-action + superposition orchestrator
+│   │   ├── model_selection_mixin.py # Active recommender model + overflow-graph toggle
 │   │   ├── simulation_helpers.py  # Stateless helpers extracted from simulation_mixin (PR #104)
 │   │   ├── overflow_overlay.py    # Pin / filter overlay injector for the interactive
 │   │   │                          # HTML overflow viewer (PR #116, 0.7.0)
@@ -137,6 +149,8 @@ Co-Study4Grid/
 │                              # `check_session_fidelity.py`,
 │                              # `check_gesture_sequence.py`,
 │                              # `check_invariants.py`, `check_code_quality.py`,
+│                              # `check_openapi_contract.py` (D2 — diffs the live
+│                              # app.openapi() against expert_backend/openapi.snapshot.json),
 │                              # `code_quality_report.py`, `profile_diagram_perf.py`,
 │                              # `test_code_quality_report.py`,
 │                              # `test_estimation_vs_simulation_small_grid.py`,
@@ -322,6 +336,9 @@ Both scripts run in CI (`.github/workflows/code-quality.yml` and
 - **AC/DC fallback**: Analysis first tries AC load flow; falls back to DC if AC does not converge
 - **Threaded analysis**: `run_analysis` runs the computation in a background thread and polls for PDF generation
 - **JSON sanitization**: NumPy types are recursively converted to native Python types via `sanitize_for_json()`
+- **Unified error contract (D2, 2026-07)**: every error is `{"detail", "code"}` produced in one place (`services/api_errors.py`, `install_error_handlers(app)`). Raise a plain `HTTPException` (code derived from status: 400/404/409/422/500) or `AppHTTPException(status, detail, code)` when the frontend branches on the failure (e.g. `ACTION_RESULT_UNAVAILABLE`, `STUDY_BUSY`). Uncaught exceptions → generic logged 500 (never `str(e)` — it leaks paths). The frontend reads it via `frontend/src/utils/apiError.ts`.
+- **Machine-checked API contract (D2, 2026-07)**: `app.openapi()` is snapshotted to `expert_backend/openapi.snapshot.json` and diffed in CI (`scripts/check_openapi_contract.py`, `test_openapi_contract.py`). Regenerate on any deliberate endpoint / model / status change: `python scripts/check_openapi_contract.py --write`.
+- **Concurrency ownership (D3, 2026-07)**: a service-level re-entrant lock (`services/service_lock.py`, `@with_network_lock[_stream]`) serializes the variant-switching entry points on the shared `Network`; overlapping study mutations (config load / analysis) get **HTTP 409**. See [`docs/architecture/shared-network-concurrency.md`](docs/architecture/shared-network-concurrency.md).
 - **Mixin → helper-package decomposition (PR #104 / #106)**: `DiagramMixin`, `AnalysisMixin` and `SimulationMixin` are thin orchestrators. Pure numerics live in `services/diagram/`, `services/analysis/` and `services/simulation_helpers.py` respectively — dependency-injected so existing `@patch` tests keep working.
 - **SVG DOM recycling (PR #108)**: patch endpoints (`/api/contingency-diagram-patch`, `/api/action-variant-diagram-patch`) return per-branch deltas + optional VL-subtree splices so the frontend can clone the already-mounted N-state SVG instead of re-downloading the full NAD (~80 % faster tab switches on large grids).
 - **Interactive overflow viewer (PR #116, 0.7.0)**: `services/overflow_overlay.py` injects a Co-Study4Grid pin / filter overlay (`<style>` + `<script>` block) into the upstream `expert_op4grid_recommender` HTML viewer before serving it from `/results/pdf/{filename}`. `services/analysis/overflow_geo_transform.py` is a pure lxml transform that rewrites the hierarchical-layout SVG to geographic coordinates for the `/api/regenerate-overflow-graph` toggle; the geo cache is per-study and cleared on `reset()`.

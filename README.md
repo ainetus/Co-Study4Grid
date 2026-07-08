@@ -172,8 +172,9 @@ Co-Study4Grid/
 │   │   ├── random_overflow.py       # RandomOverflowRecommender
 │   │   ├── overflow_path_filter.py  # Layer 2 of the sampling filter chain
 │   │   ├── network_existence.py     # Layer 3 of the sampling filter chain
-│   │   └── _service_integration.py  # Patches RecommenderService
-│   │                                # (model selection + dispatch)
+│   │   └── synthetic_actions.py     # Synthetic reco / shed / curtail builders
+│   │                                # (model selection + dispatch is explicit
+│   │                                #  composition on RecommenderService)
 │   └── services/
 │       ├── network_service.py       # Network loading and queries (pypowsybl)
 │       ├── recommender_service.py   # Analysis orchestration, PDF/SVG generation

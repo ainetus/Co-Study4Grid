@@ -1,0 +1,2126 @@
+{
+  "components": {
+    "schemas": {
+      "ActionVariantFocusedRequest": {
+        "properties": {
+          "action_id": {
+            "title": "Action Id",
+            "type": "string"
+          },
+          "depth": {
+            "default": 1,
+            "title": "Depth",
+            "type": "integer"
+          },
+          "element_id": {
+            "title": "Element Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id",
+          "element_id"
+        ],
+        "title": "ActionVariantFocusedRequest",
+        "type": "object"
+      },
+      "ActionVariantRequest": {
+        "properties": {
+          "action_id": {
+            "title": "Action Id",
+            "type": "string"
+          },
+          "mode": {
+            "default": "network",
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id"
+        ],
+        "title": "ActionVariantRequest",
+        "type": "object"
+      },
+      "ActionVariantSldRequest": {
+        "properties": {
+          "action_id": {
+            "title": "Action Id",
+            "type": "string"
+          },
+          "voltage_level_id": {
+            "title": "Voltage Level Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id",
+          "voltage_level_id"
+        ],
+        "title": "ActionVariantSldRequest",
+        "type": "object"
+      },
+      "AnalysisRequest": {
+        "properties": {
+          "disconnected_elements": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Disconnected Elements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "disconnected_elements"
+        ],
+        "title": "AnalysisRequest",
+        "type": "object"
+      },
+      "AnalysisStep2Request": {
+        "properties": {
+          "additional_lines_to_cut": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Additional Lines To Cut",
+            "type": "array"
+          },
+          "all_overloads": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "All Overloads",
+            "type": "array"
+          },
+          "monitor_deselected": {
+            "default": false,
+            "title": "Monitor Deselected",
+            "type": "boolean"
+          },
+          "selected_overloads": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Selected Overloads",
+            "type": "array"
+          }
+        },
+        "required": [
+          "selected_overloads"
+        ],
+        "title": "AnalysisStep2Request",
+        "type": "object"
+      },
+      "Body_load_session_api_load_session_post": {
+        "properties": {
+          "folder_path": {
+            "title": "Folder Path",
+            "type": "string"
+          },
+          "session_name": {
+            "title": "Session Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "folder_path",
+          "session_name"
+        ],
+        "title": "Body_load_session_api_load_session_post",
+        "type": "object"
+      },
+      "Body_set_config_file_path_api_config_file_path_post": {
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "Body_set_config_file_path_api_config_file_path_post",
+        "type": "object"
+      },
+      "ComputeSuperpositionRequest": {
+        "properties": {
+          "action1_id": {
+            "title": "Action1 Id",
+            "type": "string"
+          },
+          "action2_id": {
+            "title": "Action2 Id",
+            "type": "string"
+          },
+          "disconnected_elements": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Disconnected Elements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "action1_id",
+          "action2_id",
+          "disconnected_elements"
+        ],
+        "title": "ComputeSuperpositionRequest",
+        "type": "object"
+      },
+      "ConfigRequest": {
+        "properties": {
+          "action_file_path": {
+            "title": "Action File Path",
+            "type": "string"
+          },
+          "allowed_action_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed Action Types"
+          },
+          "compute_overflow_graph": {
+            "default": true,
+            "title": "Compute Overflow Graph",
+            "type": "boolean"
+          },
+          "ignore_reconnections": {
+            "default": false,
+            "title": "Ignore Reconnections",
+            "type": "boolean"
+          },
+          "layout_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layout Path"
+          },
+          "lines_monitoring_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lines Monitoring Path"
+          },
+          "min_close_coupling": {
+            "default": 3.0,
+            "title": "Min Close Coupling",
+            "type": "number"
+          },
+          "min_line_disconnections": {
+            "default": 3.0,
+            "title": "Min Line Disconnections",
+            "type": "number"
+          },
+          "min_line_reconnections": {
+            "default": 2.0,
+            "title": "Min Line Reconnections",
+            "type": "number"
+          },
+          "min_load_shedding": {
+            "default": 0.0,
+            "title": "Min Load Shedding",
+            "type": "number"
+          },
+          "min_open_coupling": {
+            "default": 2.0,
+            "title": "Min Open Coupling",
+            "type": "number"
+          },
+          "min_pst": {
+            "default": 1.0,
+            "title": "Min Pst",
+            "type": "number"
+          },
+          "min_redispatch": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 0,
+            "title": "Min Redispatch"
+          },
+          "min_renewable_curtailment_actions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 0,
+            "title": "Min Renewable Curtailment Actions"
+          },
+          "model": {
+            "default": "expert",
+            "title": "Model",
+            "type": "string"
+          },
+          "monitoring_factor": {
+            "default": 0.95,
+            "title": "Monitoring Factor",
+            "type": "number"
+          },
+          "n_prioritized_actions": {
+            "default": 10,
+            "title": "N Prioritized Actions",
+            "type": "integer"
+          },
+          "network_path": {
+            "title": "Network Path",
+            "type": "string"
+          },
+          "pre_existing_overload_threshold": {
+            "default": 0.02,
+            "title": "Pre Existing Overload Threshold",
+            "type": "number"
+          },
+          "pypowsybl_fast_mode": {
+            "default": true,
+            "title": "Pypowsybl Fast Mode",
+            "type": "boolean"
+          },
+          "redispatch_default_delta_mw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 10.0,
+            "title": "Redispatch Default Delta Mw"
+          }
+        },
+        "required": [
+          "network_path",
+          "action_file_path"
+        ],
+        "title": "ConfigRequest",
+        "type": "object"
+      },
+      "ContingencySldRequest": {
+        "properties": {
+          "disconnected_elements": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Disconnected Elements",
+            "type": "array"
+          },
+          "voltage_level_id": {
+            "title": "Voltage Level Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "disconnected_elements",
+          "voltage_level_id"
+        ],
+        "title": "ContingencySldRequest",
+        "type": "object"
+      },
+      "FocusedDiagramRequest": {
+        "properties": {
+          "depth": {
+            "default": 1,
+            "title": "Depth",
+            "type": "integer"
+          },
+          "disconnected_elements": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disconnected Elements"
+          },
+          "element_id": {
+            "title": "Element Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "element_id"
+        ],
+        "title": "FocusedDiagramRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ManualActionRequest": {
+        "properties": {
+          "action_content": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Content"
+          },
+          "action_id": {
+            "title": "Action Id",
+            "type": "string"
+          },
+          "disconnected_elements": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Disconnected Elements",
+            "type": "array"
+          },
+          "lines_overloaded": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lines Overloaded"
+          },
+          "target_mw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Mw"
+          },
+          "target_tap": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Tap"
+          },
+          "voltage_level_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voltage Level Id"
+          }
+        },
+        "required": [
+          "action_id",
+          "disconnected_elements"
+        ],
+        "title": "ManualActionRequest",
+        "type": "object"
+      },
+      "NSldRequest": {
+        "properties": {
+          "voltage_level_id": {
+            "title": "Voltage Level Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "voltage_level_id"
+        ],
+        "title": "NSldRequest",
+        "type": "object"
+      },
+      "RecommenderModelRequest": {
+        "properties": {
+          "compute_overflow_graph": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compute Overflow Graph"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "title": "RecommenderModelRequest",
+        "type": "object"
+      },
+      "RecommenderModelResponse": {
+        "properties": {
+          "active_model": {
+            "title": "Active Model",
+            "type": "string"
+          },
+          "compute_overflow_graph": {
+            "title": "Compute Overflow Graph",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "active_model",
+          "compute_overflow_graph"
+        ],
+        "title": "RecommenderModelResponse",
+        "type": "object"
+      },
+      "RegenerateOverflowGraphRequest": {
+        "properties": {
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "RegenerateOverflowGraphRequest",
+        "type": "object"
+      },
+      "RestoreAnalysisContextRequest": {
+        "properties": {
+          "computed_pairs": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Computed Pairs"
+          },
+          "disconnected_elements": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disconnected Elements"
+          },
+          "lines_overloaded": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lines Overloaded"
+          },
+          "lines_we_care_about": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lines We Care About"
+          }
+        },
+        "title": "RestoreAnalysisContextRequest",
+        "type": "object"
+      },
+      "RestoreAnalysisContextResponse": {
+        "properties": {
+          "computed_pairs_count": {
+            "title": "Computed Pairs Count",
+            "type": "integer"
+          },
+          "lines_we_care_about_count": {
+            "title": "Lines We Care About Count",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "lines_we_care_about_count",
+          "computed_pairs_count"
+        ],
+        "title": "RestoreAnalysisContextResponse",
+        "type": "object"
+      },
+      "SaveSessionRequest": {
+        "properties": {
+          "interaction_log": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interaction Log"
+          },
+          "json_content": {
+            "title": "Json Content",
+            "type": "string"
+          },
+          "output_folder_path": {
+            "title": "Output Folder Path",
+            "type": "string"
+          },
+          "pdf_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pdf Path"
+          },
+          "session_name": {
+            "title": "Session Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_name",
+          "json_content",
+          "output_folder_path"
+        ],
+        "title": "SaveSessionRequest",
+        "type": "object"
+      },
+      "SaveSessionResponse": {
+        "properties": {
+          "pdf_copied": {
+            "title": "Pdf Copied",
+            "type": "boolean"
+          },
+          "session_folder": {
+            "title": "Session Folder",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_folder",
+          "pdf_copied"
+        ],
+        "title": "SaveSessionResponse",
+        "type": "object"
+      },
+      "SimulateAndVariantDiagramRequest": {
+        "properties": {
+          "action_content": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Content"
+          },
+          "action_id": {
+            "title": "Action Id",
+            "type": "string"
+          },
+          "disconnected_elements": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Disconnected Elements",
+            "type": "array"
+          },
+          "lines_overloaded": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lines Overloaded"
+          },
+          "mode": {
+            "default": "network",
+            "title": "Mode",
+            "type": "string"
+          },
+          "target_mw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Mw"
+          },
+          "target_tap": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Tap"
+          },
+          "voltage_level_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voltage Level Id"
+          }
+        },
+        "required": [
+          "action_id",
+          "disconnected_elements"
+        ],
+        "title": "SimulateAndVariantDiagramRequest",
+        "type": "object"
+      },
+      "SldTopologyPreviewRequest": {
+        "properties": {
+          "base_action_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Action Id"
+          },
+          "disconnected_elements": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Disconnected Elements",
+            "type": "array"
+          },
+          "switches": {
+            "additionalProperties": true,
+            "title": "Switches",
+            "type": "object"
+          },
+          "voltage_level_id": {
+            "title": "Voltage Level Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "voltage_level_id",
+          "disconnected_elements",
+          "switches"
+        ],
+        "title": "SldTopologyPreviewRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Co-Study4Grid API",
+    "version": "contract"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/action-variant-diagram": {
+      "post": {
+        "operationId": "get_action_variant_diagram_api_action_variant_diagram_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionVariantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Action Variant Diagram"
+      }
+    },
+    "/api/action-variant-diagram-patch": {
+      "post": {
+        "operationId": "get_action_variant_diagram_patch_api_action_variant_diagram_patch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionVariantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Action Variant Diagram Patch"
+      }
+    },
+    "/api/action-variant-focused-diagram": {
+      "post": {
+        "operationId": "get_action_variant_focused_diagram_api_action_variant_focused_diagram_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionVariantFocusedRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Action Variant Focused Diagram"
+      }
+    },
+    "/api/action-variant-sld": {
+      "post": {
+        "operationId": "get_action_variant_sld_api_action_variant_sld_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionVariantSldRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Action Variant Sld"
+      }
+    },
+    "/api/actions": {
+      "get": {
+        "operationId": "get_actions_api_actions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Actions"
+      }
+    },
+    "/api/branches": {
+      "get": {
+        "operationId": "get_branches_api_branches_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Branches Api Branches Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Branches"
+      }
+    },
+    "/api/compute-superposition": {
+      "post": {
+        "operationId": "compute_superposition_api_compute_superposition_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComputeSuperpositionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Compute Superposition Api Compute Superposition Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compute Superposition"
+      }
+    },
+    "/api/config": {
+      "post": {
+        "operationId": "update_config_api_config_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Config Api Config Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Config"
+      }
+    },
+    "/api/config-file-path": {
+      "get": {
+        "operationId": "get_config_file_path_api_config_file_path_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Config File Path Api Config File Path Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Config File Path"
+      },
+      "post": {
+        "operationId": "set_config_file_path_api_config_file_path_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_set_config_file_path_api_config_file_path_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Set Config File Path Api Config File Path Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Config File Path"
+      }
+    },
+    "/api/contingency-diagram": {
+      "post": {
+        "operationId": "get_contingency_diagram_api_contingency_diagram_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Contingency Diagram"
+      }
+    },
+    "/api/contingency-diagram-patch": {
+      "post": {
+        "operationId": "get_contingency_diagram_patch_api_contingency_diagram_patch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Contingency Diagram Patch"
+      }
+    },
+    "/api/contingency-sld": {
+      "post": {
+        "operationId": "get_contingency_sld_api_contingency_sld_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContingencySldRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Contingency Sld"
+      }
+    },
+    "/api/element-voltage-levels": {
+      "get": {
+        "operationId": "get_element_voltage_levels_api_element_voltage_levels_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "element_id",
+            "required": true,
+            "schema": {
+              "title": "Element Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Element Voltage Levels Api Element Voltage Levels Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Element Voltage Levels"
+      }
+    },
+    "/api/focused-diagram": {
+      "post": {
+        "operationId": "get_focused_diagram_api_focused_diagram_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FocusedDiagramRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Focused Diagram"
+      }
+    },
+    "/api/list-sessions": {
+      "get": {
+        "operationId": "list_sessions_api_list_sessions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "folder_path",
+            "required": true,
+            "schema": {
+              "title": "Folder Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Sessions Api List Sessions Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Sessions"
+      }
+    },
+    "/api/load-session": {
+      "post": {
+        "operationId": "load_session_api_load_session_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_load_session_api_load_session_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Load Session Api Load Session Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Load Session"
+      }
+    },
+    "/api/models": {
+      "get": {
+        "description": "Return the list of available recommendation models.\n\nThe frontend reads this on startup so the model dropdown in the\nSettings → Recommender tab can be populated dynamically AND only\nshow the parameters each model actually consumes (`params_spec`).",
+        "operationId": "list_models_api_models_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Models Api Models Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Models"
+      }
+    },
+    "/api/n-sld": {
+      "post": {
+        "operationId": "get_n_sld_api_n_sld_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NSldRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get N Sld"
+      }
+    },
+    "/api/network-diagram": {
+      "get": {
+        "operationId": "get_network_diagram_api_network_diagram_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "json",
+              "title": "Format",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Network Diagram"
+      }
+    },
+    "/api/nominal-voltages": {
+      "get": {
+        "operationId": "get_nominal_voltages_api_nominal_voltages_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Nominal Voltages Api Nominal Voltages Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Nominal Voltages"
+      }
+    },
+    "/api/pick-path": {
+      "get": {
+        "operationId": "pick_path_api_pick_path_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "default": "file",
+              "enum": [
+                "file",
+                "dir"
+              ],
+              "title": "Type",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Pick Path Api Pick Path Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pick Path"
+      }
+    },
+    "/api/recommender-model": {
+      "post": {
+        "description": "Swap the active recommender model on the running service.\n\nLightweight counterpart to ``POST /api/config``: only updates the\nmodel + ``compute_overflow_graph`` toggle, leaves the loaded\nnetwork, action dictionary, and analysis context untouched. The\nStep-2 graph cache (`_last_step2_signature`) is also left intact —\nthe overflow graph itself doesn't depend on the model, only the\ndiscovery step does, so a model swap can reuse the cached graph\nand re-run only ``run_analysis_step2_discovery``.",
+        "operationId": "set_recommender_model_api_recommender_model_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecommenderModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommenderModelResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Recommender Model"
+      }
+    },
+    "/api/regenerate-overflow-graph": {
+      "post": {
+        "operationId": "regenerate_overflow_graph_api_regenerate_overflow_graph_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegenerateOverflowGraphRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Regenerate Overflow Graph Api Regenerate Overflow Graph Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Regenerate Overflow Graph"
+      }
+    },
+    "/api/restore-analysis-context": {
+      "post": {
+        "operationId": "restore_analysis_context_api_restore_analysis_context_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreAnalysisContextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreAnalysisContextResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Analysis Context"
+      }
+    },
+    "/api/run-analysis": {
+      "post": {
+        "operationId": "run_analysis_api_run_analysis_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Analysis"
+      }
+    },
+    "/api/run-analysis-step1": {
+      "post": {
+        "operationId": "run_analysis_step1_api_run_analysis_step1_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Run Analysis Step1 Api Run Analysis Step1 Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Analysis Step1"
+      }
+    },
+    "/api/run-analysis-step2": {
+      "post": {
+        "operationId": "run_analysis_step2_api_run_analysis_step2_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisStep2Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Analysis Step2"
+      }
+    },
+    "/api/save-session": {
+      "post": {
+        "operationId": "save_session_api_save_session_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Session"
+      }
+    },
+    "/api/simulate-and-variant-diagram": {
+      "post": {
+        "operationId": "simulate_and_variant_diagram_api_simulate_and_variant_diagram_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateAndVariantDiagramRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Simulate And Variant Diagram"
+      }
+    },
+    "/api/simulate-manual-action": {
+      "post": {
+        "operationId": "simulate_manual_action_api_simulate_manual_action_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Simulate Manual Action Api Simulate Manual Action Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Simulate Manual Action"
+      }
+    },
+    "/api/sld-topology-preview": {
+      "post": {
+        "operationId": "sld_topology_preview_api_sld_topology_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SldTopologyPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sld Topology Preview"
+      }
+    },
+    "/api/user-config": {
+      "get": {
+        "operationId": "get_user_config_api_user_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get User Config Api User Config Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get User Config"
+      },
+      "post": {
+        "operationId": "save_user_config_api_user_config_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Config",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Save User Config Api User Config Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save User Config"
+      }
+    },
+    "/api/voltage-level-substations": {
+      "get": {
+        "operationId": "get_voltage_level_substations_api_voltage_level_substations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Voltage Level Substations Api Voltage Level Substations Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Voltage Level Substations"
+      }
+    },
+    "/api/voltage-levels": {
+      "get": {
+        "operationId": "get_voltage_levels_api_voltage_levels_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Voltage Levels Api Voltage Levels Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Voltage Levels"
+      }
+    },
+    "/results/pdf/{filename}": {
+      "get": {
+        "operationId": "serve_overflow_artifact_results_pdf__filename__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "filename",
+            "required": true,
+            "schema": {
+              "title": "Filename",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Serve Overflow Artifact"
+      }
+    }
+  }
+}

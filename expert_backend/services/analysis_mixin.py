@@ -56,6 +56,10 @@ from expert_backend.services.analysis.analysis_runner import (
     derive_analysis_message,
     run_with_pdf_polling,
 )
+from expert_backend.services.analysis.combined_pairs import (
+    augment_combined_actions_with_target_max_rho,
+    slim_combined_actions_for_payload,
+)
 from expert_backend.services.analysis.mw_start_scoring import (
     classify_action_type,
     get_action_mw_start,
@@ -66,9 +70,9 @@ from expert_backend.services.analysis.pdf_watcher import find_latest_pdf
 from typing import TYPE_CHECKING, Any
 
 from expert_backend.services.sanitize import sanitize_for_json
-from expert_backend.services.simulation_helpers import (
-    compute_combined_rho,
-    compute_target_max_rho,
+from expert_backend.services.service_lock import (
+    with_network_lock,
+    with_network_lock_stream,
 )
 
 logger = logging.getLogger(__name__)
@@ -441,6 +445,7 @@ class AnalysisMixin(_Base):
     # Public entry points — two-step + legacy single-step.
     # ------------------------------------------------------------------
 
+    @with_network_lock
     def run_analysis_step1(self, disconnected_elements) -> dict:
         """Step 1 — contingency simulation + overload detection.
 
@@ -549,11 +554,10 @@ class AnalysisMixin(_Base):
             raise
 
     # ------------------------------------------------------------------
-    # Step-2 overflow-graph cache helpers — shared by the legacy
-    # ``run_analysis_step2`` below AND the model-aware production
-    # replacement in ``expert_backend/recommenders/_service_integration.py``.
-    # Kept as plain methods on the mixin so both code paths (and their
-    # unit tests) reuse the exact same signature + reuse-decision logic.
+    # Step-2 overflow-graph cache helpers — consumed by the (single,
+    # model-aware) ``run_analysis_step2`` below. Kept as separate
+    # methods so their unit tests can exercise the signature +
+    # reuse-decision logic in isolation.
     # ------------------------------------------------------------------
 
     def _step2_graph_signature(
@@ -605,7 +609,20 @@ class AnalysisMixin(_Base):
         monitor_deselected: bool = False,
         additional_lines_to_cut: list[str] | None = None,
     ) -> Iterator[Any]:
-        """Step 2 — PDF emission + action discovery, streaming NDJSON events.
+        """Step 2 — overflow graph + model-aware action discovery,
+        streaming ``pdf`` then ``result`` NDJSON events.
+
+        The recommender is built from the registry
+        (``expert_backend.recommenders``) using the active model set by
+        ``ModelSelectionMixin``. ``run_analysis_step2_graph`` runs when
+        the chosen model REQUIRES the overflow graph
+        (``requires_overflow_graph=True``), OR when the operator
+        explicitly opted into computing it via
+        ``compute_overflow_graph=True``. A model that declares it
+        requires the graph cannot be skipped — the toggle is enforced
+        server-side so that direct API calls cannot bypass the
+        requirement either (mirrors the UI lock on the Settings →
+        Recommender checkbox).
 
         ``additional_lines_to_cut`` is the operator-supplied set of extra
         line names (ExpertAgent's `additionalLinesToCut`/`ltc` semantic).
@@ -623,23 +640,52 @@ class AnalysisMixin(_Base):
         monitored lines, …).  The NAD prefetch worker was already drained
         by step1 earlier in the same session.
         """
+        # Lazy import: the registry package pulls in the concrete model
+        # classes from ``expert_op4grid_recommender``, which mock-only
+        # test environments don't ship. Importing here (not at module
+        # top) keeps ``analysis_mixin`` importable everywhere and also
+        # guarantees the built-in models are registered by the package
+        # ``__init__`` before the lookup.
+        from expert_backend.recommenders.registry import build_recommender
+
         if not self._analysis_context:
             raise ValueError("Analysis context not found. Run step 1 first.")
 
-        # Overflow-graph fast path — see `_step2_graph_signature` /
-        # `_can_reuse_step2_graph`. The shared helpers are used by the
-        # model-aware production replacement too, so a re-run with only
-        # the recommender model changed skips the graph rebuild.
+        try:
+            recommender = build_recommender(self.get_active_model_name())
+        except KeyError as exc:
+            yield {"type": "error", "message": str(exc)}
+            return
+
+        # OR (not AND): a model that declares `requires_overflow_graph=True`
+        # always runs the graph step, even if the client somehow sent
+        # `compute_overflow_graph=False`. The operator opt-in flag only
+        # affects models that don't intrinsically need the graph.
+        needs_graph = (
+            recommender.requires_overflow_graph
+            or self.get_compute_overflow_graph()
+        )
+
+        # Overflow-graph fast path: the graph is model-INDEPENDENT — only
+        # action discovery below consumes the recommender. So a re-run with
+        # the same contingency + Step-2 inputs (selected overloads, monitor
+        # toggle, additional-lines picker) but a different model reuses the
+        # cached graph and skips `_narrow_context_to_selected_overloads` +
+        # `run_analysis_step2_graph` + the PDF mtime poll entirely — see
+        # `_step2_graph_signature` / `_can_reuse_step2_graph`.
         step2_signature = self._step2_graph_signature(
             selected_overloads, all_overloads, monitor_deselected, additional_lines_to_cut,
         )
-        reuse_graph = self._can_reuse_step2_graph(step2_signature)
+        reuse_graph = needs_graph and self._can_reuse_step2_graph(step2_signature)
 
         # Per-stage timings (seconds), forwarded to the result event so
         # the frontend can display a per-stage breakdown next to
         # "Suggestions produced by …". ``overflow_graph_time`` covers
         # the full graph-building phase (narrow + library call + PDF
-        # poll); ``enrichment_time`` is the Co-Study4Grid post-process
+        # poll) and is ``None`` when the model does not consume the
+        # overflow graph (no time was spent there); cached re-runs
+        # report 0.0 so a model swap is distinguishable from a fresh
+        # run. ``enrichment_time`` is the Co-Study4Grid post-process
         # that decorates the recommender output; ``step1_time`` is
         # carried from the previous step1 call via service state.
         overflow_graph_time: float | None = None
@@ -651,7 +697,8 @@ class AnalysisMixin(_Base):
         try:
             if reuse_graph:
                 logger.info(
-                    "[Step 2] Reusing cached overflow graph (signature unchanged)"
+                    "[Step 2] model=%s reusing cached overflow graph (signature unchanged)",
+                    recommender.name,
                 )
                 context = self._last_step2_context
                 produced_pdf = self._overflow_layout_cache.get("hierarchical")
@@ -662,6 +709,9 @@ class AnalysisMixin(_Base):
                 yield {"type": "pdf", "pdf_path": produced_pdf, "cached": True,
                        "overflow_graph_time": overflow_graph_time}
             else:
+                # Time the entire graph-building phase: narrow + library
+                # call + PDF poll. That matches what the operator perceives
+                # as "the overflow graph appearing on screen".
                 _graph_phase_t0 = time.time()
                 context = self._narrow_context_to_selected_overloads(
                     self._analysis_context,
@@ -679,84 +729,48 @@ class AnalysisMixin(_Base):
                 # fast and deterministic regardless of layout-file state.
                 self._overflow_layout_cache = {}
                 self._overflow_layout_mode = "hierarchical"
-                # Part 1: graph generation + HTML
-                context = run_analysis_step2_graph(context)
-                produced_pdf = self._get_latest_pdf_path(analysis_start_time)
-                overflow_graph_time = time.time() - _graph_phase_t0
-                if produced_pdf:
-                    # Step-2 always produces the hierarchical layout — the
-                    # regen endpoint transforms it into the geo layout on
-                    # demand without re-invoking graphviz.
-                    self._overflow_layout_cache["hierarchical"] = produced_pdf
-                # Preserve the enriched context (kept for future features
-                # that might need to re-run graph generation). The Geo
-                # toggle itself no longer uses this.
-                self._last_step2_context = context
-                self._last_step2_signature = step2_signature
-                yield {"type": "pdf", "pdf_path": produced_pdf,
-                       "overflow_graph_time": overflow_graph_time}
+                if needs_graph:
+                    # Part 1: graph generation + HTML
+                    context = run_analysis_step2_graph(context)
+                    produced_pdf = self._get_latest_pdf_path(analysis_start_time)
+                    overflow_graph_time = time.time() - _graph_phase_t0
+                    if produced_pdf:
+                        # Step-2 always produces the hierarchical layout — the
+                        # regen endpoint transforms it into the geo layout on
+                        # demand without re-invoking graphviz.
+                        self._overflow_layout_cache["hierarchical"] = produced_pdf
+                    self._last_step2_context = context
+                    self._last_step2_signature = step2_signature
+                    yield {"type": "pdf", "pdf_path": produced_pdf,
+                           "overflow_graph_time": overflow_graph_time}
+                else:
+                    # Model does not consume the overflow graph: emit an empty
+                    # `pdf` event so the frontend knows it should not wait for
+                    # an overflow HTML to appear. No graph is cached, so clear
+                    # the signature too — a later graph-requiring run must
+                    # never false-hit on it.
+                    self._last_step2_context = None
+                    self._last_step2_signature = None
+                    yield {"type": "pdf", "pdf_path": None}
 
-            # Part 2: action discovery. Goes through the upstream
-            # ``run_analysis_step2_discovery`` wrapper so the test seam
-            # at ``@patch('expert_backend.services.analysis_mixin.run_analysis_step2_discovery')``
-            # keeps working. ``expert_op4grid_recommender >= 0.2.2.post1``
-            # surfaces per-stage timings in the returned dict;
-            # older releases get a fallback that surfaces the total as
-            # ``action_prediction_time``.
-            _t_disc = time.time()
-            results = run_analysis_step2_discovery(context)
-            total_disc_time = time.time() - _t_disc
-
-            prediction_t = results.pop("prediction_time", None)
-            assessment_t = results.pop("assessment_time", None)
-            if prediction_t is not None and assessment_t is not None:
-                action_prediction_time = float(prediction_t)
-                assessment_time = float(assessment_t)
-            else:
-                action_prediction_time = total_disc_time
-                assessment_time = 0.0
-
+            # Part 2: action discovery, dispatched through the active
+            # recommender at the library boundary, then the
+            # Co-Study4Grid enrichment post-process (see the two
+            # helpers below for the details).
+            results, action_prediction_time, assessment_time = (
+                self._run_step2_discovery(context, recommender)
+            )
             self._last_result = results
 
-            _t_enrich = time.time()
-            enriched_actions = self._enrich_actions(
-                results["prioritized_actions"],
-                lines_overloaded_names=results.get("lines_overloaded_names"),
-            )
-            # Never leak combined-action ids into the main actions feed —
-            # those are estimations that live in `combined_actions`.
-            enriched_actions = {aid: data for aid, data in enriched_actions.items() if "+" not in aid}
-            _t_enrich_actions_done = time.time()
-
-            # Enrich each pre-computed pair with a `target_max_rho` /
-            # `target_max_rho_line` scoped to the user-selected overloads
-            # — the UI can show this alongside the library's global
-            # `max_rho` so the operator sees the pair's effect on the
-            # contingency they're resolving even when linearisation
-            # noise puts the global max on an off-target line.
-            self._augment_combined_actions_with_target_max_rho(results, context)
-            _t_augment_done = time.time()
-
-            action_scores = self._compute_mw_start_for_scores(results.get("action_scores", {}))
-            enrichment_time = time.time() - _t_enrich
-
-            # Sub-phase split so a slow enrichment phase can be attributed to
-            # the right contributor (per-action detail enrichment vs the
-            # combined-pair target-max-rho pass vs the score MW-start pass).
-            logger.info(
-                "[Step 2] Enrichment breakdown: enrich_actions=%.3fs, "
-                "augment_pairs=%.3fs, mw_start_scores=%.3fs (total=%.3fs)",
-                _t_enrich_actions_done - _t_enrich,
-                _t_augment_done - _t_enrich_actions_done,
-                time.time() - _t_augment_done,
-                enrichment_time,
+            enriched_actions, action_scores, enrichment_time = (
+                self._enrich_step2_results(results, context)
             )
 
             logger.info(
-                "[Step 2] Yielding final result event with %d enriched actions "
+                "[Step 2] model=%s yielding result event with %d enriched actions "
                 "(step1=%.2fs, overflow_graph=%.2fs, prediction=%.2fs, "
                 "assessment=%.2fs, enrichment=%.2fs)",
-                len(enriched_actions),
+                recommender.name, len(enriched_actions),
                 step1_time if step1_time is not None else -1.0,
                 overflow_graph_time if overflow_graph_time is not None else -1.0,
                 action_prediction_time, assessment_time, enrichment_time,
@@ -774,11 +788,8 @@ class AnalysisMixin(_Base):
                 # flag that recommendations are injection-only. None otherwise.
                 "antenna_meta": results.get("antenna_meta"),
                 "lines_we_care_about": list(lines_we_care_about) if lines_we_care_about is not None else None,
-                "active_model": (
-                    self.get_active_model_name()
-                    if hasattr(self, "get_active_model_name")
-                    else None
-                ),
+                "active_model": recommender.name,
+                "compute_overflow_graph": needs_graph,
                 "message": "Analysis completed",
                 "dc_fallback": False,
                 "step1_time": step1_time,
@@ -786,63 +797,97 @@ class AnalysisMixin(_Base):
                 "action_prediction_time": action_prediction_time,
                 "assessment_time": assessment_time,
                 "enrichment_time": enrichment_time,
+                # How the per-action reassessment was parallelised — lets the
+                # client confirm serial vs parallel and on how many effective
+                # cores ({"parallel": bool, "workers": int, "cores_available":
+                # int, "n_actions": int}). None on older recommender releases.
+                "reassessment_parallelism": results.get("reassessment_parallelism"),
             })
         except Exception as e:
             logger.exception("Backend Error in Analysis Resolution")
             yield {"type": "error", "message": f"Backend Error in Analysis Resolution: {str(e)}"}
 
-    def _augment_combined_actions_with_target_max_rho(self, results: dict, context: dict) -> None:
-        """Add ``target_max_rho`` / ``target_max_rho_line`` to each
-        pre-computed pair in ``results['combined_actions']``.
+    def _run_step2_discovery(self, context: dict, recommender) -> tuple:
+        """Dispatch action discovery through the active recommender.
 
-        The target max is computed over ``context['lines_overloaded_ids']``
-        only — the user-selected overloads that the pair is meant to
-        resolve — using the same formula as the on-demand
-        ``compute_superposition`` path.  Leaves ``max_rho`` /
-        ``max_rho_line`` untouched so the global-scan warning for
-        newly-introduced overloads is preserved (see
-        ``test_superposition_max_rho_filtering_regression``).
+        Goes through the upstream ``run_analysis_step2_discovery``
+        wrapper (resolved as a module global at call time) so the test
+        seam at
+        ``@patch('expert_backend.services.analysis_mixin.run_analysis_step2_discovery')``
+        keeps working. ``expert_op4grid_recommender >= 0.2.2.post1``
+        surfaces per-stage timings (``prediction_time`` =
+        ``recommender.recommend()``, ``assessment_time`` = re-simulation
+        of the prioritized actions) in the returned dict; older releases
+        get a fallback that surfaces the total as the prediction time.
+
+        Returns ``(results, action_prediction_time, assessment_time)``.
         """
-        combined_actions = results.get("combined_actions") or {}
-        if not combined_actions:
-            return
-        obs_start = context.get("obs_simu_defaut")
-        lines_overloaded_ids = context.get("lines_overloaded_ids") or []
-        prioritized = results.get("prioritized_actions") or {}
-        if obs_start is None or not lines_overloaded_ids:
-            return
+        params = {"n_prioritized_actions": config.N_PRIORITIZED_ACTIONS}
+        _t_disc = time.time()
+        results = run_analysis_step2_discovery(
+            context, recommender=recommender, params=params,
+        )
+        total_disc_time = time.time() - _t_disc
 
-        try:
-            name_line_list = list(obs_start.name_line)
-        except Exception as e:
-            logger.debug("target max_rho: cannot read name_line: %s", e)
-            return
-        monitoring_factor = float(getattr(config, "MONITORING_FACTOR_THERMAL_LIMITS", 0.95))
+        prediction_t = results.pop("prediction_time", None)
+        assessment_t = results.pop("assessment_time", None)
+        if prediction_t is not None and assessment_t is not None:
+            return results, float(prediction_t), float(assessment_t)
+        # Older upstream — surface the total as "prediction" and leave
+        # "assessment" at 0 rather than fabricating a split.
+        return results, total_disc_time, 0.0
 
-        for pair_id, pair in combined_actions.items():
-            if not isinstance(pair, dict) or "error" in pair:
-                continue
-            betas = pair.get("betas")
-            if not betas or len(betas) != 2:
-                continue
-            try:
-                aid1, aid2 = [p.strip() for p in pair_id.split("+", 1)]
-            except ValueError:
-                continue
-            obs1 = (prioritized.get(aid1) or {}).get("observation")
-            obs2 = (prioritized.get(aid2) or {}).get("observation")
-            if obs1 is None or obs2 is None:
-                continue
-            try:
-                rho_combined = compute_combined_rho(obs_start, obs1, obs2, list(betas))
-            except Exception as e:
-                logger.debug("target max_rho: rho_combined failed for %s: %s", pair_id, e)
-                continue
-            target_max, target_line = compute_target_max_rho(
-                rho_combined, name_line_list, list(lines_overloaded_ids),
-            )
-            pair["target_max_rho"] = target_max * monitoring_factor if target_max else 0.0
-            pair["target_max_rho_line"] = target_line
+    def _enrich_step2_results(self, results: dict, context: dict) -> tuple:
+        """Co-Study4Grid post-processing of the discovery output.
+
+        Per-action detail enrichment, the combined-pair
+        ``target_max_rho`` augmentation (scoped to the user-selected
+        overloads so the operator sees the pair's effect on the
+        contingency they're resolving even when linearisation noise puts
+        the global max on an off-target line — a no-op for models that
+        don't populate ``combined_actions``), the payload slimming that
+        drops per-branch full-grid arrays the frontend never reads
+        BEFORE they hit sanitize_for_json / the wire, and the MW-start
+        score decoration.
+
+        Returns ``(enriched_actions, action_scores, enrichment_time)``.
+        """
+        _t_enrich = time.time()
+        enriched_actions = self._enrich_actions(
+            results["prioritized_actions"],
+            lines_overloaded_names=results.get("lines_overloaded_names"),
+        )
+        # Never leak combined-action ids into the main actions feed —
+        # those are estimations that live in `combined_actions`.
+        enriched_actions = {aid: data for aid, data in enriched_actions.items() if "+" not in aid}
+        _t_enrich_actions_done = time.time()
+
+        self._augment_combined_actions_with_target_max_rho(results, context)
+        slim_combined_actions_for_payload(results.get("combined_actions"))
+        _t_augment_done = time.time()
+
+        action_scores = self._compute_mw_start_for_scores(results.get("action_scores", {}))
+        enrichment_time = time.time() - _t_enrich
+
+        # Sub-phase split so a slow enrichment phase can be attributed to
+        # the right contributor (per-action detail enrichment vs the
+        # combined-pair target-max-rho pass vs the score MW-start pass).
+        logger.info(
+            "[Step 2] Enrichment breakdown: enrich_actions=%.3fs, "
+            "augment_pairs=%.3fs, mw_start_scores=%.3fs (total=%.3fs)",
+            _t_enrich_actions_done - _t_enrich,
+            _t_augment_done - _t_enrich_actions_done,
+            time.time() - _t_augment_done,
+            enrichment_time,
+        )
+        return enriched_actions, action_scores, enrichment_time
+
+    def _augment_combined_actions_with_target_max_rho(self, results: dict, context: dict) -> None:
+        """Instance wrapper — delegates to the stateless helper in
+        ``services/analysis/combined_pairs``. Kept as a method so tests
+        that call ``svc._augment_combined_actions_with_target_max_rho``
+        (and the step-2 generator) stay unchanged."""
+        augment_combined_actions_with_target_max_rho(results, context)
 
     @staticmethod
     def _narrow_context_to_selected_overloads(
@@ -977,6 +1022,7 @@ class AnalysisMixin(_Base):
 
         return context
 
+    @with_network_lock_stream
     def run_analysis(self, disconnected_elements) -> Iterator[Any]:
         """Legacy single-step analysis — streams ``pdf`` then ``result`` NDJSON events.
 

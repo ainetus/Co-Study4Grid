@@ -9,6 +9,7 @@ import { useState, useCallback, useRef, useEffect, type MutableRefObject } from 
 import { api } from '../api';
 import type { VlOverlay, SldTab, FlowDelta, AssetDelta, TabId, VlInjection, FeederLabel } from '../types';
 import { interactionLogger } from '../utils/interactionLogger';
+import { apiErrorMessage } from '../utils/apiError';
 
 export interface SldOverlayState {
     vlOverlay: VlOverlay | null;
@@ -135,7 +136,7 @@ export function useSldOverlay(activeTab: TabId, liveSelectedActionId?: string | 
         } catch (err: unknown) {
             const e = err as { response?: { data?: { detail?: string } }; message?: string };
             setVlOverlay(prev => prev && prev.tab === sldTab
-                ? { ...prev, loading: false, error: e.response?.data?.detail || 'Failed to load SLD' }
+                ? { ...prev, loading: false, error: apiErrorMessage(e, 'Failed to load SLD') }
                 : prev
             );
         }

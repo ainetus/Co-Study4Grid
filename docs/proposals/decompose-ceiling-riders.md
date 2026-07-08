@@ -39,7 +39,7 @@ lines/CC remaining before the gate fails.
 
 | Function | Lines | CC / nest | Margin | Note |
 |----------|------:|:---------:|-------:|------|
-| `recommenders/_service_integration.py::_run_analysis_step2_with_model` | **226** | — | **+14** | tightest function; the model-swap step2 path |
+| `recommenders/_service_integration.py::_run_analysis_step2_with_model` | **226** | — | **+14** | tightest function; the model-swap step2 path *(resolved 2026-07 D1: module deleted; the unified `analysis_mixin.run_analysis_step2` extracted `_run_step2_discovery` / `_enrich_step2_results` helpers)* |
 | `services/simulation_mixin.py::simulate_manual_action` | 207 | — | +33 | |
 | `services/diagram/action_patch.py::build_action_patch_payload` | 204 | — | +36 | |
 | `services/recommender_service.py::update_config` | 191 | **CC 35** | +49 / **+3 CC** | tightest *complexity* |
@@ -81,8 +81,11 @@ readability, or leave it.
    the ceiling **and** retires a gate exemption.
 
 3. **`_run_analysis_step2_with_model` (226/240) — tightest function.**
-   Extract the per-model graph-vs-discovery orchestration sub-steps
-   into named helpers in `recommenders/_service_integration.py`.
+   ~~Extract the per-model graph-vs-discovery orchestration sub-steps
+   into named helpers in `recommenders/_service_integration.py`.~~
+   **Done (2026-07 D1)**: `_service_integration.py` was deleted; the
+   single model-aware `analysis_mixin.run_analysis_step2` delegates to
+   `_run_step2_discovery` / `_enrich_step2_results` helpers.
 
 4. **`update_config` (CC 35) + `_narrow_context_to_selected_overloads`
    (CC 30 / nest 7).** Both are complexity, not size. `update_config`:

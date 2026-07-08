@@ -576,9 +576,8 @@ class TestStep2GraphCacheReuse:
             "action_scores": {},
             "lines_overloaded_names": ["L1"],
         }
-        # ModelSelectionMixin getters are attached via the
-        # expert_backend.recommenders import side-effect — stub the
-        # getter directly so the result event echoes the active model.
+        # ModelSelectionMixin is inherited by RecommenderService — stub
+        # the getter directly so the result event echoes the active model.
         service.get_active_model_name = MagicMock(return_value="random_overflow")
         self._seed_context(service)
 
@@ -586,47 +585,12 @@ class TestStep2GraphCacheReuse:
         result_event = next(e for e in events if e.get("type") == "result")
         assert result_event["active_model"] == "random_overflow"
 
-    @patch("expert_backend.services.analysis_mixin.run_analysis_step2_graph")
-    @patch("expert_backend.services.analysis_mixin.run_analysis_step2_discovery")
-    def test_result_event_active_model_none_when_getter_absent(
-        self, mock_discovery, mock_graph, service
-    ):
-        # The legacy `AnalysisMixin.run_analysis_step2` result event
-        # guards `get_active_model_name` with `hasattr` so a bare
-        # RecommenderService (no ModelSelectionMixin) still emits the
-        # event with active_model=None instead of crashing.
-        #
-        # This scenario only applies to the LEGACY generator. In
-        # production `expert_backend.recommenders` is imported, which
-        # BOTH attaches `get_active_model_name` AND replaces
-        # `run_analysis_step2` with `_run_analysis_step2_with_model`
-        # (which calls the getter unconditionally — no guard, none
-        # needed). Skip unless the legacy method is the active one and
-        # the getter is genuinely absent, i.e. the recommenders package
-        # was never imported in this pytest process (the mock-layer
-        # sandbox). Checked at call time — collection order can't be
-        # relied on.
-        if type(service).run_analysis_step2.__name__ != "run_analysis_step2":
-            pytest.skip(
-                "legacy AnalysisMixin.run_analysis_step2 is shadowed by the "
-                "production model-aware replacement"
-            )
-        if hasattr(type(service), "get_active_model_name"):
-            pytest.skip(
-                "get_active_model_name was attached by a recommenders import "
-                "earlier in this process — the 'getter absent' path can't be staged"
-            )
-        mock_graph.side_effect = lambda ctx: ctx
-        mock_discovery.return_value = {
-            "prioritized_actions": {},
-            "action_scores": {},
-            "lines_overloaded_names": ["L1"],
-        }
-        self._seed_context(service)
-
-        events = list(service.run_analysis_step2(selected_overloads=["L1"], all_overloads=["L1"]))
-        result_event = next(e for e in events if e.get("type") == "result")
-        assert result_event["active_model"] is None
+    # (The former ``test_result_event_active_model_none_when_getter_absent``
+    # staged a RecommenderService WITHOUT ModelSelectionMixin — a state that
+    # could only exist when the recommenders package had not been imported
+    # yet. Since the 2026-07 D1 revision the mixin is inherited at class
+    # definition time, so the "getter absent" scenario is impossible by
+    # construction and the test was removed.)
 
     def test_reset_clears_step2_signature(self, service):
         # The signature is a per-study cache — reset() MUST clear it so
@@ -640,12 +604,11 @@ class TestStep2GraphCacheReuse:
 
 
 class TestStep2GraphCacheHelpers:
-    """Unit coverage for the shared `_step2_graph_signature` /
-    `_can_reuse_step2_graph` helpers on AnalysisMixin. Both the legacy
-    `run_analysis_step2` and the model-aware production replacement in
-    `_service_integration` use these, so they're tested directly here
-    (the production wrapper itself needs the real recommenders package
-    and is covered in `tests/test_service_integration.py`)."""
+    """Unit coverage for the `_step2_graph_signature` /
+    `_can_reuse_step2_graph` helpers on AnalysisMixin, tested directly
+    here in isolation from the (single, model-aware)
+    `run_analysis_step2` generator that consumes them (whose end-to-end
+    cache behaviour is covered in `test_model_composition.py`)."""
 
     @pytest.fixture
     def service(self):

@@ -13,6 +13,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
+# Importing any expert_backend.recommenders submodule triggers the
+# package __init__, which registers the concrete upstream model
+# classes — skip in mock-only environments.
+pytest.importorskip("expert_op4grid_recommender.models.base")
+
 from expert_backend.recommenders.network_existence import (
     _action_targets_known_elements,
     _network_existence_sets,

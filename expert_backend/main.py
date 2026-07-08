@@ -24,14 +24,22 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from expert_backend.services.api_errors import (
+    AppHTTPException,
+    CODE_ACTION_RESULT_UNAVAILABLE,
+    CODE_STUDY_BUSY,
+    install_error_handlers,
+)
 from expert_backend.services.diagram_mixin import ActionResultUnavailableError
 from expert_backend.services.network_service import network_service
 from expert_backend.services.overflow_overlay import inject_overlay
 from expert_backend.services.recommender_service import recommender_service
 
 # Importing `expert_backend.recommenders` registers ExpertRecommender,
-# RandomRecommender and RandomOverflowRecommender at import time. The
-# registry is queried by `update_config` (model selection) and by the
+# RandomRecommender and RandomOverflowRecommender at import time (pure
+# registration — the service integration is explicit composition on
+# RecommenderService, not an import side-effect). The registry is
+# queried by `run_analysis_step2` (model dispatch) and by the
 # `/api/models` endpoint below.
 from expert_backend.recommenders import list_models as _list_recommender_models
 
@@ -39,10 +47,24 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
+# Unified error contract (D2): every HTTPException renders as
+# {detail, code}; uncaught exceptions → clean 500 (no path leak) +
+# server-side logger.exception. See services/api_errors.py.
+install_error_handlers(app)
+
 
 # --- Per-endpoint JSON gzip helper ---
 _GZIP_MIN_BYTES = 10_000
 _GZIP_LEVEL = 5
+
+# Study-mutation busy-gate detail (HTTP 409). Study-level operations
+# (config load + the analysis pipeline) mutate the shared singleton
+# state, so at most one runs at a time; a second is rejected rather
+# than queued behind seconds of work (D3, 2026-07).
+_STUDY_BUSY_DETAIL = (
+    "Another study operation (configuration load or analysis) is already "
+    "in progress. Retry when it completes."
+)
 
 
 def _maybe_gzip_svg_text(diagram: dict, request: Request) -> Response:
@@ -290,6 +312,33 @@ class SaveSessionRequest(BaseModel):
     output_folder_path: str
     interaction_log: str | None = None
 
+
+# --- Response models (D2, 2026-07) ---
+# Applied to the small, native-Python-dict control endpoints where the
+# full field set is stable and carries no NumPy (so response_model
+# serialization can't drop a field or reject a coercion). The multi-MB
+# diagram / analysis payloads keep returning bespoke gzipped Response
+# objects — response_model doesn't run for a raw Response — and are
+# machine-checked structurally by the OpenAPI snapshot instead. Rolling
+# further response models onto the streaming / diagram endpoints is
+# tracked in docs/architecture/api-contract-machine-check.md.
+class RecommenderModelResponse(BaseModel):
+    status: str
+    active_model: str
+    compute_overflow_graph: bool
+
+
+class RestoreAnalysisContextResponse(BaseModel):
+    status: str
+    lines_we_care_about_count: int
+    computed_pairs_count: int
+
+
+class SaveSessionResponse(BaseModel):
+    session_folder: str
+    pdf_copied: bool
+
+
 last_network_path = None
 
 
@@ -307,11 +356,20 @@ def list_models() -> dict:
 @app.post("/api/config")
 def update_config(config: ConfigRequest) -> dict:
     global last_network_path
+    # Study-level mutation gate: reject (409) a concurrent config load or
+    # in-flight analysis rather than tearing down the shared Network while
+    # another request is mid-analysis on it (D3, 2026-07).
+    if not recommender_service.try_begin_study_mutation("config"):
+        raise AppHTTPException(status_code=409, detail=_STUDY_BUSY_DETAIL, code=CODE_STUDY_BUSY)
     try:
-        recommender_service.reset()
-        network_service.load_network(config.network_path)
-        last_network_path = config.network_path
-        recommender_service.update_config(config)
+        # Hold the network lock across the whole reset → load → update
+        # sequence so no diagram request can interleave and observe (or
+        # re-populate) torn state between the reset and the reload.
+        with recommender_service.network_lock():
+            recommender_service.reset()
+            network_service.load_network(config.network_path)
+            last_network_path = config.network_path
+            recommender_service.update_config(config)
 
         from expert_op4grid_recommender import config as recommender_config
         total_lines = len(network_service.get_disconnectable_elements())
@@ -368,6 +426,8 @@ def update_config(config: ConfigRequest) -> dict:
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        recommender_service.end_study_mutation()
 
 
 class RecommenderModelRequest(BaseModel):
@@ -375,7 +435,7 @@ class RecommenderModelRequest(BaseModel):
     compute_overflow_graph: bool | None = None
 
 
-@app.post("/api/recommender-model")
+@app.post("/api/recommender-model", response_model=RecommenderModelResponse)
 def set_recommender_model(req: RecommenderModelRequest) -> dict:
     """Swap the active recommender model on the running service.
 
@@ -502,7 +562,7 @@ if path:
         return {"path": "", "error": err}
     return {"path": proc.stdout.strip()}
 
-@app.post("/api/save-session")
+@app.post("/api/save-session", response_model=SaveSessionResponse)
 def save_session(request: SaveSessionRequest) -> dict:
     import shutil
 
@@ -597,7 +657,7 @@ def load_session(folder_path: str = Body(...), session_name: str = Body(...)) ->
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to read session: {e}")
 
-@app.post("/api/restore-analysis-context")
+@app.post("/api/restore-analysis-context", response_model=RestoreAnalysisContextResponse)
 def restore_analysis_context(request: RestoreAnalysisContextRequest) -> dict:
     try:
         recommender_service.restore_analysis_context(
@@ -618,6 +678,12 @@ from fastapi.responses import StreamingResponse
 import json
 @app.post("/api/run-analysis")
 async def run_analysis(request: AnalysisRequest) -> StreamingResponse:
+    # Study-mutation gate (D3): reject a second analysis / config load
+    # in flight rather than queueing it behind this one. Held for the
+    # whole stream; released in the generator's finally.
+    if not recommender_service.try_begin_study_mutation("run-analysis"):
+        raise AppHTTPException(status_code=409, detail=_STUDY_BUSY_DETAIL, code=CODE_STUDY_BUSY)
+
     def event_generator() -> Iterator[Any]:
         try:
             for event in recommender_service.run_analysis(request.disconnected_elements):
@@ -628,20 +694,36 @@ async def run_analysis(request: AnalysisRequest) -> StreamingResponse:
                 yield json.dumps(event) + "\n"
         except Exception as e:
             yield json.dumps({"type": "error", "message": str(e)}) + "\n"
+        finally:
+            recommender_service.end_study_mutation()
 
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")
 
+# NB: sync `def` (not `async def`) — this endpoint runs seconds of
+# synchronous pypowsybl / grid2op work (contingency simulation + overload
+# detection). A `def` route is dispatched to Starlette's threadpool, so
+# it does NOT block the event loop; an `async def` would freeze every
+# other request for the duration (QW2, 2026-07). The other analysis
+# routes stay `async def` because they return a StreamingResponse
+# immediately and their sync generators are iterated in the threadpool.
 @app.post("/api/run-analysis-step1")
-async def run_analysis_step1(request: AnalysisRequest) -> dict:
+def run_analysis_step1(request: AnalysisRequest) -> dict:
+    if not recommender_service.try_begin_study_mutation("run-analysis-step1"):
+        raise AppHTTPException(status_code=409, detail=_STUDY_BUSY_DETAIL, code=CODE_STUDY_BUSY)
     try:
         result = recommender_service.run_analysis_step1(request.disconnected_elements)
         return result
     except Exception as e:
         logger.exception("API boundary error")
         raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        recommender_service.end_study_mutation()
 
 @app.post("/api/run-analysis-step2")
 async def run_analysis_step2(request: AnalysisStep2Request) -> StreamingResponse:
+    if not recommender_service.try_begin_study_mutation("run-analysis-step2"):
+        raise AppHTTPException(status_code=409, detail=_STUDY_BUSY_DETAIL, code=CODE_STUDY_BUSY)
+
     def event_generator() -> Iterator[Any]:
         try:
             for event in recommender_service.run_analysis_step2(
@@ -657,6 +739,8 @@ async def run_analysis_step2(request: AnalysisStep2Request) -> StreamingResponse
                 yield json.dumps(event) + "\n"
         except Exception as e:
             yield json.dumps({"type": "error", "message": str(e)}) + "\n"
+        finally:
+            recommender_service.end_study_mutation()
 
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")
 
@@ -708,11 +792,15 @@ def get_action_variant_diagram(request: ActionVariantRequest, http_request: Requ
         # action): the backend has no cached observation, so it can't
         # render the post-action NAD. Still a 400 — the frontend needs
         # it to trigger the `/api/simulate-and-variant-diagram` fallback
-        # — but log it quietly instead of as an ERROR-level traceback.
+        # — but tagged with an EXPLICIT code so the client branches on the
+        # code, not the (shared) 400 status, and logged quietly instead of
+        # as an ERROR-level traceback.
         logger.info(
             "action-variant-diagram: %s — client falls back to live simulation", e
         )
-        raise HTTPException(status_code=400, detail=str(e))
+        raise AppHTTPException(
+            status_code=400, detail=str(e), code=CODE_ACTION_RESULT_UNAVAILABLE,
+        )
     except Exception as e:
         logger.exception("API boundary error")
         raise HTTPException(status_code=400, detail=str(e))

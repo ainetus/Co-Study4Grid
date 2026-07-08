@@ -17,6 +17,7 @@ import ActionCard from './ActionCard';
 import AdditionalLinesPicker from './AdditionalLinesPicker';
 import ActionSearchDropdown from './ActionSearchDropdown';
 import { colors } from '../styles/tokens';
+import { apiErrorMessage } from '../utils/apiError';
 
 interface ActionFeedProps {
     actions: Record<string, ActionDetail>;
@@ -445,7 +446,7 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
         } catch (e: unknown) {
             console.error('Simulation failed:', e);
             const err = e as { response?: { data?: { detail?: string } } };
-            setError(err?.response?.data?.detail || 'Simulation failed');
+            setError(apiErrorMessage(err, 'Simulation failed'));
         } finally {
             setSimulating(null);
         }

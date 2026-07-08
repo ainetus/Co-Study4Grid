@@ -389,7 +389,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
                   <label htmlFor="fastMode" style={{ fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer' }}>Pypowsybl Fast Mode</label>
                 </div>
                 <div style={{ fontSize: '0.75rem', color: colors.textTertiary, fontStyle: 'italic', marginLeft: '26px' }}>
-                  Disable voltage control in pypowsybl for faster simulations (may affect convergence)
+                  Runs transformer tap-changer voltage control in the faster AFTER_GENERATOR mode (~7× fewer load-flow iterations, same currents). Applied when the analysis runs, so re-run Analyze &amp; Suggest after changing it.
                 </div>
               </div>
             </div>

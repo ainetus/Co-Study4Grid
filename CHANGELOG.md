@@ -7,6 +7,126 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Tests + docs — coverage and reference for the 2026-07 deep revisions
+
+- **New `test_api_errors.py`** (D2): direct coverage of the error envelope —
+  `AppHTTPException`/`_code_for`, the three handlers, the security-critical
+  "uncaught exception → generic 500 with NO `str(exc)` leak", the
+  `ACTION_RESULT_UNAVAILABLE` discriminator reaching the client, and a
+  response-validation-failure → generic-500 integration proof.
+- **`test_service_concurrency.py`** (D3): added the streaming decorator's
+  per-`next()` lock-release guard and the NAD-prefetch generation-staleness
+  discard (the behaviour that replaced the deadlock-prone `join()`).
+- **`test_api_endpoints.py::TestResponseModels`** (D2): the response models
+  serialize the exact field set (no drop/add).
+- **`test_overflow_path_filter.py`**: anchoring guards for the
+  underscore-in-substation-name fix (segment match vs coincidental substring).
+- **`apiError.test.ts`** (frontend): 409/`STUDY_BUSY` discriminator + the
+  no-code (pre-envelope) fallback.
+- **Docs**: `api_errors.py` / `service_lock.py` / `openapi.snapshot.json` added
+  to the backend CLAUDE.md tree with an "API error contract" section + an
+  updated "Adding endpoints" checklist (regenerate the snapshot); the new test
+  files + `apiError.ts` documented in `tests/CLAUDE.md` and `frontend/CLAUDE.md`;
+  root CLAUDE.md gains the error-contract / OpenAPI / concurrency conventions.
+
+### Performance — QW2: `/api/run-analysis-step1` no longer blocks the event loop (2026-07 review)
+
+- The endpoint ran seconds of synchronous pypowsybl / grid2op work inside an
+  `async def`, freezing the entire event loop (every other request) for its
+  duration. Changed to a sync `def` route so FastAPI dispatches it to the
+  threadpool. One-keyword fix; guarded by
+  `test_api_endpoints.py::TestEventLoopSafety`. The streaming analysis routes
+  stay `async def` — they return a `StreamingResponse` immediately and their
+  sync generators are already iterated in the threadpool.
+
+### API contract — D2: machine-checked, one error envelope (2026-07 review, partial)
+
+- **Unified error envelope**: `services/api_errors.py` installs FastAPI
+  handlers so every error renders as `{detail, code}`. Uncaught
+  exceptions become a clean `500` with a generic message (no more
+  `detail=str(e)` leaking absolute server paths) + a server-side
+  `logger.exception`. The post-reload `action-variant-diagram` failure
+  the frontend branches on now carries an explicit
+  `code="ACTION_RESULT_UNAVAILABLE"`; the 409 study-busy gate carries
+  `code="STUDY_BUSY"`. `detail` is unchanged, so existing clients keep
+  working — `code` is additive.
+- **One frontend error extractor**: `frontend/src/utils/apiError.ts`
+  (`extractApiError` / `apiErrorMessage` / `hasErrorCode`) replaced ~10
+  scattered `err?.response?.data?.detail || '…'` reads across `App.tsx`,
+  `useSession`, `useSldOverlay`, `ActionFeed`, `CombinedActionsModal`.
+- **OpenAPI contract snapshot**: `scripts/check_openapi_contract.py`
+  renders `app.openapi()` to the committed
+  `expert_backend/openapi.snapshot.json`; `test_openapi_contract.py`
+  diffs it in CI so any endpoint / request-/response-model / status
+  change is a reviewable diff instead of silent drift from `types.ts`.
+  Regenerate intentionally with `--write`.
+- **Response models (seed)**: attached to the safe native-dict control
+  endpoints (`recommender-model`, `restore-analysis-context`,
+  `save-session`).
+- Remaining (tracked in
+  [`docs/architecture/api-contract-machine-check.md`](docs/architecture/api-contract-machine-check.md)):
+  response models on the gzipped diagram/analysis endpoints, generating
+  `types.ts` from the snapshot, and retiring the ~26 blanket
+  `except Exception → 400` handlers.
+
+### Concurrency — D3: ownership for the shared pypowsybl Network (2026-07 review)
+
+- **Service-level re-entrant network lock** (`services/service_lock.py`)
+  serializes the ~13 entry points that variant-switch the shared
+  `Network` (all diagram/SLD getters + `run_analysis_step1` /
+  `run_analysis` + `simulate_manual_action` / `compute_superposition`).
+  Streaming endpoints hold it per-resumption via a per-`next()`
+  iterator adapter so Starlette's threadpool hopping stays safe.
+  `/api/config` holds it across the whole `reset → load → update`.
+- **Study-mutation busy gate → HTTP 409**: `/api/config` and the three
+  analysis entry points refuse a second concurrent study operation
+  instead of queueing it behind seconds of work.
+- **Bounded variant lifecycle**: contingency variants on the shared
+  Network are now LRU-capped (`MAX_CONTINGENCY_VARIANTS`) with
+  `remove_variant` on eviction — previously they grew without bound
+  within a session.
+- **Fixed the unguarded variant switch** in
+  `diagram_mixin._get_contingency_flows` (added the missing
+  try/finally) so an exception can't leave the shared handle stuck on a
+  contingency variant.
+- **Fixed a latent reset/prefetch deadlock**: `reset()` no longer joins
+  the NAD-prefetch worker (which now takes the same network lock);
+  staleness is handled by a `_prefetch_generation` counter instead.
+- Full rationale in
+  [`docs/architecture/shared-network-concurrency.md`](docs/architecture/shared-network-concurrency.md).
+  Covered by `test_service_concurrency.py` +
+  `test_api_endpoints.py::TestStudyMutationBusyGate`.
+
+### Architecture — D1: de-ghosted the pluggable-recommender subsystem (2026-07 review)
+
+- **Explicit composition replaces import-time monkey-patching.**
+  `RecommenderService` now inherits `ModelSelectionMixin` directly;
+  `update_config` / `reset` call `_apply_model_settings` /
+  `_reset_model_settings` themselves; and the single, model-aware
+  `run_analysis_step2` lives on `AnalysisMixin` (delegating to new
+  `_run_step2_discovery` / `_enrich_step2_results` helpers). The
+  `expert_backend/recommenders/_service_integration.py` module — which
+  rewrote the service class as a side-effect of importing the package —
+  was **deleted**, along with the shadowed ~190-line legacy step-2
+  generator it had been mirroring.
+- **Fixed the `antenna_meta` mirror-drift bug**: the islanded-pocket
+  metadata added to the legacy generator in `2dd2ced` never made it
+  into the production (monkey-patched) generator, so the frontend's
+  AntennaNotice was dead in production. The unified generator emits it
+  again; guarded by a regression test
+  (`test_model_composition.py::test_result_event_restores_antenna_meta_from_discovery`).
+- **Rescued the orphaned root `tests/` package** (8 files, 144 test
+  functions — collected by no pytest config and no CI) into
+  `expert_backend/tests/`, merging the `test_recommenders_registry.py`
+  filename collision and rewriting `test_service_integration.py` as
+  `test_model_composition.py`. The rescue immediately caught a real
+  bug: the overflow-path filter's segment scan split action ids on
+  `_`, so substation names *containing* underscores (`VL_LOOP`) never
+  matched and UUID-prefixed coupling actions were silently dropped —
+  fixed in `overflow_path_filter._action_touches_path`.
+- Docs updated across both CLAUDE.md trees, `docs/backend/README.md`,
+  `docs/backend/recommender_models.md` and the README file tree.
+
 ### Performance — Analyze & Suggest on the 2-vCPU Space (30 s → 75 s regression)
 
 - **Step-2 result payload no longer ships full-grid per-branch arrays.** Each
