@@ -254,6 +254,7 @@ describe('api client', () => {
             expect(mockedAxios.post).toHaveBeenCalledWith(
                 'http://127.0.0.1:8000/api/run-analysis-step1',
                 { disconnected_elements: ['LINE_X'] },
+                { signal: undefined },
             );
             expect(result).toEqual(responseData);
         });

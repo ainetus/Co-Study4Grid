@@ -61,6 +61,9 @@ export interface AnalysisState {
   ) => Promise<void>;
   handleDisplayPrioritizedActions: (selectedActionIds: Set<string>, setActiveTab?: (tab: TabId) => void) => void;
   handleToggleOverload: (overload: string) => void;
+  /** Abort the in-flight analysis run (step 1 request, step 2 fetch, and
+   *  the NDJSON stream). No-op when nothing is running. */
+  cancelAnalysis: () => void;
 }
 
 export function useAnalysis(): AnalysisState {
@@ -99,6 +102,14 @@ export function useAnalysis(): AnalysisState {
   // current ``result`` was computed against.
   const [committedAdditionalLinesToCut, setCommittedAdditionalLinesToCut] = useState<Set<string>>(new Set());
 
+  // Cancellation (D5): the in-flight analysis run's AbortController, so a
+  // visible Cancel can abort the step-1 request, the step-2 fetch, and the
+  // NDJSON stream read. Null between runs.
+  const abortRef = useRef<AbortController | null>(null);
+  const cancelAnalysis = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
+
   const handleRunAnalysis = useCallback(async (
     selectedContingency: string[],
     clearContingencyState: () => void,
@@ -111,6 +122,10 @@ export function useAnalysis(): AnalysisState {
     setError('');
     setInfoMessage('');
 
+    // Fresh AbortController for this run; `cancelAnalysis()` aborts it.
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     const step1CorrId = interactionLogger.record('analysis_step1_started', { element: selectedContingency.join('+') });
     const step1StartTs = new Date().toISOString();
     // Wall-clock from the "Analyze & Suggest" click until the result
@@ -122,7 +137,7 @@ export function useAnalysis(): AnalysisState {
     try {
       // Step 1: Detection
       const { api } = await import('../api');
-      const res1 = await api.runAnalysisStep1(selectedContingency);
+      const res1 = await api.runAnalysisStep1(selectedContingency, controller.signal);
       if (!res1.can_proceed) {
         setError(res1.message || 'Analysis cannot proceed.');
         if (res1.message) setInfoMessage(res1.message);
@@ -183,10 +198,10 @@ export function useAnalysis(): AnalysisState {
         all_overloads: detected,
         monitor_deselected: monitorDeselected,
         additional_lines_to_cut: additionalLinesArr,
-      });
+      }, controller.signal);
 
       let step2ActionsCount = 0;
-      for await (const raw of parseNdjsonStream(response2)) {
+      for await (const raw of parseNdjsonStream(response2, { signal: controller.signal })) {
         const event = raw as Partial<AnalysisResult> & { type?: string };
         if (event.type === 'pdf') {
           setResult((p: AnalysisResult | null) => ({
@@ -239,6 +254,12 @@ export function useAnalysis(): AnalysisState {
           setError('Analysis failed: ' + event.message);
         }
       }
+      // The operator cancelled mid-stream: don't record a normal
+      // completion — surface the cancellation instead.
+      if (controller.signal.aborted) {
+        setInfoMessage('Analysis cancelled.');
+        return;
+      }
       // Replay contract (docs/features/interaction-logging.md):
       //   { n_actions, action_ids, dc_fallback, message, pdf_url }.
       // The full payload would require threading more state out of
@@ -248,10 +269,17 @@ export function useAnalysis(): AnalysisState {
         n_actions: step2ActionsCount,
       }, step2StartTs);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'An error occurred during analysis.';
-      setError(message);
+      // An abort (step-1 request / step-2 fetch) surfaces as a rejection;
+      // it's a cancellation, not a failure.
+      if (controller.signal.aborted) {
+        setInfoMessage('Analysis cancelled.');
+      } else {
+        const message = err instanceof Error ? err.message : 'An error occurred during analysis.';
+        setError(message);
+      }
     } finally {
       setAnalysisLoading(false);
+      if (abortRef.current === controller) abortRef.current = null;
     }
   }, [selectedOverloads, monitorDeselected, additionalLinesToCut, setError, setInfoMessage]);
 
@@ -356,11 +384,12 @@ export function useAnalysis(): AnalysisState {
     handleRunAnalysis,
     handleDisplayPrioritizedActions,
     handleToggleOverload,
+    cancelAnalysis,
   }), [
     result, pendingAnalysisResult, analysisLoading, setInfoMessage, setError,
     selectedOverloads, monitorDeselected, additionalLinesToCut,
     committedAdditionalLinesToCut,
     handleRunAnalysis, handleDisplayPrioritizedActions, handleToggleOverload,
-    handleToggleAdditionalLineToCut,
+    handleToggleAdditionalLineToCut, cancelAnalysis,
   ]);
 }

@@ -1894,6 +1894,7 @@ function App() {
             pendingAnalysisResult={pendingAnalysisResult}
             onDisplayPrioritizedActions={wrappedDisplayPrioritized}
             onRunAnalysis={wrappedRunAnalysis}
+            onCancelAnalysis={analysis.cancelAnalysis}
             canRunAnalysis={selectedContingency.length > 0 && !analysisLoading}
             onActionSelect={wrappedActionSelect}
             onActionFavorite={wrappedActionFavorite}

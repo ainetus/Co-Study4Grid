@@ -37,6 +37,9 @@ interface ActionFeedProps {
     scrollTarget?: { id: string; seq: number } | null;
     onDisplayPrioritizedActions: () => void;
     onRunAnalysis: () => void;
+    /** Abort an in-flight analysis run. When provided, a Cancel control
+     *  appears alongside the "Analyzing…" indicator (D5). */
+    onCancelAnalysis?: () => void;
     canRunAnalysis: boolean;
     onActionSelect: (actionId: string | null) => void;
     onActionFavorite: (actionId: string) => void;
@@ -145,6 +148,7 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
     pendingAnalysisResult,
     onDisplayPrioritizedActions,
     onRunAnalysis,
+    onCancelAnalysis,
     canRunAnalysis,
     onActionSelect,
     onActionFavorite,
@@ -1132,15 +1136,31 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                 {(analysisLoading || pendingAnalysisResult || (prioritizedEntries.length === 0 && overviewFilteredOutCount === 0)) && (
                     <div style={{ marginBottom: '10px' }}>
                         {analysisLoading ? (
-                            <button disabled style={{
-                                width: '100%', padding: '10px 16px',
-                                background: colors.warningSoft, color: colors.warningText,
-                                border: `1px solid ${colors.warningBorder}`, borderRadius: '8px',
-                                cursor: 'not-allowed', fontSize: '14px', fontWeight: 700,
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                            }}>
-                                ⚙️ Analyzing…
-                            </button>
+                            <>
+                                <button disabled style={{
+                                    width: '100%', padding: '10px 16px',
+                                    background: colors.warningSoft, color: colors.warningText,
+                                    border: `1px solid ${colors.warningBorder}`, borderRadius: '8px',
+                                    cursor: 'not-allowed', fontSize: '14px', fontWeight: 700,
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                                }}>
+                                    ⚙️ Analyzing…
+                                </button>
+                                {onCancelAnalysis && (
+                                    <button
+                                        data-testid="cancel-analysis"
+                                        onClick={onCancelAnalysis}
+                                        style={{
+                                            width: '100%', marginTop: '6px', padding: '8px 16px',
+                                            background: 'transparent', color: colors.danger,
+                                            border: `1px solid ${colors.danger}`, borderRadius: '8px',
+                                            cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+                                        }}
+                                    >
+                                        ✕ Cancel
+                                    </button>
+                                )}
+                            </>
                         ) : pendingAnalysisResult ? (
                             <button
                                 data-testid="display-prioritized-actions"

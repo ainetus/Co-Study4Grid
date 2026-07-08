@@ -104,6 +104,20 @@ describe('ActionFeed', () => {
             expect(screen.queryByTestId('make-first-guess-button')).not.toBeInTheDocument();
         });
 
+        it('shows a Cancel control while analyzing and invokes onCancelAnalysis (D5)', () => {
+            const onCancelAnalysis = vi.fn();
+            render(<ActionFeed {...defaultProps} analysisLoading={true} onCancelAnalysis={onCancelAnalysis} />);
+            const cancel = screen.getByTestId('cancel-analysis');
+            expect(cancel).toBeInTheDocument();
+            fireEvent.click(cancel);
+            expect(onCancelAnalysis).toHaveBeenCalledTimes(1);
+        });
+
+        it('omits the Cancel control when no onCancelAnalysis handler is provided', () => {
+            render(<ActionFeed {...defaultProps} analysisLoading={true} />);
+            expect(screen.queryByTestId('cancel-analysis')).not.toBeInTheDocument();
+        });
+
         it('hides the button while a pending analysis result is awaiting display', () => {
             const pending = {
                 actions: {},
