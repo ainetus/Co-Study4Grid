@@ -353,12 +353,26 @@ mirrored in `scripts/check_standalone_parity.py`'s `SPEC_DETAILS`.
 
 ## SVG handling
 
-The frontend deals with multi-MB pypowsybl SVG payloads. Four
+The frontend deals with multi-MB pypowsybl SVG payloads. Five
 performance levers are applied today:
 
 - **`api.getNetworkDiagram` uses `format=text`** (`api.ts:69-92`):
   fetches a JSON-header + raw-SVG-body response so the browser
   doesn't `JSON.parse` a 25 MB string. Saves ~500 ms on large grids.
+- **Element-adoption ingestion** (`utils/svg/svgBoost.ts`
+  `boostSvgToElement` + `processSvg`, D6): `processSvg` parses the raw
+  pypowsybl SVG **once** into a live `SVGSVGElement`, applies the
+  large-grid boost in place (no `XMLSerializer`), and returns that
+  element. `MemoizedSvgContainer` adopts it via
+  `replaceChildren(element)` instead of re-parsing a serialized string
+  through `innerHTML` — removing the serialize + re-parse round-trip
+  full-NAD loads used to pay. This is the same element rail the
+  svgPatch fast-path already rides (`applyPatchToClone` returns an
+  `SVGSVGElement`). `processSvg` falls back to the raw **string** (and
+  `MemoizedSvgContainer` to `innerHTML`) when the SVG fails to parse or
+  its root is not SVG-namespaced; SLD overlays (`SldOverlay`) keep
+  their own string→`innerHTML` path. The `boostSvgForLargeGrid(string)
+  → string` wrapper is retained for the serialized-SVG unit tests.
 - **`getIdMap(container)`** (`utils/svg/idMap.ts`): cached
   `WeakMap<HTMLElement, Map<id, Element>>` so highlight passes don't
   re-scan `[id]` selectors. Invalidate via `invalidateIdMapCache`

@@ -412,7 +412,7 @@ render hygiene at the App.tsx level.*
 
 | Sev | Finding | Verdict |
 |---|---|---|
-| high | Full-NAD loads pay an avoidable serialize + re-parse round-trip (`svgBoost.ts:621` serializes; every string path re-parses via innerHTML); `MemoizedSvgContainer`'s "zero extra parse" comment is false on all string paths | 🟡 — avoidable slice is several hundred ms per load, not the full 1.4 s |
+| high | Full-NAD loads pay an avoidable serialize + re-parse round-trip (`svgBoost.ts:621` serializes; every string path re-parses via innerHTML); `MemoizedSvgContainer`'s "zero extra parse" comment is false on all string paths | 🟡 — avoidable slice is several hundred ms per load, not the full 1.4 s · ✅ **FIXED (D6, 2026-07-09)**: `processSvg` returns the boosted `SVGSVGElement`; `MemoizedSvgContainer` adopts it via `replaceChildren` — no serialize + `innerHTML` re-parse. Comment now accurate. |
 | med | Whole-object dependency churn re-runs the entire highlight pipeline after every pan/zoom settle | ✅ |
 | med | Default pan/zoom re-rasters the full vector layer per frame (~20 fps on the 5,247-VL grid) while the benchmarked 120 fps bitmap mode ships opt-in | 🟡 — opt-in is the *documented* shipped design pending real-hardware validation; a VL-count auto-enable is a reasonable follow-up, severity low-med |
 | med | Memory retention: 3 always-mounted 200k-node DOMs + unbounded per-action processed-SVG string cache + overview clone | 🟡 — bounded in practice (~100–300 MB worst case within one contingency; cache clears on contingency change); LRU cap still warranted |
@@ -710,11 +710,32 @@ Fixes T4 at the root; QW4 below is the 2-hour stopgap.
 > surfacing as a cancellation notice rather than an error. **QW14**
 > (highlight-pipeline pan/zoom churn) is independent and still open.
 
-**D6. Finish the SVG element-adoption pipeline** *(2–4 days)*
+**D6. Finish the SVG element-adoption pipeline** *(2–4 days)* — 🟢 **CORE DONE (2026-07-09)**
 Make `processSvg` return the already-parsed `SVGSVGElement` (adoptNode) instead of
 re-serializing; route all ingestion paths through the element path that already
 exists for patches; then a VL-count heuristic to auto-select bitmap pan/zoom mode
 (or a discoverability nudge) once validated on operator hardware.
+> **Shipped (element-adoption core)**: the boost is now element-based —
+> `boostSvgToElement(rawSvg, viewBox, vlCount)` parses the pypowsybl SVG once
+> and mutates the live `SVGSVGElement` in place (no `XMLSerializer` round-trip),
+> and `processSvg` returns that element. `MemoizedSvgContainer` already had the
+> `replaceChildren(element)` adoption path (proven by the svgPatch fast-path,
+> which sets `n1Diagram.svg` to a cloned `SVGSVGElement`); the full-NAD load
+> paths now ride the same rail, so a full load no longer pays the
+> serialize + `innerHTML` re-parse the review flagged (`svgBoost.ts:621`).
+> Safety: `boostSvgToElement` returns `null` on a parse error **or** a
+> non-SVG-namespaced root, so `MemoizedSvgContainer` falls back to `innerHTML`
+> (the HTML parser namespaces it) — the SLD-overlay string path is untouched.
+> The old `boostSvgForLargeGrid(string) → string` stays as a thin wrapper for
+> the serialized-SVG unit tests, returning the input unchanged on skip so no
+> re-serialization leaks. Guarded by the element-adoption tests in
+> `svgBoost.test.ts` + a `MemoizedSvgContainer` identity test (the mounted
+> `<svg>` is the SAME instance `processSvg` returned — impossible via a
+> re-parse). Full Vitest suite green.
+> **Deferred (validation-gated)**: the VL-count auto-enable of the bitmap
+> pan/zoom mode is intentionally left open — the review itself gates it on
+> real operator-hardware validation of the bitmap engine (still OFF by
+> default), so shipping an auto-enable blind would be premature.
 
 **D7. Deployment trust & reproducibility** *(3–4 days)* — 🟡 **MOSTLY DONE (2026-07-08)**
 Lockdown profile (env flag set in the Dockerfile) disabling/confining the
