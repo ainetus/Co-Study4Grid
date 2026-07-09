@@ -1661,24 +1661,28 @@ function App() {
             voltageLevelsLength={voltageLevels.length}
             overviewFilters={overviewFilters}
             onOverviewFiltersChange={setOverviewFilters}
-            branches={branches}
-            additionalLinesToCut={additionalLinesToCut}
-            onToggleAdditionalLineToCut={analysis.handleToggleAdditionalLineToCut}
-            n1Overloads={n1Diagram?.lines_overloaded || []}
-            recommenderModel={recommenderModel}
-            setRecommenderModel={setRecommenderModel}
-            availableModels={availableModels}
-            activeModelLabel={
-              result?.active_model
+            additionalLines={{
+              branches: branches,
+              additionalLinesToCut: additionalLinesToCut,
+              onToggleAdditionalLineToCut: analysis.handleToggleAdditionalLineToCut,
+              n1Overloads: n1Diagram?.lines_overloaded || [],
+            }}
+            modelSelector={{
+              recommenderModel: recommenderModel,
+              setRecommenderModel: setRecommenderModel,
+              availableModels: availableModels,
+              activeModelLabel: result?.active_model
                 ? (availableModels?.find(m => m.name === result.active_model)?.label || result.active_model)
-                : null
-            }
-            overflowGraphTime={result?.overflow_graph_time ?? null}
-            actionPredictionTime={result?.action_prediction_time ?? null}
-            assessmentTime={result?.assessment_time ?? null}
-            step1Time={result?.step1_time ?? null}
-            enrichmentTime={result?.enrichment_time ?? null}
-            wallClockTime={result?.wall_clock_time ?? null}
+                : null,
+            }}
+            timing={{
+              overflowGraphTime: result?.overflow_graph_time ?? null,
+              actionPredictionTime: result?.action_prediction_time ?? null,
+              assessmentTime: result?.assessment_time ?? null,
+              step1Time: result?.step1_time ?? null,
+              enrichmentTime: result?.enrichment_time ?? null,
+              wallClockTime: result?.wall_clock_time ?? null,
+            }}
             onClearSuggested={requestClearSuggested}
           />
           )}
@@ -1706,9 +1710,16 @@ function App() {
             onViewModeChange={handleViewModeChange}
             viewModeForTab={viewModeForTab}
             onViewModeChangeForTab={handleViewModeChangeForTab}
-            overflowLayoutMode={diagrams.overflowLayoutMode}
-            overflowLayoutLoading={diagrams.overflowLayoutLoading}
-            onOverflowLayoutChange={wrappedOverflowLayoutChange}
+            overflow={{
+              overflowLayoutMode: diagrams.overflowLayoutMode,
+              overflowLayoutLoading: diagrams.overflowLayoutLoading,
+              onOverflowLayoutChange: wrappedOverflowLayoutChange,
+              onOverflowPinPreview: handlePinPreview,
+              onOverflowPinDoubleClick: handleOverflowPinDoubleClick,
+              overflowPins: allOverflowPins,
+              overflowPinsEnabled: overflowPinsEnabled,
+              onOverflowPinsToggle: setOverflowPinsEnabled,
+            }}
             inspectQuery={inspectQuery}
             onInspectQueryChange={handleInspectQueryChange}
             onInspectQueryChangeFor={handleInspectQueryChangeFor}
@@ -1747,39 +1758,38 @@ function App() {
             }}
             voltageLevels={voltageLevels}
             onVlOpen={handleVlOpen}
-            onOverflowPinPreview={handlePinPreview}
-            onOverflowPinDoubleClick={handleOverflowPinDoubleClick}
             networkPath={networkPath}
             layoutPath={layoutPath}
             onOpenSettings={handleOpenSettings}
-            detachedTabs={detachedTabs}
-            onDetachTab={handleDetachTab}
-            onReattachTab={handleReattachTab}
-            onFocusDetachedTab={focusDetachedTab}
-            isTabTied={isTabTied}
-            onToggleTabTie={toggleTabTie}
-            n1MetaIndex={diagrams.n1MetaIndex}
-            onActionSelect={wrappedActionSelect}
-            onActionFavorite={wrappedActionFavorite}
-            onActionReject={actionsHook.handleActionReject}
-            selectedActionIds={selectedActionIds}
-            rejectedActionIds={rejectedActionIds}
-            onPinPreview={handlePinPreview}
-            onOverviewPzChange={handleOverviewPzChange}
-            monitoringFactor={monitoringFactor}
-            displayName={displayName}
-            overviewFilters={overviewFilters}
-            onOverviewFiltersChange={setOverviewFilters}
-            sidebarCollapsed={sidebarCollapsed}
-            hasActions={Object.keys(result?.actions || {}).length > 0}
-            unsimulatedActionIds={unsimulatedActionIds}
-            unsimulatedActionInfo={unsimulatedActionInfo}
-            onSimulateUnsimulatedAction={handleSimulateUnsimulatedAction}
+            detach={{
+              detachedTabs: detachedTabs,
+              onDetachTab: handleDetachTab,
+              onReattachTab: handleReattachTab,
+              onFocusDetachedTab: focusDetachedTab,
+              isTabTied: isTabTied,
+              onToggleTabTie: toggleTabTie,
+            }}
+            actionOverview={{
+              n1MetaIndex: diagrams.n1MetaIndex,
+              onActionSelect: wrappedActionSelect,
+              onActionFavorite: wrappedActionFavorite,
+              onActionReject: actionsHook.handleActionReject,
+              selectedActionIds: selectedActionIds,
+              rejectedActionIds: rejectedActionIds,
+              onPinPreview: handlePinPreview,
+              onOverviewPzChange: handleOverviewPzChange,
+              monitoringFactor: monitoringFactor,
+              displayName: displayName,
+              overviewFilters: overviewFilters,
+              onOverviewFiltersChange: setOverviewFilters,
+              sidebarCollapsed: sidebarCollapsed,
+              hasActions: Object.keys(result?.actions || {}).length > 0,
+              unsimulatedActionIds: unsimulatedActionIds,
+              unsimulatedActionInfo: unsimulatedActionInfo,
+              onSimulateUnsimulatedAction: handleSimulateUnsimulatedAction,
+            }}
             showVoltageLevelNames={showVoltageLevelNames}
             onToggleVoltageLevelNames={handleToggleVoltageLevelNames}
-            overflowPins={allOverflowPins}
-            overflowPinsEnabled={overflowPinsEnabled}
-            onOverflowPinsToggle={setOverflowPinsEnabled}
           />
         </div>
       </div>

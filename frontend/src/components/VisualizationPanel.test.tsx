@@ -14,6 +14,39 @@ import VisualizationPanel from './VisualizationPanel';
 import type { DiagramData, AnalysisResult, TabId, ActionOverviewFilters } from '../types';
 import { DEFAULT_ACTION_OVERVIEW_FILTERS } from '../utils/actionTypes';
 
+// D4 consolidation: VisualizationPanel groups the detached-tabs, overflow,
+// and action-overview wiring into three cohesive object props (`detach`,
+// `overflow`, `actionOverview`) instead of ~30 flat props. Most of the
+// behavioural tests below predate that grouping and set the individual
+// fields flat (e.g. `detachedTabs`, `overflowLayoutMode`, `onActionSelect`).
+// Rather than nest every one by hand, `createDefaultProps` partitions any
+// flat cluster key it recognises back into its grouped object — so each
+// test keeps asserting on what it exercises (Tie button, layout toggle, …)
+// without prop-nesting boilerplate. A test may also pass a whole
+// `detach` / `overflow` / `actionOverview` object directly (see the grouped
+// sldEdit tests for the same style); the flat-derived group is merged on top.
+const CLUSTER_KEYS: Record<string, readonly string[]> = {
+    detach: ['detachedTabs', 'onDetachTab', 'onReattachTab', 'onFocusDetachedTab', 'isTabTied', 'onToggleTabTie'],
+    overflow: ['overflowLayoutMode', 'overflowLayoutLoading', 'onOverflowLayoutChange', 'onOverflowPinPreview', 'onOverflowPinDoubleClick', 'overflowPins', 'overflowPinsEnabled', 'onOverflowPinsToggle'],
+    actionOverview: ['n1MetaIndex', 'onActionSelect', 'onActionFavorite', 'onActionReject', 'selectedActionIds', 'rejectedActionIds', 'onPinPreview', 'onOverviewPzChange', 'monitoringFactor', 'displayName', 'overviewFilters', 'onOverviewFiltersChange', 'sidebarCollapsed', 'hasActions', 'unsimulatedActionIds', 'unsimulatedActionInfo', 'onSimulateUnsimulatedAction'],
+};
+
+const groupClusterOverrides = (overrides: Record<string, unknown>) => {
+    const groups: Record<string, Record<string, unknown>> = { detach: {}, overflow: {}, actionOverview: {} };
+    const rest: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(overrides)) {
+        const groupName = Object.keys(CLUSTER_KEYS).find(g => CLUSTER_KEYS[g].includes(key));
+        if (groupName) groups[groupName][key] = value;
+        else rest[key] = value;
+    }
+    return {
+        ...rest,
+        ...(Object.keys(groups.detach).length ? { detach: groups.detach } : {}),
+        ...(Object.keys(groups.overflow).length ? { overflow: groups.overflow } : {}),
+        ...(Object.keys(groups.actionOverview).length ? { actionOverview: groups.actionOverview } : {}),
+    };
+};
+
 const createDefaultProps = (overrides: Record<string, unknown> = {}) => ({
     activeTab: 'n' as TabId,
     configLoading: false,
@@ -50,7 +83,7 @@ const createDefaultProps = (overrides: Record<string, unknown> = {}) => ({
     networkPath: '',
     layoutPath: '',
     onOpenSettings: vi.fn(),
-    ...overrides,
+    ...groupClusterOverrides(overrides),
 });
 
 describe('VisualizationPanel', () => {

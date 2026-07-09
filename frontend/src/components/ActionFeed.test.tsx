@@ -2975,11 +2975,15 @@ describe('ActionFeed', () => {
         // extra cuts where the analysis is launched.  It must
         // disappear the moment analysis is in flight or results are
         // pending — same gate as the button itself.
+        // D4 consolidation: the picker wiring is one grouped `additionalLines`
+        // object on ActionFeed instead of four flat props.
         const pickerProps = {
-            branches: ['LINE_A', 'LINE_B', 'LINE_C'],
-            additionalLinesToCut: new Set<string>(),
-            onToggleAdditionalLineToCut: vi.fn(),
-            n1Overloads: ['LINE_C'],
+            additionalLines: {
+                branches: ['LINE_A', 'LINE_B', 'LINE_C'],
+                additionalLinesToCut: new Set<string>(),
+                onToggleAdditionalLineToCut: vi.fn(),
+                n1Overloads: ['LINE_C'],
+            },
         };
 
         it('renders the picker alongside Analyze & Suggest in the empty state', () => {
@@ -3132,13 +3136,17 @@ describe('ActionFeed', () => {
         // model that produced the suggestions is reminded below the
         // Suggested Actions tab header alongside a danger-coloured Clear
         // button.
+        // D4 consolidation: the model dropdown wiring is one grouped
+        // `modelSelector` object on ActionFeed instead of flat props.
         const modelProps = {
-            recommenderModel: 'expert',
-            setRecommenderModel: vi.fn(),
-            availableModels: [
-                { name: 'expert', label: 'Expert system', requires_overflow_graph: true, is_default: true, params: [] },
-                { name: 'random_overflow', label: 'Random (post overflow analysis)', requires_overflow_graph: true, is_default: false, params: [] },
-            ],
+            modelSelector: {
+                recommenderModel: 'expert',
+                setRecommenderModel: vi.fn(),
+                availableModels: [
+                    { name: 'expert', label: 'Expert system', requires_overflow_graph: true, is_default: true, params: [] },
+                    { name: 'random_overflow', label: 'Random (post overflow analysis)', requires_overflow_graph: true, is_default: false, params: [] },
+                ],
+            },
         };
 
         const recAction = {
@@ -3163,7 +3171,11 @@ describe('ActionFeed', () => {
         it('changing the model fires setRecommenderModel and logs recommender_model_changed', () => {
             const setRecommenderModel = vi.fn();
             render(
-                <ActionFeed {...defaultProps} {...modelProps} setRecommenderModel={setRecommenderModel} canRunAnalysis />,
+                <ActionFeed
+                    {...defaultProps}
+                    modelSelector={{ ...modelProps.modelSelector, setRecommenderModel }}
+                    canRunAnalysis
+                />,
             );
             fireEvent.change(screen.getByLabelText('Model:'), { target: { value: 'random_overflow' } });
             expect(setRecommenderModel).toHaveBeenCalledWith('random_overflow');
@@ -3184,7 +3196,7 @@ describe('ActionFeed', () => {
                 <ActionFeed
                     {...defaultProps}
                     actions={{ rec_1: recAction }}
-                    activeModelLabel="Expert system"
+                    modelSelector={{ activeModelLabel: 'Expert system' }}
                     onClearSuggested={vi.fn()}
                 />,
             );
@@ -3198,7 +3210,7 @@ describe('ActionFeed', () => {
                 <ActionFeed
                     {...defaultProps}
                     actions={{}}
-                    activeModelLabel="Expert system"
+                    modelSelector={{ activeModelLabel: 'Expert system' }}
                     onClearSuggested={vi.fn()}
                 />,
             );
@@ -3210,13 +3222,15 @@ describe('ActionFeed', () => {
                 <ActionFeed
                     {...defaultProps}
                     actions={{ rec_1: recAction }}
-                    activeModelLabel="Expert system"
-                    step1Time={1.0}
-                    overflowGraphTime={2.5}
-                    actionPredictionTime={1.25}
-                    assessmentTime={0.4}
-                    enrichmentTime={0.1}
-                    wallClockTime={5.5}
+                    modelSelector={{ activeModelLabel: 'Expert system' }}
+                    timing={{
+                        step1Time: 1.0,
+                        overflowGraphTime: 2.5,
+                        actionPredictionTime: 1.25,
+                        assessmentTime: 0.4,
+                        enrichmentTime: 0.1,
+                        wallClockTime: 5.5,
+                    }}
                 />,
             );
             const total = screen.getByTestId('execution-time-total');
@@ -3238,10 +3252,12 @@ describe('ActionFeed', () => {
                 <ActionFeed
                     {...defaultProps}
                     actions={{ rec_1: recAction }}
-                    activeModelLabel="Random"
-                    overflowGraphTime={null}
-                    actionPredictionTime={0.8}
-                    assessmentTime={0.2}
+                    modelSelector={{ activeModelLabel: 'Random' }}
+                    timing={{
+                        overflowGraphTime: null,
+                        actionPredictionTime: 0.8,
+                        assessmentTime: 0.2,
+                    }}
                 />,
             );
             const total = screen.getByTestId('execution-time-total');
@@ -3258,7 +3274,7 @@ describe('ActionFeed', () => {
                 <ActionFeed
                     {...defaultProps}
                     actions={{ rec_1: recAction }}
-                    activeModelLabel="Expert system"
+                    modelSelector={{ activeModelLabel: 'Expert system' }}
                 />,
             );
             expect(screen.queryByTestId('execution-time-total')).not.toBeInTheDocument();
@@ -3270,7 +3286,7 @@ describe('ActionFeed', () => {
                 <ActionFeed
                     {...defaultProps}
                     actions={{ rec_1: recAction }}
-                    activeModelLabel="Expert system"
+                    modelSelector={{ activeModelLabel: 'Expert system' }}
                     onClearSuggested={onClearSuggested}
                 />,
             );

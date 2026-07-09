@@ -20,6 +20,56 @@ import ActionSearchDropdown from './ActionSearchDropdown';
 import { colors } from '../styles/tokens';
 import { apiErrorMessage } from '../utils/apiError';
 
+/**
+ * Per-stage analysis execution-time breakdown (seconds), grouped (D4)
+ * instead of six flat props. All are echoed by the backend in the step-2
+ * ``result`` event and rendered together as the one-line breakdown under
+ * "Suggestions produced by …". ``overflowGraphTime`` is ``null`` when the
+ * active model does not consume the overflow graph (its column is hidden
+ * in that case). ``step1Time`` is the contingency simulation that runs
+ * before step 2; ``enrichmentTime`` is the Co-Study4Grid post-processing
+ * after assessment. ``wallClockTime`` is the frontend-measured round-trip
+ * from the click to the result event. Optional as a whole.
+ */
+export interface AnalysisTimingControls {
+    overflowGraphTime?: number | null;
+    actionPredictionTime?: number | null;
+    assessmentTime?: number | null;
+    step1Time?: number | null;
+    enrichmentTime?: number | null;
+    wallClockTime?: number | null;
+}
+
+/**
+ * Recommendation-model selector wiring, grouped (D4). The dropdown above
+ * "Analyze & Suggest" (mirror of the same control in the Settings modal)
+ * lets the operator pick a different model and re-run without opening
+ * Settings; ``activeModelLabel`` is the display label of the model that
+ * produced the currently-shown suggestions (echoed by the backend in the
+ * step-2 ``result`` event as ``active_model``). Optional as a whole.
+ */
+export interface ModelSelectorControls {
+    recommenderModel?: string;
+    setRecommenderModel?: (v: string) => void;
+    availableModels?: ModelDescriptor[];
+    activeModelLabel?: string | null;
+}
+
+/**
+ * "Additional lines to cut" picker wiring, grouped (D4): the catalogue of
+ * disconnectable elements feeding the "additional lines to prevent flow
+ * increase" picker rendered above the Analyze & Suggest button, the
+ * operator-selected extras (ExpertAgent's ``additionalLinesToCut``), and
+ * the N-1 detected overloads excluded from the picker suggestions.
+ * Optional as a whole.
+ */
+export interface AdditionalLinesControls {
+    branches?: string[];
+    additionalLinesToCut?: Set<string>;
+    onToggleAdditionalLineToCut?: (line: string) => void;
+    n1Overloads?: string[];
+}
+
 interface ActionFeedProps {
     actions: Record<string, ActionDetail>;
     actionScores?: Record<string, Record<string, unknown>>;
@@ -84,50 +134,12 @@ interface ActionFeedProps {
     overviewFilters?: ActionOverviewFilters;
     /** Update the shared filter state (owned by App.tsx). */
     onOverviewFiltersChange?: (next: ActionOverviewFilters) => void;
-    /**
-     * Catalogue of disconnectable elements feeding the
-     * "additional lines to prevent flow increase" picker rendered
-     * above the Analyze & Suggest button.
-     */
-    branches?: string[];
-    /** Operator-selected extras (ExpertAgent's `additionalLinesToCut`). */
-    additionalLinesToCut?: Set<string>;
-    onToggleAdditionalLineToCut?: (line: string) => void;
-    /** N-1 detected overloads — excluded from the picker suggestions. */
-    n1Overloads?: string[];
-    /**
-     * Recommendation model selector exposed above "Analyze & Suggest"
-     * (mirror of the same control in the Settings modal). Lets the
-     * operator pick a different model and re-run without opening
-     * Settings.
-     */
-    recommenderModel?: string;
-    setRecommenderModel?: (v: string) => void;
-    availableModels?: ModelDescriptor[];
-    /**
-     * Display label of the model that produced the currently-shown
-     * suggestions (echoed by the backend in the step-2 `result` event
-     * as ``active_model``). Rendered just below the "Suggested Actions"
-     * tab header alongside the Clear button.
-     */
-    activeModelLabel?: string | null;
-    /**
-     * Per-stage execution times (seconds) for the current analysis,
-     * echoed by the backend in the step-2 ``result`` event. Rendered as
-     * a one-line breakdown right under "Suggestions produced by …".
-     * ``overflowGraphTime`` is ``null`` when the active model does not
-     * consume the overflow graph (its column is hidden in that case).
-     * ``step1Time`` is the contingency simulation that runs before
-     * step 2; ``enrichmentTime`` is the Co-Study4Grid post-processing
-     * after assessment. ``wallClockTime`` is the frontend-measured
-     * round-trip from the click to the result event.
-     */
-    overflowGraphTime?: number | null;
-    actionPredictionTime?: number | null;
-    assessmentTime?: number | null;
-    step1Time?: number | null;
-    enrichmentTime?: number | null;
-    wallClockTime?: number | null;
+    /** "Additional lines to cut" picker wiring, grouped (D4). See AdditionalLinesControls. */
+    additionalLines?: AdditionalLinesControls;
+    /** Recommendation-model selector wiring, grouped (D4). See ModelSelectorControls. */
+    modelSelector?: ModelSelectorControls;
+    /** Per-stage analysis execution-time breakdown, grouped (D4). See AnalysisTimingControls. */
+    timing?: AnalysisTimingControls;
     /**
      * Clear the un-touched recommender suggestions — wipes entries
      * still in ``suggestedByRecommenderIds`` that the operator has
@@ -169,22 +181,34 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
     onActionDiagramPrimed,
     voltageLevelsLength,
     overviewFilters,
-    branches,
-    additionalLinesToCut,
-    onToggleAdditionalLineToCut,
-    n1Overloads,
-    recommenderModel,
-    setRecommenderModel,
-    availableModels,
-    activeModelLabel,
-    overflowGraphTime,
-    actionPredictionTime,
-    assessmentTime,
-    step1Time,
-    enrichmentTime,
-    wallClockTime,
+    additionalLines,
+    modelSelector,
+    timing,
     onClearSuggested,
 }) => {
+    // Unpack the grouped D4 controls so the body below keeps referring to
+    // the individual fields unchanged (defaults preserved from the former
+    // flat props).
+    const {
+        branches,
+        additionalLinesToCut,
+        onToggleAdditionalLineToCut,
+        n1Overloads,
+    } = additionalLines ?? {};
+    const {
+        recommenderModel,
+        setRecommenderModel,
+        availableModels,
+        activeModelLabel,
+    } = modelSelector ?? {};
+    const {
+        overflowGraphTime,
+        actionPredictionTime,
+        assessmentTime,
+        step1Time,
+        enrichmentTime,
+        wallClockTime,
+    } = timing ?? {};
     const [searchOpen, setSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [combineModalOpen, setCombineModalOpen] = useState(false);

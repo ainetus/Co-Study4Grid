@@ -206,9 +206,9 @@ already scopes the fix. → **D4**. 🟡 **Stages 1–3 done 2026-07-08**: the
 `useManualSimulation` extraction removed the two stream-parser business
 flows from `App.tsx` (2,048 → 1,795; ceiling ratcheted to 1,850); the
 decoupled `useDiagrams` domains are now sub-hooks behind the facade
-(1,210 → 1,145); and `VisualizationPanel`'s ~22 SLD-edit props collapsed
-into one grouped object (93 → 72). The deeply-coupled useDiagrams core
-and the remaining prop clusters (incl. `ActionFeed`) are the tail.
+(1,210 → 1,145); and every exploded prop cluster on `VisualizationPanel`
+(93 → 41) and `ActionFeed` (44 → 36) collapsed into cohesive state-object
+props. Only the deeply-coupled useDiagrams core remains (tracked as FU-1).
 
 ### T6. The docs strategy outgrew its maintenance model
 The doc *corpus* is a genuine strength (30+ indexed docs, accurate endpoint table,
@@ -539,9 +539,9 @@ Ordered by leverage; each unblocks or de-risks the ones after it.
 > follow-up). **D2** and **D4** are **partially shipped** (D2 — the
 > machine-check backbone + error contract; D4 — stages 1–3: the
 > `useManualSimulation` extraction + ceiling ratchet, the facade-preserving
-> `useDiagrams` sub-hook split, and the `VisualizationPanel` SLD-edit props
-> consolidation, with the deeply-coupled useDiagrams core + the remaining
-> prop clusters still open). Status is noted
+> `useDiagrams` sub-hook split, and the full `VisualizationPanel` +
+> `ActionFeed` props consolidation, with only the deeply-coupled useDiagrams
+> core still open — tracked as FU-1). Status is noted
 > per-item below and mirrored in the dimension-finding tables in Part IV.
 > D6, D8, D9 remain open.
 
@@ -665,18 +665,28 @@ already uses). Then *lower* `APP_TSX_MAX` to lock in the win.
 > behind the byte-identical `DiagramsState` facade —
 > `hooks/useOverflowLayout.ts` + `hooks/useActionDiagramCache.ts`;
 > useDiagrams **1210 → 1145** lines.
-> **Shipped (stage 3, D4d — props consolidation)**: the ~22 interactive
-> SLD-edit props on `VisualizationPanel` collapsed into one grouped
-> `sldEdit?: SldEditControls` object (props **93 → 72**).
-> All behaviour-preserving (full Vitest suite green); guarded by
+> **Shipped (stage 3, D4d + follow-ups — props consolidation)**: every
+> exploded prop cluster on the two hub-fed presentational components was
+> collapsed into cohesive optional state-object props (the `SettingsModal`
+> pattern), each unpacked at the top of the component body so the render
+> tree is byte-for-byte unchanged:
+> - `VisualizationPanel` (**~93 → 41** props): `sldEdit?: SldEditControls`
+>   (the ~22 interactive SLD-edit props), `detach?: DetachControls` (6
+>   detached-tabs props), `overflow?: OverflowControls` (8 layout-toggle +
+>   action-pin props), `actionOverview?: ActionOverviewControls` (17
+>   pin-interaction / selection / filter props).
+> - `ActionFeed` (**~44 → 36** props): `additionalLines?: AdditionalLinesControls`
+>   (4 picker props), `modelSelector?: ModelSelectorControls` (4 model-dropdown
+>   props), `timing?: AnalysisTimingControls` (6 execution-time props).
+>
+> All behaviour-preserving (full Vitest suite green — 1,771 specs); guarded by
 > `useManualSimulation` / `useOverflowLayout` / `useActionDiagramCache`
-> hook tests + `VisualizationPanel` grouped-prop tests.
-> **Remaining tail (higher-risk / more of the same, still open)**: split
-> the deeply-coupled useDiagrams *core* (`handleActionSelect`,
-> `zoomToElement`, the DOM-mutating voltage-filter effects — moving effect
-> order that tsc can't verify), and consolidate the remaining
-> `VisualizationPanel` clusters (detached-tabs / overflow-pins /
-> action-overview) + the `ActionFeed` props.
+> hook tests + the `VisualizationPanel` / `ActionFeed` grouped-prop tests.
+> **Remaining tail**: the deeply-coupled useDiagrams *core*
+> (`handleActionSelect`, `zoomToElement`, the DOM-mutating voltage-filter
+> effects — moving effect order that tsc can't verify) is deferred and
+> tracked as **FU-1** in [`followups.md`](followups.md) (GitHub Issues are
+> disabled on the fork).
 
 **D5. One streaming + notification pipeline** *(3–4 days)* — ✅ **DONE (2026-07-08)**
 `utils/ndjsonStream.ts` (buffer carry-over, trailing flush, uniform error
