@@ -549,6 +549,23 @@ Ordered by leverage; each unblocks or de-risks the ones after it.
 > noted per-item below and mirrored in the dimension-finding tables in
 > Part IV. D9 remains open.
 
+### Status at a glance (2026-07-09)
+
+| Rev | Title | Status | What remains |
+|-----|-------|--------|--------------|
+| D1 | De-ghost the recommender subsystem | ✅ Done | — |
+| D2 | API contract machine-check + error envelope | 🟡 Partial | response models on the gzipped endpoints; `types.ts` generation from the snapshot; blanket-handler removal |
+| D3 | Shared-`Network` concurrency ownership | ✅ Done | — |
+| D4 | Relieve the two frontend hubs | 🟡 Mostly | **FU-1** — the deeply-coupled `useDiagrams` core (`handleActionSelect` / `zoomToElement` / DOM-mutating voltage filter) |
+| D5 | One streaming + notification pipeline | ✅ Done | — |
+| D6 | SVG element-adoption pipeline | 🟢 Core done | VL-count auto-enable of bitmap pan/zoom (validation-gated on operator hardware) |
+| D7 | Deployment trust & reproducibility | 🟡 Mostly | pinned-Python-closure lockfile; Dockerfile dead-weight / `HEALTHCHECK` / config-merge |
+| D8 | Reproducible data & benchmark supply chain | 🟢 Mostly | **FU-2** — physically replay the exported session log (trusted, not self-reported, ranking numbers) |
+| D9 | Docs as a checked artifact | ⬜ Open | not started |
+
+Full accounting of every open item — deep-revision tails, follow-ups, and the
+remaining quick wins — is in **[§ Part V.5 — What's left](#part-v5--whats-left-2026-07-09)** below.
+
 **D1. De-ghost the recommender subsystem** *(2–3 days — do first)* — ✅ **DONE (2026-07-07)**
 Replace import-time monkey-patching with explicit composition:
 `RecommenderService` inherits `ModelSelectionMixin` directly (it is already
@@ -804,13 +821,77 @@ session log replayable (the e2e harness already contains the replay machinery).
 / line-count claims), warn-only first week; replace line-number anchors with
 symbol anchors; slim the CLAUDE.md trees to what the checker can verify.
 
+## Part V.5 — What's left (2026-07-09)
+
+The shipped work closed the highest-leverage structural findings — the
+monkey-patched recommender (T1 → **D1**), the drifted streaming/notification
+copies (T4 → **D5**), shared-`Network` concurrency ownership (**D3**), the two
+overloaded frontend hubs (**D4** stages 1–3), the SVG serialize/re-parse
+round-trip (**D6**), and the two supply-chain gaps (**D7**/**D8**). What remains,
+in rough priority order:
+
+**Deep revisions still open or with a tail**
+
+- **D9 — docs as a checked artifact** *(not started; highest-value remaining
+  structural item)*. `check_docs_tree.py` in the gate + symbol anchors + slimmed
+  CLAUDE.md trees. The review's own "docs drift" finding keeps recurring (its
+  line-number anchors are already stale — see Part VII), so this is the item that
+  stops the inventory layer from rotting again.
+- **D2 tail** — the machine-check backbone + `{detail, code}` envelope shipped;
+  still open: response models on the gzipped endpoints, generating `types.ts`
+  from `openapi.snapshot.json`, and removing the blanket exception handler. See
+  [`api-contract-machine-check.md`](api-contract-machine-check.md).
+- **D7 tail** — the reproducible-Python-closure lockfile (a `pip-compile` output
+  consumed by **both** CI and the Dockerfile, so "mirrors CI" becomes true), plus
+  the Dockerfile hygiene items (drop the jupyter/`scripts/`/tests dead weight,
+  real `PORT`, `HEALTHCHECK`, config-merge on upgrade — overlaps QW25). See
+  [`deployment-trust.md`](deployment-trust.md).
+
+**Tracked follow-ups** (in [`followups.md`](followups.md), since GitHub Issues are
+disabled on the fork)
+
+- **FU-1** — split the deeply-coupled `useDiagrams` core (D4's remaining tail:
+  `handleActionSelect`, `zoomToElement`, the DOM-mutating voltage filter). Risky
+  because it relocates effect-registration order that `tsc` cannot verify — needs
+  behavioural coverage in place first.
+- **FU-2** — physically replay the exported Game Mode session log (D8's remaining
+  sub-task) so the public ranking scores re-driven numbers, not self-reported
+  ones. Needs a running backend + real grid to verify, hence deferred.
+
+**Open quick wins** (Part VI, minus the ✅ / subsumed rows)
+
+- *Backend*: QW6 (generic error details + logged traceback — largely subsumed by
+  the D2 envelope; audit for any surviving `str(e)`), QW8 (per-PR recommender pin
+  + float in a canary job), QW11/QW12 (vectorise the 85 k-iteration
+  `_diff_switches`; memoise the per-study N-state snapshot), QW13 (ship the patch
+  payload in `simulate-and-variant-diagram`), QW17 (single `Overflow_Graph` path
+  constant + automated `reset()`-completeness test), QW22 (watchdog on the legacy
+  analysis poll loop, or delete the legacy `/api/run-analysis` slice).
+- *Frontend perf/UX*: QW14 (highlight pipeline re-running on every pan/zoom settle
+  — overlaps FU-1), QW15 (LRU-cap `actionDiagramCacheRef`), QW19 (theme into
+  detached popups), QW20 (`useModalKeyboard`: Escape / focus-trap / `aria-modal`),
+  QW21 (frontend `console.log` ceiling in the gate — D6 deliberately kept the boost
+  logs, so start the ceiling at the current count and ratchet down).
+- *Delivery/docs*: QW9 tail (the `Overflow_Graph/*.html` fixture decision, already
+  reasoned), QW16 (batch the 20+ doc mismatches — folds into D9), QW23 (collapse to
+  one CI system), QW24 (Game Mode mid-session retry / preset↔artifact test), QW25
+  (Dockerfile hygiene — overlaps the D7 tail).
+
+**Already subsumed by shipped deep revisions** (no separate work): QW1 (root
+`tests/` rescued by D1), QW5 (variant `try/finally` folded into D3), QW10 (the one
+NDJSON reader = D5.1), QW18 (single-flight 409 = the full D3 lock).
+
+**Suggested next step**: **D9** — it is self-contained (≈1–2 days), closes the
+recurring doc-drift finding, and makes the inventory trustworthy again; or **FU-1**
+paired with its behavioural harness if continuing the frontend track.
+
 ## Part VI — Quick wins
 
 Day-one (each ≤ ~2 h, near-zero risk):
 
 | # | Fix | Where |
 |---|---|---|
-| QW1 | Collect root `tests/` (add to `pytest.ini` testpaths or move files) — *the highest value-per-hour change in this review* | pytest.ini / CI |
+| QW1 | ✅ **DONE (2026-07-07, subsumed by D1)** — all 8 root `tests/` files rescued into `expert_backend/tests/` (the one filename collision resolved), so CI's `pytest.ini` testpaths now cover them | pytest.ini / CI |
 | QW2 | ✅ **DONE (2026-07-07)** — `async def` → `def` on `run_analysis_step1` (unblocks the event loop; `TestEventLoopSafety` guard) | `main.py` |
 | QW3 | ✅ **DONE (2026-07-08)** — CORS default `*` → loopback dev origins (`localhost`/`127.0.0.1` :5173/:4173); wildcard is explicit opt-in (`CORS_ALLOWED_ORIGINS="*"`) | `main.py` |
 | QW4 | ✅ **DONE (2026-07-08)** — `useAnalysis.error` now surfaced through `StatusToasts` (`error \|\| analysis.error`, cleared on contingency-clear); the two `console.error`-only catches already carried `setError`, and the remaining SLD-preview catch got one. Guarded by a new App-integration test | `App.tsx` |
@@ -832,7 +913,7 @@ Week-one (½–1 day each):
 | QW15 | LRU-cap `actionDiagramCacheRef` (2–3 entries); stop duplicate string retention | `useDiagrams.ts` |
 | QW16 | Batch-fix the 20+ verified doc mismatches; truthful `.env.example`; symbol anchors; reframe PARITY_AUDIT as closed | docs |
 | QW17 | Single `Overflow_Graph` path constant; automate the `reset()` completeness invariant (fresh-instance `__dict__` comparison test) + fix the two leaks | backend |
-| QW18 | Single-flight lock or 409 on `update_config`/analysis entry points (coarse version of D3) | backend |
+| QW18 | ✅ **DONE (2026-07-07, subsumed by D3)** — the full service-level lock + HTTP-409 study-mutation gate shipped as D3, superseding this coarse version | backend |
 | QW19 | Theme propagation into detached popups; purge `'white'` literals | `useDetachedTabs` |
 | QW20 | `useModalKeyboard` hook: Escape, initial focus, focus restore, `aria-modal` | modals |
 | QW21 | Frontend `console.log` ceiling in the gate (start at 25, ratchet down) | `check_code_quality.py` |
