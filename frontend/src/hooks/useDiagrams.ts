@@ -15,6 +15,8 @@ import {
 import { processSvg } from '../utils/svgUtils';
 import { cloneBaseSvg, applyPatchToClone } from '../utils/svgPatch';
 import { parseNdjsonStream } from '../utils/ndjsonStream';
+import { useOverflowLayout } from './useOverflowLayout';
+import { useActionDiagramCache } from './useActionDiagramCache';
 import type { DiagramData, ViewBox, MetadataIndex, TabId, VlOverlay, SldTab, AnalysisResult, ActionDetail } from '../types';
 import { interactionLogger } from '../utils/interactionLogger';
 import { useSldOverlay } from './useSldOverlay';
@@ -247,52 +249,11 @@ export function useDiagrams(
 
   const [showVoltageLevelNames, setShowVoltageLevelNames] = useState<boolean>(true);
 
-  // Overflow-graph layout toggle state. `overflowLayoutLoading` is
-  // true only during a cache-miss regeneration (graphviz re-run);
-  // cache hits resolve synchronously so the UI doesn't flash a
-  // spinner for instant switches.
-  const [overflowLayoutMode, setOverflowLayoutMode] =
-    useState<'hierarchical' | 'geo'>('hierarchical');
-  const [overflowLayoutLoading, setOverflowLayoutLoading] = useState(false);
-  const handleOverflowLayoutChange = useCallback(async (
-    mode: 'hierarchical' | 'geo',
-    setResult: Dispatch<SetStateAction<AnalysisResult | null>>,
-    setError: (v: string) => void,
-  ) => {
-    // Consult the latest state from React — bail out if the user
-    // clicked the currently-active button (prevents a pointless
-    // backend round-trip).
-    setOverflowLayoutMode((current) => {
-      if (current === mode) return current;
-      return current;  // actual change happens after the request resolves
-    });
-    const correlationId = interactionLogger.record('overflow_layout_mode_toggled', {
-      to: mode,
-    });
-    const startTs = new Date().toISOString();
-    setOverflowLayoutLoading(true);
-    try {
-      const response = await api.regenerateOverflowGraph(mode);
-      setResult((prev) => {
-        if (!prev) return prev;
-        return { ...prev, pdf_url: response.pdf_url, pdf_path: response.pdf_path };
-      });
-      setOverflowLayoutMode(mode);
-      interactionLogger.recordCompletion('overflow_layout_mode_toggled', correlationId, {
-        to: mode,
-        cached: response.cached,
-      }, startTs);
-    } catch (e) {
-      const msg = (e instanceof Error) ? e.message : String(e);
-      setError(`Failed to regenerate overflow graph in ${mode} mode: ${msg}`);
-      interactionLogger.recordCompletion('overflow_layout_mode_toggled', correlationId, {
-        to: mode,
-        error: msg,
-      }, startTs);
-    } finally {
-      setOverflowLayoutLoading(false);
-    }
-  }, []);
+  // Overflow-graph layout toggle domain (D4) — self-contained sub-hook.
+  const {
+    overflowLayoutMode, setOverflowLayoutMode,
+    overflowLayoutLoading, handleOverflowLayoutChange,
+  } = useOverflowLayout();
 
   // ViewBox
   const [originalViewBox, setOriginalViewBox] = useState<ViewBox | null>(null);
@@ -349,26 +310,11 @@ export function useDiagrams(
   const committedBranchRef = useRef<string[]>([]);
   const restoringSessionRef = useRef(false);
 
-  // Action-variant diagram cache. Populated by ActionFeed when it adds or
-  // re-simulates a manual action through the streamed
-  // `simulateAndVariantDiagramStream` endpoint — the `{type:"diagram",...}`
-  // event yields a ready-to-render diagram while the user is still reading
-  // the sidebar card. If the user subsequently clicks that card,
-  // `handleActionSelect` reads the cache and paints the SVG instantly,
-  // saving the 5-7 s server-side pypowsybl NAD regeneration that the fast
-  // path (`getActionVariantDiagram`) would otherwise trigger.
-  //
-  // Keyed by action id. Values are ALREADY processed (processSvg ran, so
-  // the entry has `originalViewBox` and the scaled SVG). Cleared whenever
-  // the contingency changes so a stale post-action NAD from a previous
-  // N-1 can't leak through.
-  const actionDiagramCacheRef = useRef<Map<string, DiagramData>>(new Map());
-  // Joined string for the dependency check — useEffect needs a stable
-  // primitive, but the contingency state is a list.
-  const selectedContingencyKey = selectedContingency.join('+');
-  useEffect(() => {
-    actionDiagramCacheRef.current.clear();
-  }, [selectedContingencyKey]);
+  // Action-variant diagram cache domain (D4) — the prime-then-paint
+  // cache + primeActionDiagram, cleared on contingency change. The joined
+  // contingency string is the stable primitive its clear-effect keys on.
+  const { actionDiagramCacheRef, primeActionDiagram } =
+    useActionDiagramCache(selectedContingency.join('+'));
 
   // Tracks the last actionId the user clicked. Written synchronously
   // at the top of `handleActionSelect`, read after each async await
@@ -379,17 +325,6 @@ export function useDiagrams(
   // with the previous selection for a moment, or, worse, overwrite
   // the current one with an older version).
   const latestActionSelectRef = useRef<string | null>(null);
-
-  // Exposed to ActionFeed via App.tsx props: processes the raw NDJSON
-  // diagram event's SVG and stores it for later click-to-view.
-  const primeActionDiagram = useCallback((actionId: string, raw: DiagramData & { svg: string }, voltageLevelsLength: number) => {
-    try {
-      const { svg, viewBox } = processSvg(raw.svg, voltageLevelsLength);
-      actionDiagramCacheRef.current.set(actionId, { ...raw, svg, originalViewBox: viewBox });
-    } catch (e) {
-      console.warn('[primeActionDiagram] processSvg failed for', actionId, e);
-    }
-  }, []);
 
   // Voltage filter
   const [nominalVoltageMap, setNominalVoltageMap] = useState<Record<string, number>>({});
@@ -693,7 +628,7 @@ export function useDiagrams(
     } finally {
       setActionDiagramLoading(false);
     }
-  }, [selectedActionId, actionPZ.viewBox, n1PZ.viewBox, nPZ.viewBox, nDiagram, n1Diagram, nMetaIndex, n1MetaIndex]);
+  }, [selectedActionId, actionPZ.viewBox, n1PZ.viewBox, nPZ.viewBox, nDiagram, n1Diagram, nMetaIndex, n1MetaIndex, actionDiagramCacheRef]);
 
   // Helper used by per-tab inspect overlays: records which tab
   // should be zoomed on the auto-zoom effect's next tick, then
@@ -1193,7 +1128,7 @@ export function useDiagrams(
     activeTab, nDiagram, n1Diagram, n1Loading,
     selectedActionId, actionDiagram, actionDiagramLoading, actionViewMode, handleViewModeChange,
     showVoltageLevelNames,
-    overflowLayoutMode, overflowLayoutLoading, handleOverflowLayoutChange,
+    overflowLayoutMode, setOverflowLayoutMode, overflowLayoutLoading, handleOverflowLayoutChange,
     originalViewBox, inspectQuery,
     nPZ, n1PZ, actionPZ,
     nMetaIndex, n1MetaIndex, actionMetaIndex,
