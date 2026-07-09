@@ -1721,28 +1721,30 @@ function App() {
             vlOverlay={vlOverlay}
             onOverlayClose={handleOverlayClose}
             onOverlaySldTabChange={handleOverlaySldTabChange}
-            sldEditMode={sldTopologyEdit.editMode}
-            onSldEditModeChange={sldTopologyEdit.setEditMode}
-            sldEditPendingSwitches={sldTopologyEdit.pendingStates}
-            sldEditPendingChanges={sldTopologyEdit.pendingChanges}
-            onSldSwitchClick={sldTopologyEdit.toggleSwitch}
-            sldEditPendingInjections={sldTopologyEdit.pendingInjections}
-            sldEditInjectionChanges={sldTopologyEdit.injectionChanges}
-            onSldInjectionStage={sldTopologyEdit.setInjection}
-            onSldInjectionRemove={sldTopologyEdit.removeInjection}
-            onSldEditSimulate={handleSimulateSldEdit}
-            onSldEditReset={sldTopologyEdit.reset}
-            sldEditBusy={sldEditBusy}
-            sldEditCombinedWithActionId={sldEditBaseActionId}
-            sldPreviewSvg={sldPreview?.svg ?? null}
-            sldPreviewMetadata={sldPreview?.metadata ?? null}
-            sldPreviewStale={!!sldPreview}
-            sldPreviewLoading={sldPreviewLoading}
-            sldFocusedSwitchId={sldTopologyEdit.focusedSwitchId}
-            onSldSwitchFocus={sldTopologyEdit.setFocusedSwitch}
-            onSldSwitchRemove={sldTopologyEdit.removeSwitch}
-            onSldSwitchRemoveMany={sldTopologyEdit.removeSwitches}
-            onSldNavigateToVl={handleSldNavigateToVl}
+            sldEdit={{
+              sldEditMode: sldTopologyEdit.editMode,
+              onSldEditModeChange: sldTopologyEdit.setEditMode,
+              sldEditPendingSwitches: sldTopologyEdit.pendingStates,
+              sldEditPendingChanges: sldTopologyEdit.pendingChanges,
+              onSldSwitchClick: sldTopologyEdit.toggleSwitch,
+              sldEditPendingInjections: sldTopologyEdit.pendingInjections,
+              sldEditInjectionChanges: sldTopologyEdit.injectionChanges,
+              onSldInjectionStage: sldTopologyEdit.setInjection,
+              onSldInjectionRemove: sldTopologyEdit.removeInjection,
+              onSldEditSimulate: handleSimulateSldEdit,
+              onSldEditReset: sldTopologyEdit.reset,
+              sldEditBusy: sldEditBusy,
+              sldEditCombinedWithActionId: sldEditBaseActionId,
+              sldPreviewSvg: sldPreview?.svg ?? null,
+              sldPreviewMetadata: sldPreview?.metadata ?? null,
+              sldPreviewStale: !!sldPreview,
+              sldPreviewLoading: sldPreviewLoading,
+              sldFocusedSwitchId: sldTopologyEdit.focusedSwitchId,
+              onSldSwitchFocus: sldTopologyEdit.setFocusedSwitch,
+              onSldSwitchRemove: sldTopologyEdit.removeSwitch,
+              onSldSwitchRemoveMany: sldTopologyEdit.removeSwitches,
+              onSldNavigateToVl: handleSldNavigateToVl,
+            }}
             voltageLevels={voltageLevels}
             onVlOpen={handleVlOpen}
             onOverflowPinPreview={handlePinPreview}

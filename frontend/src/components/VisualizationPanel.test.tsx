@@ -611,6 +611,50 @@ describe('VisualizationPanel', () => {
         });
     });
 
+    describe('grouped sldEdit prop (D4 consolidation)', () => {
+        it('threads the grouped SLD-edit controls down to the edit panel', () => {
+            const vlOverlay = {
+                vlName: 'VL_A',
+                actionId: null,
+                svg: '<svg><g/></svg>',
+                sldMetadata: null,
+                loading: false,
+                error: null,
+                tab: 'contingency' as TabId,
+            };
+            const props = createDefaultProps({
+                vlOverlay,
+                activeTab: 'contingency',
+                // One cohesive object in place of the former ~22 sld* props.
+                sldEdit: {
+                    sldEditMode: true,
+                    onSldEditSimulate: vi.fn(),
+                    onSldEditReset: vi.fn(),
+                    onSldSwitchClick: vi.fn(),
+                    sldEditPendingChanges: [{ switchId: 'SW_1', baselineOpen: false, targetOpen: true }],
+                },
+            });
+
+            render(<VisualizationPanel {...props} />);
+
+            // The grouped controls reach SldOverlay → SldEditPanel: the panel
+            // renders only when editMode + onSimulate + onReset + a pending
+            // change are ALL present, so this proves the object was unpacked
+            // and forwarded field-by-field.
+            expect(screen.getByTestId('sld-edit-panel')).toBeInTheDocument();
+            expect(screen.getByTestId('sld-edit-change-SW_1')).toBeInTheDocument();
+        });
+
+        it('renders the overlay without the edit panel when no sldEdit is passed', () => {
+            const vlOverlay = {
+                vlName: 'VL_A', actionId: null, svg: '<svg><g/></svg>',
+                sldMetadata: null, loading: false, error: null, tab: 'contingency' as TabId,
+            };
+            render(<VisualizationPanel {...createDefaultProps({ vlOverlay, activeTab: 'contingency' })} />);
+            expect(screen.queryByTestId('sld-edit-panel')).not.toBeInTheDocument();
+        });
+    });
+
     // ===== Regression tests for auto-zoom double-injection fix =====
     // The N / N-1 / action diagram containers (MemoizedSvgContainer) are kept
     // ALWAYS mounted with an empty-string placeholder.  This prevents React

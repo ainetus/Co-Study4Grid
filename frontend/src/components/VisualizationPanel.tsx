@@ -34,6 +34,39 @@ import {
 const NOOP_ACTION_SELECT = (_id: string | null) => { /* intentional no-op */ };
 const EMPTY_STRING_ARRAY: readonly string[] = [];
 
+/**
+ * Interactive SLD topology-edit wiring, grouped into one cohesive prop
+ * (D4) instead of ~22 individual props. Optional as a whole — when absent
+ * the SLD overlay renders without the Edit affordance (legacy behaviour).
+ * App builds it from the `useManualSimulation` / `useSldTopologyEdit`
+ * facade; see `App.tsx`.
+ */
+export interface SldEditControls {
+    sldEditMode?: boolean;
+    onSldEditModeChange?: (next: boolean) => void;
+    sldEditPendingSwitches?: Record<string, boolean>;
+    sldEditPendingChanges?: import('../hooks/useSldTopologyEdit').SwitchToggleEntry[];
+    onSldSwitchClick?: (equipmentId: string) => void;
+    sldEditPendingInjections?: Record<string, number>;
+    sldEditInjectionChanges?: import('../hooks/useSldTopologyEdit').InjectionChangeEntry[];
+    onSldInjectionStage?: (equipmentId: string, targetP: number) => void;
+    onSldInjectionRemove?: (equipmentId: string) => void;
+    onSldEditSimulate?: () => void;
+    onSldEditReset?: () => void;
+    sldEditBusy?: boolean;
+    sldEditCombinedWithActionId?: string | null;
+    sldPreviewSvg?: string | null;
+    sldPreviewMetadata?: string | null;
+    sldPreviewStale?: boolean;
+    sldPreviewLoading?: boolean;
+    sldFocusedSwitchId?: string | null;
+    onSldSwitchFocus?: (equipmentId: string | null) => void;
+    onSldSwitchRemove?: (equipmentId: string) => void;
+    onSldSwitchRemoveMany?: (equipmentIds: string[]) => void;
+    /** Navigate the SLD overlay to a branch extremity's voltage level. */
+    onSldNavigateToVl?: (vlId: string) => void;
+}
+
 interface VisualizationPanelProps {
     activeTab: TabId;
     configLoading: boolean;
@@ -95,34 +128,8 @@ interface VisualizationPanelProps {
     vlOverlay: VlOverlay | null;
     onOverlayClose: () => void;
     onOverlaySldTabChange: (tab: SldTab) => void;
-    /**
-     * Interactive SLD topology-edit wiring. Optional — when absent the
-     * SLD overlay renders without the Edit affordance (legacy
-     * behaviour). See ``useSldTopologyEdit`` in ``App.tsx``.
-     */
-    sldEditMode?: boolean;
-    onSldEditModeChange?: (next: boolean) => void;
-    sldEditPendingSwitches?: Record<string, boolean>;
-    sldEditPendingChanges?: import('../hooks/useSldTopologyEdit').SwitchToggleEntry[];
-    onSldSwitchClick?: (equipmentId: string) => void;
-    sldEditPendingInjections?: Record<string, number>;
-    sldEditInjectionChanges?: import('../hooks/useSldTopologyEdit').InjectionChangeEntry[];
-    onSldInjectionStage?: (equipmentId: string, targetP: number) => void;
-    onSldInjectionRemove?: (equipmentId: string) => void;
-    onSldEditSimulate?: () => void;
-    onSldEditReset?: () => void;
-    sldEditBusy?: boolean;
-    sldEditCombinedWithActionId?: string | null;
-    sldPreviewSvg?: string | null;
-    sldPreviewMetadata?: string | null;
-    sldPreviewStale?: boolean;
-    sldPreviewLoading?: boolean;
-    sldFocusedSwitchId?: string | null;
-    onSldSwitchFocus?: (equipmentId: string | null) => void;
-    onSldSwitchRemove?: (equipmentId: string) => void;
-    onSldSwitchRemoveMany?: (equipmentIds: string[]) => void;
-    /** Navigate the SLD overlay to a branch extremity's voltage level. */
-    onSldNavigateToVl?: (vlId: string) => void;
+    /** Interactive SLD topology-edit wiring, grouped (D4). See SldEditControls. */
+    sldEdit?: SldEditControls;
     voltageLevels: string[];
     onVlOpen: (vlName: string) => void;
     /**
@@ -264,28 +271,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     vlOverlay,
     onOverlayClose,
     onOverlaySldTabChange,
-    sldEditMode,
-    onSldEditModeChange,
-    sldEditPendingSwitches,
-    sldEditPendingChanges,
-    onSldSwitchClick,
-    sldEditPendingInjections,
-    sldEditInjectionChanges,
-    onSldInjectionStage,
-    onSldInjectionRemove,
-    onSldEditSimulate,
-    onSldEditReset,
-    sldEditBusy,
-    sldEditCombinedWithActionId,
-    sldPreviewSvg,
-    sldPreviewMetadata,
-    sldPreviewStale,
-    sldPreviewLoading,
-    sldFocusedSwitchId,
-    onSldSwitchFocus,
-    onSldSwitchRemove,
-    onSldSwitchRemoveMany,
-    onSldNavigateToVl,
+    sldEdit,
     voltageLevels,
     onVlOpen,
     onOverflowPinPreview,
@@ -328,6 +314,33 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     overflowPinsEnabled = false,
     onOverflowPinsToggle,
 }) => {
+    // Unpack the grouped SLD-edit controls (D4) so the body below keeps
+    // referring to the individual fields unchanged.
+    const {
+        sldEditMode,
+        onSldEditModeChange,
+        sldEditPendingSwitches,
+        sldEditPendingChanges,
+        onSldSwitchClick,
+        sldEditPendingInjections,
+        sldEditInjectionChanges,
+        onSldInjectionStage,
+        onSldInjectionRemove,
+        onSldEditSimulate,
+        onSldEditReset,
+        sldEditBusy,
+        sldEditCombinedWithActionId,
+        sldPreviewSvg,
+        sldPreviewMetadata,
+        sldPreviewStale,
+        sldPreviewLoading,
+        sldFocusedSwitchId,
+        onSldSwitchFocus,
+        onSldSwitchRemove,
+        onSldSwitchRemoveMany,
+        onSldNavigateToVl,
+    } = sldEdit ?? {};
+
     // No-op fallbacks so conditional branches don't need to guard.
     const detachTabCb = onDetachTab ?? (() => {});
     const reattachTabCb = onReattachTab ?? (() => {});
