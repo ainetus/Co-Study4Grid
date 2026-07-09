@@ -202,10 +202,13 @@ only two places where the otherwise-excellent decomposition discipline stopped.
 State management is 100 % props (zero React context): an 88-prop
 `VisualizationPanel`, a 44-prop `ActionFeed`, a 44-setter session-restore bag.
 The repo's own deferred "Option 3" plan (`docs/architecture/app-refactoring-plan.md`)
-already scopes the fix. → **D4**. 🟡 **Stage 1 done 2026-07-08**: the
+already scopes the fix. → **D4**. 🟡 **Stages 1–3 done 2026-07-08**: the
 `useManualSimulation` extraction removed the two stream-parser business
-flows from `App.tsx` (2,048 → 1,795; ceiling ratcheted to 1,850). The
-`useDiagrams` split and the exploded-props consolidation remain.
+flows from `App.tsx` (2,048 → 1,795; ceiling ratcheted to 1,850); the
+decoupled `useDiagrams` domains are now sub-hooks behind the facade
+(1,210 → 1,145); and `VisualizationPanel`'s ~22 SLD-edit props collapsed
+into one grouped object (93 → 72). The deeply-coupled useDiagrams core
+and the remaining prop clusters (incl. `ActionFeed`) are the tail.
 
 ### T6. The docs strategy outgrew its maintenance model
 The doc *corpus* is a genuine strength (30+ indexed docs, accurate endpoint table,
@@ -534,9 +537,11 @@ Ordered by leverage; each unblocks or de-risks the ones after it.
 > **D7** is **mostly shipped** (lockdown profile + test-gated deploy +
 > rollback tag; the pinned-Python-closure lockfile is a documented
 > follow-up). **D2** and **D4** are **partially shipped** (D2 — the
-> machine-check backbone + error contract; D4 — stage 1, the
-> `useManualSimulation` extraction + ceiling ratchet, with the
-> `useDiagrams` split and props consolidation still open). Status is noted
+> machine-check backbone + error contract; D4 — stages 1–3: the
+> `useManualSimulation` extraction + ceiling ratchet, the facade-preserving
+> `useDiagrams` sub-hook split, and the `VisualizationPanel` SLD-edit props
+> consolidation, with the deeply-coupled useDiagrams core + the remaining
+> prop clusters still open). Status is noted
 > per-item below and mirrored in the dimension-finding tables in Part IV.
 > D6, D8, D9 remain open.
 
@@ -644,24 +649,34 @@ lock-ordering against the NAD-prefetch drain.
    consistent with the review's "ratchet down, never up" finding about
    the quality gate.
 
-**D4. Relieve the two frontend hubs** *(6–10 days, stageable)* — 🟡 **STAGE 1 DONE (2026-07-08)**
+**D4. Relieve the two frontend hubs** *(6–10 days, stageable)* — 🟡 **STAGES 1–3 DONE (2026-07-08)**
 Execute the already-scoped "Option 3" extraction: move
 `handleSimulateUnsimulatedAction` / `handleSimulateSldEdit` into a
 `useManualSimulation` hook; split `useDiagrams` into per-domain hooks behind the
 existing `DiagramsState` facade; replace exploded props with cohesive state-object
 props on `VisualizationPanel`/`ActionFeed` (the `SettingsModal` pattern the repo
 already uses). Then *lower* `APP_TSX_MAX` to lock in the win.
-> **Shipped (stage 1)**: `hooks/useManualSimulation.ts` extracts the two
-> operator "simulate now" flows + the shared interactive SLD-edit state
-> (edit-mode sync, debounced preview) out of App.tsx behind a typed
-> params object; App owns the collaborators and passes them in.
-> App.tsx **2048 → 1795** lines, `APP_TSX_MAX` ratcheted **2100 → 1850**.
-> Behaviour-preserving (full Vitest suite green); guarded by
-> `useManualSimulation.test.ts`. **Remaining (bigger bets, still open)**:
-> split `useDiagrams` (1,210 lines) into per-domain hooks behind the
-> `DiagramsState` facade, and consolidate the exploded
-> `VisualizationPanel` / `ActionFeed` props into cohesive state-object
-> props.
+> **Shipped (stage 1, D4a/D4b)**: `hooks/useManualSimulation.ts` extracts
+> the two operator "simulate now" flows + the shared interactive SLD-edit
+> state out of App.tsx behind a typed params object. App.tsx **2048 →
+> 1795** lines, `APP_TSX_MAX` ratcheted **2100 → 1850**.
+> **Shipped (stage 2, D4c — useDiagrams split)**: the two *decoupled*
+> domains (no effect-ordering constraint) are now sub-hooks composed
+> behind the byte-identical `DiagramsState` facade —
+> `hooks/useOverflowLayout.ts` + `hooks/useActionDiagramCache.ts`;
+> useDiagrams **1210 → 1145** lines.
+> **Shipped (stage 3, D4d — props consolidation)**: the ~22 interactive
+> SLD-edit props on `VisualizationPanel` collapsed into one grouped
+> `sldEdit?: SldEditControls` object (props **93 → 72**).
+> All behaviour-preserving (full Vitest suite green); guarded by
+> `useManualSimulation` / `useOverflowLayout` / `useActionDiagramCache`
+> hook tests + `VisualizationPanel` grouped-prop tests.
+> **Remaining tail (higher-risk / more of the same, still open)**: split
+> the deeply-coupled useDiagrams *core* (`handleActionSelect`,
+> `zoomToElement`, the DOM-mutating voltage-filter effects — moving effect
+> order that tsc can't verify), and consolidate the remaining
+> `VisualizationPanel` clusters (detached-tabs / overflow-pins /
+> action-overview) + the `ActionFeed` props.
 
 **D5. One streaming + notification pipeline** *(3–4 days)* — ✅ **DONE (2026-07-08)**
 `utils/ndjsonStream.ts` (buffer carry-over, trailing flush, uniform error

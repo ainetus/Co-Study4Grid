@@ -175,8 +175,10 @@ plus the three modals (`SettingsModal`, `ReloadSessionModal`,
 One test file per hook — `useActions`, `useAnalysis`, `useDetachedTabs`,
 `useDiagramHighlights`, `useDiagrams`, `useOverflowIframe`, `usePanZoom`,
 `useSession`, `useSettings`, `useSldOverlay`, `useSldTopologyEdit`,
-`useTheme`, `useTiedTabsSync`. `useContingencyFetch` is covered
-transitively by `useDiagrams` + the App-integration suite.
+`useTheme`, `useTiedTabsSync`, plus the D4-extracted hooks
+`useManualSimulation`, `useOverflowLayout`, `useActionDiagramCache`.
+`useContingencyFetch` is covered transitively by `useDiagrams` + the
+App-integration suite.
 
 ### Utilities (`frontend/src/utils/**/*.test.ts`)
 

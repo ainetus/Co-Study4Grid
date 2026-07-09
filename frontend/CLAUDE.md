@@ -47,7 +47,17 @@ frontend/
     │   ├── useSettings.ts          # All settings + setters → SettingsState
     │   ├── useActions.ts           # Action selection / favorite / reject
     │   ├── useAnalysis.ts          # Two-step analysis flow (step1/step2)
-    │   ├── useDiagrams.ts          # NAD fetching + tab management
+    │   ├── useDiagrams.ts          # NAD fetching + tab management (thin-ish
+    │   │                           # orchestrator; composes the two D4 sub-
+    │   │                           # hooks below behind the DiagramsState facade)
+    │   ├── useOverflowLayout.ts    # D4 sub-hook of useDiagrams — overflow-graph
+    │   │                           # hierarchical/geo layout toggle
+    │   ├── useActionDiagramCache.ts # D4 sub-hook of useDiagrams — prime-then-
+    │   │                           # paint action-variant NAD cache (cleared on
+    │   │                           # contingency change)
+    │   ├── useManualSimulation.ts  # D4 — the two operator "simulate now" flows
+    │   │                           # (pin double-click + interactive SLD edit) +
+    │   │                           # the shared SLD-edit state, extracted from App
     │   ├── usePanZoom.ts           # ViewBox state, zoom-to-element
     │   ├── useSldOverlay.ts        # Single-Line-Diagram overlay
     │   ├── useSldTopologyEdit.ts    # Interactive SLD edit (switches +
