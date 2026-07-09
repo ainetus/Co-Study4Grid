@@ -688,6 +688,94 @@ describe('VisualizationPanel', () => {
         });
     });
 
+    // D4 consolidation: prove the three remaining grouped props (detach /
+    // overflow / actionOverview) are unpacked and forwarded when passed as a
+    // whole object — and that each is safely OPTIONAL (omitting it renders
+    // the panel without that affordance, the "optional as a whole" contract).
+    // These pass the grouped object DIRECTLY (bypassing the flat-override
+    // partition helper) so they lock the object-prop wire contract itself.
+    describe('grouped detach / overflow / actionOverview props (D4 consolidation)', () => {
+        const nDiagram: DiagramData = { svg: '<svg>n</svg>', metadata: null };
+
+        it('threads a grouped detach object through to the Tie button', () => {
+            const mountNode = document.createElement('div');
+            document.body.appendChild(mountNode);
+            const onToggleTabTie = vi.fn();
+            render(<VisualizationPanel {...createDefaultProps({
+                activeTab: 'n',
+                nDiagram,
+                hasBranches: true,
+                detach: {
+                    detachedTabs: { n: { window: {} as Window, mountNode } },
+                    isTabTied: () => false,
+                    onToggleTabTie,
+                },
+            })} />);
+            const tieButton = mountNode.querySelector('button[title^="Tie"]') as HTMLElement | null;
+            expect(tieButton).not.toBeNull();
+            fireEvent.click(tieButton!);
+            expect(onToggleTabTie).toHaveBeenCalledWith('n');
+            document.body.removeChild(mountNode);
+        });
+
+        it('renders no Tie affordance when the detach group is omitted', () => {
+            render(<VisualizationPanel {...createDefaultProps({ activeTab: 'n', nDiagram, hasBranches: true })} />);
+            expect(document.body.querySelectorAll('button[title^="Tie"]')).toHaveLength(0);
+        });
+
+        it('threads a grouped overflow object through to the layout toggle', () => {
+            const onOverflowLayoutChange = vi.fn();
+            render(<VisualizationPanel {...createDefaultProps({
+                activeTab: 'overflow',
+                layoutPath: '/tmp/grid_layout.json',
+                result: {
+                    pdf_url: '/results/pdf/overflow_hierarchi.html',
+                    pdf_path: '/tmp/Overflow_Graph/overflow_hierarchi.html',
+                    actions: {}, action_scores: null, lines_overloaded: [],
+                    message: '', dc_fallback: false,
+                } as AnalysisResult,
+                overflow: {
+                    overflowLayoutMode: 'hierarchical',
+                    overflowLayoutLoading: false,
+                    onOverflowLayoutChange,
+                },
+            })} />);
+            fireEvent.click(screen.getByRole('button', { name: 'Geo' }));
+            expect(onOverflowLayoutChange).toHaveBeenCalledWith('geo');
+        });
+
+        it('omits the layout toggle when the overflow group is omitted', () => {
+            render(<VisualizationPanel {...createDefaultProps({
+                activeTab: 'overflow',
+                layoutPath: '/tmp/grid_layout.json',
+                result: {
+                    pdf_url: '/results/pdf/overflow_hierarchi.html',
+                    pdf_path: '/tmp/Overflow_Graph/overflow_hierarchi.html',
+                    actions: {}, action_scores: null, lines_overloaded: [],
+                    message: '', dc_fallback: false,
+                } as AnalysisResult,
+            })} />);
+            expect(screen.queryByRole('button', { name: 'Geo' })).not.toBeInTheDocument();
+        });
+
+        it('threads a grouped actionOverview object through to the collapsed filter strip', () => {
+            render(<VisualizationPanel {...createDefaultProps({
+                actionOverview: {
+                    overviewFilters: DEFAULT_ACTION_OVERVIEW_FILTERS as ActionOverviewFilters,
+                    onOverviewFiltersChange: vi.fn(),
+                    hasActions: true,
+                    sidebarCollapsed: true,
+                },
+            })} />);
+            expect(screen.getByTestId('viz-panel-overview-filters')).toBeInTheDocument();
+        });
+
+        it('renders no inline filter strip when the actionOverview group is omitted', () => {
+            render(<VisualizationPanel {...createDefaultProps({})} />);
+            expect(screen.queryByTestId('viz-panel-overview-filters')).not.toBeInTheDocument();
+        });
+    });
+
     // ===== Regression tests for auto-zoom double-injection fix =====
     // The N / N-1 / action diagram containers (MemoizedSvgContainer) are kept
     // ALWAYS mounted with an empty-string placeholder.  This prevents React

@@ -3316,4 +3316,95 @@ describe('ActionFeed', () => {
             expect(screen.getByRole('button', { name: /Analyze & Suggest/ })).toBeInTheDocument();
         });
     });
+
+    // D4 consolidation: prove the three grouped ActionFeed props
+    // (additionalLines / modelSelector / timing) are unpacked and forwarded
+    // when passed as a whole object, and that each is safely OPTIONAL. These
+    // pass the grouped object DIRECTLY so they lock the object-prop contract.
+    describe('grouped additionalLines / modelSelector / timing props (D4 consolidation)', () => {
+        const recAction = {
+            description_unitaire: 'Disco LINE_X',
+            action_topology: emptyTopo,
+            is_manual: false,
+            max_rho: 0.8,
+        } as unknown as ActionDetail;
+
+        it('threads a grouped additionalLines object through to the picker', () => {
+            render(
+                <ActionFeed
+                    {...defaultProps}
+                    additionalLines={{
+                        branches: ['LINE_A', 'LINE_B'],
+                        additionalLinesToCut: new Set<string>(),
+                        onToggleAdditionalLineToCut: vi.fn(),
+                        n1Overloads: ['LINE_B'],
+                    }}
+                    canRunAnalysis
+                />,
+            );
+            expect(screen.getByTestId('additional-lines-picker')).toBeInTheDocument();
+        });
+
+        it('omits the picker when the additionalLines group is absent', () => {
+            render(<ActionFeed {...defaultProps} canRunAnalysis />);
+            expect(screen.queryByTestId('additional-lines-picker')).not.toBeInTheDocument();
+        });
+
+        it('threads a grouped modelSelector object through to the Model dropdown', () => {
+            const setRecommenderModel = vi.fn();
+            render(
+                <ActionFeed
+                    {...defaultProps}
+                    modelSelector={{
+                        recommenderModel: 'expert',
+                        setRecommenderModel,
+                        availableModels: [
+                            { name: 'expert', label: 'Expert system', requires_overflow_graph: true, is_default: true, params: [] },
+                            { name: 'random_overflow', label: 'Random (post overflow analysis)', requires_overflow_graph: true, is_default: false, params: [] },
+                        ],
+                    }}
+                    canRunAnalysis
+                />,
+            );
+            const select = screen.getByLabelText('Model:') as HTMLSelectElement;
+            expect(select.value).toBe('expert');
+            fireEvent.change(select, { target: { value: 'random_overflow' } });
+            expect(setRecommenderModel).toHaveBeenCalledWith('random_overflow');
+        });
+
+        it('omits the Model dropdown when the modelSelector group is absent', () => {
+            render(<ActionFeed {...defaultProps} canRunAnalysis />);
+            expect(screen.queryByLabelText('Model:')).not.toBeInTheDocument();
+        });
+
+        it('threads a grouped timing object through to the execution-time total', () => {
+            render(
+                <ActionFeed
+                    {...defaultProps}
+                    actions={{ rec_1: recAction }}
+                    modelSelector={{ activeModelLabel: 'Expert system' }}
+                    timing={{
+                        step1Time: 1.0,
+                        overflowGraphTime: 2.5,
+                        actionPredictionTime: 1.25,
+                        assessmentTime: 0.4,
+                        enrichmentTime: 0.1,
+                        wallClockTime: 5.5,
+                    }}
+                />,
+            );
+            expect(screen.getByTestId('execution-time-total')).toHaveTextContent(/5\.50s/);
+        });
+
+        it('omits the execution-time total when the timing group is absent', () => {
+            render(
+                <ActionFeed
+                    {...defaultProps}
+                    actions={{ rec_1: recAction }}
+                    modelSelector={{ activeModelLabel: 'Expert system' }}
+                />,
+            );
+            expect(screen.queryByTestId('execution-time-total')).not.toBeInTheDocument();
+        });
+    });
 });

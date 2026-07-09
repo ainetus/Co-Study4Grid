@@ -679,9 +679,13 @@ already uses). Then *lower* `APP_TSX_MAX` to lock in the win.
 >   (4 picker props), `modelSelector?: ModelSelectorControls` (4 model-dropdown
 >   props), `timing?: AnalysisTimingControls` (6 execution-time props).
 >
-> All behaviour-preserving (full Vitest suite green — 1,771 specs); guarded by
+> All behaviour-preserving (full Vitest suite green); guarded by
 > `useManualSimulation` / `useOverflowLayout` / `useActionDiagramCache`
-> hook tests + the `VisualizationPanel` / `ActionFeed` grouped-prop tests.
+> hook tests + explicit `VisualizationPanel` / `ActionFeed` grouped-prop
+> contract tests that pass each group object directly and assert both
+> field-by-field forwarding **and** the "optional as a whole" omission
+> case (detach / overflow / actionOverview + additionalLines /
+> modelSelector / timing).
 > **Remaining tail**: the deeply-coupled useDiagrams *core*
 > (`handleActionSelect`, `zoomToElement`, the DOM-mutating voltage-filter
 > effects — moving effect order that tsc can't verify) is deferred and
