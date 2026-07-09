@@ -161,11 +161,13 @@ working unchanged.
 
 ## Singletons & shared state
 
-- `network_service` (`services/network_service.py:352`) — owns the
+- `network_service` (the module-level `NetworkService()` singleton in
+  `services/network_service.py`) — owns the
   `pypowsybl.network.Network` returned by `pn.load()`. Read-only
   consumers (frontend `/api/branches`, `/api/voltage-levels`, …) go
   through it.
-- `recommender_service` (`services/recommender_service.py:727`) — owns
+- `recommender_service` (the module-level `RecommenderService()` singleton in
+  `services/recommender_service.py`) — owns
   analysis state. `_get_base_network()` MUTUALISES the same Network
   object loaded by `network_service` to avoid re-parsing the .xiidm
   twice (~3-5 s on the PyPSA-EUR France grid). See
@@ -180,7 +182,7 @@ The shared Network is safe because:
    lock — see "Concurrency ownership" below.
 
 `pn.load()` is called WITHOUT `allow_variant_multi_thread_access=True`
-on purpose — see the long comment at `network_service.py:30-43` for
+on purpose — see the long `allow_variant_multi_thread_access` comment in `network_service.py` for
 why enabling that is unsafe for the FastAPI thread pool today.
 
 ## Concurrency ownership (D3, 2026-07)
@@ -401,7 +403,7 @@ Do NOT route streaming endpoints through `_maybe_gzip_*`. The
 per-endpoint gzip helper is for non-streaming responses only —
 wrapping NDJSON in gzip buffers events until a flush, breaking the
 early-PDF guarantee. This was the root cause behind the global
-`GZipMiddleware` rollback (`main.py:30-42`,
+`GZipMiddleware` rollback (see the rollback note atop `main.py`,
 `docs/performance/history/per-endpoint-gzip.md`).
 
 ## Per-endpoint gzip
@@ -415,7 +417,7 @@ Two helpers in `main.py`:
   client-side `JSON.parse` on the multi-MB SVG string.
 
 Both set `Vary: Accept-Encoding`. Threshold and compression level are
-tunable at `main.py:43-44`.
+tunable via the `_GZIP_MIN_BYTES` / `_GZIP_LEVEL` constants in `main.py`.
 
 ## NumPy → JSON sanitization
 

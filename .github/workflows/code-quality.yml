@@ -31,8 +31,14 @@ jobs:
       - name: Run code-quality gate
         run: python scripts/check_code_quality.py
 
-      - name: Run reporter unit tests
-        run: pytest scripts/test_code_quality_report.py -q
+      - name: Run docs-tree gate (D9)
+        # Fails when a CLAUDE.md reference points at a file that no longer exists
+        # or reintroduces a rotting `file.py:NNN` line anchor. See
+        # docs/architecture/code-quality-analysis.md §23.
+        run: python scripts/check_docs_tree.py
+
+      - name: Run reporter + docs-tree unit tests
+        run: pytest scripts/test_code_quality_report.py scripts/test_check_docs_tree.py -q
 
       - name: Run mypy (gate)
         # GATES the build: the shared-state base (services/_recommender_state.py)

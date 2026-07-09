@@ -1338,5 +1338,38 @@ Headline margins at hand-off (ceiling − current):
 Also surfaced in `CHANGELOG.md` `[Unreleased]` so it is bound to the
 next release.
 
+---
+
+## 23. Delta — 2026-07-09 (D9: docs as a checked artifact)
+
+The review's recurring "docs drift" finding — the `CLAUDE.md` inventory
+trees reference files that were renamed away, and their `file.py:NNN`
+line anchors rot on the next edit (all seven had drifted by hundreds of
+lines) — is now a **gate**, not a periodic manual audit.
+
+`scripts/check_docs_tree.py` scans the four inventory docs (root +
+`expert_backend/` + `expert_backend/tests/` + `frontend/`) and fails on:
+
+1. **Referenced-path existence** — every backtick-quoted, directory-
+   qualified `path/like/this.ext` must resolve to a real file under any
+   sensible base dir (the docs write paths relative to their own
+   subtree). Exemptions: generated/runtime artifacts
+   (`dist-standalone/standalone.html`, `Overflow_Graph/…`) and paths
+   referenced *as removed* (the line — or a ±1-line window, for wrapped
+   prose — carries "removed / former / renamed / superseded / …").
+2. **No stale line-number anchors** — `file.py:NNN` is forbidden; the
+   convention is a **symbol anchor** (name the function/class, which
+   survives edits). The seven pre-existing anchors were converted (e.g.
+   `network_service.py:352` → "the module-level `NetworkService()`
+   singleton in `network_service.py`").
+
+Wired into `.github/workflows/code-quality.yml` as its own gate step,
+with unit coverage in `scripts/test_check_docs_tree.py` (fixture-driven
+classification + a self-guard asserting the real repo stays clean, so
+drift fails the pytest suite too, not only the CI step). A `--warn-only`
+flag supports a roll-in period; the tree was brought fully green before
+the gate was made blocking. This closes the last "inventory layer rots"
+finding from the 2026-07 review (D9).
+
 
 

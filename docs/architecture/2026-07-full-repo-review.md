@@ -560,8 +560,8 @@ Ordered by leverage; each unblocks or de-risks the ones after it.
 | D5 | One streaming + notification pipeline | ✅ Done | — |
 | D6 | SVG element-adoption pipeline | 🟢 Core done | VL-count auto-enable of bitmap pan/zoom (validation-gated on operator hardware) |
 | D7 | Deployment trust & reproducibility | 🟡 Mostly | pinned-Python-closure lockfile; Dockerfile dead-weight / `HEALTHCHECK` / config-merge |
-| D8 | Reproducible data & benchmark supply chain | 🟢 Mostly | **FU-2** — physically replay the exported session log (trusted, not self-reported, ranking numbers) |
-| D9 | Docs as a checked artifact | ⬜ Open | not started |
+| D8 | Reproducible data & benchmark supply chain | ✅ Done | **FU-2** landed — `e2e_game_session.py --replay` re-derives trusted ranking numbers + hermetic `test_replay.py` |
+| D9 | Docs as a checked artifact | ✅ Done | `scripts/check_docs_tree.py` gate + symbol anchors + `test_check_docs_tree.py`; CLAUDE.md tree brought green |
 
 Full accounting of every open item — deep-revision tails, follow-ups, and the
 remaining quick wins — is in **[§ Part V.5 — What's left](#part-v5--whats-left-2026-07-09)** below.
@@ -832,11 +832,16 @@ in rough priority order:
 
 **Deep revisions still open or with a tail**
 
-- **D9 — docs as a checked artifact** *(not started; highest-value remaining
-  structural item)*. `check_docs_tree.py` in the gate + symbol anchors + slimmed
-  CLAUDE.md trees. The review's own "docs drift" finding keeps recurring (its
-  line-number anchors are already stale — see Part VII), so this is the item that
-  stops the inventory layer from rotting again.
+- **D9 — docs as a checked artifact** *(✅ landed 2026-07-09)*.
+  `scripts/check_docs_tree.py` is now a gate step in
+  `.github/workflows/code-quality.yml`: it fails when a `CLAUDE.md` reference
+  points at a file that no longer exists (with generated-artifact and
+  referenced-as-removed exemptions) or reintroduces a rotting `file.py:NNN` line
+  anchor. All seven pre-existing line anchors were converted to symbol anchors
+  and the two drifted path references fixed, so the tree is green. Unit coverage
+  + a real-repo self-guard live in `scripts/test_check_docs_tree.py`; full
+  write-up in [`code-quality-analysis.md`](code-quality-analysis.md) §23. This
+  closes the recurring inventory-layer drift finding.
 - **D2 tail** — the machine-check backbone + `{detail, code}` envelope shipped;
   still open: response models on the gzipped endpoints, generating `types.ts`
   from `openapi.snapshot.json`, and removing the blanket exception handler. See

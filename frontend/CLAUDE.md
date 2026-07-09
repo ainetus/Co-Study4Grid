@@ -304,7 +304,7 @@ silently (the `redispatch_details` save-drop bug).
 
 ## State reset & confirmation dialogs
 
-`resetAllState()` (`App.tsx:310-324`) clears every per-study piece of
+`resetAllState()` (in `App.tsx`) clears every per-study piece of
 React state. It is called on Apply Settings AND on Load Study. The
 backend mirrors this with `recommender_service.reset()` —
 `docs/features/state-reset-and-confirmation-dialogs.md` is the contract for
@@ -356,7 +356,7 @@ mirrored in `scripts/check_standalone_parity.py`'s `SPEC_DETAILS`.
 The frontend deals with multi-MB pypowsybl SVG payloads. Five
 performance levers are applied today:
 
-- **`api.getNetworkDiagram` uses `format=text`** (`api.ts:69-92`):
+- **`api.getNetworkDiagram` uses `format=text`** (`getNetworkDiagram` in `api.ts`):
   fetches a JSON-header + raw-SVG-body response so the browser
   doesn't `JSON.parse` a 25 MB string. Saves ~500 ms on large grids.
 - **Element-adoption ingestion** (`utils/svg/svgBoost.ts`
@@ -720,7 +720,7 @@ what has been extracted and what remains deferred.
 |---|---|---|
 | Sticky contingency/N-1 summary strip | `components/SidebarSummary.tsx` | ~90 |
 | Sidebar layout shell (summary + contingency selector + children slot) | `components/AppSidebar.tsx` | ~160 |
-| Error / info floating toasts | `components/StatusToasts.tsx` | ~25 |
+| Error / info floating toasts | `components/StatusToasts.tsx` (later superseded by `NotificationHost.tsx`, D5) | ~25 |
 | N-1 diagram fetch effect (svgPatch fast-path + `/api/contingency-diagram` fallback + contingency-change confirm routing) | `hooks/useContingencyFetch.ts` | ~120 |
 | `applyHighlightsForTab` + driving effect + per-tab `detachedViewModes` state + `viewModeForTab` / `handleViewModeChangeForTab` | `hooks/useDiagramHighlights.ts` | ~155 |
 
