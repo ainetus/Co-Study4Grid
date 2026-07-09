@@ -70,8 +70,8 @@ so a change to either scorer that breaks numerical parity fails a test in CI
 (the `test-data-pipeline` job runs the Python side; `test-frontend` runs the
 TS side). `apply_reference()` in `score.py` overlays trusted per-study numbers
 onto the self-reported log when a `reference.json` is supplied (a no-op
-otherwise) — the physical session-log replay that would *produce* that trusted
-reference is tracked as FU-2 in `docs/architecture/followups.md`.
+otherwise); the physical session-log replay that *produces* that trusted
+reference is the `--replay` mode below (FU-2 in `docs/architecture/followups.md`).
 
 ## Local end-to-end check
 
@@ -89,6 +89,31 @@ This requires pypowsybl + expert_op4grid_recommender in the environment (the
 same deps the backend needs). The preset contingencies in `presets.ts` are all
 verified `can_proceed=True` by this script, so the game stays winnable.
 
+### Replaying a session log (`--replay`, FU-2)
+
+An exported `GameSessionLog` carries *self-reported* `finalMaxRho` / `solved`.
+To rank on **trusted** numbers, `--replay` re-derives them from the log's
+recorded `actionsChosen` by re-driving the real backend:
+
+```bash
+python3 scripts/game_mode/e2e_game_session.py \
+    --replay path/to/game_session.json --grid fr \
+    --reference-out test-results/replay_reference.json --tolerance 0.05
+# → writes a trusted reference.json (apply_reference() shape) and prints, per
+#   study, whether the replayed numbers diverge from the self-reported ones.
+#   Exits non-zero when any study diverges (tamper / drift signal).
+```
+
+For each study it runs `config → step1 → step2`, looks the recorded action ids
+up in the freshly recomputed prioritized set (falling back to
+`/api/simulate-manual-action` for a manual pick that is no longer prioritized),
+takes the best (lowest) resulting `max_rho` as the trusted `finalMaxRho`, and
+flags any action the backend can no longer reproduce. `--grid` selects the grid
+the log was played on (all studies in a session share one difficulty tier). The
+replay *machinery* is guarded hermetically by
+`scripts/game_mode/test_replay.py` (a fake backend client — runs in CI); only
+*generating a real reference* needs the FR/EUR grid bundle.
+
 ## Tests
 
 - Frontend: `frontend/src/game/scoring.test.ts` (Vitest) — scoring + log/CSV
@@ -98,3 +123,7 @@ verified `can_proceed=True` by this script, so the game stays winnable.
   `test-data-pipeline` job. Regenerate the fixture after a deliberate scorer
   change with `python scripts/game_mode/gen_scoring_golden.py` (then update
   `scoring.ts` to match).
+- Replay (in-repo): `scripts/game_mode/test_replay.py` (pytest) — the FU-2
+  session-log replay machinery against a fake backend client (action lookup,
+  manual-simulation fallback, best-of aggregation, divergence detection,
+  `reference.json` shape). Hermetic; runs in the same `test-data-pipeline` job.

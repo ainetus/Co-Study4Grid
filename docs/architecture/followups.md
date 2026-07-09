@@ -75,7 +75,24 @@ is purely internal effect ordering, hence the extra behavioural coverage.
 
 ## FU-2 — Physically replay the exported Game Mode session log
 
-**Status:** open · **Area:** game-mode / benchmark / trust · **Opened:** 2026-07-09
+**Status:** landed (tooling + hermetic coverage; real-grid reference runs in the
+e2e lane) · **Area:** game-mode / benchmark / trust · **Opened:** 2026-07-09 ·
+**Resolved:** 2026-07-09
+
+> **Resolution.** `scripts/game_mode/e2e_game_session.py` now has a
+> `--replay <session.json>` mode: for each recorded study it re-drives the real
+> backend (config → step1 → step2), re-derives the trusted `finalMaxRho` /
+> `solved` from the log's recorded `actionsChosen` (falling back to
+> `/api/simulate-manual-action` for an action no longer in the prioritized set),
+> writes a trusted `reference.json` in the `apply_reference()` shape, and flags
+> any study whose replayed numbers diverge from the self-reported ones beyond a
+> `--tolerance` (tamper / drift detection; non-zero exit on divergence). The
+> replay *machinery* is guarded hermetically by `scripts/game_mode/test_replay.py`
+> (fake backend client — runs in CI from a fresh clone). What still requires the
+> real FR/EUR grid bundle is *generating* the trusted reference for the public
+> ranking, which stays an on-demand e2e-lane activity by design (same dependency
+> the e2e harness already carries). The original write-up is kept below for
+> context.
 
 ### Context
 
@@ -118,3 +135,99 @@ partial implementation couldn't be guarded by a test and would rot.
 - `scripts/game_mode/e2e_game_session.py` (`play_study` — the replay machinery)
 - `scripts/game_mode/scoring_program/score.py` (`apply_reference`)
 - `frontend/src/game/types.ts` (`GameSessionLog` / `ChosenActionRecord`)
+
+---
+
+## FU-3 — Memoize the per-study N-state flow / asset snapshot (QW12)
+
+**Status:** open · **Area:** backend / perf · **Opened:** 2026-07-09
+
+### Context
+
+`DiagramMixin.get_contingency_diagram_patch` (≈ line 396–402) and
+`_attach_flow_deltas_vs_base` (≈ line 859–863) both re-derive the **N-state**
+base flow / asset snapshot the same way: pin the base network on
+`self._get_n_variant()`, then call `get_network_flows()` + `get_asset_flows()`
+and restore the variant. The N-state variant is a clean, immutable baseline for
+the duration of a study (remedial actions run on separate variants), so this
+snapshot is invariant per study and is recomputed on every contingency-patch and
+action-variant delta call.
+
+### What's deferred (and why)
+
+Caching the snapshot on the service (`self._n_state_flows` / `self._n_state_assets`,
+cleared in `reset()` alongside `_n_state_currents`) is the natural fix, but
+`recommender_service.py` is at **exactly its 1150-line module ceiling** — adding
+the two init + two reset lines cleanly would breach the code-quality gate, and
+squeezing them in with semicolon-joined one-liners degrades the hub file the gate
+protects. It is `do_with_care`: a missed invalidation would silently corrupt flow
+deltas across studies (the class of bug `docs/features/state-reset-and-confirmation-dialogs.md`
+exists to prevent), so it should not be rushed under ceiling pressure. The load
+flow itself is already cached per variant, so the win is bounded to the repeated
+DataFrame extraction (~100–400 ms/call on the 5 k-VL grid) — real but modest.
+
+### Suggested approach
+
+1. First reclaim ceiling headroom in `recommender_service.py` (extract a small
+   cohesive block, e.g. the config-globals push, into a helper) so the two cache
+   fields fit within 1150 without hacks.
+2. Add `_n_state_flows` / `_n_state_assets` to `__init__` **and** `reset()`
+   (same group as `_n_state_currents`), plus the reset-completeness sweep in
+   `test_reset_completeness.py` will then require them automatically.
+3. Add a `_get_n_state_flow_snapshot()` helper on `DiagramMixin` that lazily
+   computes + memoizes both, and route both call sites through it.
+4. Document the new caches in `docs/features/state-reset-and-confirmation-dialogs.md`.
+
+### References
+
+- `expert_backend/services/diagram_mixin.py` (`get_contingency_diagram_patch`,
+  `_attach_flow_deltas_vs_base`, `_get_network_flows` / `_get_asset_flows`)
+- `expert_backend/services/recommender_service.py` (`__init__` / `reset`,
+  `_n_state_currents` — the QW17 sibling cache to group with)
+- `expert_backend/tests/test_reset_completeness.py` (the sweep that will guard it)
+
+---
+
+## FU-4 — Emit a patch payload from `/api/simulate-and-variant-diagram` (QW13)
+
+**Status:** open · **Area:** backend + frontend / perf · **Opened:** 2026-07-09
+
+### Context
+
+`/api/simulate-and-variant-diagram` streams `{type:"metrics"}` then
+`{type:"diagram"}` with a **full** action-variant NAD SVG. The DOM-recycling fast
+path (PR #108) already lets the frontend clone the mounted N-state SVG and patch
+per-branch deltas for `/api/action-variant-diagram` via
+`/api/action-variant-diagram-patch`, avoiding a multi-MB re-download. The combined
+simulate-and-variant stream does not yet participate in that fast path.
+
+### What's deferred (and why)
+
+Making the stream emit an optional `{type:"patch"}` event (when the target SVG is
+patchable against the mounted N-state clone) touches the backend endpoint **and
+all three frontend stream consumers** that read this NDJSON, plus the
+`svgPatch.ts` apply path and its fallback. It is `do_with_care`: a wrong
+patchability decision produces a *visually* wrong diagram (stale branch colours /
+missing VL subtree) that neither `tsc` nor the current tests catch — the same
+class of silent regression FU-1 flags. It needs behavioural coverage of the
+patch-vs-full branch before it ships, so it is not a drop-in quick win.
+
+### Suggested approach
+
+1. Reuse `services/diagram/action_patch.py` (the existing
+   `/api/action-variant-diagram-patch` pipeline) to compute a patch payload inside
+   the combined endpoint; emit `{type:"patch", ...}` **instead of**
+   `{type:"diagram"}` only when the snapshot is patchable, else fall back to the
+   full diagram event unchanged.
+2. Teach the three stream consumers (search `simulate-and-variant` /
+   `parseNdjsonStream` usages) to route a `patch` event through
+   `applyPatchToClone`, with the full-diagram event as the untouched fallback.
+3. Add a Vitest case asserting the patch branch reuses the mounted N-state clone
+   and the fallback still renders on an unpatchable payload.
+
+### References
+
+- `expert_backend/main.py` (`/api/simulate-and-variant-diagram`)
+- `expert_backend/services/diagram/action_patch.py`
+- `frontend/src/utils/svgPatch.ts` (`applyPatchToClone`),
+  `frontend/src/utils/ndjsonStream.ts` (the shared reader)
