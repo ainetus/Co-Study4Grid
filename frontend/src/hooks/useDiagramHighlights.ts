@@ -246,7 +246,18 @@ export function useDiagramHighlights({
       // layer.
       applyDeltaVisuals(diagrams.actionSvgContainerRef.current, actionDiagram, diagrams.actionMetaIndex, effectiveMode === 'delta');
     }
-  }, [n1Diagram, actionDiagram, result, selectedActionId, selectedContingency, diagrams, monitoringFactor, viewModeForTab, selectedOverloads]);
+    // QW14: depend on the SPECIFIC `diagrams` members this callback reads, not
+    // the whole `diagrams` object — its identity churns on every pan/zoom
+    // settle (nPZ/n1PZ/actionPZ change), which re-created this callback and
+    // re-fired the driving effect below, re-running the whole highlight
+    // pipeline on every gesture end. The two *SvgContainerRef values are stable
+    // ref objects and the two *MetaIndex values are memoized off diagram
+    // metadata, so no legitimate trigger is lost (the driving effect also lists
+    // nDiagram/n1Diagram/actionDiagram + the metaIndexes directly).
+  }, [n1Diagram, actionDiagram, result, selectedActionId, selectedContingency,
+      diagrams.n1SvgContainerRef, diagrams.actionSvgContainerRef,
+      diagrams.n1MetaIndex, diagrams.actionMetaIndex,
+      monitoringFactor, viewModeForTab, selectedOverloads]);
 
   useEffect(() => {
     const isTabSwitch = prevHighlightTabRef.current !== activeTab;

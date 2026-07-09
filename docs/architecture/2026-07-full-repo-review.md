@@ -83,11 +83,16 @@ scoring function, annotated file trees vs. the tree).
 
 The five headline issues, all verified:
 
-> **Remediation status (2026-07-07).** Headline #1 is **fixed** (D1),
-> #3 is **fixed** (D3), and #2 is **partly fixed** (D2 — the error
-> contract + a machine-checked OpenAPI snapshot landed; TS-generation and
-> blanket-handler removal remain). #4 (invisible failures — D5) and #5
-> (trust model — D7) are still open. See Part V for the per-item detail.
+> **Remediation status (2026-07-08).** Headline **#1** (D1), **#3** (D3)
+> and **#4** (invisible failures — D5, one NDJSON reader + typed
+> notification store + cancellable analysis) are **fixed**. **#5** (trust
+> model — D7) is **mostly fixed**: loopback-default CORS (QW3), a
+> session-path traversal guard (QW7), and the **lockdown profile** that
+> disables the filesystem RPCs on the hosted Space now close it (the
+> pinned-Python-closure lockfile is the tracked remainder). **#2** (D2 —
+> error contract + machine-checked OpenAPI snapshot) is **partly fixed**;
+> TS-generation and blanket-handler removal remain. See Part V for
+> per-item detail and Part VI for the quick wins.
 
 1. **The pluggable-recommender subsystem is a ghost.**
    `expert_backend/recommenders/_service_integration.py` rewrites
@@ -185,7 +190,10 @@ Backend: everything → 400, details leak absolute paths. Contract: five error
 shapes. Frontend: one error state rendered, one never rendered, catches swallowed,
 no cancellation, no aria-live. Each layer made a locally-reasonable choice; the
 composition means the operator sees either nothing or a raw exception string.
-→ **D5** + quick wins QW4, QW6.
+→ **D5** + quick wins QW4, QW6. ✅ **Frontend half resolved 2026-07-08 (D5)**:
+one NDJSON reader, one typed notification store (dismiss / severity /
+`aria-live`, no `'SUCCESS'` protocol), and cancellable analysis. The backend
+half (everything→400, `str(e)` leaks) is D2's tracked blanket-handler removal.
 
 ### T5. Scale strain on the two coordination hubs
 `App.tsx` (2,076 lines, 24 under its ceiling, hosting multi-hundred-line business
@@ -194,7 +202,13 @@ only two places where the otherwise-excellent decomposition discipline stopped.
 State management is 100 % props (zero React context): an 88-prop
 `VisualizationPanel`, a 44-prop `ActionFeed`, a 44-setter session-restore bag.
 The repo's own deferred "Option 3" plan (`docs/architecture/app-refactoring-plan.md`)
-already scopes the fix. → **D4**.
+already scopes the fix. → **D4**. 🟡 **Stages 1–3 done 2026-07-08**: the
+`useManualSimulation` extraction removed the two stream-parser business
+flows from `App.tsx` (2,048 → 1,795; ceiling ratcheted to 1,850); the
+decoupled `useDiagrams` domains are now sub-hooks behind the facade
+(1,210 → 1,145); and every exploded prop cluster on `VisualizationPanel`
+(93 → 41) and `ActionFeed` (44 → 36) collapsed into cohesive state-object
+props. Only the deeply-coupled useDiagrams core remains (tracked as FU-1).
 
 ### T6. The docs strategy outgrew its maintenance model
 The doc *corpus* is a genuine strength (30+ indexed docs, accurate endpoint table,
@@ -338,14 +352,14 @@ and five click grammars coexist.*
 
 | Sev | Finding | Verdict |
 |---|---|---|
-| high | Analysis failures invisible: `useAnalysis`'s `error` state set on three failure paths, rendered nowhere; `App.tsx` destructures a *different* local `error` | ✅ |
-| med | Re-simulation failures swallowed (`console.error` only) | ✅ |
-| med | Toast design: error banner has no dismiss & no timeout; info fixed 3 s; no `aria-live`; magic `'SUCCESS'` string protocol | ✅ |
+| high | Analysis failures invisible: `useAnalysis`'s `error` state set on three failure paths, rendered nowhere; `App.tsx` destructures a *different* local `error` | ✅ → **RESOLVED (QW4 → D5.2, 2026-07-08)**: the QW4 stopgap surfaced the hook error via `StatusToasts`; D5.2 then folded both error channels into the single `notifications` store rendered by `NotificationHost`, so there is now one error path. |
+| med | Re-simulation failures swallowed (`console.error` only) | ✅ → **RESOLVED (QW4, 2026-07-08)**: the pin / SLD-edit catches now `setError`, and the SLD-preview catch was the last silent one — now surfaced too. |
+| med | Toast design: error banner has no dismiss & no timeout; info fixed 3 s; no `aria-live`; magic `'SUCCESS'` string protocol | ✅ → **RESOLVED (D5.2)**: typed `notifications` store + `NotificationHost` — per-toast dismiss, severity-typed styling, auto-expiry, `aria-live`; the `'SUCCESS'` prefix is gone (explicit `notifySuccess`). |
 | med | Five single-vs-double-click grammars across surfaces; one documented backwards | 🟡 — grammars enumerated & confirmed; "backwards" doc claim narrowed |
-| med | No cancellation/abort for any long-running operation | ✅ |
+| med | No cancellation/abort for any long-running operation | ✅ → **RESOLVED (D5.3)**: analysis runs are cancellable end-to-end (AbortController through step 1 / step 2 fetch / stream) with a visible Cancel; an abort surfaces as a cancellation notice. |
 | med | Dark theme doesn't reach detached popups; hardcoded `'white'` literals | ✅ |
 | med | Keyboard/AT access near-absent; modals lack Escape & focus management | ✅ |
-| med | Divergent NDJSON consumers with different error semantics (cross-ref T2) | ✅ |
+| med | Divergent NDJSON consumers with different error semantics (cross-ref T2) | ✅ → **RESOLVED (D5.1)**: one `utils/ndjsonStream.ts` reader replaced all five drifted copies. |
 | low | Debug console noise in interaction hot paths; `'+'`-joined contingency ids | ▫ |
 
 ### 5. Backend performance
@@ -398,7 +412,7 @@ render hygiene at the App.tsx level.*
 
 | Sev | Finding | Verdict |
 |---|---|---|
-| high | Full-NAD loads pay an avoidable serialize + re-parse round-trip (`svgBoost.ts:621` serializes; every string path re-parses via innerHTML); `MemoizedSvgContainer`'s "zero extra parse" comment is false on all string paths | 🟡 — avoidable slice is several hundred ms per load, not the full 1.4 s |
+| high | Full-NAD loads pay an avoidable serialize + re-parse round-trip (`svgBoost.ts:621` serializes; every string path re-parses via innerHTML); `MemoizedSvgContainer`'s "zero extra parse" comment is false on all string paths | 🟡 — avoidable slice is several hundred ms per load, not the full 1.4 s · ✅ **FIXED (D6, 2026-07-09)**: `processSvg` returns the boosted `SVGSVGElement`; `MemoizedSvgContainer` adopts it via `replaceChildren` — no serialize + `innerHTML` re-parse. Comment now accurate. |
 | med | Whole-object dependency churn re-runs the entire highlight pipeline after every pan/zoom settle | ✅ |
 | med | Default pan/zoom re-rasters the full vector layer per frame (~20 fps on the 5,247-VL grid) while the benchmarked 120 fps bitmap mode ships opt-in | 🟡 — opt-in is the *documented* shipped design pending real-hardware validation; a VL-count auto-enable is a reasonable follow-up, severity low-med |
 | med | Memory retention: 3 always-mounted 200k-node DOMs + unbounded per-action processed-SVG string cache + overview clone | 🟡 — bounded in practice (~100–300 MB worst case within one contingency; cache clears on contingency change); LRU cap still warranted |
@@ -458,8 +472,8 @@ disabled under the wildcard; injected overlay renders untrusted data via
 
 | Sev | Finding | Verdict |
 |---|---|---|
-| high | CORS `*` + no auth + arbitrary-file endpoints = drive-by local file read/write from any web page against a localhost install | ✅ |
-| high | Unauthenticated arbitrary filesystem access survives on the public Space (Game Mode gates only the UI); `../` traversal in `session_name` | ✅ |
+| high | CORS `*` + no auth + arbitrary-file endpoints = drive-by local file read/write from any web page against a localhost install | ✅ → **RESOLVED (QW3 + D7, 2026-07-08)**: the CORS default is loopback dev origins (wildcard explicit opt-in), closing the drive-by cross-origin read; the arbitrary-file RPCs are disabled by the D7 lockdown profile on hosted deployments. |
+| high | Unauthenticated arbitrary filesystem access survives on the public Space (Game Mode gates only the UI); `../` traversal in `session_name` | ✅ → **RESOLVED (QW7 + D7, 2026-07-08)**: `session_name` traversal closed (`_safe_session_dir`), and the filesystem RPCs themselves return `403 LOCKED_DOWN` on the Space (`COSTUDY4GRID_LOCKDOWN`, set in the Dockerfile). |
 | med | Singleton state shared across concurrent users, no locking (cross-ref T3) | ✅ → **RESOLVED (D3)**: service-level `RLock` + 409 study-mutation gate. |
 | med | `detail=str(e)` leaks absolute server paths | ✅ → **PARTLY RESOLVED (D2)**: the global unhandled-exception handler now returns a generic 500 (no `str(e)`); the per-endpoint `except → 400, str(e)` handlers still echo the message and are tracked for removal. |
 | med | `/api/pick-path` spawns a subprocess per request | 🟡 — headless child fails in ms (tkinter absent); low-severity dead weight, not a DoS vector |
@@ -506,17 +520,51 @@ force-push = no rollback primitive**; the LFS zip-extraction step has two silent
 failure modes; the image ships dead weight (jupyter-widget stack, `scripts/`,
 tests); `PORT` is decorative; no `HEALTHCHECK`; config upgrades never merge.
 
+> 🟡 **Partly addressed by D7 (2026-07-08)**: the deploy is now test-gated
+> (`workflow_run` on a green **Tests** run) and tags each deploy on origin
+> (`space-deploy-*`) as a rollback pointer, and the trust hole is closed by
+> the lockdown profile. The reproducible-Python-closure lockfile is a
+> documented follow-up; the dead-weight / `HEALTHCHECK` / config-merge
+> items remain open. See [`deployment-trust.md`](deployment-trust.md).
+
 ---
 
 ## Part V — Deep revisions (sequenced roadmap)
 
 Ordered by leverage; each unblocks or de-risks the ones after it.
 
-> **Progress (2026-07-07).** D1 and D3 are **shipped in full**; D2 is
-> **partially shipped** (the machine-check backbone + error contract; the
-> incremental TS-generation / blanket-handler-removal remainder is
-> tracked in its own doc). Status is noted per-item below and mirrored in
-> the dimension-finding tables in Part IV. D4–D9 remain open.
+> **Progress (2026-07-09).** D1, D3 and **D5** are **shipped in full**;
+> **D6** is **core-done** (the SVG element-adoption pipeline; the VL-count
+> bitmap auto-enable is validation-gated). **D7** and **D8** are **mostly
+> shipped** — D7: lockdown profile + test-gated deploy + rollback tag (the
+> pinned-Python-closure lockfile is a documented follow-up); D8: the
+> layout-scale fix + `separate_voltage_levels` step + provenance manifest +
+> hermetic pipeline CI + the in-repo Codabench scorer pinned to the frontend
+> by a shared golden fixture (physical session-log replay tracked as FU-2).
+> **D2** and **D4** are **partially shipped** (D2 — the machine-check backbone
+> + error contract; D4 — stages 1–3: the `useManualSimulation` extraction +
+> ceiling ratchet, the facade-preserving `useDiagrams` sub-hook split, and the
+> full `VisualizationPanel` + `ActionFeed` props consolidation, with only the
+> deeply-coupled useDiagrams core still open — tracked as FU-1). Status is
+> noted per-item below and mirrored in the dimension-finding tables in
+> Part IV. D9 remains open.
+
+### Status at a glance (2026-07-09)
+
+| Rev | Title | Status | What remains |
+|-----|-------|--------|--------------|
+| D1 | De-ghost the recommender subsystem | ✅ Done | — |
+| D2 | API contract machine-check + error envelope | 🟡 Partial | response models on the gzipped endpoints; `types.ts` generation from the snapshot; blanket-handler removal |
+| D3 | Shared-`Network` concurrency ownership | ✅ Done | — |
+| D4 | Relieve the two frontend hubs | 🟡 Mostly | **FU-1** — the deeply-coupled `useDiagrams` core (`handleActionSelect` / `zoomToElement` / DOM-mutating voltage filter) |
+| D5 | One streaming + notification pipeline | ✅ Done | — |
+| D6 | SVG element-adoption pipeline | 🟢 Core done | VL-count auto-enable of bitmap pan/zoom (validation-gated on operator hardware) |
+| D7 | Deployment trust & reproducibility | 🟡 Mostly | pinned-Python-closure lockfile; Dockerfile dead-weight / `HEALTHCHECK` / config-merge |
+| D8 | Reproducible data & benchmark supply chain | ✅ Done | **FU-2** landed — `e2e_game_session.py --replay` re-derives trusted ranking numbers + hermetic `test_replay.py` |
+| D9 | Docs as a checked artifact | ✅ Done | `scripts/check_docs_tree.py` gate + symbol anchors + `test_check_docs_tree.py`; CLAUDE.md tree brought green |
+
+Full accounting of every open item — deep-revision tails, follow-ups, and the
+remaining quick wins — is in **[§ Part V.5 — What's left](#part-v5--whats-left-2026-07-09)** below.
 
 **D1. De-ghost the recommender subsystem** *(2–3 days — do first)* — ✅ **DONE (2026-07-07)**
 Replace import-time monkey-patching with explicit composition:
@@ -622,44 +670,225 @@ lock-ordering against the NAD-prefetch drain.
    consistent with the review's "ratchet down, never up" finding about
    the quality gate.
 
-**D4. Relieve the two frontend hubs** *(6–10 days, stageable)*
+**D4. Relieve the two frontend hubs** *(6–10 days, stageable)* — 🟡 **STAGES 1–3 DONE (2026-07-08)**
 Execute the already-scoped "Option 3" extraction: move
 `handleSimulateUnsimulatedAction` / `handleSimulateSldEdit` into a
 `useManualSimulation` hook; split `useDiagrams` into per-domain hooks behind the
 existing `DiagramsState` facade; replace exploded props with cohesive state-object
 props on `VisualizationPanel`/`ActionFeed` (the `SettingsModal` pattern the repo
 already uses). Then *lower* `APP_TSX_MAX` to lock in the win.
+> **Shipped (stage 1, D4a/D4b)**: `hooks/useManualSimulation.ts` extracts
+> the two operator "simulate now" flows + the shared interactive SLD-edit
+> state out of App.tsx behind a typed params object. App.tsx **2048 →
+> 1795** lines, `APP_TSX_MAX` ratcheted **2100 → 1850**.
+> **Shipped (stage 2, D4c — useDiagrams split)**: the two *decoupled*
+> domains (no effect-ordering constraint) are now sub-hooks composed
+> behind the byte-identical `DiagramsState` facade —
+> `hooks/useOverflowLayout.ts` + `hooks/useActionDiagramCache.ts`;
+> useDiagrams **1210 → 1145** lines.
+> **Shipped (stage 3, D4d + follow-ups — props consolidation)**: every
+> exploded prop cluster on the two hub-fed presentational components was
+> collapsed into cohesive optional state-object props (the `SettingsModal`
+> pattern), each unpacked at the top of the component body so the render
+> tree is byte-for-byte unchanged:
+> - `VisualizationPanel` (**~93 → 41** props): `sldEdit?: SldEditControls`
+>   (the ~22 interactive SLD-edit props), `detach?: DetachControls` (6
+>   detached-tabs props), `overflow?: OverflowControls` (8 layout-toggle +
+>   action-pin props), `actionOverview?: ActionOverviewControls` (17
+>   pin-interaction / selection / filter props).
+> - `ActionFeed` (**~44 → 36** props): `additionalLines?: AdditionalLinesControls`
+>   (4 picker props), `modelSelector?: ModelSelectorControls` (4 model-dropdown
+>   props), `timing?: AnalysisTimingControls` (6 execution-time props).
+>
+> All behaviour-preserving (full Vitest suite green); guarded by
+> `useManualSimulation` / `useOverflowLayout` / `useActionDiagramCache`
+> hook tests + explicit `VisualizationPanel` / `ActionFeed` grouped-prop
+> contract tests that pass each group object directly and assert both
+> field-by-field forwarding **and** the "optional as a whole" omission
+> case (detach / overflow / actionOverview + additionalLines /
+> modelSelector / timing).
+> **Remaining tail**: the deeply-coupled useDiagrams *core*
+> (`handleActionSelect`, `zoomToElement`, the DOM-mutating voltage-filter
+> effects — moving effect order that tsc can't verify) is deferred and
+> tracked as **FU-1** in [`followups.md`](followups.md) (GitHub Issues are
+> disabled on the fork).
 
-**D5. One streaming + notification pipeline** *(3–4 days)*
+**D5. One streaming + notification pipeline** *(3–4 days)* — ✅ **DONE (2026-07-08)**
 `utils/ndjsonStream.ts` (buffer carry-over, trailing flush, uniform error
 semantics, `AbortController`) replacing all five copies; a visible Cancel on
 long operations; a typed notification store (severity, sticky, dismiss,
 `aria-live`) replacing the dual error states and the `'SUCCESS'` string protocol.
 Fixes T4 at the root; QW4 below is the 2-hour stopgap.
+> **Shipped** in three slices — full write-up:
+> [`notifications-and-streaming.md`](notifications-and-streaming.md). (D5.1)
+> `parseNdjsonStream` replaced all five drifted reader loops (also
+> closes **QW10**); (D5.2) the `notifications` store singleton +
+> `NotificationHost` (severity / sticky / dismiss / `aria-live`, de-dupe)
+> replaced `StatusToasts` and the `'SUCCESS'` prefix protocol, and folded
+> the two error channels into one — subsuming the QW4 stopgap; (D5.3)
+> the analysis run is cancellable end-to-end (AbortController through
+> step 1 / step 2 fetch / stream read) with a visible Cancel, an abort
+> surfacing as a cancellation notice rather than an error. **QW14**
+> (highlight-pipeline pan/zoom churn) is independent and still open.
 
-**D6. Finish the SVG element-adoption pipeline** *(2–4 days)*
+**D6. Finish the SVG element-adoption pipeline** *(2–4 days)* — 🟢 **CORE DONE (2026-07-09)**
 Make `processSvg` return the already-parsed `SVGSVGElement` (adoptNode) instead of
 re-serializing; route all ingestion paths through the element path that already
 exists for patches; then a VL-count heuristic to auto-select bitmap pan/zoom mode
 (or a discoverability nudge) once validated on operator hardware.
+> **Shipped (element-adoption core)**: the boost is now element-based —
+> `boostSvgToElement(rawSvg, viewBox, vlCount)` parses the pypowsybl SVG once
+> and mutates the live `SVGSVGElement` in place (no `XMLSerializer` round-trip),
+> and `processSvg` returns that element. `MemoizedSvgContainer` already had the
+> `replaceChildren(element)` adoption path (proven by the svgPatch fast-path,
+> which sets `n1Diagram.svg` to a cloned `SVGSVGElement`); the full-NAD load
+> paths now ride the same rail, so a full load no longer pays the
+> serialize + `innerHTML` re-parse the review flagged (`svgBoost.ts:621`).
+> Safety: `boostSvgToElement` returns `null` on a parse error **or** a
+> non-SVG-namespaced root, so `MemoizedSvgContainer` falls back to `innerHTML`
+> (the HTML parser namespaces it) — the SLD-overlay string path is untouched.
+> The old `boostSvgForLargeGrid(string) → string` stays as a thin wrapper for
+> the serialized-SVG unit tests, returning the input unchanged on skip so no
+> re-serialization leaks. Guarded by the element-adoption tests in
+> `svgBoost.test.ts` + a `MemoizedSvgContainer` identity test (the mounted
+> `<svg>` is the SAME instance `processSvg` returned — impossible via a
+> re-parse). Full Vitest suite green.
+> **Deferred (validation-gated)**: the VL-count auto-enable of the bitmap
+> pan/zoom mode is intentionally left open — the review itself gates it on
+> real operator-hardware validation of the bitmap engine (still OFF by
+> default), so shipping an auto-enable blind would be premature.
 
-**D7. Deployment trust & reproducibility** *(3–4 days)*
+**D7. Deployment trust & reproducibility** *(3–4 days)* — 🟡 **MOSTLY DONE (2026-07-08)**
 Lockdown profile (env flag set in the Dockerfile) disabling/confining the
 filesystem RPCs on non-local deployments; pin the Python closure (pip-compile
 lockfile consumed by both CI and Docker so "mirrors CI" becomes true); version
 tags + test-gated deploy + documented Space rollback.
+> **Shipped** — full write-up: [`deployment-trust.md`](deployment-trust.md).
+> The **lockdown profile** (`COSTUDY4GRID_LOCKDOWN`, set in the Dockerfile)
+> disables the filesystem RPCs (config-file path, session save/list/load,
+> pick-path) with a `403 {code: LOCKED_DOWN}` while keeping the read-only
+> app config reachable so the SPA boots — this closes the still-open half
+> of headline #5. The deploy is now **test-gated** (`workflow_run` on a
+> successful **Tests** run, not a bare merge) and **tags each deploy on
+> origin** (`space-deploy-*`) as the rollback pointer, with a
+> `workflow_dispatch` rollback path. Guarded by `TestLockdownProfile`.
+> **Remaining**: generate + wire the `requirements.lock` (must be resolved
+> on the image's Python 3.10, so documented as a follow-up rather than
+> shipped wrong).
 
-**D8. Reproducible data & benchmark supply chain** *(3–5 days)*
+**D8. Reproducible data & benchmark supply chain** *(3–5 days)* — 🟢 **MOSTLY DONE (2026-07-09)**
 Fix the layout scale in `build_pipeline.py` and absorb the two missing
 post-processing steps; write a provenance manifest into every bundle; wire the
 hermetic slice of the pipeline suite into CI; bring the Codabench `score.py`
 in-repo with a shared golden fixture locking cross-language parity; make the
 session log replayable (the e2e harness already contains the replay machinery).
+> **Shipped** — four of the five sub-tasks:
+> - **Layout scale + post-processing**: `convert_pypsa_to_xiidm.py`'s
+>   `step_write_metadata` no longer rescales to the forbidden `TARGET_WIDTH =
+>   8_000` — it writes `grid_layout.json` in **raw Mercator metres** (span
+>   ~1.4 M), matching `regenerate_grid_layout.py`'s default and the
+>   `grid-layout-coordinate-scale.md` contract. `separate_voltage_levels.py`
+>   is now **step 6** of `build_pipeline.py` (the VL-disk separation
+>   post-process that was previously hand-run). The stale
+>   `test_coordinate_spans_in_reasonable_range` that asserted the forbidden
+>   `[5000, 20000]` range was corrected to the raw-metres regime.
+> - **Provenance manifest**: `build_pipeline.write_provenance_manifest` writes
+>   `provenance.json` (git commit, params, per-step list, sha256 of each bundle
+>   artifact) into the bundle after the selected steps run — so a bundle traces
+>   back to the code + inputs that made it. (Existing committed bundles get one
+>   on their next rebuild.)
+> - **Hermetic pipeline slice in CI**: the `scripts/pypsa_eur` +
+>   `scripts/game_mode` suites now pass from a fresh clone (222→228 pass, 9
+>   skip) — the data-dependent tests (raw OSM CSVs / uncommitted inputs) skip
+>   gracefully via the `conftest osm_dir` + `regenerate_grid_layout` guards
+>   instead of failing — and run in a new `test-data-pipeline` job in
+>   `test.yml`.
+> - **Codabench scorer parity**: the Python scorer now lives in-repo at
+>   `scripts/game_mode/scoring_program/score.py` (a faithful twin of
+>   `frontend/src/game/scoring.ts`, incl. `apply_reference` /
+>   `score_study` / `score_session`), and `scripts/game_mode/scoring_golden.json`
+>   is a **shared golden fixture** both `test_score.py` (Python) and
+>   `scoring.test.ts` (frontend) assert against — locking cross-language
+>   numerical parity in CI. `e2e_game_session.py` now defaults to the in-repo
+>   scorer (no `~/Dev` path).
+> **Deferred**: physically replaying the exported session log (so the public
+> ranking scores re-driven numbers, not self-reported ones) needs a running
+> backend + real grid to verify, so it is tracked as **FU-2** in
+> [`followups.md`](followups.md) rather than half-built.
 
 **D9. Docs as checked artifact** *(1–2 days)*
 `scripts/check_docs_tree.py` in the existing gate (file-exists / absent-from-tree
 / line-count claims), warn-only first week; replace line-number anchors with
 symbol anchors; slim the CLAUDE.md trees to what the checker can verify.
+
+## Part V.5 — What's left (2026-07-09)
+
+The shipped work closed the highest-leverage structural findings — the
+monkey-patched recommender (T1 → **D1**), the drifted streaming/notification
+copies (T4 → **D5**), shared-`Network` concurrency ownership (**D3**), the two
+overloaded frontend hubs (**D4** stages 1–3), the SVG serialize/re-parse
+round-trip (**D6**), and the two supply-chain gaps (**D7**/**D8**). What remains,
+in rough priority order:
+
+**Deep revisions still open or with a tail**
+
+- **D9 — docs as a checked artifact** *(✅ landed 2026-07-09)*.
+  `scripts/check_docs_tree.py` is now a gate step in
+  `.github/workflows/code-quality.yml`: it fails when a `CLAUDE.md` reference
+  points at a file that no longer exists (with generated-artifact and
+  referenced-as-removed exemptions) or reintroduces a rotting `file.py:NNN` line
+  anchor. All seven pre-existing line anchors were converted to symbol anchors
+  and the two drifted path references fixed, so the tree is green. Unit coverage
+  + a real-repo self-guard live in `scripts/test_check_docs_tree.py`; full
+  write-up in [`code-quality-analysis.md`](code-quality-analysis.md) §23. This
+  closes the recurring inventory-layer drift finding.
+- **D2 tail** — the machine-check backbone + `{detail, code}` envelope shipped;
+  still open: response models on the gzipped endpoints, generating `types.ts`
+  from `openapi.snapshot.json`, and removing the blanket exception handler. See
+  [`api-contract-machine-check.md`](api-contract-machine-check.md).
+- **D7 tail** — the reproducible-Python-closure lockfile (a `pip-compile` output
+  consumed by **both** CI and the Dockerfile, so "mirrors CI" becomes true), plus
+  the Dockerfile hygiene items (drop the jupyter/`scripts/`/tests dead weight,
+  real `PORT`, `HEALTHCHECK`, config-merge on upgrade — overlaps QW25). See
+  [`deployment-trust.md`](deployment-trust.md).
+
+**Tracked follow-ups** (in [`followups.md`](followups.md), since GitHub Issues are
+disabled on the fork)
+
+- **FU-1** — split the deeply-coupled `useDiagrams` core (D4's remaining tail:
+  `handleActionSelect`, `zoomToElement`, the DOM-mutating voltage filter). Risky
+  because it relocates effect-registration order that `tsc` cannot verify — needs
+  behavioural coverage in place first.
+- **FU-2** — physically replay the exported Game Mode session log (D8's remaining
+  sub-task) so the public ranking scores re-driven numbers, not self-reported
+  ones. Needs a running backend + real grid to verify, hence deferred.
+
+**Open quick wins** (Part VI, minus the ✅ / subsumed rows)
+
+- *Backend*: QW6 (generic error details + logged traceback — largely subsumed by
+  the D2 envelope; audit for any surviving `str(e)`), QW8 (per-PR recommender pin
+  + float in a canary job), QW11/QW12 (vectorise the 85 k-iteration
+  `_diff_switches`; memoise the per-study N-state snapshot), QW13 (ship the patch
+  payload in `simulate-and-variant-diagram`), QW17 (single `Overflow_Graph` path
+  constant + automated `reset()`-completeness test), QW22 (watchdog on the legacy
+  analysis poll loop, or delete the legacy `/api/run-analysis` slice).
+- *Frontend perf/UX*: QW14 (highlight pipeline re-running on every pan/zoom settle
+  — overlaps FU-1), QW15 (LRU-cap `actionDiagramCacheRef`), QW19 (theme into
+  detached popups), QW20 (`useModalKeyboard`: Escape / focus-trap / `aria-modal`),
+  QW21 (frontend `console.log` ceiling in the gate — D6 deliberately kept the boost
+  logs, so start the ceiling at the current count and ratchet down).
+- *Delivery/docs*: QW9 tail (the `Overflow_Graph/*.html` fixture decision, already
+  reasoned), QW16 (batch the 20+ doc mismatches — folds into D9), QW23 (collapse to
+  one CI system), QW24 (Game Mode mid-session retry / preset↔artifact test), QW25
+  (Dockerfile hygiene — overlaps the D7 tail).
+
+**Already subsumed by shipped deep revisions** (no separate work): QW1 (root
+`tests/` rescued by D1), QW5 (variant `try/finally` folded into D3), QW10 (the one
+NDJSON reader = D5.1), QW18 (single-flight 409 = the full D3 lock).
+
+**Suggested next step**: **D9** — it is self-contained (≈1–2 days), closes the
+recurring doc-drift finding, and makes the inventory trustworthy again; or **FU-1**
+paired with its behavioural harness if continuing the frontend track.
 
 ## Part VI — Quick wins
 
@@ -667,21 +896,21 @@ Day-one (each ≤ ~2 h, near-zero risk):
 
 | # | Fix | Where |
 |---|---|---|
-| QW1 | Collect root `tests/` (add to `pytest.ini` testpaths or move files) — *the highest value-per-hour change in this review* | pytest.ini / CI |
+| QW1 | ✅ **DONE (2026-07-07, subsumed by D1)** — all 8 root `tests/` files rescued into `expert_backend/tests/` (the one filename collision resolved), so CI's `pytest.ini` testpaths now cover them | pytest.ini / CI |
 | QW2 | ✅ **DONE (2026-07-07)** — `async def` → `def` on `run_analysis_step1` (unblocks the event loop; `TestEventLoopSafety` guard) | `main.py` |
-| QW3 | CORS default `*` → loopback origins; wildcard becomes explicit opt-in | `main.py:141` |
-| QW4 | Render `useAnalysis.error` in `StatusToasts`; add `setError` to the two swallowed catches | `App.tsx` |
+| QW3 | ✅ **DONE (2026-07-08)** — CORS default `*` → loopback dev origins (`localhost`/`127.0.0.1` :5173/:4173); wildcard is explicit opt-in (`CORS_ALLOWED_ORIGINS="*"`) | `main.py` |
+| QW4 | ✅ **DONE (2026-07-08)** — `useAnalysis.error` now surfaced through `StatusToasts` (`error \|\| analysis.error`, cleared on contingency-clear); the two `console.error`-only catches already carried `setError`, and the remaining SLD-preview catch got one. Guarded by a new App-integration test | `App.tsx` |
 | QW5 | ✅ **DONE (2026-07-07, folded into D3)** — try/finally on the unguarded variant switch | `diagram_mixin.py` `_get_contingency_flows` |
 | QW6 | Replace `detail=str(e)` with generic messages + server-side `logger.exception` | `main.py` |
-| QW7 | Reject path separators/`..` in `session_name`; resolve+relative_to on session dirs (mirror the existing `/results/pdf` guard) | `main.py` |
+| QW7 | ✅ **DONE (2026-07-08)** — `_safe_session_dir` rejects `..` / path separators / absolute names before any FS write, resolve()+relative_to() backstop (mirrors `/results/pdf`); applied to `save-session` + `load-session`. `TestSessionPathTraversal` guard | `main.py` |
 | QW8 | Pin `expert_op4grid_recommender` per-PR; float it in a separate canary job | CI ×3 + Dockerfile |
-| QW9 | Delete `inspect_action.py`, dead `requirements.txt` stub, `react-zoom-pan-pinch`; untrack generated outputs | repo root / frontend |
+| QW9 | 🟡 **PARTLY DONE (2026-07-08)** — deleted `inspect_action.py`, the dead `expert_backend/requirements.txt` stub, and the unused `react-zoom-pan-pinch` dep (+ doc/lockfile follow-through). Did **not** untrack the `Overflow_Graph/*.html`: it is a skip-guarded regression fixture (`test_overflow_html_dim_logic.py`) — untracking it would silently drop that CI coverage | repo root / frontend |
 
 Week-one (½–1 day each):
 
 | # | Fix | Where |
 |---|---|---|
-| QW10 | Extract `utils/ndjsonStream.ts`, delete the five copies (subset of D5, standalone-shippable) | frontend |
+| QW10 | ✅ **DONE (2026-07-08, D5.1)** — extracted `utils/ndjsonStream.ts`, deleted the five copies | frontend |
 | QW11 | Vectorize the reintroduced pandas loops (85 k-iteration `_diff_switches` first) | `diagram_mixin.py:876-892` |
 | QW12 | Memoize the per-study N-state flow/asset snapshot for patch + SLD delta endpoints | `diagram_mixin.py` |
 | QW13 | Ship the patch payload in `simulate-and-variant-diagram` when patchable (machinery exists in `action_patch.py`) — removes the 20–28 MB uncompressed stream event | backend + fallback wiring |
@@ -689,7 +918,7 @@ Week-one (½–1 day each):
 | QW15 | LRU-cap `actionDiagramCacheRef` (2–3 entries); stop duplicate string retention | `useDiagrams.ts` |
 | QW16 | Batch-fix the 20+ verified doc mismatches; truthful `.env.example`; symbol anchors; reframe PARITY_AUDIT as closed | docs |
 | QW17 | Single `Overflow_Graph` path constant; automate the `reset()` completeness invariant (fresh-instance `__dict__` comparison test) + fix the two leaks | backend |
-| QW18 | Single-flight lock or 409 on `update_config`/analysis entry points (coarse version of D3) | backend |
+| QW18 | ✅ **DONE (2026-07-07, subsumed by D3)** — the full service-level lock + HTTP-409 study-mutation gate shipped as D3, superseding this coarse version | backend |
 | QW19 | Theme propagation into detached popups; purge `'white'` literals | `useDetachedTabs` |
 | QW20 | `useModalKeyboard` hook: Escape, initial focus, focus restore, `aria-modal` | modals |
 | QW21 | Frontend `console.log` ceiling in the gate (start at 25, ratchet down) | `check_code_quality.py` |

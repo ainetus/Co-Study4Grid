@@ -1,0 +1,9 @@
+# Single source of truth for the expert_op4grid_recommender version (QW8).
+# PR / deploy installs pin to THIS exact version so an upstream release can't
+# silently turn a green PR red or ship a regressed image on a zero-change
+# rebuild. A weekly canary job (.github/workflows/canary.yml) floats to the
+# latest release and opens an issue on failure, so upgrades are a deliberate
+# bump of this line — not an implicit every-build resolve.
+#
+# Bump procedure: update this line, run the backend suite, review, commit.
+expert_op4grid_recommender==0.3.0.post1

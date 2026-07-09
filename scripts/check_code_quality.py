@@ -120,12 +120,19 @@ FRONTEND_HEX_LITERAL_MAX = 0
 # typing surface; lowering is welcome, raising is a regression.
 FRONTEND_WEAK_CAST_MAX = 12       # `as unknown as` (was 19; SVG-DOM casts simplified)
 FRONTEND_RECORD_UNKNOWN_MAX = 45  # `Record<string, unknown>` (most are legit flexible payloads)
+# `console.log` in frontend source (QW21). Frozen at the current count; the
+# residual are perf-instrumentation logs in the SVG / diagram hot paths.
+# Lower over time (delete or downgrade to console.warn/error); never raise.
+FRONTEND_CONSOLE_LOG_MAX = 25
 # `App.tsx` is the state-orchestration hub by design, but gets a
 # generous *bounded* ceiling rather than a blanket exemption — so it
 # can't grow without bound. `utils/**` modules are gated by the
 # (looser) `FRONTEND_UTIL_MAX`; everything else by `FRONTEND_COMPONENT_MAX`.
 APP_TSX_PATH = "frontend/src/App.tsx"
-APP_TSX_MAX = 2100
+# Ratcheted 2100 → 1850 after the D4 `useManualSimulation` extraction
+# (App.tsx 2048 → 1795). Lower it again as further hubs are extracted;
+# never raise it.
+APP_TSX_MAX = 1850
 FRONTEND_UTIL_PREFIX = "frontend/src/utils/"
 
 
@@ -204,6 +211,12 @@ def main() -> int:
         errors.append(
             f"frontend: {fe.record_str_unknown} `Record<string, unknown>` usages "
             f"(ratchet {FRONTEND_RECORD_UNKNOWN_MAX}) — prefer a typed interface"
+        )
+    if fe.console_logs > FRONTEND_CONSOLE_LOG_MAX:
+        errors.append(
+            f"frontend: {fe.console_logs} `console.log` calls "
+            f"(ratchet {FRONTEND_CONSOLE_LOG_MAX}) — delete or downgrade to "
+            "`console.warn` / `console.error`; don't add new ones"
         )
     if fe.hex_literals > FRONTEND_HEX_LITERAL_MAX:
         worst = ", ".join(

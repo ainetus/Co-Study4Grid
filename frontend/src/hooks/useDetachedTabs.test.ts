@@ -209,4 +209,35 @@ describe('useDetachedTabs', () => {
             expect(popupAction.closed).toBe(true);
         });
     });
+
+    describe('theme propagation into popups (QW19)', () => {
+        afterEach(() => {
+            document.documentElement.removeAttribute('data-theme');
+        });
+
+        it('mirrors the opener theme onto the popup document at detach time', () => {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            const { result } = renderHook(() => useDetachedTabs());
+            act(() => { result.current.detach('contingency'); });
+            const doc = fakePopups[0].document;
+            expect(doc.documentElement.getAttribute('data-theme')).toBe('dark');
+            expect(doc.documentElement.style.colorScheme).toBe('dark');
+        });
+
+        it('propagates a live theme toggle to open popups via the observer', async () => {
+            document.documentElement.setAttribute('data-theme', 'light');
+            const { result } = renderHook(() => useDetachedTabs());
+            act(() => { result.current.detach('n'); });
+            const doc = fakePopups[0].document;
+            expect(doc.documentElement.getAttribute('data-theme')).toBe('light');
+
+            await act(async () => {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                // Let the MutationObserver microtask deliver.
+                await Promise.resolve();
+                await Promise.resolve();
+            });
+            expect(doc.documentElement.getAttribute('data-theme')).toBe('dark');
+        });
+    });
 });

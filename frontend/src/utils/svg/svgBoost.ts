@@ -11,18 +11,59 @@ import { declutterEdgeInfoLabels, parseRotateDeg, type EdgeInfoLabel } from './e
  * Scale SVG elements for large grids so text, nodes, and flow values
  * are readable when zoomed in and naturally shrink at full view.
  */
-export const boostSvgForLargeGrid = (svgString: string, viewBox: ViewBox | null, vlCount: number): string => {
-    if (!viewBox) return svgString;
+// Grids below this rendered-viewBox / VL-density regime don't need the boost.
+const REFERENCE_SIZE = 1250;
+const BOOST_THRESHOLD = 3;
 
-    // Skip boost entirely for grids with < 500 voltage levels
-    if (!vlCount || vlCount < 500) return svgString;
+/**
+ * Parse a raw pypowsybl SVG string into a live `SVGSVGElement`, applying the
+ * large-grid boost (font / node-radius scaling + flow-value de-clutter) in
+ * place, and return that element (D6 — the SVG element-adoption pipeline).
+ *
+ * Returning the parsed element — rather than a re-serialized string — lets the
+ * ingestion path (`MemoizedSvgContainer.replaceChildren`) adopt it directly,
+ * skipping the serialize + `innerHTML` re-parse round-trip the string path
+ * paid on every full-NAD load. This is the same element rail the svgPatch
+ * fast-path already rides (`applyPatchToClone` → `SVGSVGElement`).
+ *
+ * Returns `null` on a parse error so the caller can fall back to the raw
+ * string (`innerHTML`). For small / narrow-viewBox grids the boost is skipped
+ * and the parsed element is returned UNMUTATED (still an element → still no
+ * re-parse downstream).
+ */
+export const boostSvgToElement = (svgString: string, viewBox: ViewBox | null, vlCount: number): SVGSVGElement | null => {
+    let svgEl: SVGSVGElement;
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svgString, 'image/svg+xml');
+        if (doc.getElementsByTagName('parsererror').length > 0) return null;
+        const root = doc.documentElement;
+        // Only adopt a root that is a genuine SVG-namespaced <svg>. A missing
+        // xmlns (or a non-svg root) would render blank if adopted directly —
+        // return null so the caller falls back to innerHTML, which the HTML
+        // parser namespaces for us. Real pypowsybl NAD/SLD output always
+        // declares xmlns="http://www.w3.org/2000/svg".
+        if (
+            !root ||
+            root.nodeName.toLowerCase() !== 'svg' ||
+            root.namespaceURI !== 'http://www.w3.org/2000/svg'
+        ) {
+            return null;
+        }
+        svgEl = root as unknown as SVGSVGElement;
+    } catch (err) {
+        console.error('[SVG] Failed to parse SVG:', err);
+        return null;
+    }
+
+    // Skip the boost for small grids / narrow viewBoxes — return the parsed
+    // element as-is (unmutated, but still an element so ingestion adopts it).
+    if (!viewBox || !vlCount || vlCount < 500) return svgEl;
 
     const start = Date.now();
     const diagramSize = Math.max(viewBox.w, viewBox.h);
-    const REFERENCE_SIZE = 1250;
-    const BOOST_THRESHOLD = 3;
     const ratio = diagramSize / REFERENCE_SIZE;
-    if (ratio <= BOOST_THRESHOLD) return svgString;
+    if (ratio <= BOOST_THRESHOLD) return svgEl;
 
     const boost = Math.sqrt(ratio / BOOST_THRESHOLD);
     const boostStr = boost.toFixed(2);
@@ -138,9 +179,8 @@ export const boostSvgForLargeGrid = (svgString: string, viewBox: ViewBox | null,
     const nodeBoostStr = nodeBoost.toFixed(2);
 
     try {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(svgString, 'image/svg+xml');
-        const svgEl = doc.documentElement;
+        // svgEl was already parsed at the top of this function — the boost
+        // mutates it in place (no second parse, no serialize).
 
         // === 1. Scale CSS values in <style> blocks ===
         // VL labels (`nad-text-nodes`, `font: 25px serif`), legend chip and
@@ -618,7 +658,6 @@ export const boostSvgForLargeGrid = (svgString: string, viewBox: ViewBox | null,
             console.log(`[SVG] declutter pass: ${Date.now() - declutterStart}ms (parse ${parseMs}ms, ${labels.length} labels, ${declutteredLabels} moved)`);
         }
 
-        const result = new XMLSerializer().serializeToString(svgEl);
         console.log(
             `[SVG] De-cluttered ${declutteredLabels} flow labels. ` +
             `Boosted vlCount=${vlCount}, ratio ${ratio.toFixed(2)}, boost ${boostStr}, ` +
@@ -626,24 +665,48 @@ export const boostSvgForLargeGrid = (svgString: string, viewBox: ViewBox | null,
             `reconnected ${reconnectedEndpoints} endpoints, projected ${projectedIndicators} flow ` +
             `indicators in ${Date.now() - start}ms`,
         );
-        return result;
+        return svgEl;
     } catch (err) {
         console.error('[SVG] Failed to boost SVG:', err);
-        return svgString;
+        // A section threw partway through; svgEl is still valid SVG (the
+        // boost is cosmetic scaling), so return it rather than dropping to
+        // the raw string — keeps ingestion on the element rail.
+        return svgEl;
     }
 };
 
 /**
- * Parse viewBox from raw SVG string and apply boost for large grids.
+ * String→string boost. Preserved for callers/tests that operate on serialized
+ * SVG (`svgUtils` re-export, the boost unit tests). Thin wrapper over
+ * `boostSvgToElement`: returns the input string UNCHANGED whenever the boost
+ * is skipped, so no re-serialization side effects (whitespace / attribute
+ * order) leak into the pass-through case.
  */
-export const processSvg = (rawSvg: string, vlCount: number): { svg: string; viewBox: ViewBox | null } => {
-    const match = rawSvg.match(/viewBox=["']([^"']+)["']/);
-    let vb: ViewBox | null = null;
-    if (match) {
-        const parts = match[1].split(/\s+|,/).map(parseFloat);
-        if (parts.length === 4) vb = { x: parts[0], y: parts[1], w: parts[2], h: parts[3] };
-    }
+export const boostSvgForLargeGrid = (svgString: string, viewBox: ViewBox | null, vlCount: number): string => {
+    if (!viewBox || !vlCount || vlCount < 500) return svgString;
+    if (Math.max(viewBox.w, viewBox.h) / REFERENCE_SIZE <= BOOST_THRESHOLD) return svgString;
+    const el = boostSvgToElement(svgString, viewBox, vlCount);
+    return el ? new XMLSerializer().serializeToString(el) : svgString;
+};
 
-    const svg = boostSvgForLargeGrid(rawSvg, vb, vlCount);
-    return { svg, viewBox: vb };
+/**
+ * Parse the viewBox from a raw SVG string.
+ */
+const parseViewBox = (rawSvg: string): ViewBox | null => {
+    const match = rawSvg.match(/viewBox=["']([^"']+)["']/);
+    if (!match) return null;
+    const parts = match[1].split(/\s+|,/).map(parseFloat);
+    return parts.length === 4 ? { x: parts[0], y: parts[1], w: parts[2], h: parts[3] } : null;
+};
+
+/**
+ * Parse viewBox + boost a raw SVG into a live `SVGSVGElement` for direct
+ * ingestion (D6). Returns the parsed/boosted element on success; falls back
+ * to the raw string on a parse failure so `MemoizedSvgContainer`'s
+ * `innerHTML` path still renders it.
+ */
+export const processSvg = (rawSvg: string, vlCount: number): { svg: string | SVGSVGElement; viewBox: ViewBox | null } => {
+    const viewBox = parseViewBox(rawSvg);
+    const el = boostSvgToElement(rawSvg, viewBox, vlCount);
+    return { svg: el ?? rawSvg, viewBox };
 };

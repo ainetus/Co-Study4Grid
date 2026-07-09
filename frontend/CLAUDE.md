@@ -17,7 +17,7 @@ frontend/
 ├── README.md
 ├── index.html                # Vite HTML entry point
 ├── package.json              # React 19, Vite 7, vitest, axios, react-select,
-│                             # react-zoom-pan-pinch, vite-plugin-singlefile
+│                             # vite-plugin-singlefile
 ├── vite.config.ts            # Vite + Vitest plugin (jsdom env)
 ├── eslint.config.js          # Flat config (v9+) — typescript-eslint,
 │                             # react-hooks, react-refresh
@@ -47,7 +47,17 @@ frontend/
     │   ├── useSettings.ts          # All settings + setters → SettingsState
     │   ├── useActions.ts           # Action selection / favorite / reject
     │   ├── useAnalysis.ts          # Two-step analysis flow (step1/step2)
-    │   ├── useDiagrams.ts          # NAD fetching + tab management
+    │   ├── useDiagrams.ts          # NAD fetching + tab management (thin-ish
+    │   │                           # orchestrator; composes the two D4 sub-
+    │   │                           # hooks below behind the DiagramsState facade)
+    │   ├── useOverflowLayout.ts    # D4 sub-hook of useDiagrams — overflow-graph
+    │   │                           # hierarchical/geo layout toggle
+    │   ├── useActionDiagramCache.ts # D4 sub-hook of useDiagrams — prime-then-
+    │   │                           # paint action-variant NAD cache (cleared on
+    │   │                           # contingency change)
+    │   ├── useManualSimulation.ts  # D4 — the two operator "simulate now" flows
+    │   │                           # (pin double-click + interactive SLD edit) +
+    │   │                           # the shared SLD-edit state, extracted from App
     │   ├── usePanZoom.ts           # ViewBox state, zoom-to-element
     │   ├── useSldOverlay.ts        # Single-Line-Diagram overlay
     │   ├── useSldTopologyEdit.ts    # Interactive SLD edit (switches +
@@ -151,7 +161,11 @@ frontend/
     │   │                           # overloads, per-N-1 monitoring
     │   │                           # checkboxes, monitor-deselected
     │   │                           # switch, monitoring-coverage hint).
-    │   ├── StatusToasts.tsx        # Fixed-position error/info banners
+    │   ├── NotificationHost.tsx    # Renders the typed notification store
+    │   │                           # (D5) as dismissible bottom-right toasts
+    │   │                           # in an aria-live region (severity =
+    │   │                           # error/success/info). Replaced the old
+    │   │                           # StatusToasts dual error/info banners.
     │   └── modals/
     │       ├── SettingsModal.tsx          # 3-tab settings dialog
     │       ├── ReloadSessionModal.tsx     # Session reload list
@@ -191,7 +205,18 @@ frontend/
         │                              # apiErrorMessage / hasErrorCode. Replaces
         │                              # scattered err?.response?.data?.detail reads;
         │                              # hasErrorCode branches on codes like
-        │                              # ACTION_RESULT_UNAVAILABLE / STUDY_BUSY.
+        │                              # ACTION_RESULT_UNAVAILABLE / STUDY_BUSY /
+        │                              # LOCKED_DOWN (D7 hosted-deploy guard).
+        ├── ndjsonStream.ts            # D5 (2026-07) — parseNdjsonStream: the ONE
+        │                              # NDJSON reader (buffer carry-over, trailing
+        │                              # flush, AbortSignal) replacing five drifted
+        │                              # reader-loop copies.
+        ├── notifications.ts           # D5 (2026-07) — typed notification store
+        │                              # singleton (severity/sticky/dismiss/de-dupe)
+        │                              # + useNotifications() + notifyError/Info/
+        │                              # Success. Rendered by NotificationHost;
+        │                              # replaced the dual error/info toast channels
+        │                              # and the 'SUCCESS' string protocol.
         ├── mergeAnalysisResult.ts     # Merge step1 + step2 fields
         ├── fileRegistry.ts            # Structure-regression guard (tracks expected
         │                              # source-tree layout; fails the Vitest suite
@@ -279,7 +304,7 @@ silently (the `redispatch_details` save-drop bug).
 
 ## State reset & confirmation dialogs
 
-`resetAllState()` (`App.tsx:310-324`) clears every per-study piece of
+`resetAllState()` (in `App.tsx`) clears every per-study piece of
 React state. It is called on Apply Settings AND on Load Study. The
 backend mirrors this with `recommender_service.reset()` —
 `docs/features/state-reset-and-confirmation-dialogs.md` is the contract for
@@ -328,12 +353,26 @@ mirrored in `scripts/check_standalone_parity.py`'s `SPEC_DETAILS`.
 
 ## SVG handling
 
-The frontend deals with multi-MB pypowsybl SVG payloads. Four
+The frontend deals with multi-MB pypowsybl SVG payloads. Five
 performance levers are applied today:
 
-- **`api.getNetworkDiagram` uses `format=text`** (`api.ts:69-92`):
+- **`api.getNetworkDiagram` uses `format=text`** (`getNetworkDiagram` in `api.ts`):
   fetches a JSON-header + raw-SVG-body response so the browser
   doesn't `JSON.parse` a 25 MB string. Saves ~500 ms on large grids.
+- **Element-adoption ingestion** (`utils/svg/svgBoost.ts`
+  `boostSvgToElement` + `processSvg`, D6): `processSvg` parses the raw
+  pypowsybl SVG **once** into a live `SVGSVGElement`, applies the
+  large-grid boost in place (no `XMLSerializer`), and returns that
+  element. `MemoizedSvgContainer` adopts it via
+  `replaceChildren(element)` instead of re-parsing a serialized string
+  through `innerHTML` — removing the serialize + re-parse round-trip
+  full-NAD loads used to pay. This is the same element rail the
+  svgPatch fast-path already rides (`applyPatchToClone` returns an
+  `SVGSVGElement`). `processSvg` falls back to the raw **string** (and
+  `MemoizedSvgContainer` to `innerHTML`) when the SVG fails to parse or
+  its root is not SVG-namespaced; SLD overlays (`SldOverlay`) keep
+  their own string→`innerHTML` path. The `boostSvgForLargeGrid(string)
+  → string` wrapper is retained for the serialized-SVG unit tests.
 - **`getIdMap(container)`** (`utils/svg/idMap.ts`): cached
   `WeakMap<HTMLElement, Map<id, Element>>` so highlight passes don't
   re-scan `[id]` selectors. Invalidate via `invalidateIdMapCache`
@@ -395,9 +434,10 @@ performance levers are applied today:
   on the ~12 MB French NAD. Falls back to the full NAD on any
   unsupported edge case.
 
-The visualization is rendered inside `react-zoom-pan-pinch`. Zoom
-state is owned by `usePanZoom` per tab (`nPZ`, `n1PZ`, `actionPZ`,
-plus `overviewPz` for the Action overview map). The
+Pan/zoom is implemented directly by `usePanZoom` — it writes the SVG
+`viewBox` on the container (rAF-batched, cached CTM), with no pan/zoom
+library. Zoom state is owned by `usePanZoom` per tab (`nPZ`, `n1PZ`,
+`actionPZ`, plus `overviewPz` for the Action overview map). The
 `useTiedTabsSync` hook mirrors viewBox changes from the active tab
 to any "tied" detached tab.
 
@@ -466,7 +506,7 @@ selector in Settings → Configurations, default `'off'`). See
 `useDetachedTabs` opens diagram tabs in popup windows
 (`window.open`). When popups are blocked, the error surfaces via
 `onPopupBlocked` callback. The detached tab gets its own
-`react-zoom-pan-pinch` instance; `useTiedTabsSync` keeps the
+`usePanZoom` viewBox state; `useTiedTabsSync` keeps the
 viewBoxes in sync. See `docs/features/detachable-viz-tabs.md`.
 
 ## Interaction logging
@@ -680,7 +720,7 @@ what has been extracted and what remains deferred.
 |---|---|---|
 | Sticky contingency/N-1 summary strip | `components/SidebarSummary.tsx` | ~90 |
 | Sidebar layout shell (summary + contingency selector + children slot) | `components/AppSidebar.tsx` | ~160 |
-| Error / info floating toasts | `components/StatusToasts.tsx` | ~25 |
+| Error / info floating toasts | `components/StatusToasts.tsx` (later superseded by `NotificationHost.tsx`, D5) | ~25 |
 | N-1 diagram fetch effect (svgPatch fast-path + `/api/contingency-diagram` fallback + contingency-change confirm routing) | `hooks/useContingencyFetch.ts` | ~120 |
 | `applyHighlightsForTab` + driving effect + per-tab `detachedViewModes` state + `viewModeForTab` / `handleViewModeChangeForTab` | `hooks/useDiagramHighlights.ts` | ~155 |
 
@@ -722,10 +762,10 @@ architectural bet than Option 1+2 was.
   are added); explicitly flagged as "context only when prop-drilling
   becomes unbearable" in the Code-style section. Not recommended as
   the next step.
-- **`handleSimulateUnsimulatedAction` NDJSON parser (~90 lines).**
-  The inlined stream-consumer duplicates the parse loop from
-  `useAnalysis`. Candidate for extraction into a shared
-  `utils/ndjsonStream.ts` helper once a third caller exists.
+- ~~**`handleSimulateUnsimulatedAction` NDJSON parser (~90 lines).**~~
+  ✅ **Done (D5.1, 2026-07)** — all five reader-loop copies now consume
+  the shared `utils/ndjsonStream.ts` generator; see
+  [`docs/architecture/notifications-and-streaming.md`](../docs/architecture/notifications-and-streaming.md).
 
 ### One-off ESLint exception
 

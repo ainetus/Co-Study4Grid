@@ -5,9 +5,11 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { scoreStudy, scoreSession } from './scoring';
 import { buildSessionLog, buildSessionCsv } from './gameLog';
-import type { GameSessionConfig, GameStudyResult } from './types';
+import type { GameSessionConfig, GameSessionLog, GameStudyResult } from './types';
 
 function study(over: Partial<GameStudyResult> = {}): GameStudyResult {
   return {
@@ -73,5 +75,54 @@ describe('scoreSession + log/csv', () => {
     expect(lines).toHaveLength(2);
     expect(lines[0]).toContain('final_max_rho');
     expect(lines[1]).toContain('a');
+  });
+});
+
+// D8 — cross-language scoring parity. The frontend scorer (scoring.ts) and the
+// in-repo Codabench Python twin (scripts/game_mode/scoring_program/score.py)
+// are both pinned to ONE shared golden fixture; scripts/game_mode/test_score.py
+// asserts the SAME expected values on the Python side. A change to either
+// scorer that breaks numerical parity fails one of the two suites.
+interface GoldenStudyExpected {
+  physical: number; actions: number; time: number; total: number;
+  remediationFraction: number; solved: boolean;
+}
+interface GoldenFixture {
+  studies: { name: string; input: Partial<GameStudyResult>; expected: GoldenStudyExpected }[];
+  sessions: {
+    name: string;
+    input: { studies: Partial<GameStudyResult>[] };
+    expected: { finalScore: number; solvedCount: number; nStudies: number };
+  }[];
+}
+
+const golden = JSON.parse(
+  readFileSync(resolve(__dirname, '../../../scripts/game_mode/scoring_golden.json'), 'utf-8'),
+) as GoldenFixture;
+
+function sessionLog(studies: GameStudyResult[]): GameSessionLog {
+  return {
+    schemaVersion: '1.0', sessionName: 'golden', startedAt: 's', endedAt: 'e',
+    config: { timerSeconds: 300, maxActions: 3, nStudies: studies.length },
+    studies,
+  };
+}
+
+describe('scoring parity with the Python twin (shared golden fixture, D8)', () => {
+  it.each(golden.studies)('study "$name" matches score.py', (c) => {
+    const got = scoreStudy(study(c.input));
+    expect(got.physical).toBeCloseTo(c.expected.physical, 6);
+    expect(got.actions).toBeCloseTo(c.expected.actions, 6);
+    expect(got.time).toBeCloseTo(c.expected.time, 6);
+    expect(got.total).toBeCloseTo(c.expected.total, 6);
+    expect(got.remediationFraction).toBeCloseTo(c.expected.remediationFraction, 6);
+    expect(got.solved).toBe(c.expected.solved);
+  });
+
+  it.each(golden.sessions)('session "$name" matches score.py', (c) => {
+    const got = scoreSession(sessionLog(c.input.studies.map((s) => study(s))));
+    expect(got.finalScore).toBeCloseTo(c.expected.finalScore, 6);
+    expect(got.solvedCount).toBe(c.expected.solvedCount);
+    expect(got.nStudies).toBe(c.expected.nStudies);
   });
 });

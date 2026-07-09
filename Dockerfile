@@ -50,12 +50,14 @@ WORKDIR /home/user/app
 # fastapi, …). The recommender ships with `--no-deps` — mirroring CI — because
 # its own dependency tree is self-conflicting (it wants numpy>=2 while its
 # transitive `pypowsybl2grid` pins numpy==1.26.4); the working runtime deps
-# come from `pip install .`. overrides.txt forces the pinned versions last.
-COPY --chown=user pyproject.toml README.md overrides.txt ./
+# come from `pip install .`. It is pinned via recommender-pin.txt (QW8) — the
+# SAME file CI installs — so a zero-change rebuild can't drift to a new
+# release. overrides.txt forces the pinned transitive versions last.
+COPY --chown=user pyproject.toml README.md overrides.txt recommender-pin.txt ./
 COPY --chown=user expert_backend/ ./expert_backend/
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir . \
-    && pip install --no-cache-dir --no-deps "expert_op4grid_recommender>=0.2.4" \
+    && pip install --no-cache-dir --no-deps -r recommender-pin.txt \
     && pip install --no-cache-dir -r overrides.txt
 
 # --- Application code, bundled grids, built SPA ----------------------------
@@ -63,11 +65,13 @@ RUN pip install --no-cache-dir --upgrade pip \
 # the backend copies it to config.json on first boot.
 COPY --chown=user config.default.json ./
 COPY --chown=user data/ ./data/
-# The European grid ships compressed (its raw .xiidm exceeds HuggingFace's
-# 10 MiB git file limit, so it travels as a Git-LFS .zip). Decompress it here
-# so pypowsybl can load network.xiidm directly — the "Medium" game difficulty.
-RUN python -c "import zipfile, pathlib; z = pathlib.Path('data/pypsa_eur_eur220_225_380_400/network.xiidm.zip'); zipfile.ZipFile(z).extractall(z.parent) if z.exists() else print('eur220 network zip absent — skipping')"
 COPY --chown=user scripts/ ./scripts/
+# The European grid ships compressed (its raw .xiidm exceeds HuggingFace's
+# 10 MiB git file limit, so it travels as a Git-LFS .zip). Validate + decompress
+# it so pypowsybl can load network.xiidm directly — the "Medium" game difficulty.
+# The helper FAILS LOUDLY on an un-smudged LFS pointer or a corrupt archive
+# (QW25) instead of silently baking a broken grid into the image.
+RUN python scripts/extract_network_zip.py data/pypsa_eur_eur220_225_380_400/network.xiidm.zip
 COPY --chown=user --from=frontend /build/dist ./frontend/dist
 # The overflow-viewer overlay (services/overflow_overlay.py) inlines this
 # shared pin-glyph source module at request time, so it must exist at the
@@ -84,7 +88,21 @@ COPY --chown=user frontend/src/utils/svg/pinGlyph.js ./frontend/src/utils/svg/pi
 # the CPU and are far SLOWER than serial (the 47 s → ~15 s assessment win).
 ENV COSTUDY4GRID_FRONTEND_DIST=/home/user/app/frontend/dist \
     EXPERT_OP4GRID_REASSESSMENT_PARALLEL=0 \
-    PORT=7860
+    PORT=7860 \
+    COSTUDY4GRID_LOCKDOWN=1
+# COSTUDY4GRID_LOCKDOWN=1 (D7): this is a public, anonymous-visitor
+# deployment, so the desktop-era filesystem RPCs (custom config path,
+# session save/list/load, native file picker) are disabled — see the
+# lockdown profile in expert_backend/main.py.
 
 EXPOSE 7860
-CMD ["uvicorn", "expert_backend.main:app", "--host", "0.0.0.0", "--port", "7860"]
+
+# Liveness probe (QW25): the read-only app-config endpoint stays available even
+# under lockdown (D7), so it's a safe heartbeat. The long start-period covers
+# the slow first network load. Uses $PORT so it tracks a non-default port.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
+    CMD python -c "import os,sys,urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/api/user-config' % os.environ.get('PORT','7860')).read(); sys.exit(0)"
+
+# Shell form so ${PORT} expands (QW25: PORT was decorative before); `exec`
+# keeps uvicorn as PID 1 so it receives SIGTERM directly for clean shutdown.
+CMD ["sh", "-c", "exec uvicorn expert_backend.main:app --host 0.0.0.0 --port ${PORT:-7860}"]

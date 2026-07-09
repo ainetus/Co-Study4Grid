@@ -66,6 +66,12 @@ def data_dir(network_name) -> Path:
 
 @pytest.fixture(scope="session")
 def osm_dir() -> Path:
+    # The raw PyPSA-EUR OSM CSVs (buses/lines/transformers) are the pipeline
+    # INPUT and are not committed (only the built bundles are). Skip the tests
+    # that read them when they are absent, so the hermetic slice of this suite
+    # still passes from a fresh clone / in CI (D8).
+    if not (OSM_DIR / "buses.csv").exists():
+        pytest.skip("raw PyPSA-EUR OSM CSVs (data/pypsa_eur_osm/) not committed")
     return OSM_DIR
 
 

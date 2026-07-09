@@ -22,7 +22,8 @@ export type ApiErrorCode =
     | 'STUDY_BUSY'
     | 'VALIDATION'
     | 'INTERNAL'
-    | 'ACTION_RESULT_UNAVAILABLE';
+    | 'ACTION_RESULT_UNAVAILABLE'
+    | 'LOCKED_DOWN';
 
 export interface ApiError {
     message: string;

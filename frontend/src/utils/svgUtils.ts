@@ -16,7 +16,7 @@
  */
 
 export { getIdMap, invalidateIdMapCache } from './svg/idMap';
-export { boostSvgForLargeGrid, processSvg } from './svg/svgBoost';
+export { boostSvgForLargeGrid, boostSvgToElement, processSvg } from './svg/svgBoost';
 export { buildMetadataIndex } from './svg/metadataIndex';
 export {
     applyOverloadedHighlights,

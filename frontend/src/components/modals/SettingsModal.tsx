@@ -6,6 +6,7 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
 import { interactionLogger } from '../../utils/interactionLogger';
+import { useModalKeyboard } from '../../hooks/useModalKeyboard';
 import type { SettingsState } from '../../hooks/useSettings';
 import { useSmoothPanZoom, type PanZoomMode } from '../../utils/smoothPanZoom';
 import { colors } from '../../styles/tokens';
@@ -50,6 +51,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
     pickSettingsPath,
     handleCloseSettings,
   } = settings;
+
+  // Escape-to-close + focus trap/restore (QW20). Called before the early
+  // return so hook order stays stable across open/closed renders.
+  const { containerRef, dialogProps } = useModalKeyboard({
+    isOpen: isSettingsOpen,
+    onClose: handleCloseSettings,
+  });
 
   if (!isSettingsOpen) return null;
 
@@ -108,7 +116,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
       display: 'flex', justifyContent: 'center', alignItems: 'center'
     }}>
       <div
-        role="dialog"
+        ref={containerRef}
+        {...dialogProps}
         style={{
           background: colors.surface, padding: '25px', borderRadius: '8px',
           width: '450px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)',

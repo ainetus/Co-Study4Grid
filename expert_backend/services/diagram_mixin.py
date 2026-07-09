@@ -891,18 +891,36 @@ class DiagramMixin(_Base):
 
     @staticmethod
     def _diff_switches(action_switches_df, cont_network) -> dict:
-        """Return ``{switch_id: {from_open, to_open}}`` for each switch whose state changed."""
+        """Return ``{switch_id: {from_open, to_open}}`` for each switch whose state changed.
+
+        Vectorised: the action grid can carry ~85 k switches and the old
+        implementation did two O(log n) ``.loc`` lookups per switch inside a
+        Python loop. Instead, align the two ``open`` columns on the shared
+        index and compare in NumPy, then build the dict only over the (few)
+        switches that actually changed. Semantics are unchanged — switches
+        absent from the contingency grid are skipped, and a change is
+        ``from_open = contingency state`` → ``to_open = action state``.
+        """
         if action_switches_df is None:
             return {}
-        changed: dict[str, dict] = {}
         try:
             cont_switches_df = cont_network.get_switches()
-            for sw_id in action_switches_df.index:
-                if sw_id in cont_switches_df.index:
-                    a_open = bool(action_switches_df.loc[sw_id, "open"])
-                    cont_open = bool(cont_switches_df.loc[sw_id, "open"])
-                    if a_open != cont_open:
-                        changed[sw_id] = {"from_open": cont_open, "to_open": a_open}
+            a_open = action_switches_df["open"].astype(bool)
+            cont_open = cont_switches_df["open"].astype(bool)
+            # Which action switches also exist in the contingency grid (the old
+            # `if sw_id in cont_switches_df.index` membership test, vectorised).
+            present = a_open.index.isin(cont_open.index)
+            # Align on the action index; absent switches fill False but are
+            # excluded by `present`, so the fill value never reaches the output.
+            c_open = cont_open.reindex(a_open.index, fill_value=False)
+            differ = present & (a_open.to_numpy() != c_open.to_numpy())
+            return {
+                sw_id: {
+                    "from_open": bool(c_open.loc[sw_id]),
+                    "to_open": bool(a_open.loc[sw_id]),
+                }
+                for sw_id in a_open.index[differ]
+            }
         except Exception as e:
             logger.warning("Warning: Failed to compare switch states: %s", e)
-        return changed
+            return {}

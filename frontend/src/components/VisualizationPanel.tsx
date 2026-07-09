@@ -34,6 +34,98 @@ import {
 const NOOP_ACTION_SELECT = (_id: string | null) => { /* intentional no-op */ };
 const EMPTY_STRING_ARRAY: readonly string[] = [];
 
+/**
+ * Interactive SLD topology-edit wiring, grouped into one cohesive prop
+ * (D4) instead of ~22 individual props. Optional as a whole — when absent
+ * the SLD overlay renders without the Edit affordance (legacy behaviour).
+ * App builds it from the `useManualSimulation` / `useSldTopologyEdit`
+ * facade; see `App.tsx`.
+ */
+export interface SldEditControls {
+    sldEditMode?: boolean;
+    onSldEditModeChange?: (next: boolean) => void;
+    sldEditPendingSwitches?: Record<string, boolean>;
+    sldEditPendingChanges?: import('../hooks/useSldTopologyEdit').SwitchToggleEntry[];
+    onSldSwitchClick?: (equipmentId: string) => void;
+    sldEditPendingInjections?: Record<string, number>;
+    sldEditInjectionChanges?: import('../hooks/useSldTopologyEdit').InjectionChangeEntry[];
+    onSldInjectionStage?: (equipmentId: string, targetP: number) => void;
+    onSldInjectionRemove?: (equipmentId: string) => void;
+    onSldEditSimulate?: () => void;
+    onSldEditReset?: () => void;
+    sldEditBusy?: boolean;
+    sldEditCombinedWithActionId?: string | null;
+    sldPreviewSvg?: string | null;
+    sldPreviewMetadata?: string | null;
+    sldPreviewStale?: boolean;
+    sldPreviewLoading?: boolean;
+    sldFocusedSwitchId?: string | null;
+    onSldSwitchFocus?: (equipmentId: string | null) => void;
+    onSldSwitchRemove?: (equipmentId: string) => void;
+    onSldSwitchRemoveMany?: (equipmentIds: string[]) => void;
+    /** Navigate the SLD overlay to a branch extremity's voltage level. */
+    onSldNavigateToVl?: (vlId: string) => void;
+}
+
+/**
+ * Detached-tabs wiring, grouped (D4). Optional as a whole — call sites /
+ * tests that don't use the detach feature omit it. Built by App from
+ * `useDetachedTabs` / `useTiedTabsSync`.
+ */
+export interface DetachControls {
+    /** Map of tabs currently living in a secondary browser window. */
+    detachedTabs?: DetachedTabsMap;
+    onDetachTab?: (tab: TabId) => void;
+    onReattachTab?: (tab: TabId) => void;
+    onFocusDetachedTab?: (tab: TabId) => void;
+    /** True iff the given tab is currently "tied" to the main window's activeTab. */
+    isTabTied?: (tab: TabId) => boolean;
+    onToggleTabTie?: (tab: TabId) => void;
+}
+
+/**
+ * Overflow Analysis tab wiring, grouped (D4): the hierarchical/geo layout
+ * toggle plus the action-pin overlay controls. Optional as a whole.
+ */
+export interface OverflowControls {
+    overflowLayoutMode?: 'hierarchical' | 'geo';
+    overflowLayoutLoading?: boolean;
+    onOverflowLayoutChange?: (mode: 'hierarchical' | 'geo') => void;
+    /** Single click on an overflow-graph action pin — focus the feed card. */
+    onOverflowPinPreview?: (actionId: string) => void;
+    /** Double-click on an action pin — route to the post-action SLD. */
+    onOverflowPinDoubleClick?: (actionId: string, substation: string) => void;
+    /** Pre-computed pin descriptors posted to the overflow-graph iframe. */
+    overflowPins?: ReadonlyArray<import('../utils/svg/overflowPinPayload').OverflowPin>;
+    overflowPinsEnabled?: boolean;
+    onOverflowPinsToggle?: (enabled: boolean) => void;
+}
+
+/**
+ * Action-overview wiring, grouped (D4): the pin-interaction handlers,
+ * selection/rejection sets, filter state, and un-simulated pin metadata
+ * the Remedial Action overview view reads. Optional as a whole.
+ */
+export interface ActionOverviewControls {
+    n1MetaIndex?: MetadataIndex | null;
+    onActionSelect?: (actionId: string | null) => void;
+    onActionFavorite?: (actionId: string) => void;
+    onActionReject?: (actionId: string) => void;
+    selectedActionIds?: Set<string>;
+    rejectedActionIds?: Set<string>;
+    onPinPreview?: (actionId: string) => void;
+    onOverviewPzChange?: (pz: PZInstance) => void;
+    monitoringFactor?: number;
+    displayName?: (id: string) => string;
+    overviewFilters?: ActionOverviewFilters;
+    onOverviewFiltersChange?: (next: ActionOverviewFilters) => void;
+    sidebarCollapsed?: boolean;
+    hasActions?: boolean;
+    unsimulatedActionIds?: readonly string[];
+    unsimulatedActionInfo?: Readonly<Record<string, UnsimulatedActionScoreInfo>>;
+    onSimulateUnsimulatedAction?: (actionId: string) => void;
+}
+
 interface VisualizationPanelProps {
     activeTab: TabId;
     configLoading: boolean;
@@ -67,15 +159,8 @@ interface VisualizationPanelProps {
      * is currently detached.
      */
     onViewModeChangeForTab?: (tab: TabId, mode: 'network' | 'delta') => void;
-    /**
-     * Overflow Analysis tab layout toggle (Hierarchical / Geo). Only
-     * rendered on the overflow tab when an overflow file is present.
-     * Cache-backed on the backend — switching between modes is
-     * instant after the first regeneration.
-     */
-    overflowLayoutMode?: 'hierarchical' | 'geo';
-    overflowLayoutLoading?: boolean;
-    onOverflowLayoutChange?: (mode: 'hierarchical' | 'geo') => void;
+    /** Overflow Analysis tab wiring (layout toggle + action pins), grouped (D4). See OverflowControls. */
+    overflow?: OverflowControls;
     inspectQuery: string;
     onInspectQueryChange: (query: string) => void;
     /**
@@ -95,121 +180,17 @@ interface VisualizationPanelProps {
     vlOverlay: VlOverlay | null;
     onOverlayClose: () => void;
     onOverlaySldTabChange: (tab: SldTab) => void;
-    /**
-     * Interactive SLD topology-edit wiring. Optional — when absent the
-     * SLD overlay renders without the Edit affordance (legacy
-     * behaviour). See ``useSldTopologyEdit`` in ``App.tsx``.
-     */
-    sldEditMode?: boolean;
-    onSldEditModeChange?: (next: boolean) => void;
-    sldEditPendingSwitches?: Record<string, boolean>;
-    sldEditPendingChanges?: import('../hooks/useSldTopologyEdit').SwitchToggleEntry[];
-    onSldSwitchClick?: (equipmentId: string) => void;
-    sldEditPendingInjections?: Record<string, number>;
-    sldEditInjectionChanges?: import('../hooks/useSldTopologyEdit').InjectionChangeEntry[];
-    onSldInjectionStage?: (equipmentId: string, targetP: number) => void;
-    onSldInjectionRemove?: (equipmentId: string) => void;
-    onSldEditSimulate?: () => void;
-    onSldEditReset?: () => void;
-    sldEditBusy?: boolean;
-    sldEditCombinedWithActionId?: string | null;
-    sldPreviewSvg?: string | null;
-    sldPreviewMetadata?: string | null;
-    sldPreviewStale?: boolean;
-    sldPreviewLoading?: boolean;
-    sldFocusedSwitchId?: string | null;
-    onSldSwitchFocus?: (equipmentId: string | null) => void;
-    onSldSwitchRemove?: (equipmentId: string) => void;
-    onSldSwitchRemoveMany?: (equipmentIds: string[]) => void;
-    /** Navigate the SLD overlay to a branch extremity's voltage level. */
-    onSldNavigateToVl?: (vlId: string) => void;
+    /** Interactive SLD topology-edit wiring, grouped (D4). See SldEditControls. */
+    sldEdit?: SldEditControls;
     voltageLevels: string[];
     onVlOpen: (vlName: string) => void;
-    /**
-     * Single click on an overflow-graph action pin. Should focus the
-     * feed card for that action (same as clicking an Action-Overview
-     * pin) — NOT switch tabs. Optional so call sites that don't
-     * surface the overflow viewer can omit it.
-     */
-    onOverflowPinPreview?: (actionId: string) => void;
-    /**
-     * Double-click on an action pin in the overflow graph. Routes the
-     * user to the SLD overlay opened on the post-action ('action')
-     * sub-tab for that substation. Optional so call sites that don't
-     * surface the overflow viewer can omit it.
-     */
-    onOverflowPinDoubleClick?: (actionId: string, substation: string) => void;
     networkPath: string;
     layoutPath: string;
     onOpenSettings: (tab?: 'recommender' | 'configurations' | 'paths') => void;
-    /**
-     * Map of tabs currently living in a secondary browser window.
-     * Optional so existing call sites / tests that don't care about the
-     * detach feature continue to work without wiring the props up.
-     */
-    detachedTabs?: DetachedTabsMap;
-    /** Detach a tab into a new popup window. */
-    onDetachTab?: (tab: TabId) => void;
-    /** Close the popup for a tab and fold it back inline. */
-    onReattachTab?: (tab: TabId) => void;
-    /** Bring focus to the popup window hosting a detached tab. */
-    onFocusDetachedTab?: (tab: TabId) => void;
-    /** True iff the given tab is currently "tied" to the main window's activeTab. */
-    isTabTied?: (tab: TabId) => boolean;
-    /** Toggle the "tied" flag for the given tab. */
-    onToggleTabTie?: (tab: TabId) => void;
-    /**
-     * Metadata index for the N-1 diagram. Used by the
-     * action-overview view (shown in the Remedial Action tab
-     * when no card is selected) to resolve each action to an
-     * (x, y) anchor on the network.
-     */
-    n1MetaIndex?: MetadataIndex | null;
-    /**
-     * Invoked when the user clicks a pin on the action-overview
-     * view — should trigger the same action-select flow as
-     * clicking a card in the sidebar. Accepts `null` so the
-     * top-right ✕ button on the action tab can deselect.
-     */
-    onActionSelect?: (actionId: string | null) => void;
-    /** Toggle an action's favourite (starred) status. */
-    onActionFavorite?: (actionId: string) => void;
-    /** Reject an action from the suggestions feed. */
-    onActionReject?: (actionId: string) => void;
-    /** Selected-action id set (for the overview popover styling). */
-    selectedActionIds?: Set<string>;
-    /** Rejected-action id set (for the overview popover styling). */
-    rejectedActionIds?: Set<string>;
-    /** Called when a pin is single-clicked on the overview (scroll sidebar to card). */
-    onPinPreview?: (actionId: string) => void;
-    /** Called when the overview's usePanZoom instance changes (for tied-tab sync). */
-    onOverviewPzChange?: (pz: PZInstance) => void;
-    /**
-     * Monitoring factor used to derive each action's severity
-     * colour, kept in sync with the card palette.
-     */
-    monitoringFactor?: number;
-    /** Resolve an element/VL ID to its human-readable display name. */
-    displayName?: (id: string) => string;
-    /** Shared category + threshold + un-simulated filter state. */
-    overviewFilters?: ActionOverviewFilters;
-    /** Setter for the shared overview filter state (owned by App.tsx). */
-    onOverviewFiltersChange?: (next: ActionOverviewFilters) => void;
-    /** When true, the sidebar is collapsed and its ActionFilterRings
-     *  row is unreachable. Surface a copy of the strip on the left
-     *  side of this panel's tab row so the filter remains accessible
-     *  even with the sidebar folded away. */
-    sidebarCollapsed?: boolean;
-    /** Whether the action feed currently holds any card to filter —
-     *  the inline filter strip stays hidden until there is something
-     *  to act on, mirroring the sidebar's gating. */
-    hasActions?: boolean;
-    /** Ids of scored-but-not-simulated actions to render as dimmed pins. */
-    unsimulatedActionIds?: readonly string[];
-    /** Per-id score metadata used to enrich the un-simulated pin tooltip. */
-    unsimulatedActionInfo?: Readonly<Record<string, UnsimulatedActionScoreInfo>>;
-    /** Kick off a manual simulation when an un-simulated pin is double-clicked. */
-    onSimulateUnsimulatedAction?: (actionId: string) => void;
+    /** Detached-tabs wiring, grouped (D4). See DetachControls. */
+    detach?: DetachControls;
+    /** Action-overview wiring (pins, selection, filters), grouped (D4). See ActionOverviewControls. */
+    actionOverview?: ActionOverviewControls;
     /**
      * When false, voltage-level labels rendered by pypowsybl inside the
      * NAD's `<foreignObject class="nad-text-nodes">` are hidden via CSS.
@@ -218,18 +199,6 @@ interface VisualizationPanelProps {
      */
     showVoltageLevelNames?: boolean;
     onToggleVoltageLevelNames?: (show: boolean) => void;
-    /**
-     * Pre-computed pin descriptors posted to the overflow-graph
-     * iframe when `overflowPinsEnabled` is true. Built upstream by
-     * `buildOverflowPinPayload` from `actions`, `monitoringFactor`,
-     * and the VL→substation map. Re-posted whenever the array
-     * reference changes.
-     */
-    overflowPins?: ReadonlyArray<import('../utils/svg/overflowPinPayload').OverflowPin>;
-    /** Toggle state — controlled by App.tsx so it survives tab swaps. */
-    overflowPinsEnabled?: boolean;
-    /** Setter for `overflowPinsEnabled` — wired to interactionLogger. */
-    onOverflowPinsToggle?: (enabled: boolean) => void;
 }
 
 
@@ -264,70 +233,88 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     vlOverlay,
     onOverlayClose,
     onOverlaySldTabChange,
-    sldEditMode,
-    onSldEditModeChange,
-    sldEditPendingSwitches,
-    sldEditPendingChanges,
-    onSldSwitchClick,
-    sldEditPendingInjections,
-    sldEditInjectionChanges,
-    onSldInjectionStage,
-    onSldInjectionRemove,
-    onSldEditSimulate,
-    onSldEditReset,
-    sldEditBusy,
-    sldEditCombinedWithActionId,
-    sldPreviewSvg,
-    sldPreviewMetadata,
-    sldPreviewStale,
-    sldPreviewLoading,
-    sldFocusedSwitchId,
-    onSldSwitchFocus,
-    onSldSwitchRemove,
-    onSldSwitchRemoveMany,
-    onSldNavigateToVl,
+    sldEdit,
+    detach,
+    overflow,
+    actionOverview,
     voltageLevels,
     onVlOpen,
-    onOverflowPinPreview,
-    onOverflowPinDoubleClick,
     networkPath,
     layoutPath,
     onOpenSettings,
-    detachedTabs = {},
-    onDetachTab,
-    onReattachTab,
-    onFocusDetachedTab,
     onInspectQueryChangeFor,
     viewModeForTab,
     onViewModeChangeForTab,
-    overflowLayoutMode,
-    overflowLayoutLoading,
-    onOverflowLayoutChange,
-    isTabTied,
-    onToggleTabTie,
-    n1MetaIndex,
-    onActionSelect,
-    onActionFavorite,
-    onActionReject,
-    selectedActionIds,
-    rejectedActionIds,
-    onPinPreview,
-    onOverviewPzChange,
-    monitoringFactor,
-    displayName,
-    overviewFilters,
-    onOverviewFiltersChange,
-    sidebarCollapsed,
-    hasActions,
-    unsimulatedActionIds,
-    unsimulatedActionInfo,
-    onSimulateUnsimulatedAction,
     showVoltageLevelNames = true,
     onToggleVoltageLevelNames,
-    overflowPins,
-    overflowPinsEnabled = false,
-    onOverflowPinsToggle,
 }) => {
+    // Unpack the grouped SLD-edit controls (D4) so the body below keeps
+    // referring to the individual fields unchanged.
+    const {
+        sldEditMode,
+        onSldEditModeChange,
+        sldEditPendingSwitches,
+        sldEditPendingChanges,
+        onSldSwitchClick,
+        sldEditPendingInjections,
+        sldEditInjectionChanges,
+        onSldInjectionStage,
+        onSldInjectionRemove,
+        onSldEditSimulate,
+        onSldEditReset,
+        sldEditBusy,
+        sldEditCombinedWithActionId,
+        sldPreviewSvg,
+        sldPreviewMetadata,
+        sldPreviewStale,
+        sldPreviewLoading,
+        sldFocusedSwitchId,
+        onSldSwitchFocus,
+        onSldSwitchRemove,
+        onSldSwitchRemoveMany,
+        onSldNavigateToVl,
+    } = sldEdit ?? {};
+    // Detached-tabs / overflow / action-overview controls, grouped (D4) —
+    // unpacked here so the body below keeps referring to the individual
+    // fields unchanged (defaults preserved from the former props).
+    const {
+        detachedTabs = {},
+        onDetachTab,
+        onReattachTab,
+        onFocusDetachedTab,
+        isTabTied,
+        onToggleTabTie,
+    } = detach ?? {};
+    const {
+        overflowLayoutMode,
+        overflowLayoutLoading,
+        onOverflowLayoutChange,
+        onOverflowPinPreview,
+        onOverflowPinDoubleClick,
+        overflowPins,
+        overflowPinsEnabled = false,
+        onOverflowPinsToggle,
+    } = overflow ?? {};
+    const {
+        n1MetaIndex,
+        onActionSelect,
+        onActionFavorite,
+        onActionReject,
+        selectedActionIds,
+        rejectedActionIds,
+        onPinPreview,
+        onOverviewPzChange,
+        monitoringFactor,
+        displayName,
+        overviewFilters,
+        onOverviewFiltersChange,
+        sidebarCollapsed,
+        hasActions,
+        unsimulatedActionIds,
+        unsimulatedActionInfo,
+        onSimulateUnsimulatedAction,
+    } = actionOverview ?? {};
+
     // No-op fallbacks so conditional branches don't need to guard.
     const detachTabCb = onDetachTab ?? (() => {});
     const reattachTabCb = onReattachTab ?? (() => {});

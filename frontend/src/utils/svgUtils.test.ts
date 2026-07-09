@@ -56,10 +56,11 @@ describe('processSvg', () => {
         expect(result.viewBox).toBeNull();
     });
 
-    it('returns svg string', () => {
-        const svg = '<svg viewBox="0 0 100 100"><rect/></svg>';
+    it('returns a live svg element (D6 element-adoption)', () => {
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect/></svg>';
         const result = processSvg(svg, 10);
-        expect(result.svg).toContain('<svg');
+        expect(typeof result.svg).not.toBe('string');
+        expect((result.svg as SVGSVGElement).nodeName.toLowerCase()).toBe('svg');
     });
 
     it('handles viewBox with commas', () => {

@@ -15,7 +15,7 @@ different model. See [Plug Your Own Recommendation Model](#plug-your-own-recomme
 to extend it.
 
 ![License: MPL 2.0](https://img.shields.io/badge/license-MPL--2.0-blue)
-![Release](https://img.shields.io/badge/release-0.8.0-green)
+![Release](https://img.shields.io/badge/release-0.9.0-green)
 
 ---
 
@@ -797,7 +797,6 @@ Co-Study4Grid consumes and produces.
 - **Vite 7** — build tool and dev server
 - **axios** — HTTP client
 - **react-select** — searchable dropdown for branch selection
-- **react-zoom-pan-pinch** — pan/zoom for SVG visualizations
 - **vite-plugin-singlefile** — auto-generated single-file standalone bundle
 - **Vitest** + **React Testing Library** — unit tests (~1000 specs)
 
@@ -888,7 +887,7 @@ layers of automated checks (`scripts/check_standalone_parity.py`,
 
 ## Changelog
 
-See [`CHANGELOG.md`](CHANGELOG.md) for the list of changes per release. The current release is **0.8.0**.
+See [`CHANGELOG.md`](CHANGELOG.md) for the list of changes per release. The current release is **0.9.0**.
 
 ---
 

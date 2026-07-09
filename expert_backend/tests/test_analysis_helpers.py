@@ -12,6 +12,7 @@ isolation — no ``RecommenderService`` instance, no network layer.
 from __future__ import annotations
 
 import os
+import threading
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -24,6 +25,44 @@ from expert_backend.services.analysis import (
     mw_start_scoring,
     pdf_watcher,
 )
+
+
+class TestRunWithPdfPollingWatchdog:
+    """QW22 — the legacy analysis poll loop must not hang forever if the
+    background worker never finishes (it would wedge the D3 study gate)."""
+
+    def test_raises_timeout_when_worker_never_finishes(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(analysis_runner, "_ANALYSIS_DEADLINE_S", 0.3)
+        release = threading.Event()
+
+        def blocking_runner(**kwargs):
+            # Simulate a hung analysis: block until the test releases us so the
+            # worker never sets shared_state['done'].
+            release.wait(timeout=5)
+            return None
+
+        gen = analysis_runner.run_with_pdf_polling(
+            [], str(tmp_path), runner_fn=blocking_runner
+        )
+        try:
+            with pytest.raises(TimeoutError):
+                for _ in gen:
+                    pass
+        finally:
+            release.set()  # let the daemon worker exit cleanly
+
+    def test_completes_normally_when_worker_finishes_before_deadline(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(analysis_runner, "_ANALYSIS_DEADLINE_S", 5.0)
+
+        def quick_runner(**kwargs):
+            return {"ok": True}
+
+        events = list(
+            analysis_runner.run_with_pdf_polling([], str(tmp_path), runner_fn=quick_runner)
+        )
+        final = events[-1]
+        assert final["_final"] is True
+        assert final["result"] == {"ok": True}
 
 
 # ----------------------------------------------------------------------

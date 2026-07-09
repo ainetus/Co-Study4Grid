@@ -14,6 +14,39 @@ import VisualizationPanel from './VisualizationPanel';
 import type { DiagramData, AnalysisResult, TabId, ActionOverviewFilters } from '../types';
 import { DEFAULT_ACTION_OVERVIEW_FILTERS } from '../utils/actionTypes';
 
+// D4 consolidation: VisualizationPanel groups the detached-tabs, overflow,
+// and action-overview wiring into three cohesive object props (`detach`,
+// `overflow`, `actionOverview`) instead of ~30 flat props. Most of the
+// behavioural tests below predate that grouping and set the individual
+// fields flat (e.g. `detachedTabs`, `overflowLayoutMode`, `onActionSelect`).
+// Rather than nest every one by hand, `createDefaultProps` partitions any
+// flat cluster key it recognises back into its grouped object — so each
+// test keeps asserting on what it exercises (Tie button, layout toggle, …)
+// without prop-nesting boilerplate. A test may also pass a whole
+// `detach` / `overflow` / `actionOverview` object directly (see the grouped
+// sldEdit tests for the same style); the flat-derived group is merged on top.
+const CLUSTER_KEYS: Record<string, readonly string[]> = {
+    detach: ['detachedTabs', 'onDetachTab', 'onReattachTab', 'onFocusDetachedTab', 'isTabTied', 'onToggleTabTie'],
+    overflow: ['overflowLayoutMode', 'overflowLayoutLoading', 'onOverflowLayoutChange', 'onOverflowPinPreview', 'onOverflowPinDoubleClick', 'overflowPins', 'overflowPinsEnabled', 'onOverflowPinsToggle'],
+    actionOverview: ['n1MetaIndex', 'onActionSelect', 'onActionFavorite', 'onActionReject', 'selectedActionIds', 'rejectedActionIds', 'onPinPreview', 'onOverviewPzChange', 'monitoringFactor', 'displayName', 'overviewFilters', 'onOverviewFiltersChange', 'sidebarCollapsed', 'hasActions', 'unsimulatedActionIds', 'unsimulatedActionInfo', 'onSimulateUnsimulatedAction'],
+};
+
+const groupClusterOverrides = (overrides: Record<string, unknown>) => {
+    const groups: Record<string, Record<string, unknown>> = { detach: {}, overflow: {}, actionOverview: {} };
+    const rest: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(overrides)) {
+        const groupName = Object.keys(CLUSTER_KEYS).find(g => CLUSTER_KEYS[g].includes(key));
+        if (groupName) groups[groupName][key] = value;
+        else rest[key] = value;
+    }
+    return {
+        ...rest,
+        ...(Object.keys(groups.detach).length ? { detach: groups.detach } : {}),
+        ...(Object.keys(groups.overflow).length ? { overflow: groups.overflow } : {}),
+        ...(Object.keys(groups.actionOverview).length ? { actionOverview: groups.actionOverview } : {}),
+    };
+};
+
 const createDefaultProps = (overrides: Record<string, unknown> = {}) => ({
     activeTab: 'n' as TabId,
     configLoading: false,
@@ -50,7 +83,7 @@ const createDefaultProps = (overrides: Record<string, unknown> = {}) => ({
     networkPath: '',
     layoutPath: '',
     onOpenSettings: vi.fn(),
-    ...overrides,
+    ...groupClusterOverrides(overrides),
 });
 
 describe('VisualizationPanel', () => {
@@ -608,6 +641,138 @@ describe('VisualizationPanel', () => {
             expect(textEl).not.toHaveClass('sld-delta-text-positive');
             // But it preserves unrelated classes
             expect(textEl).toHaveClass('some-other-class');
+        });
+    });
+
+    describe('grouped sldEdit prop (D4 consolidation)', () => {
+        it('threads the grouped SLD-edit controls down to the edit panel', () => {
+            const vlOverlay = {
+                vlName: 'VL_A',
+                actionId: null,
+                svg: '<svg><g/></svg>',
+                sldMetadata: null,
+                loading: false,
+                error: null,
+                tab: 'contingency' as TabId,
+            };
+            const props = createDefaultProps({
+                vlOverlay,
+                activeTab: 'contingency',
+                // One cohesive object in place of the former ~22 sld* props.
+                sldEdit: {
+                    sldEditMode: true,
+                    onSldEditSimulate: vi.fn(),
+                    onSldEditReset: vi.fn(),
+                    onSldSwitchClick: vi.fn(),
+                    sldEditPendingChanges: [{ switchId: 'SW_1', baselineOpen: false, targetOpen: true }],
+                },
+            });
+
+            render(<VisualizationPanel {...props} />);
+
+            // The grouped controls reach SldOverlay → SldEditPanel: the panel
+            // renders only when editMode + onSimulate + onReset + a pending
+            // change are ALL present, so this proves the object was unpacked
+            // and forwarded field-by-field.
+            expect(screen.getByTestId('sld-edit-panel')).toBeInTheDocument();
+            expect(screen.getByTestId('sld-edit-change-SW_1')).toBeInTheDocument();
+        });
+
+        it('renders the overlay without the edit panel when no sldEdit is passed', () => {
+            const vlOverlay = {
+                vlName: 'VL_A', actionId: null, svg: '<svg><g/></svg>',
+                sldMetadata: null, loading: false, error: null, tab: 'contingency' as TabId,
+            };
+            render(<VisualizationPanel {...createDefaultProps({ vlOverlay, activeTab: 'contingency' })} />);
+            expect(screen.queryByTestId('sld-edit-panel')).not.toBeInTheDocument();
+        });
+    });
+
+    // D4 consolidation: prove the three remaining grouped props (detach /
+    // overflow / actionOverview) are unpacked and forwarded when passed as a
+    // whole object — and that each is safely OPTIONAL (omitting it renders
+    // the panel without that affordance, the "optional as a whole" contract).
+    // These pass the grouped object DIRECTLY (bypassing the flat-override
+    // partition helper) so they lock the object-prop wire contract itself.
+    describe('grouped detach / overflow / actionOverview props (D4 consolidation)', () => {
+        const nDiagram: DiagramData = { svg: '<svg>n</svg>', metadata: null };
+
+        it('threads a grouped detach object through to the Tie button', () => {
+            const mountNode = document.createElement('div');
+            document.body.appendChild(mountNode);
+            const onToggleTabTie = vi.fn();
+            render(<VisualizationPanel {...createDefaultProps({
+                activeTab: 'n',
+                nDiagram,
+                hasBranches: true,
+                detach: {
+                    detachedTabs: { n: { window: {} as Window, mountNode } },
+                    isTabTied: () => false,
+                    onToggleTabTie,
+                },
+            })} />);
+            const tieButton = mountNode.querySelector('button[title^="Tie"]') as HTMLElement | null;
+            expect(tieButton).not.toBeNull();
+            fireEvent.click(tieButton!);
+            expect(onToggleTabTie).toHaveBeenCalledWith('n');
+            document.body.removeChild(mountNode);
+        });
+
+        it('renders no Tie affordance when the detach group is omitted', () => {
+            render(<VisualizationPanel {...createDefaultProps({ activeTab: 'n', nDiagram, hasBranches: true })} />);
+            expect(document.body.querySelectorAll('button[title^="Tie"]')).toHaveLength(0);
+        });
+
+        it('threads a grouped overflow object through to the layout toggle', () => {
+            const onOverflowLayoutChange = vi.fn();
+            render(<VisualizationPanel {...createDefaultProps({
+                activeTab: 'overflow',
+                layoutPath: '/tmp/grid_layout.json',
+                result: {
+                    pdf_url: '/results/pdf/overflow_hierarchi.html',
+                    pdf_path: '/tmp/Overflow_Graph/overflow_hierarchi.html',
+                    actions: {}, action_scores: null, lines_overloaded: [],
+                    message: '', dc_fallback: false,
+                } as AnalysisResult,
+                overflow: {
+                    overflowLayoutMode: 'hierarchical',
+                    overflowLayoutLoading: false,
+                    onOverflowLayoutChange,
+                },
+            })} />);
+            fireEvent.click(screen.getByRole('button', { name: 'Geo' }));
+            expect(onOverflowLayoutChange).toHaveBeenCalledWith('geo');
+        });
+
+        it('omits the layout toggle when the overflow group is omitted', () => {
+            render(<VisualizationPanel {...createDefaultProps({
+                activeTab: 'overflow',
+                layoutPath: '/tmp/grid_layout.json',
+                result: {
+                    pdf_url: '/results/pdf/overflow_hierarchi.html',
+                    pdf_path: '/tmp/Overflow_Graph/overflow_hierarchi.html',
+                    actions: {}, action_scores: null, lines_overloaded: [],
+                    message: '', dc_fallback: false,
+                } as AnalysisResult,
+            })} />);
+            expect(screen.queryByRole('button', { name: 'Geo' })).not.toBeInTheDocument();
+        });
+
+        it('threads a grouped actionOverview object through to the collapsed filter strip', () => {
+            render(<VisualizationPanel {...createDefaultProps({
+                actionOverview: {
+                    overviewFilters: DEFAULT_ACTION_OVERVIEW_FILTERS as ActionOverviewFilters,
+                    onOverviewFiltersChange: vi.fn(),
+                    hasActions: true,
+                    sidebarCollapsed: true,
+                },
+            })} />);
+            expect(screen.getByTestId('viz-panel-overview-filters')).toBeInTheDocument();
+        });
+
+        it('renders no inline filter strip when the actionOverview group is omitted', () => {
+            render(<VisualizationPanel {...createDefaultProps({})} />);
+            expect(screen.queryByTestId('viz-panel-overview-filters')).not.toBeInTheDocument();
         });
     });
 
