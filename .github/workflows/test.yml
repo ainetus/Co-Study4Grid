@@ -51,6 +51,34 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
+  # ------------------------------------------------------------------
+  # Data-pipeline + benchmark supply chain (D8). Runs the HERMETIC slice
+  # of the PyPSA-EUR pipeline suite (scripts/pypsa_eur) and the Codabench
+  # scorer parity guard (scripts/game_mode). These live outside
+  # pytest.ini's testpaths (expert_backend/tests), so they need an
+  # explicit path. Tests that require the uncommitted raw OSM CSVs skip
+  # gracefully (conftest osm_dir / regenerate_grid_layout guards), so the
+  # suite is green from a fresh clone. scripts/game_mode/test_score.py is
+  # pure stdlib and pins score.py to the shared golden fixture the
+  # frontend's scoring.test.ts also asserts — locking cross-language parity.
+  # ------------------------------------------------------------------
+  test-data-pipeline:
+    name: Data pipeline + scorer parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[test]"
+      - name: Run pipeline + scorer tests (hermetic slice)
+        run: pytest scripts/pypsa_eur scripts/game_mode -q
+
   test-frontend:
     runs-on: ubuntu-latest
     steps:

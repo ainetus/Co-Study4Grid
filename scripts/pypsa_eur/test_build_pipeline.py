@@ -48,6 +48,13 @@ def captured_runs(monkeypatch):
         return _FakeResult()
 
     monkeypatch.setattr(subprocess, "run", fake_run)
+    # Stub the provenance write so the step-selection tests don't touch the
+    # filesystem or shell out to git. write_provenance_manifest is covered
+    # directly in TestProvenanceManifest below.
+    monkeypatch.setattr(
+        bp, "write_provenance_manifest",
+        lambda out_dir, params, steps: Path(out_dir) / "provenance.json",
+    )
     return calls
 
 
@@ -67,7 +74,7 @@ def _step_script_names(calls: list[list[str]]) -> list[str]:
 class TestStepSelection:
     """Verify which step scripts run under various CLI combinations."""
 
-    def test_default_runs_all_five_steps(self, captured_runs, monkeypatch):
+    def test_default_runs_all_six_steps(self, captured_runs, monkeypatch):
         monkeypatch.setattr(sys, "argv", ["build_pipeline.py"])
         bp.main()
         assert _step_script_names(captured_runs) == [
@@ -76,6 +83,7 @@ class TestStepSelection:
             "calibrate_thermal_limits",
             "add_detailed_topology",
             "generate_n1_overloads",
+            "separate_voltage_levels",
         ]
 
     def test_skip_osm_drops_step_1(self, captured_runs, monkeypatch):
@@ -88,9 +96,10 @@ class TestStepSelection:
             "calibrate_thermal_limits",
             "add_detailed_topology",
             "generate_n1_overloads",
+            "separate_voltage_levels",
         ]
 
-    def test_from_step_3_runs_3_to_5(self, captured_runs, monkeypatch):
+    def test_from_step_3_runs_3_to_6(self, captured_runs, monkeypatch):
         monkeypatch.setattr(
             sys, "argv", ["build_pipeline.py", "--from-step", "3"]
         )
@@ -99,6 +108,7 @@ class TestStepSelection:
             "calibrate_thermal_limits",
             "add_detailed_topology",
             "generate_n1_overloads",
+            "separate_voltage_levels",
         ]
 
     def test_steps_explicit_list(self, captured_runs, monkeypatch):
@@ -307,6 +317,59 @@ class TestCLISurface:
         assert "Steps:" in result.stdout
         assert "--voltages" in result.stdout
         assert "--from-step" in result.stdout
+
+
+# ===========================================================================
+# Provenance manifest (D8)
+# ===========================================================================
+
+class TestProvenanceManifest:
+    """write_provenance_manifest links a bundle to the pipeline that made it."""
+
+    def test_manifest_structure_and_checksums(self, tmp_path):
+        import hashlib
+        import json
+
+        (tmp_path / "network.xiidm").write_text("<iidm/>", encoding="utf-8")
+        (tmp_path / "grid_layout.json").write_text('{"VL_a": [0, 0]}', encoding="utf-8")
+        # bus_id_mapping.json / actions.json intentionally absent — only present
+        # artifacts are checksummed.
+
+        path = bp.write_provenance_manifest(
+            tmp_path,
+            params={"country": "FR", "voltages": "225,400", "n1_peak_pct": 130.0, "min_branches": 4},
+            steps=[2, 6],
+        )
+        assert path == tmp_path / "provenance.json"
+
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        assert manifest["schema"] == "costudy4grid-bundle-provenance/1"
+        assert manifest["generated_at"]  # ISO timestamp present
+        assert manifest["pipeline"]["params"]["country"] == "FR"
+        assert manifest["pipeline"]["steps"] == [
+            {"n": 2, "name": "convert_pypsa_to_xiidm"},
+            {"n": 6, "name": "separate_voltage_levels"},
+        ]
+        # Only the two present outputs are recorded, with correct sha256.
+        assert set(manifest["outputs"]) == {"network.xiidm", "grid_layout.json"}
+        expected = hashlib.sha256((tmp_path / "network.xiidm").read_bytes()).hexdigest()
+        assert manifest["outputs"]["network.xiidm"]["sha256"] == expected
+        assert manifest["outputs"]["network.xiidm"]["bytes"] == len("<iidm/>")
+
+    def test_manifest_checksum_changes_when_output_changes(self, tmp_path):
+        import json
+
+        (tmp_path / "grid_layout.json").write_text("A", encoding="utf-8")
+        first = json.loads(
+            bp.write_provenance_manifest(tmp_path, params={}, steps=[6]).read_text()
+        )["outputs"]["grid_layout.json"]["sha256"]
+
+        (tmp_path / "grid_layout.json").write_text("B", encoding="utf-8")
+        second = json.loads(
+            bp.write_provenance_manifest(tmp_path, params={}, steps=[6]).read_text()
+        )["outputs"]["grid_layout.json"]["sha256"]
+
+        assert first != second
 
 
 if __name__ == "__main__":

@@ -4,16 +4,21 @@ build_pipeline.py
 End-to-end orchestrator that reproduces a PyPSA-EUR network dataset
 (e.g. ``data/pypsa_eur_fr225_400`` or ``data/pypsa_eur_eur400``) from the raw OSM CSV inputs.
 
-The master pipeline chains the five domain-specific scripts in this folder:
+The master pipeline chains the six domain-specific scripts in this folder:
 
   1. fetch_osm_names.py        — OSM name lookup (cached, optional, safe to skip)
   2. convert_pypsa_to_xiidm.py — CSV → XIIDM network + initial limits + metadata
+                                 (grid_layout.json in RAW Mercator metres)
   3. calibrate_thermal_limits.py — cap N-1 peak near 130% and keep ≥2% overload frac
   4. add_detailed_topology.py    — double-busbar + coupling breakers + actions.json
   5. generate_n1_overloads.py    — final N-1 overload report (JSON)
+  6. separate_voltage_levels.py  — nudge collocated 225/400 kV VL disks apart
 
 Each step is invoked as a subprocess so the existing CLIs stay the single
-source of truth. Steps can be skipped selectively with ``--skip-step``.
+source of truth. Steps can be skipped selectively with ``--steps`` /
+``--from-step``. After the selected steps run, a ``provenance.json`` manifest
+(git commit, parameters, output checksums) is written into the bundle so it can
+be traced back to the exact code + inputs that produced it.
 
 Usage
 -----
@@ -29,7 +34,7 @@ Usage
     # Skip expensive OSM name lookup (uses cached osm_names.json if present)
     python scripts/pypsa_eur/build_pipeline.py --skip-osm
 
-    # Resume from a specific step (1..5)
+    # Resume from a specific step (1..6)
     python scripts/pypsa_eur/build_pipeline.py --from-step 3
 
     # Only run selected steps
@@ -38,11 +43,14 @@ Usage
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import logging
 import os
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -58,7 +66,67 @@ STEP_NAMES = {
     3: "calibrate_thermal_limits",
     4: "add_detailed_topology",
     5: "generate_n1_overloads",
+    6: "separate_voltage_levels",
 }
+
+# Bundle files a provenance manifest checksums when present. These are the
+# committed artifacts a reader needs to trust a bundle back to the pipeline.
+PROVENANCE_OUTPUTS = (
+    "network.xiidm",
+    "grid_layout.json",
+    "actions.json",
+    "bus_id_mapping.json",
+)
+
+
+def _git_commit() -> str | None:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=str(BASE_DIR), text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except Exception:
+        return None
+
+
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def write_provenance_manifest(out_dir: Path, params: dict, steps: list[int]) -> Path:
+    """Write provenance.json into a bundle, linking it to the pipeline that made it.
+
+    Records the git commit, generation time, the pipeline steps + parameters, and
+    a sha256 of each committed bundle artifact present — so a bundle can be traced
+    back to the exact code and inputs, and a later rebuild can be diffed against it
+    (D8: "no provenance record links any bundle to the pipeline version"). Returns
+    the manifest path.
+    """
+    outputs = {}
+    for name in PROVENANCE_OUTPUTS:
+        p = Path(out_dir) / name
+        if p.is_file():
+            outputs[name] = {"sha256": _sha256(p), "bytes": p.stat().st_size}
+    manifest = {
+        "schema": "costudy4grid-bundle-provenance/1",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "git_commit": _git_commit(),
+        "pipeline": {
+            "script": "scripts/pypsa_eur/build_pipeline.py",
+            "steps": [{"n": s, "name": STEP_NAMES[s]} for s in steps],
+            "params": params,
+        },
+        "outputs": outputs,
+    }
+    manifest_path = Path(out_dir) / "provenance.json"
+    with open(manifest_path, "w", encoding="utf-8") as fh:
+        json.dump(manifest, fh, indent=2)
+        fh.write("\n")
+    return manifest_path
 
 
 def run_step(label: str, cmd: list[str]) -> None:
@@ -88,6 +156,10 @@ def main() -> None:
             "  3  calibrate_thermal_limits (cap N-1 peak at 130%)\n"
             "  4  add_detailed_topology  (double-busbar + coupler actions)\n"
             "  5  generate_n1_overloads  (final overload report)\n"
+            "  6  separate_voltage_levels (nudge collocated VL disks apart)\n"
+            "\n"
+            "A provenance.json manifest (git commit + params + output checksums)\n"
+            "is written into the bundle after the selected steps run.\n"
         ),
     )
     parser.add_argument(
@@ -111,7 +183,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--from-step", type=int, default=None,
-        help="Run from this step onward (e.g. --from-step 3 runs 3,4,5).",
+        help="Run from this step onward (e.g. --from-step 3 runs 3,4,5,6).",
     )
     parser.add_argument(
         "--skip-osm", action="store_true",
@@ -135,9 +207,9 @@ def main() -> None:
     if args.steps:
         steps = [int(s) for s in args.steps.split(",")]
     elif args.from_step:
-        steps = list(range(args.from_step, 6))
+        steps = list(range(args.from_step, 7))
     else:
-        steps = [1, 2, 3, 4, 5]
+        steps = [1, 2, 3, 4, 5, 6]
 
     if args.skip_osm and 1 in steps:
         steps = [s for s in steps if s != 1]
@@ -231,6 +303,34 @@ def main() -> None:
             "--network", str(out_dir),
         ]
         run_step("Step 5 — generate_n1_overloads", cmd)
+
+    # ── Step 6: separate collocated VL disks in the layout ──────────────
+    # Layout post-processing that produced the committed bundles but was
+    # previously run by hand (D8). Nudges co-located 225/400 kV VL disks apart
+    # so pypowsybl's fixed-radius outer circles stop overlapping into a blob on
+    # dense substations. Operates on the raw-Mercator-metres grid_layout.json
+    # that step 2 now writes directly. See docs/data/voltage-level-separation.md.
+    if 6 in steps:
+        cmd = [
+            py, str(SCRIPT_DIR / "separate_voltage_levels.py"),
+            "--network", str(out_dir),
+        ]
+        run_step("Step 6 — separate_voltage_levels", cmd)
+
+    # ── Provenance manifest ─────────────────────────────────────────────
+    # Always written (even for a partial --steps run) so the bundle records the
+    # code + inputs that produced its current contents.
+    manifest_path = write_provenance_manifest(
+        out_dir,
+        params={
+            "country": country if country else "ALL",
+            "voltages": voltages,
+            "n1_peak_pct": args.n1_peak_pct,
+            "min_branches": args.min_branches,
+        },
+        steps=steps,
+    )
+    log.info("Wrote provenance manifest: %s", os.path.relpath(manifest_path, BASE_DIR))
 
     total = time.time() - t_global
     log.info("")

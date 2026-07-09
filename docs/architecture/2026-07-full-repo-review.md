@@ -533,17 +533,21 @@ tests); `PORT` is decorative; no `HEALTHCHECK`; config upgrades never merge.
 
 Ordered by leverage; each unblocks or de-risks the ones after it.
 
-> **Progress (2026-07-08).** D1, D3 and **D5** are **shipped in full**;
-> **D7** is **mostly shipped** (lockdown profile + test-gated deploy +
-> rollback tag; the pinned-Python-closure lockfile is a documented
-> follow-up). **D2** and **D4** are **partially shipped** (D2 — the
-> machine-check backbone + error contract; D4 — stages 1–3: the
-> `useManualSimulation` extraction + ceiling ratchet, the facade-preserving
-> `useDiagrams` sub-hook split, and the full `VisualizationPanel` +
-> `ActionFeed` props consolidation, with only the deeply-coupled useDiagrams
-> core still open — tracked as FU-1). Status is noted
-> per-item below and mirrored in the dimension-finding tables in Part IV.
-> D6, D8, D9 remain open.
+> **Progress (2026-07-09).** D1, D3 and **D5** are **shipped in full**;
+> **D6** is **core-done** (the SVG element-adoption pipeline; the VL-count
+> bitmap auto-enable is validation-gated). **D7** and **D8** are **mostly
+> shipped** — D7: lockdown profile + test-gated deploy + rollback tag (the
+> pinned-Python-closure lockfile is a documented follow-up); D8: the
+> layout-scale fix + `separate_voltage_levels` step + provenance manifest +
+> hermetic pipeline CI + the in-repo Codabench scorer pinned to the frontend
+> by a shared golden fixture (physical session-log replay tracked as FU-2).
+> **D2** and **D4** are **partially shipped** (D2 — the machine-check backbone
+> + error contract; D4 — stages 1–3: the `useManualSimulation` extraction +
+> ceiling ratchet, the facade-preserving `useDiagrams` sub-hook split, and the
+> full `VisualizationPanel` + `ActionFeed` props consolidation, with only the
+> deeply-coupled useDiagrams core still open — tracked as FU-1). Status is
+> noted per-item below and mirrored in the dimension-finding tables in
+> Part IV. D9 remains open.
 
 **D1. De-ghost the recommender subsystem** *(2–3 days — do first)* — ✅ **DONE (2026-07-07)**
 Replace import-time monkey-patching with explicit composition:
@@ -755,12 +759,45 @@ tags + test-gated deploy + documented Space rollback.
 > on the image's Python 3.10, so documented as a follow-up rather than
 > shipped wrong).
 
-**D8. Reproducible data & benchmark supply chain** *(3–5 days)*
+**D8. Reproducible data & benchmark supply chain** *(3–5 days)* — 🟢 **MOSTLY DONE (2026-07-09)**
 Fix the layout scale in `build_pipeline.py` and absorb the two missing
 post-processing steps; write a provenance manifest into every bundle; wire the
 hermetic slice of the pipeline suite into CI; bring the Codabench `score.py`
 in-repo with a shared golden fixture locking cross-language parity; make the
 session log replayable (the e2e harness already contains the replay machinery).
+> **Shipped** — four of the five sub-tasks:
+> - **Layout scale + post-processing**: `convert_pypsa_to_xiidm.py`'s
+>   `step_write_metadata` no longer rescales to the forbidden `TARGET_WIDTH =
+>   8_000` — it writes `grid_layout.json` in **raw Mercator metres** (span
+>   ~1.4 M), matching `regenerate_grid_layout.py`'s default and the
+>   `grid-layout-coordinate-scale.md` contract. `separate_voltage_levels.py`
+>   is now **step 6** of `build_pipeline.py` (the VL-disk separation
+>   post-process that was previously hand-run). The stale
+>   `test_coordinate_spans_in_reasonable_range` that asserted the forbidden
+>   `[5000, 20000]` range was corrected to the raw-metres regime.
+> - **Provenance manifest**: `build_pipeline.write_provenance_manifest` writes
+>   `provenance.json` (git commit, params, per-step list, sha256 of each bundle
+>   artifact) into the bundle after the selected steps run — so a bundle traces
+>   back to the code + inputs that made it. (Existing committed bundles get one
+>   on their next rebuild.)
+> - **Hermetic pipeline slice in CI**: the `scripts/pypsa_eur` +
+>   `scripts/game_mode` suites now pass from a fresh clone (222→228 pass, 9
+>   skip) — the data-dependent tests (raw OSM CSVs / uncommitted inputs) skip
+>   gracefully via the `conftest osm_dir` + `regenerate_grid_layout` guards
+>   instead of failing — and run in a new `test-data-pipeline` job in
+>   `test.yml`.
+> - **Codabench scorer parity**: the Python scorer now lives in-repo at
+>   `scripts/game_mode/scoring_program/score.py` (a faithful twin of
+>   `frontend/src/game/scoring.ts`, incl. `apply_reference` /
+>   `score_study` / `score_session`), and `scripts/game_mode/scoring_golden.json`
+>   is a **shared golden fixture** both `test_score.py` (Python) and
+>   `scoring.test.ts` (frontend) assert against — locking cross-language
+>   numerical parity in CI. `e2e_game_session.py` now defaults to the in-repo
+>   scorer (no `~/Dev` path).
+> **Deferred**: physically replaying the exported session log (so the public
+> ranking scores re-driven numbers, not self-reported ones) needs a running
+> backend + real grid to verify, so it is tracked as **FU-2** in
+> [`followups.md`](followups.md) rather than half-built.
 
 **D9. Docs as checked artifact** *(1–2 days)*
 `scripts/check_docs_tree.py` in the existing gate (file-exists / absent-from-tree

@@ -70,3 +70,51 @@ is purely internal effect ordering, hence the extra behavioural coverage.
 - `frontend/src/hooks/useDiagrams.ts`
 - The shipped decoupled sub-hooks: `frontend/src/hooks/useOverflowLayout.ts`,
   `frontend/src/hooks/useActionDiagramCache.ts`
+
+---
+
+## FU-2 — Physically replay the exported Game Mode session log
+
+**Status:** open · **Area:** game-mode / benchmark / trust · **Opened:** 2026-07-09
+
+### Context
+
+Deep revision **D8** (reproducible data & benchmark supply chain) landed four of
+its five sub-tasks (see [`2026-07-full-repo-review.md`](2026-07-full-repo-review.md)
+Part V, D8): the layout-scale fix + `separate_voltage_levels` wired into
+`build_pipeline.py`, the bundle provenance manifest, the hermetic pipeline slice
+in CI, and the in-repo Codabench `score.py` pinned to the frontend scorer by a
+shared golden fixture.
+
+### What's deferred (and why)
+
+The fifth sub-task — **make the exported session log physically replayable** — is
+left open. The public ranking currently scores **self-reported** per-study
+`baselineMaxRho` / `finalMaxRho` / `solved` from the exported
+`GameSessionLog`; `apply_reference()` in `score.py` can overlay trusted numbers,
+but there is no in-repo tool that *derives* those trusted numbers by re-driving
+the backend with the log's recorded `actionsChosen`.
+
+It was deferred rather than half-built because it is only meaningfully
+verifiable against a **running backend + a real grid bundle** (the same
+dependency the e2e harness carries), which the unit-test lanes don't have — so a
+partial implementation couldn't be guarded by a test and would rot.
+
+### Suggested approach
+
+1. Add a `--replay <session.json>` mode to
+   `scripts/game_mode/e2e_game_session.py` (it already contains the play/score
+   machinery): for each study, load the referenced contingency, apply the log's
+   recorded `actionsChosen`, and recompute `finalMaxRho` / `solved`.
+2. Emit a trusted `reference.json` in the shape `apply_reference()` consumes, so
+   the scorer ranks replayed numbers, not self-reported ones.
+3. Flag any study whose replayed `finalMaxRho` diverges from the reported value
+   beyond a tolerance (tamper / drift detection).
+4. Cover it with a hermetic fixture replay on the small test grid (the FR/EUR
+   tiers stay in the real-backend e2e lane).
+
+### References
+
+- `scripts/game_mode/e2e_game_session.py` (`play_study` — the replay machinery)
+- `scripts/game_mode/scoring_program/score.py` (`apply_reference`)
+- `frontend/src/game/types.ts` (`GameSessionLog` / `ChosenActionRecord`)

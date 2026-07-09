@@ -125,18 +125,30 @@ class TestCoordinateRanges:
             assert isinstance(coord[1], (int, float)), f"VL {vl_id}: y is not numeric"
 
     def test_coordinate_spans_in_reasonable_range(self, grid_layout):
+        # The on-disk layout MUST be in raw Mercator metres (span ≈ 1.3–1.6 M
+        # for the French grid), NOT the legacy 8 000-unit rescale — pypowsybl
+        # emits VL outer circles at a fixed r=27.5 user-units, so a squashed
+        # layout forces overlap on dense regions. See
+        # docs/data/grid-layout-coordinate-scale.md (the 2026-05-08 fix). The
+        # old [5000, 20000] assertion here enshrined the forbidden scale and
+        # failed against the correctly-committed raw-metres layouts (D8).
+        RAW_METRES_MIN = 1_000_000
+        RAW_METRES_MAX = 2_000_000
         xs = [coord[0] for coord in grid_layout.values()]
         ys = [coord[1] for coord in grid_layout.values()]
 
         x_span = max(xs) - min(xs)
         y_span = max(ys) - min(ys)
 
-        assert 5000 <= x_span <= 20000, (
-            f"X-span {x_span:.0f} is outside expected range [5000, 20000]. "
+        assert RAW_METRES_MIN <= x_span <= RAW_METRES_MAX, (
+            f"X-span {x_span:.0f} is outside the raw-Mercator-metres range "
+            f"[{RAW_METRES_MIN}, {RAW_METRES_MAX}] — a span ~8000 means the "
+            f"forbidden legacy rescale; a span ~10 means raw lon/lat. "
             f"X range: [{min(xs):.0f}, {max(xs):.0f}]"
         )
-        assert 5000 <= y_span <= 20000, (
-            f"Y-span {y_span:.0f} is outside expected range [5000, 20000]. "
+        assert RAW_METRES_MIN <= y_span <= RAW_METRES_MAX, (
+            f"Y-span {y_span:.0f} is outside the raw-Mercator-metres range "
+            f"[{RAW_METRES_MIN}, {RAW_METRES_MAX}]. "
             f"Y range: [{min(ys):.0f}, {max(ys):.0f}]"
         )
 

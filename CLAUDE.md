@@ -158,9 +158,13 @@ Co-Study4Grid/
 │                              # `test_code_quality_report.py`,
 │                              # `test_estimation_vs_simulation_small_grid.py`,
 │                              # `pypsa_eur/` (full PyPSA-EUR → XIIDM pipeline
-│                              # with its own pytest coverage), and `game_mode/`
-│                              # (`e2e_game_session.py` — real-backend Game Mode
-│                              # replay + Codabench scoring)
+│                              # with its own pytest coverage; `build_pipeline.py`
+│                              # writes a per-bundle provenance.json, D8), and
+│                              # `game_mode/` (`e2e_game_session.py` — real-backend
+│                              # Game Mode replay; `scoring_program/score.py` —
+│                              # in-repo Codabench scorer twin of scoring.ts,
+│                              # pinned to `scoring_golden.json` by test_score.py
+│                              # + scoring.test.ts for cross-language parity, D8)
 ├── Dockerfile                 # Single-container HuggingFace Docker Space image —
 │                              # same-origin SPA + FastAPI on :7860, game mode on
 ├── .dockerignore

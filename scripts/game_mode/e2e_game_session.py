@@ -28,9 +28,15 @@ import sys
 import time
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DEFAULT_SCORER = os.path.expanduser(
-    "~/Dev/codabench/competitions/costudy4grid_game/scoring_program/score.py"
+# The Codabench scorer now lives in-repo (D8) — the same score.py the Codabench
+# competition bundle ships, so the e2e run is self-contained (no ~/Dev path).
+# Override with --scorer to point at an external competition checkout.
+DEFAULT_SCORER = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "scoring_program", "score.py"
 )
+# Optional trusted per-study reference (baselineMaxRho / finalMaxRho / solved).
+# None in-repo by default — apply_reference() is a no-op without it, so the
+# self-reported numbers are scored as-is.
 DEFAULT_REFERENCE = os.path.expanduser(
     "~/Dev/codabench/competitions/costudy4grid_game/reference_data/reference.json"
 )

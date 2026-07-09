@@ -461,6 +461,12 @@ class TestScriptInvocation:
     @pytest.mark.parametrize("network_name", _available_networks())
     def test_script_runs_without_error(self, script_path, network_name, tmp_path):
         """Run the script and verify it produces a valid layout."""
+        # regenerate_grid_layout.py resolves VL coordinates from the raw OSM
+        # buses.csv, which is NOT committed (only the built bundles are). Skip
+        # rather than fail when it is absent, so the hermetic slice of this
+        # suite still passes from a fresh clone / in CI (D8).
+        if not (PROJECT_DIR / "data" / "pypsa_eur_osm" / "buses.csv").exists():
+            pytest.skip("data/pypsa_eur_osm/buses.csv not available (raw OSM data not committed)")
         src_dir = PROJECT_DIR / "data" / network_name
         # Copy network.xiidm to tmp_path to avoid overwriting the real layout
         import shutil
