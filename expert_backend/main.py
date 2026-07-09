@@ -262,8 +262,9 @@ def save_user_config(config: dict = Body(...)) -> dict:
     try:
         _save_user_config(config)
         return {"status": "success"}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        logger.exception("Failed to save user config")
+        raise HTTPException(status_code=400, detail="Failed to save configuration.")
 
 
 @app.get("/api/config-file-path")
@@ -283,8 +284,9 @@ def set_config_file_path(path: str = Body(..., embed=True)) -> dict:
         return {"status": "success", "config_file_path": str(new_path), "config": _load_user_config()}
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        logger.exception("Failed to set config file path")
+        raise HTTPException(status_code=400, detail="Failed to set the config file path.")
 
 
 class ConfigRequest(BaseModel):
@@ -477,8 +479,9 @@ def update_config(config: ConfigRequest) -> dict:
             "active_model": recommender_service.get_active_model_name(),
             "compute_overflow_graph": recommender_service.get_compute_overflow_graph(),
         }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        logger.exception("Config load failed")
+        raise HTTPException(status_code=400, detail="Failed to load the network configuration.")
     finally:
         recommender_service.end_study_mutation()
 
@@ -555,9 +558,9 @@ def pick_path(type: str = Query("file", enum=["file", "dir"])) -> dict:
         return _pick_path_tkinter(type)
     except subprocess.TimeoutExpired:
         return {"path": "", "error": "File picker timed out (no selection made)."}
-    except Exception as e:
-        logger.warning("Error picking path: %s", e)
-        return {"path": "", "error": str(e)}
+    except Exception:
+        logger.exception("Error picking path")
+        return {"path": "", "error": "File picker failed."}
 
 
 def _pick_path_macos(kind: str) -> dict:
@@ -648,8 +651,9 @@ def save_session(request: SaveSessionRequest) -> dict:
     session_dir = _safe_session_dir(request.output_folder_path, request.session_name)
     try:
         os.makedirs(session_dir, exist_ok=True)
-    except OSError as e:
-        raise HTTPException(status_code=400, detail=f"Cannot create session directory: {e}")
+    except OSError:
+        logger.exception("Cannot create session directory")
+        raise HTTPException(status_code=400, detail="Cannot create the session directory.")
 
     json_file = os.path.join(session_dir, "session.json")
     with open(json_file, "w", encoding="utf-8") as f:
@@ -691,8 +695,9 @@ def list_sessions(folder_path: str = Query(...)) -> dict:
                 json_path = os.path.join(entry_path, "session.json")
                 if os.path.isfile(json_path):
                     sessions.append(entry)
-    except OSError as e:
-        raise HTTPException(status_code=400, detail=f"Cannot read folder: {e}")
+    except OSError:
+        logger.exception("Cannot read sessions folder")
+        raise HTTPException(status_code=400, detail="Cannot read the sessions folder.")
 
     sessions.sort(reverse=True)
     return {"sessions": sessions}
@@ -732,8 +737,9 @@ def load_session(folder_path: str = Body(...), session_name: str = Body(...)) ->
                     shutil.copy2(picked, target_path)
 
         return content
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to read session: {e}")
+    except Exception:
+        logger.exception("Failed to read session")
+        raise HTTPException(status_code=400, detail="Failed to read the session file.")
 
 @app.post("/api/restore-analysis-context", response_model=RestoreAnalysisContextResponse)
 def restore_analysis_context(request: RestoreAnalysisContextRequest) -> dict:

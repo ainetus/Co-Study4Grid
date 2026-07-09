@@ -26,3 +26,8 @@ test-results
 # Docs and the frozen legacy mirror are not needed at runtime.
 docs
 standalone_interface_legacy.html
+
+# Test suites are dead weight in the runtime image (QW25) — the app never
+# imports them, and `COPY expert_backend/` would otherwise carry tests/ along.
+expert_backend/tests
+expert_backend/test_backend.py

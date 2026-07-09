@@ -8,7 +8,7 @@
 > - `python scripts/code_quality_report.py` — metrics dump (JSON + Markdown)
 > - `python scripts/check_code_quality.py` — CI gate (non-zero exit on regression)
 > - Unit-tested in `scripts/test_code_quality_report.py` (13 tests, part of the pytest suite)
-> - Runs in CI: `.github/workflows/code-quality.yml` + `.circleci/config.yml`
+> - Runs in CI: `.github/workflows/code-quality.yml` (CircleCI removed — QW23)
 >   (jobs `gate` / `code-quality`). Also uploads a report artifact.
 > - See [CONTRIBUTING.md](../../CONTRIBUTING.md#code-quality-checks)
 >   for local usage and thresholds.
@@ -1049,12 +1049,15 @@ widening hot files:
 
 ### 16.4 CI / supply-chain note
 
-From 0.8.0 the backend test installs **track the latest published
-``expert_op4grid_recommender``** (``>=0.2.4`` floor + ``--no-cache-dir``)
-rather than a pinned version, so a fresh index resolves to the newest
-release on every run (``.github/workflows/test.yml`` /
-``.circleci/config.yml``); the ``Dockerfile`` pins the same floor to
-keep the deployed recommender consistent with CI. The new HuggingFace
+From 0.8.0 the backend test installs tracked the latest published
+``expert_op4grid_recommender`` on every run — which meant an upstream
+release could turn an unrelated PR red or ship a regressed image on a
+zero-change rebuild. **From 0.9.0 (QW8) the PR/deploy installs pin an
+exact version** via ``recommender-pin.txt`` (consumed by
+``.github/workflows/test.yml`` and the ``Dockerfile``); a weekly
+``canary.yml`` floats to the latest release so upgrades are a deliberate
+bump of that file. CircleCI was removed in the same release (QW23 —
+GitHub Actions is a strict superset). The new HuggingFace
 Docker deployment adds an **optional** same-origin SPA mount in
 ``main.py`` (``COSTUDY4GRID_FRONTEND_DIST``, mounted last, inert when
 absent — local dev / the test suite are unaffected) and Git LFS

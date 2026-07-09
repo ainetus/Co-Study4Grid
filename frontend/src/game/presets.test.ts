@@ -5,6 +5,8 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   DIFFICULTY_TIERS,
   DEFAULT_DIFFICULTY,
@@ -46,6 +48,34 @@ describe('game difficulty presets', () => {
         // Studies of a tier all share that tier's grid.
         expect(s.networkPath).toBe(tier.networkPath);
       }
+    }
+  });
+});
+
+// QW24b: the presets hardcode contingency ids; this guards them against the
+// data artifacts they reference, so a regenerated / renamed grid that drops a
+// contingency fails HERE (a fast static check) instead of silently shipping an
+// unplayable Game Mode study. Complements the real-backend `can_proceed` replay
+// in scripts/game_mode/e2e_game_session.py.
+describe('preset ↔ overload-data consistency', () => {
+  interface OverloadData { contingencies: { tripped_line: string }[] }
+
+  const trippedLineSet = (networkPath: string): Set<string> => {
+    const jsonPath = resolve(
+      __dirname, '../../../',
+      networkPath.replace('network.xiidm', 'n1_overload_contingencies.json'),
+    );
+    const data = JSON.parse(readFileSync(jsonPath, 'utf-8')) as OverloadData;
+    return new Set(data.contingencies.map(c => c.tripped_line));
+  };
+
+  it.each(DIFFICULTY_TIERS)('every "$id" preset contingency exists in the grid overload data', (tier) => {
+    const trippedLines = trippedLineSet(tier.networkPath);
+    for (const study of tier.studies) {
+      expect(
+        trippedLines.has(study.contingencyElementId),
+        `preset "${study.id}" contingency ${study.contingencyElementId} is not in ${tier.networkPath}'s n1_overload_contingencies.json`,
+      ).toBe(true);
     }
   });
 });

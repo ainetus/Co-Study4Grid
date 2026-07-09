@@ -1953,3 +1953,35 @@ class TestPickPath:
         assert argv[0] != "osascript"
         # The inlined script must contain the tkinter import.
         assert any("import tkinter" in a for a in argv)
+
+
+class TestErrorLeakGuard:
+    """QW6 — the FS/config endpoints must not leak filesystem paths (or raw
+    exception text) into client-visible error `detail`. D2 genericises only
+    UNCAUGHT exceptions; these endpoints raise explicit HTTPException(400)s, so
+    they need their own generic messages + server-side logger.exception."""
+
+    def test_save_user_config_failure_is_generic(self, client, monkeypatch):
+        def boom(_cfg):
+            raise OSError("/secret/abs/path/config.json: permission denied")
+
+        monkeypatch.setattr("expert_backend.main._save_user_config", boom)
+        r = client.post("/api/user-config", json={"foo": "bar"})
+        assert r.status_code == 400
+        detail = r.json()["detail"]
+        assert detail == "Failed to save configuration."
+        assert "/secret" not in detail
+
+    def test_save_session_failure_is_generic(self, client, monkeypatch):
+        # os.makedirs failing must not echo the absolute session path.
+        def boom(*_a, **_k):
+            raise OSError("/private/sessions/leak: no space left")
+
+        monkeypatch.setattr("expert_backend.main.os.makedirs", boom)
+        r = client.post("/api/save-session", json={
+            "output_folder_path": "out", "session_name": "s1", "json_content": "{}",
+        })
+        assert r.status_code == 400
+        detail = r.json()["detail"]
+        assert detail == "Cannot create the session directory."
+        assert "/private" not in detail

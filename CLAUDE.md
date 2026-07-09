@@ -286,8 +286,8 @@ python scripts/code_quality_report.py --output reports/code-quality.json \
 python scripts/check_code_quality.py
 ```
 
-Both scripts run in CI (`.github/workflows/code-quality.yml` and
-`.circleci/config.yml`). The gate guards the reductions documented in
+Both scripts run in CI (`.github/workflows/code-quality.yml`). The gate
+guards the reductions documented in
 [`docs/architecture/code-quality-analysis.md`](docs/architecture/code-quality-analysis.md)
 (no new `print()` / bare except, module-size ceilings, no `any` /
 `@ts-ignore` in frontend source).
@@ -443,7 +443,7 @@ NAD/SLD payloads:
 - **Deployment lockdown (D7, 2026-07)**: the `Dockerfile` sets `COSTUDY4GRID_LOCKDOWN=1`, which disables the desktop-era filesystem RPCs (custom config-file path, session save/list/load, native file picker) with a `403 {code: LOCKED_DOWN}` — they assume a local operator and would otherwise expose the container filesystem to an anonymous Space visitor. The read-only app config stays available so the SPA boots; unset locally so dev is unaffected. The HF deploy is **test-gated** (`workflow_run` on a green Tests run) and **tags each deploy** on origin (`space-deploy-*`) as the rollback pointer. See [`docs/architecture/deployment-trust.md`](docs/architecture/deployment-trust.md).
 - **Game Mode (0.8.0)**: a timed, scored session shell in `frontend/src/game/`, **additive and inert unless `?game=1`** — `main.tsx` mounts `GameShell` instead of `App`; App integration is three `gameBridge.isGameMode()`-guarded touch points. See `docs/features/game-mode-codabench.md`.
 - **Binary assets via Git LFS + transparent network decompression (0.8.0)**: `.gitattributes` tracks `*.zip` / `*.png` / `*.jpg` via Git LFS (the HuggingFace Space git endpoint rejects non-LFS binaries); the large France 225/400 kV grid ships as `network.xiidm.zip` and `network_service._resolve_network_file` / `_extract_network_zip` decompress it transparently on load.
-- **CI pipelines**: GitHub Actions (`.github/workflows/code-quality.yml`, `parity.yml`, `test.yml`) and CircleCI (`.circleci/config.yml`) run the code-quality gate, ruff, the pytest + Vitest suites, and the parity scripts. The backend test installs **always track the latest `expert_op4grid_recommender`** (`>=0.2.4` floor + `--no-cache-dir`, so a fresh index resolves to the newest release); the `Dockerfile` pins the same floor to keep the deployed recommender consistent with CI.
+- **CI pipelines**: GitHub Actions only (`.github/workflows/`: `code-quality.yml`, `parity.yml`, `test.yml`, `canary.yml`, `deploy-huggingface.yml`) run the code-quality gate, ruff, the pytest + Vitest suites, the data-pipeline + scorer-parity slice, and the parity scripts. CircleCI was removed (QW23 — GitHub Actions is a strict superset). The backend test + the `Dockerfile` install `expert_op4grid_recommender` from **`recommender-pin.txt`** — one pinned, exact version (QW8) so an upstream release can't silently break a PR or a rebuild; the weekly `canary.yml` floats to the latest release and flags regressions, so upgrades are a deliberate bump of that file.
 - Root `.gitignore` excludes `__pycache__/`, `*.pyc`, `*.pyo`; `frontend/.gitignore` handles frontend build artifacts
 - Integration helpers and parity scripts live under `scripts/`. They are NOT part of the pytest suite — invoke them directly. The PyPSA-EUR pipeline scripts under `scripts/pypsa_eur/` DO carry pytest coverage (`test_build_pipeline.py`, `test_calibrate_thermal_limits.py`, `test_generate_n1_overloads.py`, `test_regenerate_grid_layout.py`).
 - `overrides.txt` contains pinned versions for transitive Python dependencies that need to be forced to specific versions
