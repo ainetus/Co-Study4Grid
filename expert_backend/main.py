@@ -34,6 +34,7 @@ from expert_backend.services.api_errors import (
 from expert_backend.services.diagram_mixin import ActionResultUnavailableError
 from expert_backend.services.network_service import network_service
 from expert_backend.services.overflow_overlay import inject_overlay
+from expert_backend.services.paths import OVERFLOW_DIR
 from expert_backend.services.recommender_service import recommender_service
 
 # Importing `expert_backend.recommenders` registers ExpertRecommender,
@@ -220,7 +221,10 @@ def _reject_when_locked_down() -> None:
         )
 
 
-_OVERFLOW_DIR = (Path(__file__).resolve().parent.parent / "Overflow_Graph").resolve()
+# Single shared anchor for the overflow-graph artifacts (QW17) — the read
+# (static serve here) and the writes (analysis output + load-session copy)
+# now agree regardless of the process CWD. See services/paths.py.
+_OVERFLOW_DIR = OVERFLOW_DIR
 _OVERFLOW_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -713,14 +717,14 @@ def load_session(folder_path: str = Body(...), session_name: str = Body(...)) ->
         overflow = content.get("overflow_graph")
         if overflow and overflow.get("pdf_url"):
             pdf_filename = os.path.basename(overflow["pdf_url"])
-            target_path = os.path.join("Overflow_Graph", pdf_filename)
+            target_path = str(OVERFLOW_DIR / pdf_filename)
             if not os.path.isfile(target_path):
                 session_files = (
                     glob.glob(os.path.join(session_dir, "*.html"))
                     + glob.glob(os.path.join(session_dir, "*.pdf"))
                 )
                 if session_files:
-                    os.makedirs("Overflow_Graph", exist_ok=True)
+                    OVERFLOW_DIR.mkdir(parents=True, exist_ok=True)
                     picked = next(
                         (f for f in session_files if os.path.basename(f) == pdf_filename),
                         max(session_files, key=os.path.getmtime),

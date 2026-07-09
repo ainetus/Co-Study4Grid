@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import io
 import logging
+import os
 import threading
 import time
 from contextlib import redirect_stdout
@@ -40,6 +41,17 @@ logger = logging.getLogger(__name__)
 
 # How often the caller polls for PDF availability / thread completion.
 _POLL_INTERVAL_S = 0.5
+
+# Hard deadline for the legacy single-step analysis stream (QW22). The
+# background AnalysisWorker sets ``shared_state['done']`` when it finishes; if
+# it hangs inside ``runner_fn`` and never does, this generator would loop
+# forever — the streaming endpoint never closes and the D3 study-mutation gate
+# stays claimed, wedging every subsequent study operation behind an HTTP 409.
+# On the deadline we raise ``TimeoutError``; the endpoint turns it into a
+# ``{type:'error'}`` event and releases the gate in its ``finally``. The
+# orphaned worker is a daemon thread, so it can't block interpreter shutdown.
+# Env-overridable; 10-minute default (well above the slowest real analysis).
+_ANALYSIS_DEADLINE_S = float(os.environ.get("COSTUDY4GRID_ANALYSIS_TIMEOUT_S", "600"))
 
 
 def _make_worker(
@@ -144,9 +156,12 @@ def run_with_pdf_polling(
     }
 
     worker = _make_worker(disconnected_elements, shared_state, runner_fn)
-    thread = threading.Thread(target=worker, name="AnalysisWorker")
+    # daemon=True so a hung worker (see the deadline below) can't block
+    # interpreter shutdown after this generator abandons it.
+    thread = threading.Thread(target=worker, name="AnalysisWorker", daemon=True)
     thread.start()
 
+    deadline = analysis_start_time + _ANALYSIS_DEADLINE_S
     pdf_sent = False
     while not shared_state["done"]:
         if not pdf_sent:
@@ -157,6 +172,11 @@ def run_with_pdf_polling(
                 pdf_sent = True
         if shared_state["error"]:
             raise shared_state["error"]
+        if time.time() > deadline:
+            raise TimeoutError(
+                f"Legacy analysis exceeded its {_ANALYSIS_DEADLINE_S:.0f}s "
+                "deadline and was abandoned"
+            )
         time.sleep(_POLL_INTERVAL_S)
 
     if shared_state["error"]:
