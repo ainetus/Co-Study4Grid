@@ -12,7 +12,7 @@ Co-Study4Grid is a full-stack web application for **power grid contingency analy
 Co-Study4Grid/
 ├── CLAUDE.md                  # This file — project overview + standalone parity audit
 ├── README.md                  # User-facing project description + quick start
-├── CHANGELOG.md               # Per-release changelog (current: 0.8.0)
+├── CHANGELOG.md               # Per-release changelog (current: 0.9.0)
 ├── CONTRIBUTING.md            # Contributor setup, code-quality gate
 ├── pyproject.toml             # Python project metadata + ruff config (E9/F ruleset)
 ├── pytest.ini                 # Pytest config (testpaths = expert_backend/tests)
