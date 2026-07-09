@@ -17,6 +17,13 @@ import { useRef, useEffect, useCallback, type MutableRefObject } from 'react';
 import { processSvg } from '../utils/svgUtils';
 import type { DiagramData } from '../types';
 
+// Max primed post-action diagrams kept at once (QW15). Each entry retains a
+// processed multi-MB SVG (a live SVGSVGElement since D6), so an unbounded Map
+// pinned every action the operator ever primed within a contingency. Three
+// covers the "prime a couple ahead, click one" access pattern; older entries
+// are evicted (Map preserves insertion order, so the first key is the oldest).
+const ACTION_DIAGRAM_CACHE_CAP = 3;
+
 export interface ActionDiagramCacheState {
     /** Keyed by action id; values are ALREADY processed (processSvg ran). */
     actionDiagramCacheRef: MutableRefObject<Map<string, DiagramData>>;
@@ -47,7 +54,17 @@ export function useActionDiagramCache(selectedContingencyKey: string): ActionDia
     const primeActionDiagram = useCallback((actionId: string, raw: DiagramData & { svg: string }, voltageLevelsLength: number) => {
         try {
             const { svg, viewBox } = processSvg(raw.svg, voltageLevelsLength);
-            actionDiagramCacheRef.current.set(actionId, { ...raw, svg, originalViewBox: viewBox });
+            const cache = actionDiagramCacheRef.current;
+            // Re-priming an id refreshes its recency (delete then set moves it
+            // to the end of the insertion order).
+            cache.delete(actionId);
+            cache.set(actionId, { ...raw, svg, originalViewBox: viewBox });
+            // Evict the oldest entries beyond the cap.
+            while (cache.size > ACTION_DIAGRAM_CACHE_CAP) {
+                const oldest = cache.keys().next().value;
+                if (oldest === undefined) break;
+                cache.delete(oldest);
+            }
         } catch (e) {
             console.warn('[primeActionDiagram] processSvg failed for', actionId, e);
         }

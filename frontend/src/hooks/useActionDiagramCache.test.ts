@@ -42,6 +42,38 @@ describe('useActionDiagramCache', () => {
         expect(result.current.actionDiagramCacheRef.current.size).toBe(0);
     });
 
+    it('LRU-caps the cache at 3 entries, evicting the oldest (QW15)', () => {
+        mockProcessSvg.mockReturnValue({ svg: 's', viewBox: null });
+        const { result } = renderHook(() => useActionDiagramCache('L1'));
+        const cache = () => result.current.actionDiagramCacheRef.current;
+
+        act(() => {
+            ['A', 'B', 'C', 'D'].forEach((id) => result.current.primeActionDiagram(id, raw('r'), 1));
+        });
+
+        // Cap holds; the oldest (A) was evicted, the last three remain.
+        expect(cache().size).toBe(3);
+        expect(cache().has('A')).toBe(false);
+        expect([...cache().keys()]).toEqual(['B', 'C', 'D']);
+    });
+
+    it('re-priming an id refreshes its recency so it survives eviction (QW15)', () => {
+        mockProcessSvg.mockReturnValue({ svg: 's', viewBox: null });
+        const { result } = renderHook(() => useActionDiagramCache('L1'));
+        const cache = () => result.current.actionDiagramCacheRef.current;
+
+        act(() => {
+            ['A', 'B', 'C'].forEach((id) => result.current.primeActionDiagram(id, raw('r'), 1));
+            // Touch A (moves it to most-recent), then add D → B should be evicted.
+            result.current.primeActionDiagram('A', raw('r'), 1);
+            result.current.primeActionDiagram('D', raw('r'), 1);
+        });
+
+        expect(cache().size).toBe(3);
+        expect(cache().has('B')).toBe(false);
+        expect([...cache().keys()]).toEqual(['C', 'A', 'D']);
+    });
+
     it('does not throw or store when processSvg fails', () => {
         mockProcessSvg.mockImplementation(() => { throw new Error('bad svg'); });
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
