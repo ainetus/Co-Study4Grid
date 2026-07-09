@@ -231,3 +231,128 @@ patch-vs-full branch before it ships, so it is not a drop-in quick win.
 - `expert_backend/services/diagram/action_patch.py`
 - `frontend/src/utils/svgPatch.ts` (`applyPatchToClone`),
   `frontend/src/utils/ndjsonStream.ts` (the shared reader)
+
+---
+
+## FU-5 — D2 tail: finish the API-contract machine-check
+
+**Status:** open · **Area:** backend / contract · **Opened:** 2026-07-09
+
+### Context
+
+D2 shipped the backbone: the unified `{detail, code}` error envelope
+(`services/api_errors.py`), the committed `openapi.snapshot.json`, and the CI
+diff (`scripts/check_openapi_contract.py` / `test_openapi_contract.py`).
+
+### What's deferred (and why)
+
+Three tail items remain, each additive and independently landable:
+
+1. **Response models on the gzipped endpoints.** The large diagram/analysis
+   payloads still return a bespoke `Response`, so only their *structure* is
+   snapshot-checked, not their response *shape*. Declare `response_model`s where
+   the payload is a small, stable, NumPy-free dict.
+2. **Generate `types.ts` from `openapi.snapshot.json`.** The frontend interface
+   file is still hand-maintained against the snapshot; a generator would remove
+   the drift surface entirely.
+3. **Remove the blanket exception handler** once every raise site uses the typed
+   `HTTPException` / `AppHTTPException` path, so no unexpected `str(e)` can leak.
+
+Deferred as polish once the higher-leverage structural revisions (D5/D6/D8/D9)
+landed; none blocks a release.
+
+### References
+
+- [`api-contract-machine-check.md`](api-contract-machine-check.md) — the full
+  D2 plan and current state.
+- `expert_backend/services/api_errors.py`, `expert_backend/openapi.snapshot.json`,
+  `frontend/src/types.ts`.
+
+---
+
+## FU-6 — D7 tail: reproducible Python closure + Dockerfile config-merge
+
+**Status:** open · **Area:** delivery / reproducibility · **Opened:** 2026-07-09
+
+### Context
+
+D7 landed the deployment-lockdown profile (`COSTUDY4GRID_LOCKDOWN`), the
+test-gated HF deploy, and (with QW25) the Dockerfile hygiene pass (recommender
+pin, `HEALTHCHECK`, real `PORT`, dead-weight trim, LFS-pointer validation on the
+zipped grid).
+
+### What's deferred (and why)
+
+1. **Pinned Python-closure lockfile.** CI installs float within the `pyproject`
+   ranges, so "the Dockerfile mirrors CI" is only approximately true. A
+   `pip-compile` lockfile consumed by **both** CI and the Dockerfile would make
+   the deployed closure bit-for-bit reproducible. Deferred because it needs a
+   periodic-refresh workflow (a stale lock silently pins CVEs) — a process
+   commitment, not a one-shot edit.
+2. **Config-merge on upgrade.** A new `config.default.json` key is not merged
+   into a user's existing on-disk config on upgrade; today it only seeds a
+   first run. Low urgency for the single-player Space.
+
+### References
+
+- [`deployment-trust.md`](deployment-trust.md) — D7 rationale + deploy flow.
+- `Dockerfile`, `recommender-pin.txt`, `config.default.json`.
+
+---
+
+## FU-7 — D6 tail: VL-count auto-enable of the bitmap pan/zoom engine
+
+**Status:** open · **Area:** frontend / perf · **Opened:** 2026-07-09
+
+### Context
+
+D6 landed the SVG element-adoption pipeline (parse-once, adopt directly) and the
+`'bitmap'` pan/zoom engine (`utils/svg/bitmapSnapshot.ts`) delivers ~3× fps on
+the 5 k-VL grid, but it is **opt-in** (Settings → *Pan/zoom rendering*, default
+`'off'`).
+
+### What's deferred (and why)
+
+Auto-selecting `'bitmap'` above a voltage-level threshold would give the win by
+default, but the right threshold and the raster-fidelity trade-off (halo/delta
+survival across the isolated raster, canvas-taint guards) need validation on
+real operator hardware across grid sizes — not something to hardcode blind. Left
+opt-in until that measurement exists.
+
+### Suggested approach
+
+Measure fps vs. VL count on representative hardware, pick a conservative
+auto-enable threshold, and gate it behind the existing `smoothPanZoom` mode so
+an operator can still force `'off'`.
+
+### References
+
+- `frontend/src/utils/svg/bitmapSnapshot.ts`, `frontend/src/utils/smoothPanZoom.ts`
+- `docs/performance/history/interaction-paint-culling.md`
+
+---
+
+## FU-8 — Decompose the size/complexity ceiling-riders (review target #4)
+
+**Status:** open · **Area:** backend + frontend / refactor · **Opened:** 2026-07-09
+
+### Context
+
+Several modules ride their code-quality ceilings with a thin margin, so the next
+feature PR that touches one trips the gate under deadline. This is structural
+work that should be scheduled deliberately, not done reactively.
+
+### What's deferred (and why)
+
+The full investigation — every ceiling-rider with its current margin, a concrete
+extraction candidate, a tightest-margin-first priority order, and acceptance
+criteria — is already captured as a proposal. It is deferred (not abandoned)
+because each extraction is a real refactor with its own regression surface;
+`recommender_service.py` sitting at **exactly 1150** is what forced QW12/QW13
+(FU-3/FU-4) to defer, so this unblocks them.
+
+### References
+
+- [`../proposals/decompose-ceiling-riders.md`](../proposals/decompose-ceiling-riders.md)
+  — per-target margins, extraction candidates, priority order.
+- [`code-quality-analysis.md`](code-quality-analysis.md) §22 — headline margins.
