@@ -32,6 +32,11 @@ from expert_backend.services.api_errors import (
 )
 from expert_backend.services.diagram_mixin import ActionResultUnavailableError
 from expert_backend.services import game_solutions
+from expert_backend.services.game_solution_models import (
+    GameLeverStatsResponse,
+    LogGameSolutionRequest,
+    LogGameSolutionResponse,
+)
 from expert_backend.services.network_service import network_service
 from expert_backend.services.overflow_overlay import inject_overlay
 from expert_backend.services.recommender_service import recommender_service
@@ -314,33 +319,6 @@ class SaveSessionRequest(BaseModel):
     interaction_log: str | None = None
 
 
-class GameSolutionAction(BaseModel):
-    """One retained (starred) remedial action of a Game Mode study.
-
-    ``levers`` are magnitude-free unitary signatures computed by the
-    frontend (``redispatch:<gen>``, ``ls:<load>``, ``switch:<id>=<state>``,
-    …); an empty list means the catalogue identity ``action:<action_id>``
-    is used instead. See services/game_solutions.py.
-    """
-    action_id: str
-    description: str | None = None
-    action_type: str | None = None
-    levers: list[str] = []
-
-
-class LogGameSolutionRequest(BaseModel):
-    player: str | None = None
-    session_name: str | None = None
-    study_id: str | None = None
-    study_label: str | None = None
-    network_path: str
-    contingency_id: str
-    solved: bool = False
-    final_max_rho: float | None = None
-    baseline_max_rho: float | None = None
-    actions: list[GameSolutionAction]
-
-
 # --- Response models (D2, 2026-07) ---
 # Applied to the small, native-Python-dict control endpoints where the
 # full field set is stable and carries no NumPy (so response_model
@@ -365,36 +343,6 @@ class RestoreAnalysisContextResponse(BaseModel):
 class SaveSessionResponse(BaseModel):
     session_folder: str
     pdf_copied: bool
-
-
-class GameSolutionNovelty(BaseModel):
-    new_proposition: bool
-    new_levers: list[str]
-    bonus_points: int
-
-
-class GameSolutionFrequency(BaseModel):
-    action_id: str | None
-    description: str | None
-    signatures: list[str]
-    count: int
-    total: int
-    share: float
-
-
-class GameSolutionContextStats(BaseModel):
-    distinct_propositions: int
-    total_retentions: int
-
-
-class LogGameSolutionResponse(BaseModel):
-    stored: bool
-    duplicate: bool
-    context_key: str
-    signature: str
-    novelty: GameSolutionNovelty
-    frequencies: list[GameSolutionFrequency]
-    context_stats: GameSolutionContextStats
 
 
 last_network_path = None
@@ -670,6 +618,21 @@ def log_game_solution(request: LogGameSolutionRequest) -> dict:
     """
     try:
         return game_solutions.log_solution(request.model_dump())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/game/lever-stats", response_model=GameLeverStatsResponse)
+def game_lever_stats(
+    network_path: str = Query(""),
+    contingency_id: str = Query(...),
+    top_n: int = Query(5, ge=1, le=20),
+) -> dict:
+    """Most-used unitary levers of a (network, contingency) context in the
+    shared solution base — the Game Mode beginner-assistance hints. Read-only
+    scan of the store (services/game_solutions.py)."""
+    try:
+        return game_solutions.lever_stats(network_path, contingency_id, top_n=top_n)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

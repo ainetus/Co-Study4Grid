@@ -113,7 +113,9 @@ Co-Study4Grid/
 │       ├── game/                  # Timed, scored Game Mode (0.8.0; active only
 │       │                          # with ?game=1) — GameShell / useGameSession /
 │       │                          # gameBridge / GameConfigScreen / GameHud /
-│       │                          # GameResults / GameNoveltyToast / scoring /
+│       │                          # GameResults / GameNoveltyToast /
+│       │                          # GameHintsPanel (beginner assistance:
+│       │                          # community's most-used levers) / scoring /
 │       │                          # gameLog / solutionLog (solution
 │       │                          # capitalisation: levers + novelty bonus +
 │       │                          # usage-frequency feedback) / presets /
@@ -328,6 +330,7 @@ Both scripts run in CI (`.github/workflows/code-quality.yml` and
 | POST | `/api/simulate-and-variant-diagram` | NDJSON stream: `{type:"metrics"}` then `{type:"diagram"}` so sidebar updates ahead of the SVG |
 | POST | `/api/compute-superposition` | Compute combined effect of two actions (superposition theorem) |
 | POST | `/api/game/log-solution` | Capitalise a Game Mode retained proposition into the shared solution base; returns the novelty verdict (+bonus points) and per-action usage frequencies |
+| GET  | `/api/game/lever-stats` | Most-used unitary levers of a (network, contingency) context in the shared solution base — the Game Mode beginner-assistance hints (top-N, tagged voltage_level / branch / generation / load) |
 | POST | `/api/save-session` | Save session folder with JSON snapshot + PDF copy |
 | GET  | `/api/list-sessions` | List available session folders in a directory |
 | POST | `/api/load-session` | Load session JSON and restore PDFs |

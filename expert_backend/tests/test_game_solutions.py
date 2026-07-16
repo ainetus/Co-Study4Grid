@@ -255,6 +255,74 @@ def test_solutions_dir_env_cascade(tmp_path, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# lever_stats — beginner-assistance hints
+# ---------------------------------------------------------------------------
+
+def test_lever_category_mapping():
+    cat = game_solutions._lever_category
+    assert cat("redispatch:G1") == "generation"
+    assert cat("rc:WIND_1") == "generation"
+    assert cat("gen_p:G2") == "generation"
+    assert cat("ls:LOAD_1") == "load"
+    assert cat("load_p:LOAD_2") == "load"
+    assert cat("switch:VL1_COUPL=true") == "voltage_level"
+    assert cat("pst:PST_A") == "branch"
+    assert cat("action:disco_LINE_A") == "branch"
+    assert cat("action:reco_LINE_B") == "branch"
+    assert cat("action:open_coupler_VL_X") == "voltage_level"
+    assert cat("action:mystery") == "other"
+
+
+def test_lever_label_strips_prefix_and_switch_state():
+    assert game_solutions._lever_label("redispatch:G1") == "G1"
+    assert game_solutions._lever_label("switch:VL1_COUPL=true") == "VL1_COUPL"
+    assert game_solutions._lever_label("action:disco_LINE_A") == "disco_LINE_A"
+
+
+def test_lever_stats_ranks_by_retention_weight(store_dir):
+    # disco_LINE_A retained twice (two players), redispatch once.
+    game_solutions.log_solution(payload())
+    game_solutions.log_solution(payload(player="bob"))
+    game_solutions.log_solution(payload(
+        player="carol",
+        actions=[{"action_id": "redispatch_G1_50MW", "action_type": "redispatch",
+                  "description": "Redispatch G1", "levers": ["redispatch:G1"]}]))
+
+    stats = game_solutions.lever_stats(
+        payload()["network_path"], payload()["contingency_id"])
+    assert stats["total_retentions"] == 3
+    assert [lever["signature"] for lever in stats["levers"]] == [
+        "action:disco_LINE_A", "redispatch:G1"]
+    top = stats["levers"][0]
+    assert top["count"] == 2
+    assert top["share"] == pytest.approx(2 / 3)
+    assert top["category"] == "branch"
+    assert top["label"] == "disco_LINE_A"
+    assert top["sample_description"] == "Ouverture LINE_A"
+    assert stats["levers"][1]["category"] == "generation"
+
+
+def test_lever_stats_caps_at_top_n(store_dir):
+    for i in range(7):
+        game_solutions.log_solution(payload(
+            actions=[{"action_id": f"disco_L{i}", "levers": []}]))
+    stats = game_solutions.lever_stats(
+        payload()["network_path"], payload()["contingency_id"], top_n=5)
+    assert len(stats["levers"]) == 5
+
+
+def test_lever_stats_empty_context(store_dir):
+    stats = game_solutions.lever_stats("data/grid/network.xiidm", "never_played")
+    assert stats["total_retentions"] == 0
+    assert stats["levers"] == []
+
+
+def test_lever_stats_requires_contingency(store_dir):
+    with pytest.raises(ValueError):
+        game_solutions.lever_stats("net.xiidm", "  ")
+
+
+# ---------------------------------------------------------------------------
 # Endpoint
 # ---------------------------------------------------------------------------
 
@@ -278,3 +346,19 @@ def test_endpoint_rejects_empty_actions(store_dir, client):
 def test_endpoint_validates_required_fields(store_dir, client):
     resp = client.post("/api/game/log-solution", json={"actions": []})
     assert resp.status_code == 422
+
+
+def test_lever_stats_endpoint(store_dir, client):
+    client.post("/api/game/log-solution", json=payload())
+    resp = client.get("/api/game/lever-stats", params={
+        "network_path": payload()["network_path"],
+        "contingency_id": payload()["contingency_id"],
+    })
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total_retentions"] == 1
+    assert body["levers"][0]["signature"] == "action:disco_LINE_A"
+    assert body["levers"][0]["category"] == "branch"
+
+    missing = client.get("/api/game/lever-stats", params={"contingency_id": " "})
+    assert missing.status_code == 400

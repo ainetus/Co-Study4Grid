@@ -41,7 +41,9 @@ frontend/
     ├── game/                 # Timed, scored Game Mode (0.8.0; active only with
     │                         # ?game=1). GameShell / useGameSession / gameBridge /
     │                         # GameConfigScreen / GameHud / GameResults /
-    │                         # GameNoveltyToast / scoring / gameLog / solutionLog
+    │                         # GameNoveltyToast / GameHintsPanel (beginner
+    │                         # assistance: community's most-used levers per
+    │                         # contingency) / scoring / gameLog / solutionLog
     │                         # (solution capitalisation: levers + novelty bonus +
     │                         # usage frequencies) / presets / types. See the Game
     │                         # Mode section below +
@@ -522,6 +524,12 @@ exactly as before.
   `GameNoveltyToast` (+bonus pts on top of the twin-locked score) and the
   usage-frequency section of `GameResults`. Logging is fire-and-forget: a
   failed POST never blocks the game.
+- **`GameHintsPanel.tsx`** is the beginner assistance (config-screen
+  checkbox, default on): a collapsible in-play panel listing the 5 levers
+  most used by all players on the current contingency
+  (`GET /api/game/lever-stats`), tagged voltage level / branch /
+  generation / load. Best-effort like the solution log — no data or no
+  backend hides the panel.
 - **`presets.ts`** lists curated **solvable** fr225_400 contingencies; keep
   them winnable (the `scripts/game_mode/e2e_game_session.py` backend replay
   verifies `can_proceed=True`).

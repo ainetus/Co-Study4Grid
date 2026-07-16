@@ -378,6 +378,77 @@
         "title": "FocusedDiagramRequest",
         "type": "object"
       },
+      "GameLeverStat": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "sample_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample Description"
+          },
+          "share": {
+            "title": "Share",
+            "type": "number"
+          },
+          "signature": {
+            "title": "Signature",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signature",
+          "label",
+          "category",
+          "count",
+          "share",
+          "sample_description"
+        ],
+        "title": "GameLeverStat",
+        "type": "object"
+      },
+      "GameLeverStatsResponse": {
+        "properties": {
+          "context_key": {
+            "title": "Context Key",
+            "type": "string"
+          },
+          "levers": {
+            "items": {
+              "$ref": "#/components/schemas/GameLeverStat"
+            },
+            "title": "Levers",
+            "type": "array"
+          },
+          "total_retentions": {
+            "title": "Total Retentions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "context_key",
+          "total_retentions",
+          "levers"
+        ],
+        "title": "GameLeverStatsResponse",
+        "type": "object"
+      },
       "GameSolutionAction": {
         "description": "One retained (starred) remedial action of a Game Mode study.\n\n``levers`` are magnitude-free unitary signatures computed by the\nfrontend (``redispatch:<gen>``, ``ls:<load>``, ``switch:<id>=<state>``,\n…); an empty list means the catalogue identity ``action:<action_id>``\nis used instead. See services/game_solutions.py.",
         "properties": {
@@ -1646,6 +1717,68 @@
           }
         },
         "summary": "Get Focused Diagram"
+      }
+    },
+    "/api/game/lever-stats": {
+      "get": {
+        "description": "Most-used unitary levers of a (network, contingency) context in the\nshared solution base — the Game Mode beginner-assistance hints. Read-only\nscan of the store (services/game_solutions.py).",
+        "operationId": "game_lever_stats_api_game_lever_stats_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "network_path",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Network Path",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "contingency_id",
+            "required": true,
+            "schema": {
+              "title": "Contingency Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "top_n",
+            "required": false,
+            "schema": {
+              "default": 5,
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Top N",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameLeverStatsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Game Lever Stats"
       }
     },
     "/api/game/log-solution": {

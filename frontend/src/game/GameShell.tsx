@@ -8,6 +8,7 @@
 import App from '../App';
 import { colors, space, text, radius } from '../styles/tokens';
 import GameConfigScreen from './GameConfigScreen';
+import GameHintsPanel from './GameHintsPanel';
 import GameHud from './GameHud';
 import GameNoveltyToast from './GameNoveltyToast';
 import GameResults from './GameResults';
@@ -59,6 +60,10 @@ export default function GameShell() {
       <div className="game-app-host">
         <App />
       </div>
+
+      {cfg.assistance && game.phase === 'playing' && study && (
+        <GameHintsPanel key={study.id} study={study} />
+      )}
 
       {game.noveltyToast && (
         <GameNoveltyToast feedback={game.noveltyToast} onDismiss={game.dismissNoveltyToast} />

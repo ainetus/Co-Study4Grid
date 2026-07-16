@@ -854,6 +854,21 @@ export interface LogGameSolutionRequest {
     actions: GameSolutionActionWire[];
 }
 
+export interface GameLeverStatWire {
+    signature: string;
+    label: string;
+    category: 'voltage_level' | 'branch' | 'generation' | 'load' | 'other';
+    count: number;
+    share: number;
+    sample_description?: string | null;
+}
+
+export interface GameLeverStatsResponse {
+    context_key: string;
+    total_retentions: number;
+    levers: GameLeverStatWire[];
+}
+
 export interface LogGameSolutionResponse {
     stored: boolean;
     duplicate: boolean;

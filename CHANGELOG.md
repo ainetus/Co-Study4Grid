@@ -51,6 +51,14 @@ capitalisation".
   and the per-action usage-frequency feedback. CSV export gains a
   `novelty_bonus` column; the JSON schema change is additive (optional
   `solutionFeedback` per study, `schemaVersion` stays `1.0`).
+- **Beginner assistance — community lever hints** — new
+  `GET /api/game/lever-stats` aggregates, per (network, contingency)
+  context, the unitary levers most mobilised across the stored base
+  (weighted by retention events) and tags each with its equipment family
+  (`voltage_level` / `branch` / `generation` / `load`). With the new
+  config-screen **Beginner assistance** checkbox (default on), the
+  collapsible in-play `GameHintsPanel` shows the top 5 for the current
+  study — best-effort: no data or no backend simply hides the panel.
 
 ### Tests + docs — coverage and reference for the 2026-07 deep revisions
 

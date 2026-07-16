@@ -111,6 +111,9 @@ expert_backend/
 │   │                              # COSTUDY4GRID_DATA_DIR/game_solutions →
 │   │                              # repo-local game_solutions/ (gitignored).
 │   │                              # See docs/features/game-mode-codabench.md.
+│   ├── game_solution_models.py    # Pydantic wire models of the two game
+│   │                              # endpoints — kept out of main.py so it
+│   │                              # stays under the module-size ceiling
 │   └── sanitize.py                # NumPy → native-Python recursive coercion
 │                                  # (`sanitize_for_json`)
 ├── recommenders/               # Pluggable recommendation-model subsystem:
@@ -376,6 +379,10 @@ Game Mode:
   file IO — no network lock / busy gate; the store serializes its own
   read-modify-write with a module-level lock and writes records
   atomically (temp file + `os.replace`).
+- `GET /api/game/lever-stats` — top-N most-used unitary levers of a
+  (network, contingency) context, tagged by equipment family
+  (`voltage_level` / `branch` / `generation` / `load` / `other`).
+  Read-only store scan; feeds the Game Mode beginner-assistance panel.
 
 OS pickers & static:
 - `GET  /api/pick-path?type=file|dir` — spawns a tkinter subprocess.

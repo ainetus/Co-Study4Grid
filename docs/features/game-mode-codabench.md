@@ -24,7 +24,11 @@ Launch the frontend with `?game=1` (e.g. `http://localhost:5173/?game=1`):
    or add custom studies (network + action file + contingency id).
 2. **Play** — a fixed HUD shows the study, a live countdown, the action
    counter (`X/3`), and the current best resulting loading. The workspace
-   underneath is the unchanged Co-Study4Grid tool. **Star** the actions you
+   underneath is the unchanged Co-Study4Grid tool. With **Beginner
+   assistance** enabled (config-screen checkbox, on by default), a
+   collapsible 💡 hints panel lists the **5 levers most used by all players**
+   on the current contingency, tagged by equipment family (voltage level /
+   branch / generation / load). **Star** the actions you
    commit to (the star is capped at the configured max). Click **Next study →**
    (or let the timer expire) to advance. If your retained proposition turns
    out to be **new** in the shared base, a 🌟 toast tells you right away and
@@ -46,6 +50,7 @@ The whole feature is additive and inert unless `?game=1` is set.
 | `frontend/src/game/GameHud.tsx` | Timer / action-counter / Next-study HUD bar |
 | `frontend/src/game/GameResults.tsx` | Results table + score preview (+ novelty bonus + usage-frequency feedback) + JSON/CSV export |
 | `frontend/src/game/GameNoveltyToast.tsx` | Transient 🌟 banner when a retained proposition is new in the shared base |
+| `frontend/src/game/GameHintsPanel.tsx` | Beginner assistance: collapsible 💡 panel with the community's 5 most-used levers per contingency |
 | `frontend/src/game/scoring.ts` | Shared scoring model (twin of the Python scorer) |
 | `frontend/src/game/gameLog.ts` | `GameSessionLog` assembly + CSV + download helpers |
 | `frontend/src/game/solutionLog.ts` | Solution capitalisation client: lever/signature computation + log payload + feedback mapping |
@@ -112,6 +117,16 @@ under a persistent root, exact-duplicate dedup, the player name as author).
   duplicate: no bonus, but the response carries each retained action's
   **usage frequency** (`count / total` past retentions in the context),
   which the results screen shows as end-of-session feedback.
+- **Beginner assistance (lever hints)** — `GET /api/game/lever-stats`
+  aggregates, per (network, contingency) context, the unitary levers most
+  mobilised across the stored base (each lever weighted by retention
+  events) and tags each with its equipment family (`voltage_level` /
+  `branch` / `generation` / `load` / `other` — derived from the signature
+  prefix, with catalogue-id heuristics for `action:` signatures). With the
+  config-screen **Beginner assistance** checkbox on (default), the
+  `GameHintsPanel` shows the top 5 for the current study in a collapsible
+  in-play panel — best-effort like the log itself (no data or no backend →
+  the panel stays hidden).
 - **Flow** — `useGameSession` fires the log at every study commit,
   fire-and-forget (a failed log never blocks or breaks the game — the study
   simply carries no `solutionFeedback`). The session log is *derived* from

@@ -202,6 +202,95 @@ def _load_records(ctx_dir: Path) -> list[tuple[Path, dict]]:
     return records
 
 
+#: Categories the beginner-assistance panel groups levers under.
+LEVER_CATEGORIES = ("voltage_level", "branch", "generation", "load", "other")
+
+
+def _lever_category(signature: str) -> str:
+    """Equipment family a unitary signature acts on.
+
+    Prefix-driven for lever signatures; catalogue ``action:<id>`` falls back
+    to the id heuristics the frontend classifier uses (disco_/reco_ →
+    branch, coupling/busbar/node → voltage level).
+    """
+    if signature.startswith(("redispatch:", "rc:", "gen_p:")):
+        return "generation"
+    if signature.startswith(("ls:", "load_p:")):
+        return "load"
+    if signature.startswith("switch:"):
+        return "voltage_level"
+    if signature.startswith("pst:"):
+        return "branch"
+    if signature.startswith("action:"):
+        action_id = signature[len("action:"):].lower()
+        if any(tok in action_id for tok in ("coupl", "busbar", "node_merging", "node_splitting", "noeud")):
+            return "voltage_level"
+        if action_id.startswith(("disco_", "reco_")) or "line" in action_id:
+            return "branch"
+    return "other"
+
+
+def _lever_label(signature: str) -> str:
+    """Human-oriented element label of a signature (prefix stripped,
+    switch state dropped)."""
+    _, _, rest = signature.partition(":")
+    label = rest or signature
+    if signature.startswith("switch:"):
+        label = label.partition("=")[0]
+    return label
+
+
+def lever_stats(network_path: str, contingency_id: str, top_n: int = 5) -> dict:
+    """Most-used unitary levers of one (network, contingency) context.
+
+    Beginner assistance for Game Mode: each lever's ``count`` is the number
+    of retention events (all players) whose proposition mobilised it, so a
+    proposition retained three times weighs three. Returns the ``top_n``
+    levers sorted by count (ties broken alphabetically), each with its
+    equipment category and a sample action description for display.
+    """
+    contingency = str(contingency_id or "").strip()
+    if not contingency:
+        raise ValueError("contingency_id is required")
+    key = context_key(network_path, contingency)
+
+    with _STORE_LOCK:
+        records = _load_records(solutions_dir() / key)
+
+    counts: dict[str, int] = {}
+    samples: dict[str, str] = {}
+    total = 0
+    for _, record in records:
+        weight = len(record.get("retentions") or [])
+        total += weight
+        for sig in record.get("unitary_signatures") or []:
+            counts[sig] = counts.get(sig, 0) + weight
+            if sig not in samples:
+                for action in record.get("actions") or []:
+                    covers = (sig in (action.get("levers") or [])
+                              or sig == f"action:{action.get('action_id')}")
+                    if covers and action.get("description"):
+                        samples[sig] = str(action["description"])
+                        break
+
+    ranked = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    return {
+        "context_key": key,
+        "total_retentions": total,
+        "levers": [
+            {
+                "signature": sig,
+                "label": _lever_label(sig),
+                "category": _lever_category(sig),
+                "count": count,
+                "share": (count / total) if total else 0.0,
+                "sample_description": samples.get(sig),
+            }
+            for sig, count in ranked[: max(0, top_n)]
+        ],
+    }
+
+
 def _action_entry(action: dict) -> dict:
     return {
         "action_id": action.get("action_id"),

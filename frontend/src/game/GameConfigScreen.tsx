@@ -45,6 +45,7 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
   const [minutes, setMinutes] = useState(5);
   const [seconds, setSeconds] = useState(0);
   const [maxActions, setMaxActions] = useState(3);
+  const [assistance, setAssistance] = useState(true);
   const [difficulty, setDifficulty] = useState<Difficulty>(DEFAULT_DIFFICULTY);
   const tier = difficultyTier(difficulty);
   const [studies, setStudies] = useState<GameStudy[]>(tier.studies);
@@ -104,6 +105,7 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
       player: player.trim(),
       timerSeconds,
       maxActions,
+      assistance,
       studies,
     });
   };
@@ -168,6 +170,15 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
               </select>
             </div>
           </div>
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: space[1], marginTop: space[2],
+            fontSize: text.sm, color: colors.textSecondary, cursor: 'pointer',
+          }}>
+            <input type="checkbox" checked={assistance}
+              onChange={(e) => setAssistance(e.target.checked)} />
+            💡 Beginner assistance — show the 5 levers (voltage level, branch,
+            generation, load) most used by all players on each contingency
+          </label>
           <p style={{ color: colors.textTertiary, fontSize: text.xs, margin: `${space[1]} 0 0` }}>
             {tier.blurb}
           </p>

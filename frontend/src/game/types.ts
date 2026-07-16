@@ -59,6 +59,11 @@ export interface GameSessionConfig {
   timerSeconds: number;
   /** Max remedial actions the player may commit per study (domain cap: 3). */
   maxActions: number;
+  /**
+   * Beginner assistance: show the community's most-used levers for each
+   * study (from the shared solution base) in an in-play hints panel.
+   */
+  assistance?: boolean;
   /** Ordered situations to play. */
   studies: GameStudy[];
 }
