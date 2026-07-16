@@ -1481,10 +1481,10 @@ function App() {
   // levers the solution-capitalisation log needs (game/solutionLog.ts).
   useEffect(() => {
     if (!gameBridge.isGameMode()) return;
-    const chosenActions = [...selectedActionIds].map(
-      (id) => buildChosenActionRecord(id, result));
     const rhoArr = n1Diagram?.lines_overloaded_rho;
     const baselineMaxRho = rhoArr && rhoArr.length ? Math.max(...rhoArr) : null;
+    const chosenActions = [...selectedActionIds].map(
+      (id) => buildChosenActionRecord(id, result, baselineMaxRho));
     gameBridge.publishSnapshot({
       contingencyElementIds: selectedContingency,
       baselineMaxRho,

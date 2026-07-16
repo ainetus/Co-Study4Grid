@@ -29,6 +29,11 @@ class GameSolutionAction(BaseModel):
     description: str | None = None
     action_type: str | None = None
     levers: list[str] = []
+    # True when the action is effective (reduces the baseline worst
+    # loading; a combined action must also beat its underlying actions by
+    # ≥ 1 loading-point). The novelty bonus is only paid when EVERY
+    # retained action is effective.
+    effective: bool = True
 
 
 class LogGameSolutionRequest(BaseModel):
@@ -47,6 +52,9 @@ class LogGameSolutionRequest(BaseModel):
 class GameSolutionNovelty(BaseModel):
     new_proposition: bool
     new_levers: list[str]
+    # False when at least one retained action was not effective — novelty
+    # is still reported but bonus_points stays 0.
+    effective: bool
     bonus_points: int
 
 

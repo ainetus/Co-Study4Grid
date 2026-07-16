@@ -125,7 +125,7 @@ describe('buildChosenActionRecord', () => {
       }),
     });
     result.action_scores = { redispatch: { scores: { redispatch_G1: 1.2 } } };
-    const rec = buildChosenActionRecord('redispatch_G1', result);
+    const rec = buildChosenActionRecord('redispatch_G1', result, 1.2);
     expect(rec).toMatchObject({
       actionId: 'redispatch_G1',
       description: 'Redispatch G1',
@@ -133,14 +133,48 @@ describe('buildChosenActionRecord', () => {
       levers: ['redispatch:G1'],
       maxRho: 0.85,
       solved: true,
+      effective: true,
     });
   });
 
   it('tolerates a missing result (unsimulated pick)', () => {
-    const rec = buildChosenActionRecord('a1', null);
+    const rec = buildChosenActionRecord('a1', null, 1.2);
     expect(rec.maxRho).toBeNull();
     expect(rec.solved).toBe(false);
     expect(rec.levers).toEqual([]);
+    expect(rec.effective).toBe(false);
+  });
+
+  it('marks an action ineffective when it does not beat the baseline', () => {
+    const result = analysisResult({
+      // Still overloaded AND worse than doing nothing.
+      a1: detail({ max_rho: 1.25, lines_overloaded_after: ['L9'] }),
+      // Improves the loading without fully solving → effective.
+      a2: detail({ max_rho: 1.05, lines_overloaded_after: ['L9'] }),
+    });
+    expect(buildChosenActionRecord('a1', result, 1.2).effective).toBe(false);
+    expect(buildChosenActionRecord('a2', result, 1.2).effective).toBe(true);
+  });
+
+  it('requires a combined action to beat its parts by ≥ 1 loading-point', () => {
+    const result = analysisResult({
+      a1: detail({ max_rho: 0.95, lines_overloaded_after: [] }),
+      a2: detail({ max_rho: 0.99, lines_overloaded_after: [] }),
+      // 0.945 is < 1 point below the best part (0.95) → NOT effective.
+      'a1+a2': detail({ max_rho: 0.945, lines_overloaded_after: [] }),
+      // 0.94 is exactly 1 point below → effective.
+      'a1+a3': detail({ max_rho: 0.94, lines_overloaded_after: [] }),
+      a3: detail({ max_rho: 0.95, lines_overloaded_after: [] }),
+    });
+    expect(buildChosenActionRecord('a1+a2', result, 1.2).effective).toBe(false);
+    expect(buildChosenActionRecord('a1+a3', result, 1.2).effective).toBe(true);
+  });
+
+  it('lets a combined action pass when its parts were never simulated alone', () => {
+    const result = analysisResult({
+      'disco_X+user_topo_VL1_123': detail({ max_rho: 0.9, lines_overloaded_after: [] }),
+    });
+    expect(buildChosenActionRecord('disco_X+user_topo_VL1_123', result, 1.2).effective).toBe(true);
   });
 });
 
@@ -172,7 +206,7 @@ function studyResult(over: Partial<GameStudyResult> = {}): GameStudyResult {
     timeLimitSeconds: 300,
     maxActions: 3,
     actionsChosen: [
-      { actionId: 'disco_A', description: 'Ouverture A', actionType: 'disco', levers: [], maxRho: 0.9, solved: true },
+      { actionId: 'disco_A', description: 'Ouverture A', actionType: 'disco', levers: [], maxRho: 0.9, solved: true, effective: true },
     ],
     numActions: 1,
     baselineMaxRho: 1.2,
@@ -199,6 +233,7 @@ describe('buildSolutionLogRequest', () => {
         description: 'Ouverture A',
         action_type: 'disco',
         levers: [],
+        effective: true,
       }],
     });
   });
@@ -209,7 +244,7 @@ const RESPONSE: LogGameSolutionResponse = {
   duplicate: false,
   context_key: 'grid_network__ctg_1',
   signature: 'action:disco_A',
-  novelty: { new_proposition: true, new_levers: ['action:disco_A'], bonus_points: 10 },
+  novelty: { new_proposition: true, new_levers: ['action:disco_A'], effective: true, bonus_points: 20 },
   frequencies: [
     { action_id: 'disco_A', description: 'Ouverture A', signatures: ['action:disco_A'], count: 0, total: 0, share: 0 },
   ],
@@ -221,7 +256,7 @@ describe('toStudyFeedback / sessionNoveltyBonus', () => {
     const fb = toStudyFeedback('s1', RESPONSE);
     expect(fb).toEqual({
       studyId: 's1',
-      novelty: { newProposition: true, newLevers: ['action:disco_A'], bonusPoints: 10 },
+      novelty: { newProposition: true, newLevers: ['action:disco_A'], effective: true, bonusPoints: 20 },
       frequencies: [{
         actionId: 'disco_A', description: 'Ouverture A', count: 0, total: 0, share: 0,
       }],
@@ -249,9 +284,9 @@ describe('toStudyFeedback / sessionNoveltyBonus', () => {
       studyId: 's3',
       solutionFeedback: toStudyFeedback('s3', {
         ...RESPONSE,
-        novelty: { new_proposition: true, new_levers: [], bonus_points: 5 },
+        novelty: { new_proposition: true, new_levers: [], effective: true, bonus_points: 10 },
       }),
     });
-    expect(sessionNoveltyBonus([s1, s2, s3])).toBe(15);
+    expect(sessionNoveltyBonus([s1, s2, s3])).toBe(30);
   });
 });

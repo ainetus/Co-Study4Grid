@@ -111,9 +111,17 @@ under a persistent root, exact-duplicate dedup, the player name as author).
   `action:<action_id>` identity. The proposition signature is the sorted
   union of the actions' unitary signatures (order-independent).
 - **Novelty & bonus** — a proposition mobilising ≥ 1 never-seen unitary
-  signature is *completely new*: **+10 bonus pts** and the in-play
+  signature is *completely new*: **+20 bonus pts** and the in-play
   `GameNoveltyToast` announces it (with the new levers). A new combination
-  of already-known unitary actions earns **+5**. Anything else is a
+  of already-known unitary actions earns **+10**. Bonuses are only paid
+  when **every retained action is effective**: it must beat the baseline
+  worst loading (or solve the study), and a combined `a+b` action must
+  additionally sit **≥ 1 loading-point (0.01 pu) below the best of its
+  underlying actions** (`COMBINED_MIN_RHO_GAIN` in solutionLog.ts — the
+  frontend computes the per-action `effective` flag, the backend gates the
+  points and echoes `novelty.effective`). A novel-but-ineffective
+  proposition is still recorded and flagged 🌟 in the results (no toast,
+  no points). Anything else is a
   duplicate: no bonus, but the response carries each retained action's
   **usage frequency** (`count / total` past retentions in the context),
   which the results screen shows as end-of-session feedback.

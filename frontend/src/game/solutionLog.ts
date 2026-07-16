@@ -84,10 +84,38 @@ export function buildActionLevers(
   };
 }
 
+/**
+ * A combined `a+b` action must beat its underlying actions by at least
+ * this much (per-unit loading — 0.01 == 1 loading-point) to count as
+ * effective. Combining two actions has an operational cost; the bonus
+ * only rewards combinations that genuinely outperform their parts.
+ */
+export const COMBINED_MIN_RHO_GAIN = 0.01;
+
+/**
+ * True when a combined action outperforms its underlying actions: its
+ * worst loading sits ≥ 1 loading-point below the BEST of the parts.
+ * Single actions pass trivially; so does a combination whose parts were
+ * never simulated alone (nothing to compare against).
+ */
+function combinedBeatsUnderlying(
+  actionId: string,
+  maxRho: number,
+  result: AnalysisResult | null,
+): boolean {
+  if (!actionId.includes('+')) return true;
+  const partRhos = actionId.split('+')
+    .map((part) => result?.actions[part.trim()]?.max_rho)
+    .filter((rho): rho is number => typeof rho === 'number');
+  if (!partRhos.length) return true;
+  return maxRho <= Math.min(...partRhos) - COMBINED_MIN_RHO_GAIN;
+}
+
 /** One starred action → the enriched record published to the game shell. */
 export function buildChosenActionRecord(
   actionId: string,
   result: AnalysisResult | null,
+  baselineMaxRho: number | null,
 ): ChosenActionRecord {
   const detail = result?.actions[actionId];
   const maxRho = detail?.max_rho ?? null;
@@ -95,6 +123,12 @@ export function buildChosenActionRecord(
   const solved = maxRho != null && maxRho < 1.0 && (!after || after.length === 0);
   const { actionType, levers } = buildActionLevers(
     actionId, detail, scoreTypeFor(result, actionId));
+  // Effective = the action improves on the bare N-1 state (or outright
+  // solves it), AND — for a combined action — outperforms its parts.
+  const improves = solved
+    || (maxRho != null && baselineMaxRho != null && maxRho < baselineMaxRho);
+  const effective = maxRho != null && improves
+    && combinedBeatsUnderlying(actionId, maxRho, result);
   return {
     actionId,
     description: detail?.description_unitaire,
@@ -103,6 +137,7 @@ export function buildChosenActionRecord(
     maxRho,
     linesOverloadedAfter: after,
     solved,
+    effective,
   };
 }
 
@@ -127,6 +162,7 @@ export function buildSolutionLogRequest(
       description: a.description ?? null,
       action_type: a.actionType ?? null,
       levers: a.levers ?? [],
+      effective: a.effective ?? true,
     })),
   };
 }
@@ -141,6 +177,7 @@ export function toStudyFeedback(
     novelty: {
       newProposition: response.novelty.new_proposition,
       newLevers: response.novelty.new_levers,
+      effective: response.novelty.effective,
       bonusPoints: response.novelty.bonus_points,
     },
     frequencies: response.frequencies.map((f) => ({

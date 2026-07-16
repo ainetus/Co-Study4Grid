@@ -128,9 +128,14 @@ export default function GameResults({ log, onReplay }: GameResultsProps) {
                           : <span style={{ color: colors.warningText }}>⚠ unsolved</span>}
                       {s.solutionFeedback?.novelty.newProposition && (
                         <span
-                          title={s.solutionFeedback.novelty.newLevers.length
-                            ? `New lever(s): ${s.solutionFeedback.novelty.newLevers.join(', ')}`
-                            : 'New combination of known actions'}
+                          title={[
+                            s.solutionFeedback.novelty.newLevers.length
+                              ? `New lever(s): ${s.solutionFeedback.novelty.newLevers.join(', ')}`
+                              : 'New combination of known actions',
+                            s.solutionFeedback.novelty.bonusPoints === 0
+                              ? 'No bonus: the retained actions were not effective enough (a combined action must beat its parts by ≥ 1 loading-point).'
+                              : '',
+                          ].filter(Boolean).join(' — ')}
                           style={{
                             marginLeft: space[1], padding: `0 ${space[1]}`,
                             borderRadius: radius.sm, background: colors.accentSoft,
@@ -139,7 +144,9 @@ export default function GameResults({ log, onReplay }: GameResultsProps) {
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          🌟 new +{s.solutionFeedback.novelty.bonusPoints}
+                          {s.solutionFeedback.novelty.bonusPoints > 0
+                            ? `🌟 new +${s.solutionFeedback.novelty.bonusPoints}`
+                            : '🌟 new (no bonus)'}
                         </span>
                       )}
                     </td>

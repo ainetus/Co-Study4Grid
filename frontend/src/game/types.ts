@@ -92,6 +92,14 @@ export interface ChosenActionRecord {
   linesOverloadedAfter?: string[];
   /** True when this single action clears all overloads. */
   solved: boolean;
+  /**
+   * True when the action is effective: it beats the baseline worst
+   * loading (or solves the study), and — for a combined `a+b` action —
+   * its loading is at least 1 loading-point (0.01 pu) below the best of
+   * its underlying actions. The novelty bonus is only paid when every
+   * retained action is effective.
+   */
+  effective?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -104,7 +112,9 @@ export interface SolutionNovelty {
   newProposition: boolean;
   /** Unitary signatures never seen in this context (new levers). */
   newLevers: string[];
-  /** Bonus points awarded (10 new lever / 5 new combination / 0). */
+  /** False when ≥ 1 retained action was not effective → bonus withheld. */
+  effective: boolean;
+  /** Bonus points awarded (20 new lever / 10 new combination / 0). */
   bonusPoints: number;
 }
 

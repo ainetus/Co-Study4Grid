@@ -156,7 +156,11 @@ export function useGameSession(): GameSessionState {
         if (sessionSeqRef.current !== seq) return; // session changed meanwhile
         const feedback = toStudyFeedback(result.studyId, response);
         attachFeedback(feedback);
-        if (feedback.novelty.newProposition) setNoveltyToast(feedback);
+        // Toast only when points were actually earned (a novel-but-
+        // ineffective proposition gets no in-play celebration).
+        if (feedback.novelty.newProposition && feedback.novelty.bonusPoints > 0) {
+          setNoveltyToast(feedback);
+        }
       })
       .catch(() => {
         // Logging is best-effort (e.g. standalone build without a backend):

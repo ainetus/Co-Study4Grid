@@ -44,7 +44,7 @@ function logResponse(over: Partial<LogGameSolutionResponse> = {}): LogGameSoluti
     duplicate: false,
     context_key: 'net__ctg',
     signature: 'action:a',
-    novelty: { new_proposition: false, new_levers: [], bonus_points: 0 },
+    novelty: { new_proposition: false, new_levers: [], effective: true, bonus_points: 0 },
     frequencies: [
       { action_id: 'a', description: null, signatures: ['action:a'], count: 2, total: 4, share: 0.5 },
     ],
@@ -158,7 +158,7 @@ describe('useGameSession', () => {
 
   it('merges the async feedback into the study result and the final log', async () => {
     logGameSolution.mockResolvedValue(logResponse({
-      novelty: { new_proposition: true, new_levers: ['action:a'], bonus_points: 10 },
+      novelty: { new_proposition: true, new_levers: ['action:a'], effective: true, bonus_points: 20 },
     }));
     const shortConfig = { ...CONFIG, studies: [study('s1')] };
     const { result } = renderHook(() => useGameSession());
@@ -174,13 +174,28 @@ describe('useGameSession', () => {
 
     const feedback = result.current.sessionLog!.studies[0].solutionFeedback!;
     expect(feedback.novelty).toEqual({
-      newProposition: true, newLevers: ['action:a'], bonusPoints: 10,
+      newProposition: true, newLevers: ['action:a'], effective: true, bonusPoints: 20,
     });
     expect(feedback.frequencies[0]).toMatchObject({ actionId: 'a', count: 2, total: 4 });
 
     // A new proposition also raises the in-play novelty toast.
-    expect(result.current.noveltyToast?.novelty.bonusPoints).toBe(10);
+    expect(result.current.noveltyToast?.novelty.bonusPoints).toBe(20);
     act(() => { result.current.dismissNoveltyToast(); });
+    expect(result.current.noveltyToast).toBeNull();
+  });
+
+  it('does not toast a novel proposition whose actions were not effective', async () => {
+    logGameSolution.mockResolvedValue(logResponse({
+      novelty: { new_proposition: true, new_levers: ['action:a'], effective: false, bonus_points: 0 },
+    }));
+    const { result } = renderHook(() => useGameSession());
+    await act(async () => { result.current.startSession(CONFIG); });
+    await waitFor(() => expect(result.current.phase).toBe('playing'));
+
+    await playAndAdvance(result, 0.9);
+    await waitFor(() =>
+      expect(result.current.results[0]?.solutionFeedback).toBeDefined());
+    expect(result.current.results[0].solutionFeedback!.novelty.bonusPoints).toBe(0);
     expect(result.current.noveltyToast).toBeNull();
   });
 

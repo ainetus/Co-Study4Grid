@@ -29,9 +29,15 @@ capitalisation".
   actions (manual SLD maneuvers *and* catalogue couplings) decompose into
   `switch:<id>=<state>` / `load_p:` / `gen_p:` levers, and lever-less
   actions (line disco/reco) keep their `action:<id>` identity. Response carries
-  the novelty verdict (+10 bonus pts for a proposition with a never-seen
-  lever, +5 for a new combination of known actions), plus each retained
-  action's past usage frequency in the base. Store root:
+  the novelty verdict (**+20** bonus pts for a proposition with a never-seen
+  lever, **+10** for a new combination of known actions), plus each retained
+  action's past usage frequency in the base. Bonuses are **only paid when
+  every retained action is effective** — it beats the baseline worst
+  loading (or solves the study), and a combined `a+b` action must sit
+  ≥ 1 loading-point (0.01 pu) below the best of its underlying actions;
+  the frontend computes the per-action `effective` flag
+  (`solutionLog.buildChosenActionRecord`), the backend gates the points
+  and echoes `novelty.effective` so the UI can explain a withheld bonus. Store root:
   `COSTUDY4GRID_GAME_SOLUTIONS_DIR` → `COSTUDY4GRID_DATA_DIR/game_solutions`
   (set `COSTUDY4GRID_DATA_DIR=/data` on a Space with persistent storage) →
   repo-local `game_solutions/` fallback. Full pytest coverage in

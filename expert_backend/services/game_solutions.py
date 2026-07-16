@@ -65,9 +65,15 @@ SCHEMA_VERSION = "1.0"
 
 # Bonus awarded when the retained proposition mobilises at least one
 # never-seen unitary lever ("proposition complètement nouvelle").
-BONUS_NEW_LEVER = 10
+BONUS_NEW_LEVER = 20
 # Smaller bonus for a new combination of already-known unitary actions.
-BONUS_NEW_COMBINATION = 5
+BONUS_NEW_COMBINATION = 10
+# Bonuses are only paid when EVERY retained action is effective — the
+# frontend computes each action's ``effective`` flag (it reduces the
+# baseline worst loading; a combined action must additionally beat its
+# underlying actions' loading by ≥ 1 loading-point, see
+# frontend/src/game/solutionLog.ts). Novelty itself is still reported for
+# an ineffective proposition — it just earns no points.
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -297,6 +303,7 @@ def _action_entry(action: dict) -> dict:
         "description": action.get("description"),
         "action_type": action.get("action_type"),
         "levers": [str(lever) for lever in (action.get("levers") or [])],
+        "effective": bool(action.get("effective", True)),
     }
 
 
@@ -343,8 +350,9 @@ def log_solution(payload: dict) -> dict:
 
         new_proposition = signature not in known_propositions
         new_levers = [sig for sig in all_sigs if sig not in known_unitaries]
+        all_effective = all(bool(a.get("effective", True)) for a in actions)
         bonus = 0
-        if new_proposition:
+        if new_proposition and all_effective:
             bonus = BONUS_NEW_LEVER if new_levers else BONUS_NEW_COMBINATION
 
         # Usage frequency of each retained action across the base BEFORE
@@ -397,6 +405,7 @@ def log_solution(payload: dict) -> dict:
         "novelty": {
             "new_proposition": new_proposition,
             "new_levers": new_levers,
+            "effective": all_effective,
             "bonus_points": bonus,
         },
         "frequencies": frequencies,

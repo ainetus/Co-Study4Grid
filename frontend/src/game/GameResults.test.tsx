@@ -49,7 +49,7 @@ describe('GameResults — solution capitalisation feedback', () => {
       studyResult({
         solutionFeedback: {
           studyId: 's1',
-          novelty: { newProposition: true, newLevers: ['action:disco_A'], bonusPoints: 10 },
+          novelty: { newProposition: true, newLevers: ['action:disco_A'], effective: true, bonusPoints: 20 },
           frequencies: [
             { actionId: 'disco_A', description: 'Ouverture A', count: 0, total: 0, share: 0 },
           ],
@@ -60,7 +60,7 @@ describe('GameResults — solution capitalisation feedback', () => {
         label: 'Study 2',
         solutionFeedback: {
           studyId: 's2',
-          novelty: { newProposition: false, newLevers: [], bonusPoints: 0 },
+          novelty: { newProposition: false, newLevers: [], effective: true, bonusPoints: 0 },
           frequencies: [
             { actionId: 'reco_B', description: 'Fermeture B', count: 3, total: 4, share: 0.75 },
           ],
@@ -71,12 +71,30 @@ describe('GameResults — solution capitalisation feedback', () => {
     render(<GameResults log={log} onReplay={vi.fn()} />);
 
     // Headline bonus on top of the Codabench score.
-    expect(screen.getByText(/\+10 novelty bonus pts/)).toBeInTheDocument();
+    expect(screen.getByText(/\+20 novelty bonus pts/)).toBeInTheDocument();
     // Per-study novelty badge.
-    expect(screen.getByText(/🌟 new \+10/)).toBeInTheDocument();
+    expect(screen.getByText(/🌟 new \+20/)).toBeInTheDocument();
     // Frequency feedback section with both wordings.
     expect(screen.getByText(/first solution ever retained on this contingency/)).toBeInTheDocument();
     expect(screen.getByText(/retained in 3 \/ 4 prior retentions \(75%\)/)).toBeInTheDocument();
+  });
+
+  it('flags a novel-but-ineffective proposition without paying the bonus', () => {
+    const log = sessionLog([
+      studyResult({
+        solutionFeedback: {
+          studyId: 's1',
+          novelty: { newProposition: true, newLevers: ['action:disco_A'], effective: false, bonusPoints: 0 },
+          frequencies: [
+            { actionId: 'disco_A', description: 'Ouverture A', count: 0, total: 0, share: 0 },
+          ],
+        },
+      }),
+    ]);
+    render(<GameResults log={log} onReplay={vi.fn()} />);
+    expect(screen.getByText(/🌟 new \(no bonus\)/)).toBeInTheDocument();
+    // No headline bonus line when nothing was earned.
+    expect(screen.queryByText(/novelty bonus pts/)).toBeNull();
   });
 
   it('stays silent when no feedback was collected', () => {

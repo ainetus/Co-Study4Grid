@@ -839,6 +839,7 @@ export interface GameSolutionActionWire {
     description?: string | null;
     action_type?: string | null;
     levers: string[];
+    effective: boolean;
 }
 
 export interface LogGameSolutionRequest {
@@ -877,6 +878,7 @@ export interface LogGameSolutionResponse {
     novelty: {
         new_proposition: boolean;
         new_levers: string[];
+        effective: boolean;
         bonus_points: number;
     };
     frequencies: Array<{

@@ -478,6 +478,11 @@
             ],
             "title": "Description"
           },
+          "effective": {
+            "default": true,
+            "title": "Effective",
+            "type": "boolean"
+          },
           "levers": {
             "default": [],
             "items": {
@@ -572,6 +577,10 @@
             "title": "Bonus Points",
             "type": "integer"
           },
+          "effective": {
+            "title": "Effective",
+            "type": "boolean"
+          },
           "new_levers": {
             "items": {
               "type": "string"
@@ -587,6 +596,7 @@
         "required": [
           "new_proposition",
           "new_levers",
+          "effective",
           "bonus_points"
         ],
         "title": "GameSolutionNovelty",

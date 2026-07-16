@@ -201,6 +201,39 @@ def test_contexts_are_isolated_per_contingency(store_dir):
     assert res["novelty"]["bonus_points"] == game_solutions.BONUS_NEW_LEVER
 
 
+def test_bonus_values_are_20_and_10():
+    assert game_solutions.BONUS_NEW_LEVER == 20
+    assert game_solutions.BONUS_NEW_COMBINATION == 10
+
+
+def test_ineffective_proposition_is_novel_but_earns_no_bonus(store_dir):
+    res = game_solutions.log_solution(payload(
+        actions=[{"action_id": "disco_A", "levers": [], "effective": False}]))
+    assert res["novelty"]["new_proposition"] is True
+    assert res["novelty"]["effective"] is False
+    assert res["novelty"]["bonus_points"] == 0
+
+
+def test_one_ineffective_action_blocks_the_bonus(store_dir):
+    res = game_solutions.log_solution(payload(
+        actions=[{"action_id": "disco_A", "levers": [], "effective": True},
+                 {"action_id": "reco_B", "levers": [], "effective": False}]))
+    assert res["novelty"]["new_proposition"] is True
+    assert res["novelty"]["effective"] is False
+    assert res["novelty"]["bonus_points"] == 0
+    # The stored record keeps the per-action effectiveness for audit.
+    files = list(store_dir.glob("*/*.json"))
+    record = json.loads(files[0].read_text(encoding="utf-8"))
+    assert [a["effective"] for a in record["actions"]] == [True, False]
+
+
+def test_effective_actions_earn_the_bonus(store_dir):
+    res = game_solutions.log_solution(payload(
+        actions=[{"action_id": "disco_A", "levers": [], "effective": True}]))
+    assert res["novelty"]["effective"] is True
+    assert res["novelty"]["bonus_points"] == game_solutions.BONUS_NEW_LEVER
+
+
 def test_corrupt_record_is_skipped(store_dir):
     first = game_solutions.log_solution(payload())
     ctx_dir = store_dir / first["context_key"]
