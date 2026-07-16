@@ -52,6 +52,7 @@ import re
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -375,6 +376,10 @@ def log_solution(payload: dict) -> dict:
                 "share": (count / total_past) if total_past else 0.0,
             })
 
+        # Explicit annotation: without it mypy joins the literal's value
+        # types (str / list / dict → Collection) and then rejects the
+        # .append on setdefault's return in the duplicate branch.
+        record: dict[str, Any]
         if new_proposition:
             ctx_dir.mkdir(parents=True, exist_ok=True)
             record_path = _new_record_path(ctx_dir, signature)
