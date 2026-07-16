@@ -32,6 +32,7 @@ import { useDiagramHighlights } from './hooks/useDiagramHighlights';
 import { useSldTopologyEdit } from './hooks/useSldTopologyEdit';
 import { interactionLogger } from './utils/interactionLogger';
 import { gameBridge } from './game/gameBridge';
+import { buildChosenActionRecord } from './game/solutionLog';
 import type { GameStudy } from './game/types';
 import { DEFAULT_ACTION_OVERVIEW_FILTERS } from './utils/actionTypes';
 import { apiErrorMessage } from './utils/apiError';
@@ -1476,21 +1477,12 @@ function App() {
   }, [loadGameStudy]);
 
   // Publish the physical result of the current study to the Game shell.
+  // buildChosenActionRecord also derives the action-type + magnitude-free
+  // levers the solution-capitalisation log needs (game/solutionLog.ts).
   useEffect(() => {
     if (!gameBridge.isGameMode()) return;
-    const chosenActions = [...selectedActionIds].map((id) => {
-      const d = result?.actions[id];
-      const maxRho = d?.max_rho ?? null;
-      const after = d?.lines_overloaded_after;
-      const solved = maxRho != null && maxRho < 1.0 && (!after || after.length === 0);
-      return {
-        actionId: id,
-        description: d?.description_unitaire,
-        maxRho,
-        linesOverloadedAfter: after,
-        solved,
-      };
-    });
+    const chosenActions = [...selectedActionIds].map(
+      (id) => buildChosenActionRecord(id, result));
     const rhoArr = n1Diagram?.lines_overloaded_rho;
     const baselineMaxRho = rhoArr && rhoArr.length ? Math.max(...rhoArr) : null;
     gameBridge.publishSnapshot({

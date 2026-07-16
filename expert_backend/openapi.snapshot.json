@@ -378,6 +378,149 @@
         "title": "FocusedDiagramRequest",
         "type": "object"
       },
+      "GameSolutionAction": {
+        "description": "One retained (starred) remedial action of a Game Mode study.\n\n``levers`` are magnitude-free unitary signatures computed by the\nfrontend (``redispatch:<gen>``, ``ls:<load>``, ``switch:<id>=<state>``,\n…); an empty list means the catalogue identity ``action:<action_id>``\nis used instead. See services/game_solutions.py.",
+        "properties": {
+          "action_id": {
+            "title": "Action Id",
+            "type": "string"
+          },
+          "action_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Type"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "levers": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Levers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "action_id"
+        ],
+        "title": "GameSolutionAction",
+        "type": "object"
+      },
+      "GameSolutionContextStats": {
+        "properties": {
+          "distinct_propositions": {
+            "title": "Distinct Propositions",
+            "type": "integer"
+          },
+          "total_retentions": {
+            "title": "Total Retentions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "distinct_propositions",
+          "total_retentions"
+        ],
+        "title": "GameSolutionContextStats",
+        "type": "object"
+      },
+      "GameSolutionFrequency": {
+        "properties": {
+          "action_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Id"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "share": {
+            "title": "Share",
+            "type": "number"
+          },
+          "signatures": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Signatures",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "action_id",
+          "description",
+          "signatures",
+          "count",
+          "total",
+          "share"
+        ],
+        "title": "GameSolutionFrequency",
+        "type": "object"
+      },
+      "GameSolutionNovelty": {
+        "properties": {
+          "bonus_points": {
+            "title": "Bonus Points",
+            "type": "integer"
+          },
+          "new_levers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "New Levers",
+            "type": "array"
+          },
+          "new_proposition": {
+            "title": "New Proposition",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "new_proposition",
+          "new_levers",
+          "bonus_points"
+        ],
+        "title": "GameSolutionNovelty",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -389,6 +532,147 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "LogGameSolutionRequest": {
+        "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/GameSolutionAction"
+            },
+            "title": "Actions",
+            "type": "array"
+          },
+          "baseline_max_rho": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Max Rho"
+          },
+          "contingency_id": {
+            "title": "Contingency Id",
+            "type": "string"
+          },
+          "final_max_rho": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Max Rho"
+          },
+          "network_path": {
+            "title": "Network Path",
+            "type": "string"
+          },
+          "player": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player"
+          },
+          "session_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Name"
+          },
+          "solved": {
+            "default": false,
+            "title": "Solved",
+            "type": "boolean"
+          },
+          "study_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Study Id"
+          },
+          "study_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Study Label"
+          }
+        },
+        "required": [
+          "network_path",
+          "contingency_id",
+          "actions"
+        ],
+        "title": "LogGameSolutionRequest",
+        "type": "object"
+      },
+      "LogGameSolutionResponse": {
+        "properties": {
+          "context_key": {
+            "title": "Context Key",
+            "type": "string"
+          },
+          "context_stats": {
+            "$ref": "#/components/schemas/GameSolutionContextStats"
+          },
+          "duplicate": {
+            "title": "Duplicate",
+            "type": "boolean"
+          },
+          "frequencies": {
+            "items": {
+              "$ref": "#/components/schemas/GameSolutionFrequency"
+            },
+            "title": "Frequencies",
+            "type": "array"
+          },
+          "novelty": {
+            "$ref": "#/components/schemas/GameSolutionNovelty"
+          },
+          "signature": {
+            "title": "Signature",
+            "type": "string"
+          },
+          "stored": {
+            "title": "Stored",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "stored",
+          "duplicate",
+          "context_key",
+          "signature",
+          "novelty",
+          "frequencies",
+          "context_stats"
+        ],
+        "title": "LogGameSolutionResponse",
         "type": "object"
       },
       "ManualActionRequest": {
@@ -1362,6 +1646,45 @@
           }
         },
         "summary": "Get Focused Diagram"
+      }
+    },
+    "/api/game/log-solution": {
+      "post": {
+        "description": "Capitalise a Game Mode retained proposition into the shared solution\nbase and report novelty (bonus points) + per-action usage frequencies.\n\nPure file IO on the store directory — no network state involved, so no\nnetwork lock / busy gate; the store serializes its own read-modify-write\nwith a module-level lock. See services/game_solutions.py.",
+        "operationId": "log_game_solution_api_game_log_solution_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogGameSolutionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogGameSolutionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Log Game Solution"
       }
     },
     "/api/list-sessions": {

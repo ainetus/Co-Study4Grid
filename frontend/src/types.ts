@@ -827,3 +827,53 @@ export type ParentToIframeMessage =
         type: 'cs4g:theme';
         theme: 'light' | 'dark';
     };
+
+// ---------------------------------------------------------------------
+// Game Mode solution capitalisation — POST /api/game/log-solution wire
+// contract (snake_case mirrors expert_backend/main.py models; the
+// game-module camelCase views live in frontend/src/game/types.ts).
+// ---------------------------------------------------------------------
+
+export interface GameSolutionActionWire {
+    action_id: string;
+    description?: string | null;
+    action_type?: string | null;
+    levers: string[];
+}
+
+export interface LogGameSolutionRequest {
+    player?: string | null;
+    session_name?: string | null;
+    study_id?: string | null;
+    study_label?: string | null;
+    network_path: string;
+    contingency_id: string;
+    solved: boolean;
+    final_max_rho?: number | null;
+    baseline_max_rho?: number | null;
+    actions: GameSolutionActionWire[];
+}
+
+export interface LogGameSolutionResponse {
+    stored: boolean;
+    duplicate: boolean;
+    context_key: string;
+    signature: string;
+    novelty: {
+        new_proposition: boolean;
+        new_levers: string[];
+        bonus_points: number;
+    };
+    frequencies: Array<{
+        action_id: string;
+        description?: string | null;
+        signatures: string[];
+        count: number;
+        total: number;
+        share: number;
+    }>;
+    context_stats: {
+        distinct_propositions: number;
+        total_retentions: number;
+    };
+}

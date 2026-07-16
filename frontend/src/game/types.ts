@@ -48,7 +48,12 @@ export interface GameStudy {
 /** Everything needed to run one game session. */
 export interface GameSessionConfig {
   sessionName: string;
-  /** Optional player handle, stamped into the exported log. */
+  /**
+   * Player handle, stamped into the exported log and signing the retained
+   * solutions in the shared base. The config screen requires it; the type
+   * stays optional so programmatic starts (tests, replays) still work —
+   * their retentions are stored unattributed.
+   */
   player?: string;
   /** Per-study time limit, in seconds. */
   timerSeconds: number;
@@ -62,12 +67,59 @@ export interface GameSessionConfig {
 export interface ChosenActionRecord {
   actionId: string;
   description?: string;
+  /**
+   * Action-type bucket (`classifyActionType` token — 'disco', 'redispatch',
+   * …) used by the solution-capitalisation log.
+   */
+  actionType?: string;
+  /**
+   * Magnitude-free unitary signatures of the levers this action mobilises
+   * (`redispatch:<gen>`, `ls:<load>`, `switch:<id>=<state>`, …). Empty for
+   * catalogue actions whose id is their stable identity. Computed by
+   * `buildActionLevers` (solutionLog.ts); the backend judges novelty on
+   * these, so an injection retuned to a different MW is NOT novel — only
+   * a new lever is.
+   */
+  levers?: string[];
   /** Resulting worst loading after the action, in per-unit (1.0 == 100 %). */
   maxRho: number | null;
   /** Lines still overloaded after the action. */
   linesOverloadedAfter?: string[];
   /** True when this single action clears all overloads. */
   solved: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Solution capitalisation (shared solution base — POST /api/game/log-solution)
+// ---------------------------------------------------------------------------
+
+/** Novelty verdict returned by the backend for one retained proposition. */
+export interface SolutionNovelty {
+  /** True when this exact combination was never retained before. */
+  newProposition: boolean;
+  /** Unitary signatures never seen in this context (new levers). */
+  newLevers: string[];
+  /** Bonus points awarded (10 new lever / 5 new combination / 0). */
+  bonusPoints: number;
+}
+
+/** Past-usage frequency of one retained action in the shared base. */
+export interface ActionUsageFrequency {
+  actionId: string;
+  description?: string;
+  /** Retention events (all players) whose proposition included this action. */
+  count: number;
+  /** Total retention events stored for this contingency context. */
+  total: number;
+  /** count / total (0 when the base was empty). */
+  share: number;
+}
+
+/** Feedback attached to a study once its retained solution is logged. */
+export interface StudySolutionFeedback {
+  studyId: string;
+  novelty: SolutionNovelty;
+  frequencies: ActionUsageFrequency[];
 }
 
 /** The recorded outcome of one study. */
@@ -91,6 +143,13 @@ export interface GameStudyResult {
   finalMaxRho: number | null;
   /** True when the player's best chosen action clears the overload. */
   solved: boolean;
+  /**
+   * Solution-capitalisation feedback (novelty bonus + usage frequencies),
+   * merged in once the async POST /api/game/log-solution response lands.
+   * Absent when the study had no retained action or logging failed —
+   * purely additive, the Codabench scorer ignores it.
+   */
+  solutionFeedback?: StudySolutionFeedback;
 }
 
 /** The exported artifact a Codabench scorer consumes. */

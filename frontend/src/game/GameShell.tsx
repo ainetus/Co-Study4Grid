@@ -9,6 +9,7 @@ import App from '../App';
 import { colors, space, text, radius } from '../styles/tokens';
 import GameConfigScreen from './GameConfigScreen';
 import GameHud from './GameHud';
+import GameNoveltyToast from './GameNoveltyToast';
 import GameResults from './GameResults';
 import { useGameSession } from './useGameSession';
 
@@ -58,6 +59,10 @@ export default function GameShell() {
       <div className="game-app-host">
         <App />
       </div>
+
+      {game.noveltyToast && (
+        <GameNoveltyToast feedback={game.noveltyToast} onDismiss={game.dismissNoveltyToast} />
+      )}
 
       {game.phase === 'loading' && (
         <div style={{

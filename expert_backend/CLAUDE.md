@@ -102,6 +102,15 @@ expert_backend/
 │   │                              # moved to the React-side ActionFilterRings
 │   │                              # strip and travel via `cs4g:filters`.
 │   │                              # React Action Overview tab.
+│   ├── game_solutions.py          # Game Mode solution capitalisation store —
+│   │                              # shared per-(network, contingency) JSON base
+│   │                              # (novelty/bonus + usage frequencies) behind
+│   │                              # POST /api/game/log-solution. Pure file IO,
+│   │                              # no pypowsybl; root resolved per call:
+│   │                              # COSTUDY4GRID_GAME_SOLUTIONS_DIR →
+│   │                              # COSTUDY4GRID_DATA_DIR/game_solutions →
+│   │                              # repo-local game_solutions/ (gitignored).
+│   │                              # See docs/features/game-mode-codabench.md.
 │   └── sanitize.py                # NumPy → native-Python recursive coercion
 │                                  # (`sanitize_for_json`)
 ├── recommenders/               # Pluggable recommendation-model subsystem:
@@ -359,6 +368,14 @@ Session & user config:
 - `POST /api/save-session`, `GET /api/list-sessions`,
   `POST /api/load-session`, `POST /api/restore-analysis-context`.
 - `GET/POST /api/user-config`, `GET/POST /api/config-file-path`.
+
+Game Mode:
+- `POST /api/game/log-solution` — capitalise a retained proposition into
+  the shared solution base (`services/game_solutions.py`); returns the
+  novelty verdict (+bonus points) and per-action usage frequencies. Pure
+  file IO — no network lock / busy gate; the store serializes its own
+  read-modify-write with a module-level lock and writes records
+  atomically (temp file + `os.replace`).
 
 OS pickers & static:
 - `GET  /api/pick-path?type=file|dir` — spawns a tkinter subprocess.

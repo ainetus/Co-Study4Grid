@@ -315,6 +315,12 @@ export const api = {
         });
         return response.data;
     },
+    logGameSolution: async (
+        payload: import('./types').LogGameSolutionRequest,
+    ): Promise<import('./types').LogGameSolutionResponse> => {
+        const response = await axios.post(`${API_BASE_URL}/api/game/log-solution`, payload);
+        return response.data;
+    },
     runAnalysisStep1: async (disconnectedElements: string[]): Promise<{ lines_overloaded: string[]; message: string; can_proceed: boolean }> => {
         const response = await axios.post(`${API_BASE_URL}/api/run-analysis-step1`, { disconnected_elements: disconnectedElements });
         return response.data;

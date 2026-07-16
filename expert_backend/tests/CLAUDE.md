@@ -199,7 +199,15 @@ transitively by `useDiagrams` + the App-integration suite.
 
 `scoring.test.ts` (scoring formula + log/CSV export — the twin lock against
 the Codabench Python scorer), `presets.test.ts`, and `useGameSession.test.ts`
-cover the timed-session state machine. The real-backend replay lives in
+cover the timed-session state machine (the latter mocks `../api` and also
+covers the per-commit solution log: payload shape, skip-when-empty, async
+feedback merge into the derived session log, novelty toast, fail-soft on a
+rejected POST). `solutionLog.test.ts` covers the lever/signature computation
+(MW-agnostic injection levers, manual-maneuver decomposition, catalogue
+fallback) + wire payload/feedback mapping + bonus summation;
+`GameResults.test.tsx` covers the novelty-bonus / usage-frequency rendering.
+The backend twin is `expert_backend/tests/test_game_solutions.py` (store,
+novelty, dedup, frequencies, endpoint). The real-backend replay lives in
 `scripts/game_mode/e2e_game_session.py` (not part of the Vitest suite; needs
 pypowsybl + `expert_op4grid_recommender`).
 

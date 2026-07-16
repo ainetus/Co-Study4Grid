@@ -31,6 +31,7 @@ from expert_backend.services.api_errors import (
     install_error_handlers,
 )
 from expert_backend.services.diagram_mixin import ActionResultUnavailableError
+from expert_backend.services import game_solutions
 from expert_backend.services.network_service import network_service
 from expert_backend.services.overflow_overlay import inject_overlay
 from expert_backend.services.recommender_service import recommender_service
@@ -313,6 +314,33 @@ class SaveSessionRequest(BaseModel):
     interaction_log: str | None = None
 
 
+class GameSolutionAction(BaseModel):
+    """One retained (starred) remedial action of a Game Mode study.
+
+    ``levers`` are magnitude-free unitary signatures computed by the
+    frontend (``redispatch:<gen>``, ``ls:<load>``, ``switch:<id>=<state>``,
+    …); an empty list means the catalogue identity ``action:<action_id>``
+    is used instead. See services/game_solutions.py.
+    """
+    action_id: str
+    description: str | None = None
+    action_type: str | None = None
+    levers: list[str] = []
+
+
+class LogGameSolutionRequest(BaseModel):
+    player: str | None = None
+    session_name: str | None = None
+    study_id: str | None = None
+    study_label: str | None = None
+    network_path: str
+    contingency_id: str
+    solved: bool = False
+    final_max_rho: float | None = None
+    baseline_max_rho: float | None = None
+    actions: list[GameSolutionAction]
+
+
 # --- Response models (D2, 2026-07) ---
 # Applied to the small, native-Python-dict control endpoints where the
 # full field set is stable and carries no NumPy (so response_model
@@ -337,6 +365,36 @@ class RestoreAnalysisContextResponse(BaseModel):
 class SaveSessionResponse(BaseModel):
     session_folder: str
     pdf_copied: bool
+
+
+class GameSolutionNovelty(BaseModel):
+    new_proposition: bool
+    new_levers: list[str]
+    bonus_points: int
+
+
+class GameSolutionFrequency(BaseModel):
+    action_id: str | None
+    description: str | None
+    signatures: list[str]
+    count: int
+    total: int
+    share: float
+
+
+class GameSolutionContextStats(BaseModel):
+    distinct_propositions: int
+    total_retentions: int
+
+
+class LogGameSolutionResponse(BaseModel):
+    stored: bool
+    duplicate: bool
+    context_key: str
+    signature: str
+    novelty: GameSolutionNovelty
+    frequencies: list[GameSolutionFrequency]
+    context_stats: GameSolutionContextStats
 
 
 last_network_path = None
@@ -600,6 +658,21 @@ def save_session(request: SaveSessionRequest) -> dict:
         "session_folder": session_dir,
         "pdf_copied": pdf_copied
     }
+
+@app.post("/api/game/log-solution", response_model=LogGameSolutionResponse)
+def log_game_solution(request: LogGameSolutionRequest) -> dict:
+    """Capitalise a Game Mode retained proposition into the shared solution
+    base and report novelty (bonus points) + per-action usage frequencies.
+
+    Pure file IO on the store directory — no network state involved, so no
+    network lock / busy gate; the store serializes its own read-modify-write
+    with a module-level lock. See services/game_solutions.py.
+    """
+    try:
+        return game_solutions.log_solution(request.model_dump())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 
 @app.get("/api/list-sessions")
 def list_sessions(folder_path: str = Query(...)) -> dict:
