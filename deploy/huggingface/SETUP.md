@@ -106,10 +106,12 @@ so it will not crowd a volume.
 
 ## Automated redeploy on merge to `main` (GitHub Action)
 
-`.github/workflows/deploy-huggingface.yml` runs the same orphan-snapshot push
-automatically on every merge to `main` (and on manual `workflow_dispatch`). It
-checks out the current tree with LFS, squashes it to one history-free commit,
-and force-pushes it to the Space's `main`.
+`.github/workflows/deploy-huggingface.yml` runs the orphan-snapshot push
+automatically. It is **test-gated (D7)**: it fires on `workflow_run` when the
+**Tests** workflow completes *successfully* on `main` (not merely on a merge),
+checks out that exact tested commit with LFS, squashes it to one history-free
+commit, and force-pushes it to the Space's `main`. A manual `workflow_dispatch`
+always runs (the rollback path — see below).
 
 Opt in by setting, in the GitHub repo **Settings → Secrets and variables →
 Actions**:
@@ -123,8 +125,49 @@ Actions**:
 The job is inert (it logs a notice and exits cleanly) until both `HF_TOKEN` and
 `HF_SPACE` are set, so merging the workflow doesn't break anything before you
 opt in. The push reuses LFS objects already on the Space, so repeat deploys only
-upload what changed. If you want the deploy gated on green tests, change the
-trigger to a `workflow_run` on the **Tests** workflow instead of `push`.
+upload what changed.
+
+### Rolling back a bad deploy
+
+The Space push is force-pushed and history-free, so the Space's own git log is
+not a rollback trail. Instead, every successful deploy tags the exact commit it
+shipped on **origin** as `space-deploy-<UTC-timestamp>-<shortsha>`. To roll back:
+
+1. Find the last good tag: `git tag --list 'space-deploy-*' | sort | tail`.
+2. Re-deploy that commit: **Actions → Deploy to HuggingFace Space → Run
+   workflow**, and pick the good tag (or its commit) as the ref. The manual
+   `workflow_dispatch` path is not test-gated, so it redeploys immediately.
+
+### Reproducible Python closure (tracked follow-up)
+
+The image still resolves the Python dependency tree at build time (floors in
+`pyproject.toml` + the recommender floor), so a rebuild can pick up newer
+transitive releases. To make the build reproducible, generate a lockfile **on
+Python 3.10** (matching the image base) and have both the `Dockerfile` and the
+**Tests** workflow install from it:
+
+```bash
+# on Python 3.10:
+pip install pip-tools
+pip-compile --output-file requirements.lock pyproject.toml
+```
+
+Commit `requirements.lock` and `pip install -r requirements.lock` in both places
+so "the Docker image mirrors CI" becomes literally true. (Not generated in-repo
+yet: a lockfile must be resolved on the deployment's 3.10 interpreter, not a
+dev 3.11, or it pins the wrong wheels.)
+
+## Lockdown profile (hosted deployments)
+
+The Docker image sets `COSTUDY4GRID_LOCKDOWN=1` (see the `Dockerfile`). On the
+public Space the desktop-era filesystem RPCs — custom config-file path, session
+save / list / load, and the native file picker — are **disabled** with a
+`403 {code: "LOCKED_DOWN"}`, because they assume "the client is the operator on
+their own machine" and would otherwise give an anonymous visitor read/write
+access to the container filesystem. The read-only app config (`GET
+/api/user-config`, `GET /api/config-file-path`) stays available so the SPA
+boots. Local/dev installs leave the variable unset and behave exactly as before.
+See [`docs/architecture/deployment-trust.md`](../../docs/architecture/deployment-trust.md).
 
 ## Test the image locally first (recommended)
 

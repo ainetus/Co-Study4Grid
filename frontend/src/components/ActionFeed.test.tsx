@@ -104,6 +104,20 @@ describe('ActionFeed', () => {
             expect(screen.queryByTestId('make-first-guess-button')).not.toBeInTheDocument();
         });
 
+        it('shows a Cancel control while analyzing and invokes onCancelAnalysis (D5)', () => {
+            const onCancelAnalysis = vi.fn();
+            render(<ActionFeed {...defaultProps} analysisLoading={true} onCancelAnalysis={onCancelAnalysis} />);
+            const cancel = screen.getByTestId('cancel-analysis');
+            expect(cancel).toBeInTheDocument();
+            fireEvent.click(cancel);
+            expect(onCancelAnalysis).toHaveBeenCalledTimes(1);
+        });
+
+        it('omits the Cancel control when no onCancelAnalysis handler is provided', () => {
+            render(<ActionFeed {...defaultProps} analysisLoading={true} />);
+            expect(screen.queryByTestId('cancel-analysis')).not.toBeInTheDocument();
+        });
+
         it('hides the button while a pending analysis result is awaiting display', () => {
             const pending = {
                 actions: {},
@@ -2961,11 +2975,15 @@ describe('ActionFeed', () => {
         // extra cuts where the analysis is launched.  It must
         // disappear the moment analysis is in flight or results are
         // pending — same gate as the button itself.
+        // D4 consolidation: the picker wiring is one grouped `additionalLines`
+        // object on ActionFeed instead of four flat props.
         const pickerProps = {
-            branches: ['LINE_A', 'LINE_B', 'LINE_C'],
-            additionalLinesToCut: new Set<string>(),
-            onToggleAdditionalLineToCut: vi.fn(),
-            n1Overloads: ['LINE_C'],
+            additionalLines: {
+                branches: ['LINE_A', 'LINE_B', 'LINE_C'],
+                additionalLinesToCut: new Set<string>(),
+                onToggleAdditionalLineToCut: vi.fn(),
+                n1Overloads: ['LINE_C'],
+            },
         };
 
         it('renders the picker alongside Analyze & Suggest in the empty state', () => {
@@ -3118,13 +3136,17 @@ describe('ActionFeed', () => {
         // model that produced the suggestions is reminded below the
         // Suggested Actions tab header alongside a danger-coloured Clear
         // button.
+        // D4 consolidation: the model dropdown wiring is one grouped
+        // `modelSelector` object on ActionFeed instead of flat props.
         const modelProps = {
-            recommenderModel: 'expert',
-            setRecommenderModel: vi.fn(),
-            availableModels: [
-                { name: 'expert', label: 'Expert system', requires_overflow_graph: true, is_default: true, params: [] },
-                { name: 'random_overflow', label: 'Random (post overflow analysis)', requires_overflow_graph: true, is_default: false, params: [] },
-            ],
+            modelSelector: {
+                recommenderModel: 'expert',
+                setRecommenderModel: vi.fn(),
+                availableModels: [
+                    { name: 'expert', label: 'Expert system', requires_overflow_graph: true, is_default: true, params: [] },
+                    { name: 'random_overflow', label: 'Random (post overflow analysis)', requires_overflow_graph: true, is_default: false, params: [] },
+                ],
+            },
         };
 
         const recAction = {
@@ -3149,7 +3171,11 @@ describe('ActionFeed', () => {
         it('changing the model fires setRecommenderModel and logs recommender_model_changed', () => {
             const setRecommenderModel = vi.fn();
             render(
-                <ActionFeed {...defaultProps} {...modelProps} setRecommenderModel={setRecommenderModel} canRunAnalysis />,
+                <ActionFeed
+                    {...defaultProps}
+                    modelSelector={{ ...modelProps.modelSelector, setRecommenderModel }}
+                    canRunAnalysis
+                />,
             );
             fireEvent.change(screen.getByLabelText('Model:'), { target: { value: 'random_overflow' } });
             expect(setRecommenderModel).toHaveBeenCalledWith('random_overflow');
@@ -3170,7 +3196,7 @@ describe('ActionFeed', () => {
                 <ActionFeed
                     {...defaultProps}
                     actions={{ rec_1: recAction }}
-                    activeModelLabel="Expert system"
+                    modelSelector={{ activeModelLabel: 'Expert system' }}
                     onClearSuggested={vi.fn()}
                 />,
             );
@@ -3184,7 +3210,7 @@ describe('ActionFeed', () => {
                 <ActionFeed
                     {...defaultProps}
                     actions={{}}
-                    activeModelLabel="Expert system"
+                    modelSelector={{ activeModelLabel: 'Expert system' }}
                     onClearSuggested={vi.fn()}
                 />,
             );
@@ -3196,13 +3222,15 @@ describe('ActionFeed', () => {
                 <ActionFeed
                     {...defaultProps}
                     actions={{ rec_1: recAction }}
-                    activeModelLabel="Expert system"
-                    step1Time={1.0}
-                    overflowGraphTime={2.5}
-                    actionPredictionTime={1.25}
-                    assessmentTime={0.4}
-                    enrichmentTime={0.1}
-                    wallClockTime={5.5}
+                    modelSelector={{ activeModelLabel: 'Expert system' }}
+                    timing={{
+                        step1Time: 1.0,
+                        overflowGraphTime: 2.5,
+                        actionPredictionTime: 1.25,
+                        assessmentTime: 0.4,
+                        enrichmentTime: 0.1,
+                        wallClockTime: 5.5,
+                    }}
                 />,
             );
             const total = screen.getByTestId('execution-time-total');
@@ -3224,10 +3252,12 @@ describe('ActionFeed', () => {
                 <ActionFeed
                     {...defaultProps}
                     actions={{ rec_1: recAction }}
-                    activeModelLabel="Random"
-                    overflowGraphTime={null}
-                    actionPredictionTime={0.8}
-                    assessmentTime={0.2}
+                    modelSelector={{ activeModelLabel: 'Random' }}
+                    timing={{
+                        overflowGraphTime: null,
+                        actionPredictionTime: 0.8,
+                        assessmentTime: 0.2,
+                    }}
                 />,
             );
             const total = screen.getByTestId('execution-time-total');
@@ -3244,7 +3274,7 @@ describe('ActionFeed', () => {
                 <ActionFeed
                     {...defaultProps}
                     actions={{ rec_1: recAction }}
-                    activeModelLabel="Expert system"
+                    modelSelector={{ activeModelLabel: 'Expert system' }}
                 />,
             );
             expect(screen.queryByTestId('execution-time-total')).not.toBeInTheDocument();
@@ -3256,7 +3286,7 @@ describe('ActionFeed', () => {
                 <ActionFeed
                     {...defaultProps}
                     actions={{ rec_1: recAction }}
-                    activeModelLabel="Expert system"
+                    modelSelector={{ activeModelLabel: 'Expert system' }}
                     onClearSuggested={onClearSuggested}
                 />,
             );
@@ -3284,6 +3314,97 @@ describe('ActionFeed', () => {
                 />,
             );
             expect(screen.getByRole('button', { name: /Analyze & Suggest/ })).toBeInTheDocument();
+        });
+    });
+
+    // D4 consolidation: prove the three grouped ActionFeed props
+    // (additionalLines / modelSelector / timing) are unpacked and forwarded
+    // when passed as a whole object, and that each is safely OPTIONAL. These
+    // pass the grouped object DIRECTLY so they lock the object-prop contract.
+    describe('grouped additionalLines / modelSelector / timing props (D4 consolidation)', () => {
+        const recAction = {
+            description_unitaire: 'Disco LINE_X',
+            action_topology: emptyTopo,
+            is_manual: false,
+            max_rho: 0.8,
+        } as unknown as ActionDetail;
+
+        it('threads a grouped additionalLines object through to the picker', () => {
+            render(
+                <ActionFeed
+                    {...defaultProps}
+                    additionalLines={{
+                        branches: ['LINE_A', 'LINE_B'],
+                        additionalLinesToCut: new Set<string>(),
+                        onToggleAdditionalLineToCut: vi.fn(),
+                        n1Overloads: ['LINE_B'],
+                    }}
+                    canRunAnalysis
+                />,
+            );
+            expect(screen.getByTestId('additional-lines-picker')).toBeInTheDocument();
+        });
+
+        it('omits the picker when the additionalLines group is absent', () => {
+            render(<ActionFeed {...defaultProps} canRunAnalysis />);
+            expect(screen.queryByTestId('additional-lines-picker')).not.toBeInTheDocument();
+        });
+
+        it('threads a grouped modelSelector object through to the Model dropdown', () => {
+            const setRecommenderModel = vi.fn();
+            render(
+                <ActionFeed
+                    {...defaultProps}
+                    modelSelector={{
+                        recommenderModel: 'expert',
+                        setRecommenderModel,
+                        availableModels: [
+                            { name: 'expert', label: 'Expert system', requires_overflow_graph: true, is_default: true, params: [] },
+                            { name: 'random_overflow', label: 'Random (post overflow analysis)', requires_overflow_graph: true, is_default: false, params: [] },
+                        ],
+                    }}
+                    canRunAnalysis
+                />,
+            );
+            const select = screen.getByLabelText('Model:') as HTMLSelectElement;
+            expect(select.value).toBe('expert');
+            fireEvent.change(select, { target: { value: 'random_overflow' } });
+            expect(setRecommenderModel).toHaveBeenCalledWith('random_overflow');
+        });
+
+        it('omits the Model dropdown when the modelSelector group is absent', () => {
+            render(<ActionFeed {...defaultProps} canRunAnalysis />);
+            expect(screen.queryByLabelText('Model:')).not.toBeInTheDocument();
+        });
+
+        it('threads a grouped timing object through to the execution-time total', () => {
+            render(
+                <ActionFeed
+                    {...defaultProps}
+                    actions={{ rec_1: recAction }}
+                    modelSelector={{ activeModelLabel: 'Expert system' }}
+                    timing={{
+                        step1Time: 1.0,
+                        overflowGraphTime: 2.5,
+                        actionPredictionTime: 1.25,
+                        assessmentTime: 0.4,
+                        enrichmentTime: 0.1,
+                        wallClockTime: 5.5,
+                    }}
+                />,
+            );
+            expect(screen.getByTestId('execution-time-total')).toHaveTextContent(/5\.50s/);
+        });
+
+        it('omits the execution-time total when the timing group is absent', () => {
+            render(
+                <ActionFeed
+                    {...defaultProps}
+                    actions={{ rec_1: recAction }}
+                    modelSelector={{ activeModelLabel: 'Expert system' }}
+                />,
+            );
+            expect(screen.queryByTestId('execution-time-total')).not.toBeInTheDocument();
         });
     });
 });

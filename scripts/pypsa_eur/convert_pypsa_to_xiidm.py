@@ -873,8 +873,14 @@ def step_write_metadata(ctx: PipelineContext) -> None:
     # ── Grid layout (Mercator projection) ──
     log.info("Step 5 — Writing grid_layout.json …")
 
-    TARGET_WIDTH = 8_000.0
-
+    # Raw Mercator metres — NOT the legacy 8 000-unit rescale. pypowsybl emits
+    # VL outer circles at a FIXED r=27.5 user-units regardless of layout extent,
+    # so a layout squashed to ~8 000 units across France forces the disks to
+    # overlap into a blob on dense regions (Paris/Lyon). Keep the projection at
+    # native metre scale (span ~1.4 M for France) and only re-centre it near the
+    # origin. This matches regenerate_grid_layout.py's default and the contract
+    # in docs/data/grid-layout-coordinate-scale.md (the 2026-05-08 fix). The old
+    # `TARGET_WIDTH = 8_000` rescale here silently produced the forbidden layout.
     raw_positions = {}
     for bus_id, row in buses.iterrows():
         sid = safe_id(bus_id)
@@ -887,14 +893,10 @@ def step_write_metadata(ctx: PipelineContext) -> None:
     raw_ys = [v[1] for v in raw_positions.values()]
     p_cx = (min(raw_xs) + max(raw_xs)) / 2
     p_cy = (min(raw_ys) + max(raw_ys)) / 2
-    p_xrange = max(raw_xs) - min(raw_xs) or 1.0
-    scale = TARGET_WIDTH / p_xrange
 
     layout = {}
     for vl_id, (rx, ry) in raw_positions.items():
-        lx = (rx - p_cx) * scale
-        ly = (ry - p_cy) * scale
-        layout[vl_id] = [round(lx, 2), round(ly, 2)]
+        layout[vl_id] = [round(rx - p_cx, 2), round(ry - p_cy, 2)]
 
     layout_path = os.path.join(ctx.out_dir, "grid_layout.json")
     with open(layout_path, "w") as f:

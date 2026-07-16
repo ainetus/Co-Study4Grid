@@ -71,6 +71,90 @@ capitalisation".
   `gameBridge.registerInspector` / `requestInspect` pair, keeping App.tsx
   decoupled from game internals.
 
+## [0.9.0] — 2026-07-09
+
+Release **0.9.0** consolidates the 2026-07 full-repo-review revisions — the
+de-ghosted recommender subsystem (**D1**), the API-contract machine-check +
+`{detail, code}` error envelope (**D2**), shared-`Network` concurrency ownership
+(**D3**), the two frontend-hub relief stages (**D4**), the single streaming +
+notification pipeline (**D5**), the SVG element-adoption pipeline (**D6**),
+deployment trust & reproducibility (**D7**), and the reproducible-data +
+benchmark supply chain (**D8**) — and adds a follow-up pass of quick wins, the
+Game-Mode session-log replay (**FU-2**), and a new docs-as-a-checked-artifact
+gate (**D9**). Remaining tails are tracked in
+[`docs/architecture/followups.md`](docs/architecture/followups.md).
+
+### Backend performance & robustness (2026-07 quick wins)
+
+- **QW11 — vectorised `_diff_switches`.** The action-vs-contingency switch diff
+  ran a per-row `.loc` lookup (~85 k iterations on the France grid); it now uses
+  pandas `.isin` membership + `reindex(fill_value=False)` on boolean columns.
+  Guarded by `test_diff_switches.py`.
+- **QW17 — single `Overflow_Graph` anchor + `reset()` completeness.** The output
+  directory is now one constant (`services/paths.py::OVERFLOW_DIR`) instead of
+  several ad-hoc joins, and every per-study cache added to
+  `RecommenderService` is swept by `test_reset_completeness.py` so a field that
+  is initialised but not cleared on reload fails a test (the class of leak that
+  bit `_layout_cache`).
+- **QW6 — no path leaks in error details.** The filesystem / config endpoints
+  return a generic message with the real traceback `logger.exception`-logged,
+  instead of `str(e)` (which leaked absolute server paths). Complements the D2
+  envelope.
+- **QW22 — legacy-analysis watchdog.** The legacy `/api/run-analysis` PDF-poll
+  loop now has a deadline (`COSTUDY4GRID_ANALYSIS_TIMEOUT_S`, default 600 s) so a
+  stuck computation can no longer pin the worker forever.
+
+### Frontend (2026-07 quick wins)
+
+- **QW14 — highlight pipeline no longer re-runs on every pan/zoom settle.** The
+  driving effect's dependency array was narrowed from the whole `diagrams`
+  object to the container refs + metadata indices it actually reads.
+- **QW15 — LRU-capped action-variant diagram cache** (`ACTION_DIAGRAM_CACHE_CAP`)
+  so the primed-diagram map can't grow unbounded across a long session.
+- **QW19 — theme mirrored into detached popup windows**, kept in sync via a
+  `MutationObserver` on the host document's theme attribute.
+- **QW20 — `useModalKeyboard`** centralises Escape-to-close, a focus trap, and
+  `role="dialog"` / `aria-modal`, wired into the confirmation, settings, and
+  reload-session modals.
+- **QW21 — frontend `console.log` ceiling** added to the code-quality gate
+  (frozen at the current count and ratcheted down; D6's boost diagnostics were
+  deliberately kept).
+
+### Delivery & CI (2026-07 quick wins)
+
+- **QW8 — per-PR recommender pin.** `recommender-pin.txt` pins
+  `expert_op4grid_recommender` for the PR lanes so an upstream release can't
+  silently turn a green PR red; a weekly `canary.yml` floats to latest and flags
+  regressions early.
+- **QW23 — single CI provider.** Removed `.circleci/config.yml`; GitHub Actions
+  is the sole pipeline.
+- **QW25 — Dockerfile hygiene.** Recommender pin, `HEALTHCHECK`, real `PORT`,
+  dead-weight trim, and `scripts/extract_network_zip.py` that validates the
+  zipped France grid is a real archive (not an unresolved Git-LFS pointer)
+  before extraction.
+
+### Game Mode — resilience + trusted replay
+
+- **QW24 — mid-session recovery.** A study that fails to load no longer discards
+  the completed ones: the loading overlay offers **Retry**, **Finish with N
+  results**, and **Quit to setup**. A `presets ↔ overload-data` consistency test
+  fails fast if a regenerated grid drops a preset contingency.
+- **FU-2 — physically replayable session log.** `e2e_game_session.py --replay`
+  re-derives trusted `finalMaxRho` / `solved` from a session log's recorded
+  actions by re-driving the backend, writes a `reference.json` the Codabench
+  scorer consumes, and flags divergence from self-reported numbers. Hermetic
+  coverage in `scripts/game_mode/test_replay.py`.
+
+### Docs as a checked artifact (D9)
+
+- **`scripts/check_docs_tree.py`** gates the hand-maintained `CLAUDE.md`
+  inventory: every directory-qualified path reference must resolve to a real file
+  (with generated-artifact and referenced-as-removed exemptions), and rotting
+  `file.py:NNN` line anchors are forbidden in favour of symbol anchors. The seven
+  pre-existing stale anchors were converted; unit coverage + a real-repo
+  self-guard live in `scripts/test_check_docs_tree.py`. See
+  `docs/architecture/code-quality-analysis.md` §23.
+
 ### Tests + docs — coverage and reference for the 2026-07 deep revisions
 
 - **New `test_api_errors.py`** (D2): direct coverage of the error envelope —
@@ -1765,7 +1849,8 @@ the authoritative reference for pre-0.5.0 work.
 
 ---
 
-[Unreleased]: https://github.com/marota/Co-Study4Grid/compare/0.8.0...HEAD
+[Unreleased]: https://github.com/marota/Co-Study4Grid/compare/0.9.0...HEAD
+[0.9.0]: https://github.com/marota/Co-Study4Grid/releases/tag/0.9.0
 [0.8.0]: https://github.com/marota/Co-Study4Grid/releases/tag/0.8.0
 [0.7.5]: https://github.com/marota/Co-Study4Grid/releases/tag/0.7.5
 [0.7.0]: https://github.com/marota/Co-Study4Grid/releases/tag/0.7.0

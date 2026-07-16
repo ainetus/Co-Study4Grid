@@ -211,4 +211,43 @@ describe('useGameSession', () => {
     expect(result.current.results[0].solutionFeedback).toBeUndefined();
     expect(result.current.noveltyToast).toBeNull();
   });
+
+  // QW24: mid-session load failure must be recoverable, and must not destroy
+  // the results already committed.
+  it('retryStudy re-attempts a study that failed to load', async () => {
+    const loadSpy = vi.spyOn(gameBridge, 'loadStudy')
+      .mockRejectedValueOnce(new Error('backend down'))
+      .mockResolvedValue(undefined);
+    const { result } = renderHook(() => useGameSession());
+
+    await act(async () => { result.current.startSession(CONFIG); });
+    // First load failed → stuck on the loading screen with an error.
+    expect(result.current.phase).toBe('loading');
+    expect(result.current.loadError).toBe('backend down');
+
+    await act(async () => { result.current.retryStudy(); });
+    expect(result.current.phase).toBe('playing');
+    expect(result.current.loadError).toBeNull();
+    expect(loadSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('finishEarly ends the session with the already-committed results (no data loss)', async () => {
+    vi.spyOn(gameBridge, 'loadStudy')
+      .mockResolvedValueOnce(undefined)            // study 1 loads
+      .mockRejectedValue(new Error('backend down')); // study 2 fails
+    const { result } = renderHook(() => useGameSession());
+
+    await act(async () => { result.current.startSession(CONFIG); });
+    await playAndAdvance(result, 0.8); // commit study 1, then study 2's load fails
+    expect(result.current.phase).toBe('loading');
+    expect(result.current.loadError).toBe('backend down');
+    expect(result.current.results).toHaveLength(1);
+
+    await act(async () => { result.current.finishEarly(); });
+    expect(result.current.phase).toBe('results');
+    const log = result.current.sessionLog;
+    expect(log).not.toBeNull();
+    expect(log!.studies).toHaveLength(1);
+    expect(log!.studies[0].studyId).toBe('s1');
+  });
 });

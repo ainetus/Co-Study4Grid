@@ -16,8 +16,14 @@ name: Deploy to HuggingFace Space
 # The job no-ops (does not fail) when HF_TOKEN / HF_SPACE are absent, so the
 # workflow is inert until you opt in by setting them.
 
+# Test-gated (D7): deploy runs ONLY after the "Tests" workflow completes
+# successfully on main — a green build is the gate, not just a merge. A
+# manual `workflow_dispatch` (optionally from an older commit) is the
+# rollback path; see deploy/huggingface/SETUP.md → "Rolling back".
 on:
-  push:
+  workflow_run:
+    workflows: [ "Tests" ]
+    types: [ completed ]
     branches: [ main ]
   workflow_dispatch: {}
 
@@ -26,10 +32,18 @@ concurrency:
   group: huggingface-space-deploy
   cancel-in-progress: true
 
+permissions:
+  contents: write   # push the per-deploy rollback tag back to origin
+
 jobs:
   deploy:
     name: Push snapshot to HF Space
     runs-on: ubuntu-latest
+    # workflow_run fires on completion regardless of result — only deploy a
+    # SUCCESSFUL Tests run. workflow_dispatch always proceeds (rollback).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     steps:
       - name: Check the deploy is configured
         id: guard
@@ -44,10 +58,18 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Checkout current tree + LFS objects
+      # The tested commit: the head of the Tests run (workflow_run), or the
+      # dispatched ref (workflow_dispatch / rollback).
+      - name: Resolve the deployed commit
+        if: steps.guard.outputs.configured == 'true'
+        id: sha
+        run: echo "sha=${{ github.event.workflow_run.head_sha || github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout the tested tree + LFS objects
         if: steps.guard.outputs.configured == 'true'
         uses: actions/checkout@v4
         with:
+          ref: ${{ steps.sha.outputs.sha }}
           lfs: true
           fetch-depth: 1   # an orphan snapshot only needs the current tree
 
@@ -60,14 +82,16 @@ jobs:
 
       - name: Build a history-free snapshot
         if: steps.guard.outputs.configured == 'true'
+        env:
+          DEPLOY_SHA: ${{ steps.sha.outputs.sha }}
         run: |
           cp deploy/huggingface/README.md README.md   # HF needs the frontmatter at repo root
           git checkout --orphan hf-deploy
           git add -A
           # Drop inert local dev artifacts from the deployed snapshot.
           git rm -q --cached --ignore-unmatch \
-            .claude/plan.md inspect_action.py profiling_patch_results.json || true
-          git commit -q -m "Deploy ${GITHUB_SHA::7}"
+            .claude/plan.md profiling_patch_results.json || true
+          git commit -q -m "Deploy ${DEPLOY_SHA::7}"
           test "$(git rev-list --count HEAD)" -eq 1   # sanity: exactly one commit
 
       - name: Push to the HuggingFace Space
@@ -76,9 +100,25 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_SPACE: ${{ vars.HF_SPACE }}
           HF_USERNAME: ${{ vars.HF_USERNAME }}
+          DEPLOY_SHA: ${{ steps.sha.outputs.sha }}
         run: |
           user="${HF_USERNAME:-${HF_SPACE%%/*}}"
           # The token is a GitHub secret → masked in logs even inside the URL.
           git remote add space "https://${user}:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}"
           git -c protocol.version=0 push -f space hf-deploy:main
-          echo "::notice::Pushed snapshot of ${GITHUB_SHA::7} to spaces/${HF_SPACE}; HF will rebuild."
+          echo "::notice::Pushed snapshot of ${DEPLOY_SHA::7} to spaces/${HF_SPACE}; HF will rebuild."
+
+      # Rollback pointer (D7): tag the exact commit deployed to the Space,
+      # so a bad deploy can be reverted by re-dispatching this workflow from
+      # a prior `space-deploy-*` tag. The Space push itself is force-pushed
+      # and history-free, so this origin tag is the only durable record of
+      # what shipped. Never fails the deploy.
+      - name: Tag the deployed commit on origin
+        if: steps.guard.outputs.configured == 'true'
+        env:
+          DEPLOY_SHA: ${{ steps.sha.outputs.sha }}
+        run: |
+          tag="space-deploy-$(date -u +%Y%m%d-%H%M%S)-${DEPLOY_SHA::7}"
+          git tag -a "$tag" "$DEPLOY_SHA" -m "Deployed to HF Space" || { echo "::warning::tag create failed"; exit 0; }
+          git push origin "refs/tags/$tag" || echo "::warning::tag push failed (non-fatal)"
+          echo "::notice::Tagged deployed commit as $tag"

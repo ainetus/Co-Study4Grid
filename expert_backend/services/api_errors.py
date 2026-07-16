@@ -50,9 +50,13 @@ CODE_INTERNAL = "INTERNAL"
 # condition where the backend has no cached post-action observation, so the
 # client falls back to /api/simulate-and-variant-diagram (a live simulation).
 CODE_ACTION_RESULT_UNAVAILABLE = "ACTION_RESULT_UNAVAILABLE"
+# A filesystem-touching RPC that is disabled on a locked-down (hosted,
+# non-local) deployment — see the D7 lockdown profile in main.py.
+CODE_LOCKED_DOWN = "LOCKED_DOWN"
 
 _DEFAULT_CODE_BY_STATUS = {
     400: CODE_BAD_REQUEST,
+    403: CODE_LOCKED_DOWN,
     404: CODE_NOT_FOUND,
     409: CODE_STUDY_BUSY,
     422: CODE_VALIDATION,

@@ -1731,7 +1731,7 @@
     },
     "/api/game/lever-stats": {
       "get": {
-        "description": "Most-used unitary levers of a (network, contingency) context in the\nshared solution base — the Game Mode beginner-assistance hints. Read-only\nscan of the store (services/game_solutions.py).",
+        "description": "Most-used unitary levers of a (network, contingency) context in\nthe shared solution base — the Game Mode beginner-assistance hints.\nRead-only scan of the store.",
         "operationId": "game_lever_stats_api_game_lever_stats_get",
         "parameters": [
           {
@@ -1793,7 +1793,7 @@
     },
     "/api/game/log-solution": {
       "post": {
-        "description": "Capitalise a Game Mode retained proposition into the shared solution\nbase and report novelty (bonus points) + per-action usage frequencies.\n\nPure file IO on the store directory — no network state involved, so no\nnetwork lock / busy gate; the store serializes its own read-modify-write\nwith a module-level lock. See services/game_solutions.py.",
+        "description": "Capitalise a Game Mode retained proposition into the shared\nsolution base and report novelty (bonus points) + per-action usage\nfrequencies.\n\nPure file IO on the store directory — no network state involved, so\nno network lock / busy gate; the store serializes its own\nread-modify-write with a module-level lock.",
         "operationId": "log_game_solution_api_game_log_solution_post",
         "requestBody": {
           "content": {

@@ -1,5 +1,0 @@
-fastapi
-uvicorn
-python-multipart
-lxml
-# pypowsybl and expert_op4grid_recommender are already in the venv

@@ -27,18 +27,15 @@ from pydantic import BaseModel
 from expert_backend.services.api_errors import (
     AppHTTPException,
     CODE_ACTION_RESULT_UNAVAILABLE,
+    CODE_LOCKED_DOWN,
     CODE_STUDY_BUSY,
     install_error_handlers,
 )
 from expert_backend.services.diagram_mixin import ActionResultUnavailableError
-from expert_backend.services import game_solutions
-from expert_backend.services.game_solution_models import (
-    GameLeverStatsResponse,
-    LogGameSolutionRequest,
-    LogGameSolutionResponse,
-)
+from expert_backend.game_api import install_game_routes
 from expert_backend.services.network_service import network_service
 from expert_backend.services.overflow_overlay import inject_overlay
+from expert_backend.services.paths import OVERFLOW_DIR
 from expert_backend.services.recommender_service import recommender_service
 
 # Importing `expert_backend.recommenders` registers ExpertRecommender,
@@ -57,6 +54,11 @@ app = FastAPI()
 # {detail, code}; uncaught exceptions → clean 500 (no path leak) +
 # server-side logger.exception. See services/api_errors.py.
 install_error_handlers(app)
+
+# Game Mode solution-capitalisation routes (POST /api/game/log-solution,
+# GET /api/game/lever-stats) — registered from expert_backend/game_api.py
+# to keep this module under the size ceiling.
+install_game_routes(app)
 
 
 # --- Per-endpoint JSON gzip helper ---
@@ -166,10 +168,34 @@ def _save_user_config(data: dict) -> None:
 
 _ensure_user_config()
 
-_CORS_ENV = os.environ.get("CORS_ALLOWED_ORIGINS", "*").strip()
-_CORS_ORIGINS = (
-    ["*"] if _CORS_ENV == "*" else [o.strip() for o in _CORS_ENV.split(",") if o.strip()]
-)
+# CORS. The dev frontend (Vite) hits the backend cross-origin, so some
+# origins must be allowed — but a wildcard *default* is a drive-by
+# local-file-read vector: any web page the operator happens to visit
+# could read `/api/*` (including the filesystem RPCs) off the localhost
+# backend. So the default is now the local dev-server origins on
+# loopback; the wildcard is explicit opt-in via CORS_ALLOWED_ORIGINS="*".
+# A comma-separated list overrides both for a specific deployment. The
+# same-origin HuggingFace Space needs no entry here (same-origin requests
+# don't trigger CORS).
+_CORS_DEFAULT_ORIGINS = [
+    "http://localhost:5173", "http://127.0.0.1:5173",  # Vite dev server
+    "http://localhost:4173", "http://127.0.0.1:4173",  # Vite preview
+]
+
+
+def _resolve_cors_origins(env_value: str | None) -> list[str]:
+    """Map the ``CORS_ALLOWED_ORIGINS`` env value to an allow-list:
+    ``"*"`` → wildcard (explicit opt-in), a comma-separated list → that
+    list, and unset/empty → the loopback dev-server default."""
+    env = (env_value or "").strip()
+    if env == "*":
+        return ["*"]
+    if env:
+        return [o.strip() for o in env.split(",") if o.strip()]
+    return list(_CORS_DEFAULT_ORIGINS)
+
+
+_CORS_ORIGINS = _resolve_cors_origins(os.environ.get("CORS_ALLOWED_ORIGINS"))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_CORS_ORIGINS,
@@ -178,7 +204,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-_OVERFLOW_DIR = (Path(__file__).resolve().parent.parent / "Overflow_Graph").resolve()
+# --- Deployment lockdown profile (D7, 2026-07) ---------------------------
+# The filesystem RPCs (custom config-file path, session save/list/load,
+# native file picker) assume "the client is the operator on their own
+# machine". That assumption breaks on the public HuggingFace Space, where
+# they would give an anonymous visitor read/write access to the container
+# filesystem. When COSTUDY4GRID_LOCKDOWN is set (the Dockerfile sets it),
+# those endpoints are disabled with a 403 `{code: "LOCKED_DOWN"}`. Local
+# and dev installs leave it unset, so nothing changes there. The read-only
+# app config (`GET /api/user-config`, `GET /api/config-file-path`) stays
+# available so the SPA still boots.
+_LOCKDOWN = os.environ.get("COSTUDY4GRID_LOCKDOWN", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _reject_when_locked_down() -> None:
+    """Guard the desktop-era filesystem RPCs on a hosted deployment."""
+    if _LOCKDOWN:
+        raise AppHTTPException(
+            status_code=403,
+            detail="This operation is disabled on the hosted deployment.",
+            code=CODE_LOCKED_DOWN,
+        )
+
+
+# Single shared anchor for the overflow-graph artifacts (QW17) — the read
+# (static serve here) and the writes (analysis output + load-session copy)
+# now agree regardless of the process CWD. See services/paths.py.
+_OVERFLOW_DIR = OVERFLOW_DIR
 _OVERFLOW_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -216,8 +268,9 @@ def save_user_config(config: dict = Body(...)) -> dict:
     try:
         _save_user_config(config)
         return {"status": "success"}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        logger.exception("Failed to save user config")
+        raise HTTPException(status_code=400, detail="Failed to save configuration.")
 
 
 @app.get("/api/config-file-path")
@@ -227,6 +280,7 @@ def get_config_file_path() -> dict:
 
 @app.post("/api/config-file-path")
 def set_config_file_path(path: str = Body(..., embed=True)) -> dict:
+    _reject_when_locked_down()
     try:
         new_path = Path(path.strip())
         if not new_path.suffix:
@@ -236,8 +290,9 @@ def set_config_file_path(path: str = Body(..., embed=True)) -> dict:
         return {"status": "success", "config_file_path": str(new_path), "config": _load_user_config()}
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        logger.exception("Failed to set config file path")
+        raise HTTPException(status_code=400, detail="Failed to set the config file path.")
 
 
 class ConfigRequest(BaseModel):
@@ -430,8 +485,9 @@ def update_config(config: ConfigRequest) -> dict:
             "active_model": recommender_service.get_active_model_name(),
             "compute_overflow_graph": recommender_service.get_compute_overflow_graph(),
         }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        logger.exception("Config load failed")
+        raise HTTPException(status_code=400, detail="Failed to load the network configuration.")
     finally:
         recommender_service.end_study_mutation()
 
@@ -501,15 +557,16 @@ def get_voltage_level_substations() -> dict:
 
 @app.get("/api/pick-path")
 def pick_path(type: str = Query("file", enum=["file", "dir"])) -> dict:
+    _reject_when_locked_down()
     try:
         if platform.system() == "Darwin":
             return _pick_path_macos(type)
         return _pick_path_tkinter(type)
     except subprocess.TimeoutExpired:
         return {"path": "", "error": "File picker timed out (no selection made)."}
-    except Exception as e:
-        logger.warning("Error picking path: %s", e)
-        return {"path": "", "error": str(e)}
+    except Exception:
+        logger.exception("Error picking path")
+        return {"path": "", "error": "File picker failed."}
 
 
 def _pick_path_macos(kind: str) -> dict:
@@ -568,18 +625,41 @@ if path:
         return {"path": "", "error": err}
     return {"path": proc.stdout.strip()}
 
+def _safe_session_dir(base_folder: str, session_name: str) -> str:
+    """Resolve ``<base_folder>/<session_name>`` while rejecting any
+    ``session_name`` that escapes ``base_folder`` — path separators,
+    ``..``, or an absolute path (``os.path.join`` silently drops the base
+    when the second arg is absolute). Mirrors the ``/results/pdf``
+    traversal guard. Returns the resolved absolute session directory."""
+    name = (session_name or "").strip()
+    # A session name is a single path component. basename() strips any
+    # directory part; '.' / '..' are rejected explicitly (basename keeps
+    # them). The resolve()+relative_to() below is the defense-in-depth
+    # backstop that also catches separators basename doesn't split on.
+    if not name or name in (".", "..") or os.path.basename(name) != name:
+        raise HTTPException(status_code=400, detail="Invalid session name")
+    base = Path(base_folder).resolve()
+    candidate = (base / name).resolve()
+    try:
+        candidate.relative_to(base)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid session name")
+    return str(candidate)
+
 @app.post("/api/save-session", response_model=SaveSessionResponse)
 def save_session(request: SaveSessionRequest) -> dict:
+    _reject_when_locked_down()
     import shutil
 
     if not request.output_folder_path:
         raise HTTPException(status_code=400, detail="output_folder_path is required")
 
-    session_dir = os.path.join(request.output_folder_path, request.session_name)
+    session_dir = _safe_session_dir(request.output_folder_path, request.session_name)
     try:
         os.makedirs(session_dir, exist_ok=True)
-    except OSError as e:
-        raise HTTPException(status_code=400, detail=f"Cannot create session directory: {e}")
+    except OSError:
+        logger.exception("Cannot create session directory")
+        raise HTTPException(status_code=400, detail="Cannot create the session directory.")
 
     json_file = os.path.join(session_dir, "session.json")
     with open(json_file, "w", encoding="utf-8") as f:
@@ -607,38 +687,9 @@ def save_session(request: SaveSessionRequest) -> dict:
         "pdf_copied": pdf_copied
     }
 
-@app.post("/api/game/log-solution", response_model=LogGameSolutionResponse)
-def log_game_solution(request: LogGameSolutionRequest) -> dict:
-    """Capitalise a Game Mode retained proposition into the shared solution
-    base and report novelty (bonus points) + per-action usage frequencies.
-
-    Pure file IO on the store directory — no network state involved, so no
-    network lock / busy gate; the store serializes its own read-modify-write
-    with a module-level lock. See services/game_solutions.py.
-    """
-    try:
-        return game_solutions.log_solution(request.model_dump())
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@app.get("/api/game/lever-stats", response_model=GameLeverStatsResponse)
-def game_lever_stats(
-    network_path: str = Query(""),
-    contingency_id: str = Query(...),
-    top_n: int = Query(5, ge=1, le=20),
-) -> dict:
-    """Most-used unitary levers of a (network, contingency) context in the
-    shared solution base — the Game Mode beginner-assistance hints. Read-only
-    scan of the store (services/game_solutions.py)."""
-    try:
-        return game_solutions.lever_stats(network_path, contingency_id, top_n=top_n)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
 @app.get("/api/list-sessions")
 def list_sessions(folder_path: str = Query(...)) -> dict:
+    _reject_when_locked_down()
     if not folder_path or not os.path.isdir(folder_path):
         raise HTTPException(status_code=400, detail=f"Invalid folder path: {folder_path}")
 
@@ -650,19 +701,21 @@ def list_sessions(folder_path: str = Query(...)) -> dict:
                 json_path = os.path.join(entry_path, "session.json")
                 if os.path.isfile(json_path):
                     sessions.append(entry)
-    except OSError as e:
-        raise HTTPException(status_code=400, detail=f"Cannot read folder: {e}")
+    except OSError:
+        logger.exception("Cannot read sessions folder")
+        raise HTTPException(status_code=400, detail="Cannot read the sessions folder.")
 
     sessions.sort(reverse=True)
     return {"sessions": sessions}
 
 @app.post("/api/load-session")
 def load_session(folder_path: str = Body(...), session_name: str = Body(...)) -> dict:
+    _reject_when_locked_down()
     import json as json_module
     import shutil
     import glob
 
-    session_dir = os.path.join(folder_path, session_name)
+    session_dir = _safe_session_dir(folder_path, session_name)
     json_path = os.path.join(session_dir, "session.json")
 
     if not os.path.isfile(json_path):
@@ -675,14 +728,14 @@ def load_session(folder_path: str = Body(...), session_name: str = Body(...)) ->
         overflow = content.get("overflow_graph")
         if overflow and overflow.get("pdf_url"):
             pdf_filename = os.path.basename(overflow["pdf_url"])
-            target_path = os.path.join("Overflow_Graph", pdf_filename)
+            target_path = str(OVERFLOW_DIR / pdf_filename)
             if not os.path.isfile(target_path):
                 session_files = (
                     glob.glob(os.path.join(session_dir, "*.html"))
                     + glob.glob(os.path.join(session_dir, "*.pdf"))
                 )
                 if session_files:
-                    os.makedirs("Overflow_Graph", exist_ok=True)
+                    OVERFLOW_DIR.mkdir(parents=True, exist_ok=True)
                     picked = next(
                         (f for f in session_files if os.path.basename(f) == pdf_filename),
                         max(session_files, key=os.path.getmtime),
@@ -690,8 +743,9 @@ def load_session(folder_path: str = Body(...), session_name: str = Body(...)) ->
                     shutil.copy2(picked, target_path)
 
         return content
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to read session: {e}")
+    except Exception:
+        logger.exception("Failed to read session")
+        raise HTTPException(status_code=400, detail="Failed to read the session file.")
 
 @app.post("/api/restore-analysis-context", response_model=RestoreAnalysisContextResponse)
 def restore_analysis_context(request: RestoreAnalysisContextRequest) -> dict:

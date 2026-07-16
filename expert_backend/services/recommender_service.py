@@ -46,6 +46,7 @@ from expert_op4grid_recommender.action_evaluation.classifier import ActionClassi
 from expert_op4grid_recommender.environment import load_interesting_lines
 
 from expert_backend.services.sanitize import sanitize_for_json
+from expert_backend.services.paths import OVERFLOW_DIR
 from expert_backend.services.diagram_mixin import DiagramMixin
 from expert_backend.services.analysis_mixin import AnalysisMixin
 from expert_backend.services.simulation_mixin import SimulationMixin
@@ -82,6 +83,8 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin, ModelSele
         self._simulation_env = None
         self._last_disconnected_elements: list[str] = []
         self._dict_action = None
+        self._last_action_path = None  # action-dict reload gate (QW17: reset)
+        self._n_state_currents = None  # lazy N-state currents (QW17: reset)
         self._analysis_context = None
         self._saved_computed_pairs = None
         # Phase 2 caches for faster manual action simulation
@@ -193,8 +196,10 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin, ModelSele
         self._simulation_env = None
         self._last_disconnected_elements = []
         self._dict_action = None
+        self._last_action_path = None
         self._analysis_context = None
         self._saved_computed_pairs = None
+        self._n_state_currents = None
         # Phase 2 caches for faster manual action simulation
         self._cached_obs_n = None
         self._cached_obs_n_id = None
@@ -599,9 +604,9 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin, ModelSele
         # Don't check all actions
         config.CHECK_ACTION_SIMULATION = False
 
-        # Set visualization output to local 'Overflow_Graph' directory in backend/
-        # uvicorn runs from root, so 'Overflow_Graph' in CWD
-        config.SAVE_FOLDER_VISUALIZATION = Path(os.getcwd()) / "Overflow_Graph"
+        # Single shared overflow-graph anchor (QW17) so the writer + the
+        # `/results/pdf/` serve agree regardless of CWD. See services/paths.py.
+        config.SAVE_FOLDER_VISUALIZATION = OVERFLOW_DIR
         if not config.SAVE_FOLDER_VISUALIZATION.exists():
             config.SAVE_FOLDER_VISUALIZATION.mkdir(parents=True, exist_ok=True)
 

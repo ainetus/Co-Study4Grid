@@ -6,6 +6,7 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
 import { colors } from '../../styles/tokens';
+import { useModalKeyboard } from '../../hooks/useModalKeyboard';
 
 interface ReloadSessionModalProps {
   showReloadModal: boolean;
@@ -26,6 +27,13 @@ const ReloadSessionModal: React.FC<ReloadSessionModalProps> = ({
   sessionRestoring,
   onRestoreSession,
 }) => {
+  // Escape-to-close + focus trap/restore (QW20). Called before the early
+  // return so hook order stays stable across open/closed renders.
+  const { containerRef, dialogProps } = useModalKeyboard({
+    isOpen: showReloadModal,
+    onClose: () => setShowReloadModal(false),
+  });
+
   if (!showReloadModal) return null;
 
   return (
@@ -34,7 +42,10 @@ const ReloadSessionModal: React.FC<ReloadSessionModalProps> = ({
       backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 3500,
       display: 'flex', justifyContent: 'center', alignItems: 'center'
     }}>
-      <div style={{
+      <div
+        ref={containerRef}
+        {...dialogProps}
+        style={{
         background: colors.surface, borderRadius: '10px',
         width: '500px', maxWidth: '95vw', maxHeight: '70vh',
         display: 'flex', flexDirection: 'column',

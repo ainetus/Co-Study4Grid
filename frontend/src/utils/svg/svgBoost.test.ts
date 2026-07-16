@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { describe, expect, it } from 'vitest';
-import { boostSvgForLargeGrid, processSvg } from './svgBoost';
+import { boostSvgForLargeGrid, boostSvgToElement, processSvg } from './svgBoost';
 
 describe('boostSvgForLargeGrid', () => {
     const stableSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><circle cx="10" cy="10" r="5"/></svg>';
@@ -204,12 +204,57 @@ describe('processSvg', () => {
         const svg = '<svg xmlns="http://www.w3.org/2000/svg"/>';
         const { viewBox, svg: out } = processSvg(svg, 100);
         expect(viewBox).toBeNull();
-        expect(out).toBe(svg);
+        // D6: a well-formed SVG comes back as a live element (adopted
+        // directly), not a re-serialized string. The element preserves the
+        // <svg> root even without a viewBox.
+        expect(typeof out).not.toBe('string');
+        expect((out as SVGSVGElement).nodeName.toLowerCase()).toBe('svg');
     });
 
     it('accepts a comma-separated viewBox', () => {
         const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0,0,100,100"/>';
         const { viewBox } = processSvg(svg, 100);
         expect(viewBox).toEqual({ x: 0, y: 0, w: 100, h: 100 });
+    });
+});
+
+// D6 — the SVG element-adoption pipeline. processSvg / boostSvgToElement
+// hand ingestion a live SVGSVGElement so MemoizedSvgContainer adopts it via
+// replaceChildren instead of re-parsing a serialized string.
+describe('SVG element-adoption pipeline (D6)', () => {
+    it('processSvg returns a live SVGSVGElement for a well-formed SVG', () => {
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g id="x"/></svg>';
+        const { svg: out } = processSvg(svg, 100);
+        expect(typeof out).not.toBe('string');
+        const el = out as SVGSVGElement;
+        expect(el.nodeName.toLowerCase()).toBe('svg');
+        // Content is preserved on the parsed element.
+        expect(el.querySelector('#x')).not.toBeNull();
+    });
+
+    it('processSvg falls back to the raw string on a parse error', () => {
+        // A non-SVG / malformed root can\'t be adopted — keep the string so
+        // MemoizedSvgContainer\'s innerHTML path still renders it.
+        const notSvg = '<div>not an svg</div>';
+        const { svg: out } = processSvg(notSvg, 100);
+        expect(out).toBe(notSvg);
+    });
+
+    it('boostSvgToElement returns the parsed element unmutated for small grids', () => {
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g id="keep"/></svg>';
+        const el = boostSvgToElement(svg, { x: 0, y: 0, w: 100, h: 100 }, 100);
+        expect(el).not.toBeNull();
+        expect(el!.nodeName.toLowerCase()).toBe('svg');
+        expect(el!.querySelector('#keep')).not.toBeNull();
+    });
+
+    it('boostSvgToElement returns null on a parse error', () => {
+        expect(boostSvgToElement('<div>nope</div>', null, 100)).toBeNull();
+    });
+
+    it('boostSvgForLargeGrid string wrapper still returns the input unchanged when boost is skipped', () => {
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"/>';
+        // vlCount below the 500 floor → pass-through, byte-identical.
+        expect(boostSvgForLargeGrid(svg, { x: 0, y: 0, w: 100, h: 100 }, 100)).toBe(svg);
     });
 });

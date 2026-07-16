@@ -43,6 +43,14 @@ export interface GameSessionState {
   /** Abandon the session and return to the config screen. */
   quit: () => void;
   dismissNoveltyToast: () => void;
+  /** Retry loading the current study after a `loadError` (QW24). */
+  retryStudy: () => void;
+  /**
+   * End the session NOW with whatever studies are already committed and jump
+   * to the results screen — so a mid-session backend failure doesn't destroy
+   * the completed results (QW24).
+   */
+  finishEarly: () => void;
 }
 
 /** Best (lowest) resulting loading among the player's chosen actions. */
@@ -269,6 +277,23 @@ export function useGameSession(): GameSessionState {
     gameBridge.reset();
   }, []);
 
+  // Retry the current study after a load failure — reuses loadStudyAt's own
+  // try/catch, so a transient failure clears loadError and reaches 'playing'.
+  const retryStudy = useCallback(() => {
+    void loadStudyAt(indexRef.current);
+  }, [loadStudyAt]);
+
+  // Finish the session with whatever is already committed. Mirrors the
+  // session-complete branch of loadStudyAt but does NOT discard results — so a
+  // study that can't load no longer nukes the completed ones. The log itself
+  // is DERIVED from (config, results, endedAt), so late solution feedback
+  // still reaches it; flipping endedAt + phase is all that's needed.
+  const finishEarly = useCallback(() => {
+    if (!configRef.current) return;
+    setEndedAt(new Date().toISOString());
+    setPhase('results');
+  }, []);
+
   return {
     phase,
     config,
@@ -283,5 +308,7 @@ export function useGameSession(): GameSessionState {
     advance,
     quit,
     dismissNoveltyToast,
+    retryStudy,
+    finishEarly,
   };
 }

@@ -331,8 +331,8 @@ export const api = {
         });
         return response.data;
     },
-    runAnalysisStep1: async (disconnectedElements: string[]): Promise<{ lines_overloaded: string[]; message: string; can_proceed: boolean }> => {
-        const response = await axios.post(`${API_BASE_URL}/api/run-analysis-step1`, { disconnected_elements: disconnectedElements });
+    runAnalysisStep1: async (disconnectedElements: string[], signal?: AbortSignal): Promise<{ lines_overloaded: string[]; message: string; can_proceed: boolean }> => {
+        const response = await axios.post(`${API_BASE_URL}/api/run-analysis-step1`, { disconnected_elements: disconnectedElements }, { signal });
         return response.data;
     },
     runAnalysisStep2Stream: async (params: {
@@ -340,7 +340,7 @@ export const api = {
         all_overloads: string[];
         monitor_deselected: boolean;
         additional_lines_to_cut?: string[];
-    }): Promise<Response> => {
+    }, signal?: AbortSignal): Promise<Response> => {
         const response = await fetch(`${API_BASE_URL}/api/run-analysis-step2`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -348,6 +348,7 @@ export const api = {
                 ...params,
                 additional_lines_to_cut: params.additional_lines_to_cut ?? [],
             }),
+            signal,
         });
         if (!response.ok) {
             throw new Error(`Analysis Resolution failed: ${response.statusText}`);

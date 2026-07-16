@@ -12,14 +12,13 @@ Co-Study4Grid is a full-stack web application for **power grid contingency analy
 Co-Study4Grid/
 ├── CLAUDE.md                  # This file — project overview + standalone parity audit
 ├── README.md                  # User-facing project description + quick start
-├── CHANGELOG.md               # Per-release changelog (current: 0.8.0)
+├── CHANGELOG.md               # Per-release changelog (current: 0.9.0)
 ├── CONTRIBUTING.md            # Contributor setup, code-quality gate
 ├── pyproject.toml             # Python project metadata + ruff config (E9/F ruleset)
 ├── pytest.ini                 # Pytest config (testpaths = expert_backend/tests)
 ├── expert_backend/            # Python FastAPI backend
 │   ├── CLAUDE.md              # Backend-scoped guide (singletons, mixins, lifecycle)
 │   ├── main.py                # FastAPI app: endpoints, CORS, gzip helpers, NDJSON streaming
-│   ├── requirements.txt
 │   ├── test_backend.py        # Ad-hoc integration script (not part of pytest)
 │   ├── recommenders/          # Pluggable recommendation-model registry: registry.py,
 │   │   │                      # random_basic / random_overflow canonical examples,
@@ -96,7 +95,9 @@ Co-Study4Grid/
 │       │                          # (sticky strip — hosts Clear button + overload
 │       │                          # info bubble that absorbed the legacy
 │       │                          # OverloadPanel affordances),
-│       │                          # StatusToasts, VisualizationPanel, OverloadPanel
+│       │                          # NotificationHost (typed toast store —
+│       │                          # severity/dismiss/aria-live, PR D5),
+│       │                          # VisualizationPanel, OverloadPanel
 │       │                          # (kept on disk for unit-test backwards-compat;
 │       │                          # no longer rendered from App.tsx),
 │       │                          # CombinedActionsModal, ComputedPairsTable,
@@ -127,6 +128,8 @@ Co-Study4Grid/
 │                                  # (classifyActionType + DEFAULT_ACTION_OVERVIEW_FILTERS),
 │                                  # inspectables (filterInspectables — match an element
 │                                  # by its displayed name, not just its raw id),
+│                                  # ndjsonStream (single NDJSON reader, D5),
+│                                  # notifications (typed toast store, D5),
 │                                  # fileRegistry (structure regression guard)
 │           └── svg/               # PR #104 decomposition — idMap, metadataIndex,
 │                                  # svgBoost, fitRect, deltaVisuals, actionPinData,
@@ -163,9 +166,13 @@ Co-Study4Grid/
 │                              # `test_code_quality_report.py`,
 │                              # `test_estimation_vs_simulation_small_grid.py`,
 │                              # `pypsa_eur/` (full PyPSA-EUR → XIIDM pipeline
-│                              # with its own pytest coverage), and `game_mode/`
-│                              # (`e2e_game_session.py` — real-backend Game Mode
-│                              # replay + Codabench scoring)
+│                              # with its own pytest coverage; `build_pipeline.py`
+│                              # writes a per-bundle provenance.json, D8), and
+│                              # `game_mode/` (`e2e_game_session.py` — real-backend
+│                              # Game Mode replay; `scoring_program/score.py` —
+│                              # in-repo Codabench scorer twin of scoring.ts,
+│                              # pinned to `scoring_golden.json` by test_score.py
+│                              # + scoring.test.ts for cross-language parity, D8)
 ├── Dockerfile                 # Single-container HuggingFace Docker Space image —
 │                              # same-origin SPA + FastAPI on :7860, game mode on
 ├── .dockerignore
@@ -211,7 +218,6 @@ Co-Study4Grid/
 - **Vite 7** - Build tool and dev server
 - **axios** - HTTP client
 - **react-select** - Searchable dropdown for branch selection
-- **react-zoom-pan-pinch** - Pan/zoom for visualizations
 - **vite-plugin-singlefile** - Auto-generated single-file standalone bundle
 - **Vitest** + **React Testing Library** - Unit / integration tests
 
@@ -288,8 +294,8 @@ python scripts/code_quality_report.py --output reports/code-quality.json \
 python scripts/check_code_quality.py
 ```
 
-Both scripts run in CI (`.github/workflows/code-quality.yml` and
-`.circleci/config.yml`). The gate guards the reductions documented in
+Both scripts run in CI (`.github/workflows/code-quality.yml`). The gate
+guards the reductions documented in
 [`docs/architecture/code-quality-analysis.md`](docs/architecture/code-quality-analysis.md)
 (no new `print()` / bare except, module-size ceilings, no `any` /
 `@ts-ignore` in frontend source).
@@ -412,13 +418,14 @@ NAD/SLD payloads:
   they sit.
 - **ViewBox zoom**: auto-centers on selected contingency targets with
   adjustable padding.
-- **Pan/zoom**: `react-zoom-pan-pinch` in both the React dev build
-  and the auto-generated standalone (they share the same source
-  tree).
+- **Pan/zoom**: the `usePanZoom` hook writes the SVG `viewBox`
+  directly (rAF-batched, cached CTM) — no pan/zoom library — in both
+  the React dev build and the auto-generated standalone (they share
+  the same source tree).
 
 ## Dependencies
 
-### Backend (`expert_backend/requirements.txt` + `overrides.txt`)
+### Backend (`pyproject.toml` + `overrides.txt`)
 - `fastapi`, `uvicorn`, `python-multipart`
 - `pypowsybl`, `expert_op4grid_recommender` (expected in venv)
 - `pandas>=2.2.2`, `numpy>=2.0.0`, `grid2op>=1.12.2`, `pandapower>=2.14.0`
@@ -438,14 +445,15 @@ NAD/SLD payloads:
 ## Notes for AI Assistants
 
 - The backend API base URL defaults to `http://127.0.0.1:8000` in `frontend/src/api.ts` (`API_BASE_URL`), overridable at build time via `VITE_API_BASE_URL` — set it to `""` for **same-origin** hosting where the backend serves the SPA (the HuggingFace Docker Space), so requests become relative `/api/...`
-- CORS is wide-open by default (`allow_origins=["*"]`) but configurable via the `CORS_ALLOWED_ORIGINS` env var (PR #104, see `.env.example`)
+- CORS defaults to the local Vite dev/preview origins on loopback (`localhost`/`127.0.0.1` on `:5173` / `:4173`); a wildcard is explicit opt-in and any other set is configurable via the `CORS_ALLOWED_ORIGINS` env var (see `.env.example`)
 - **Frontend architecture (Phase 2 hook extraction, PR #109)**: `App.tsx` is the state orchestration hub; it must NOT contain large inline JSX blocks. Extracted presentational components live in `components/` and `components/modals/`; cross-cutting state pipelines live in `hooks/` (notably `useContingencyFetch` and `useDiagramHighlights`). When adding new UI sections, create a new component file (or hook for stateful pipelines) and wire it in `App.tsx`.
 - **`useSettings` hook**: Exposes a `SettingsState` object with all settings fields + setters. This is passed wholesale to `SettingsModal` to avoid excessive prop drilling. Adding a new setting means: (1) add to `useSettings.ts`, (2) add to `SettingsModal.tsx`. No manual standalone mirror is required — the legacy hand-maintained file has been decommissioned and the auto-generated bundle inherits from the React source automatically.
 - **Standalone bundle (auto-generated)**: `npm run build:standalone` in `frontend/` produces `frontend/dist-standalone/standalone.html` — a single-file HTML with React + CSS inlined via `vite-plugin-singlefile`. This is the canonical distribution artifact replacing the former `standalone_interface.html`. The legacy file remains on disk as `standalone_interface_legacy.html` (tracked as a frozen snapshot — do NOT edit).
 - **Online deployment (HuggingFace Docker Space, 0.8.0)**: `Dockerfile` builds the SPA with `VITE_API_BASE_URL=""` + `VITE_GAME_MODE=1` and serves it **same-origin** with the FastAPI backend on port 7860. `main.py` optionally mounts the built SPA via `COSTUDY4GRID_FRONTEND_DIST` (mounted LAST, after every `/api/*` and `/results/*` route; inert when the dist is absent, so local dev is unaffected). One Space instance serves one player (module-level singletons). See `deploy/huggingface/`.
+- **Deployment lockdown (D7, 2026-07)**: the `Dockerfile` sets `COSTUDY4GRID_LOCKDOWN=1`, which disables the desktop-era filesystem RPCs (custom config-file path, session save/list/load, native file picker) with a `403 {code: LOCKED_DOWN}` — they assume a local operator and would otherwise expose the container filesystem to an anonymous Space visitor. The read-only app config stays available so the SPA boots; unset locally so dev is unaffected. The HF deploy is **test-gated** (`workflow_run` on a green Tests run) and **tags each deploy** on origin (`space-deploy-*`) as the rollback pointer. See [`docs/architecture/deployment-trust.md`](docs/architecture/deployment-trust.md).
 - **Game Mode (0.8.0)**: a timed, scored session shell in `frontend/src/game/`, **additive and inert unless `?game=1`** — `main.tsx` mounts `GameShell` instead of `App`; App integration is three `gameBridge.isGameMode()`-guarded touch points. See `docs/features/game-mode-codabench.md`.
 - **Binary assets via Git LFS + transparent network decompression (0.8.0)**: `.gitattributes` tracks `*.zip` / `*.png` / `*.jpg` via Git LFS (the HuggingFace Space git endpoint rejects non-LFS binaries); the large France 225/400 kV grid ships as `network.xiidm.zip` and `network_service._resolve_network_file` / `_extract_network_zip` decompress it transparently on load.
-- **CI pipelines**: GitHub Actions (`.github/workflows/code-quality.yml`, `parity.yml`, `test.yml`) and CircleCI (`.circleci/config.yml`) run the code-quality gate, ruff, the pytest + Vitest suites, and the parity scripts. The backend test installs **always track the latest `expert_op4grid_recommender`** (`>=0.2.4` floor + `--no-cache-dir`, so a fresh index resolves to the newest release); the `Dockerfile` pins the same floor to keep the deployed recommender consistent with CI.
+- **CI pipelines**: GitHub Actions only (`.github/workflows/`: `code-quality.yml`, `parity.yml`, `test.yml`, `canary.yml`, `deploy-huggingface.yml`) run the code-quality gate, ruff, the pytest + Vitest suites, the data-pipeline + scorer-parity slice, and the parity scripts. CircleCI was removed (QW23 — GitHub Actions is a strict superset). The backend test + the `Dockerfile` install `expert_op4grid_recommender` from **`recommender-pin.txt`** — one pinned, exact version (QW8) so an upstream release can't silently break a PR or a rebuild; the weekly `canary.yml` floats to the latest release and flags regressions, so upgrades are a deliberate bump of that file.
 - Root `.gitignore` excludes `__pycache__/`, `*.pyc`, `*.pyo`; `frontend/.gitignore` handles frontend build artifacts
 - Integration helpers and parity scripts live under `scripts/`. They are NOT part of the pytest suite — invoke them directly. The PyPSA-EUR pipeline scripts under `scripts/pypsa_eur/` DO carry pytest coverage (`test_build_pipeline.py`, `test_calibrate_thermal_limits.py`, `test_generate_n1_overloads.py`, `test_regenerate_grid_layout.py`).
 - `overrides.txt` contains pinned versions for transitive Python dependencies that need to be forced to specific versions

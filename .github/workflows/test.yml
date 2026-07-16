@@ -29,13 +29,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install ".[test]"
-          # Track the latest published expert_op4grid_recommender release: the
-          # >=0.2.4 floor documents the minimum the GST / superposition tests
-          # need, and pip + --no-cache-dir always resolve to the newest release
-          # above it (no stale pinned version to bump). --no-deps skips the
-          # recommender's heavy transitive stack (pypowsybl already comes from
-          # co_study4grid's own dependencies).
-          pip install --no-deps --no-cache-dir "expert_op4grid_recommender>=0.2.4"
+          # Pin expert_op4grid_recommender to the exact version in
+          # recommender-pin.txt (QW8) so an upstream release can't silently turn
+          # a green PR red; the weekly canary.yml floats to latest and flags
+          # regressions. --no-deps skips the recommender's heavy transitive
+          # stack (pypowsybl already comes from co_study4grid's own deps).
+          pip install --no-deps -r recommender-pin.txt
       - name: Run Pytest (excluding graphviz-dependent tests)
         # Coverage GATES at fail_under=72 (pyproject [tool.coverage.report]).
         # See docs/architecture/code-quality-analysis.md §20.
@@ -50,6 +49,37 @@ jobs:
           path: coverage.xml
           if-no-files-found: ignore
           retention-days: 30
+
+  # ------------------------------------------------------------------
+  # Data-pipeline + benchmark supply chain (D8). Runs the HERMETIC slice
+  # of the PyPSA-EUR pipeline suite (scripts/pypsa_eur) and the Codabench
+  # scorer parity guard (scripts/game_mode). These live outside
+  # pytest.ini's testpaths (expert_backend/tests), so they need an
+  # explicit path. Tests that require the uncommitted raw OSM CSVs skip
+  # gracefully (conftest osm_dir / regenerate_grid_layout guards), so the
+  # suite is green from a fresh clone. scripts/game_mode/test_score.py is
+  # pure stdlib and pins score.py to the shared golden fixture the
+  # frontend's scoring.test.ts also asserts — locking cross-language parity.
+  # ------------------------------------------------------------------
+  test-data-pipeline:
+    name: Data pipeline + scorer parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[test]"
+      - name: Run pipeline + scorer + config-consistency tests (hermetic slice)
+        run: >-
+          pytest scripts/pypsa_eur scripts/game_mode
+          scripts/test_recommender_pin_consistency.py
+          scripts/test_extract_network_zip.py -q
 
   test-frontend:
     runs-on: ubuntu-latest
@@ -123,12 +153,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install ".[test]"
-          # Track the latest published expert_op4grid_recommender release: the
-          # >=0.2.4 floor documents the minimum the GST / superposition tests
-          # need, and pip + --no-cache-dir always resolve to the newest release
-          # above it (no stale pinned version to bump). --no-deps skips the
-          # recommender's heavy transitive stack (pypowsybl already comes from
-          # co_study4grid's own dependencies).
-          pip install --no-deps --no-cache-dir "expert_op4grid_recommender>=0.2.4"
+          # Pin expert_op4grid_recommender to the exact version in
+          # recommender-pin.txt (QW8) so an upstream release can't silently turn
+          # a green PR red; the weekly canary.yml floats to latest and flags
+          # regressions. --no-deps skips the recommender's heavy transitive
+          # stack (pypowsybl already comes from co_study4grid's own deps).
+          pip install --no-deps -r recommender-pin.txt
       - name: Run graphviz-dependent Pytest subset
         run: pytest expert_backend/tests/test_overflow_html_dim_logic.py

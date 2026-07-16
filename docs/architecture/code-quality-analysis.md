@@ -8,7 +8,7 @@
 > - `python scripts/code_quality_report.py` — metrics dump (JSON + Markdown)
 > - `python scripts/check_code_quality.py` — CI gate (non-zero exit on regression)
 > - Unit-tested in `scripts/test_code_quality_report.py` (13 tests, part of the pytest suite)
-> - Runs in CI: `.github/workflows/code-quality.yml` + `.circleci/config.yml`
+> - Runs in CI: `.github/workflows/code-quality.yml` (CircleCI removed — QW23)
 >   (jobs `gate` / `code-quality`). Also uploads a report artifact.
 > - See [CONTRIBUTING.md](../../CONTRIBUTING.md#code-quality-checks)
 >   for local usage and thresholds.
@@ -1049,12 +1049,15 @@ widening hot files:
 
 ### 16.4 CI / supply-chain note
 
-From 0.8.0 the backend test installs **track the latest published
-``expert_op4grid_recommender``** (``>=0.2.4`` floor + ``--no-cache-dir``)
-rather than a pinned version, so a fresh index resolves to the newest
-release on every run (``.github/workflows/test.yml`` /
-``.circleci/config.yml``); the ``Dockerfile`` pins the same floor to
-keep the deployed recommender consistent with CI. The new HuggingFace
+From 0.8.0 the backend test installs tracked the latest published
+``expert_op4grid_recommender`` on every run — which meant an upstream
+release could turn an unrelated PR red or ship a regressed image on a
+zero-change rebuild. **From 0.9.0 (QW8) the PR/deploy installs pin an
+exact version** via ``recommender-pin.txt`` (consumed by
+``.github/workflows/test.yml`` and the ``Dockerfile``); a weekly
+``canary.yml`` floats to the latest release so upgrades are a deliberate
+bump of that file. CircleCI was removed in the same release (QW23 —
+GitHub Actions is a strict superset). The new HuggingFace
 Docker deployment adds an **optional** same-origin SPA mount in
 ``main.py`` (``COSTUDY4GRID_FRONTEND_DIST``, mounted last, inert when
 absent — local dev / the test suite are unaffected) and Git LFS
@@ -1334,6 +1337,39 @@ Headline margins at hand-off (ceiling − current):
 
 Also surfaced in `CHANGELOG.md` `[Unreleased]` so it is bound to the
 next release.
+
+---
+
+## 23. Delta — 2026-07-09 (D9: docs as a checked artifact)
+
+The review's recurring "docs drift" finding — the `CLAUDE.md` inventory
+trees reference files that were renamed away, and their `file.py:NNN`
+line anchors rot on the next edit (all seven had drifted by hundreds of
+lines) — is now a **gate**, not a periodic manual audit.
+
+`scripts/check_docs_tree.py` scans the four inventory docs (root +
+`expert_backend/` + `expert_backend/tests/` + `frontend/`) and fails on:
+
+1. **Referenced-path existence** — every backtick-quoted, directory-
+   qualified `path/like/this.ext` must resolve to a real file under any
+   sensible base dir (the docs write paths relative to their own
+   subtree). Exemptions: generated/runtime artifacts
+   (`dist-standalone/standalone.html`, `Overflow_Graph/…`) and paths
+   referenced *as removed* (the line — or a ±1-line window, for wrapped
+   prose — carries "removed / former / renamed / superseded / …").
+2. **No stale line-number anchors** — `file.py:NNN` is forbidden; the
+   convention is a **symbol anchor** (name the function/class, which
+   survives edits). The seven pre-existing anchors were converted (e.g.
+   `network_service.py:352` → "the module-level `NetworkService()`
+   singleton in `network_service.py`").
+
+Wired into `.github/workflows/code-quality.yml` as its own gate step,
+with unit coverage in `scripts/test_check_docs_tree.py` (fixture-driven
+classification + a self-guard asserting the real repo stays clean, so
+drift fails the pytest suite too, not only the CI step). A `--warn-only`
+flag supports a roll-in period; the tree was brought fully green before
+the gate was made blocking. This closes the last "inventory layer rots"
+finding from the 2026-07 review (D9).
 
 
 
