@@ -126,7 +126,11 @@ under a persistent root, exact-duplicate dedup, the player name as author).
   config-screen **Beginner assistance** checkbox on (default), the
   `GameHintsPanel` shows the top 5 for the current study in a collapsible
   in-play panel — best-effort like the log itself (no data or no backend →
-  the panel stays hidden).
+  the panel stays hidden). **Clicking a lever pre-fills the Inspect field**
+  (auto-zoom included) with the underlying element — `leverInspectTarget`
+  strips the `disco_`/`reco_` catalogue prefixes down to the branch id —
+  via a `gameBridge.registerInspector` / `requestInspect` pair, so App.tsx
+  stays decoupled from game internals (one guarded registration effect).
 - **Flow** — `useGameSession` fires the log at every study commit,
   fire-and-forget (a failed log never blocks or breaks the game — the study
   simply carries no `solutionFeedback`). The session log is *derived* from

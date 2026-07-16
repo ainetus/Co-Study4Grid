@@ -1579,6 +1579,13 @@ function App() {
     diagrams.setInspectQuery(q);
   }, [diagrams]);
 
+  // Game Mode: the hints panel pre-fills the Inspect field through the
+  // same handler the search box uses (auto-zoom included).
+  useEffect(() => {
+    if (!gameBridge.isGameMode()) return;
+    gameBridge.registerInspector(handleInspectQueryChange);
+  }, [handleInspectQueryChange]);
+
   const handleToggleVoltageLevelNames = useCallback((show: boolean) => {
     interactionLogger.record('vl_names_toggled', { show });
     setShowVoltageLevelNames(show);

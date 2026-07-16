@@ -59,6 +59,11 @@ capitalisation".
   config-screen **Beginner assistance** checkbox (default on), the
   collapsible in-play `GameHintsPanel` shows the top 5 for the current
   study — best-effort: no data or no backend simply hides the panel.
+  Clicking a lever **pre-fills the Inspect field** (auto-zoom included)
+  with the underlying element — catalogue `disco_`/`reco_` ids are
+  stripped down to their branch id — through a new
+  `gameBridge.registerInspector` / `requestInspect` pair, keeping App.tsx
+  decoupled from game internals.
 
 ### Tests + docs — coverage and reference for the 2026-07 deep revisions
 

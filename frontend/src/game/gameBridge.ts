@@ -37,11 +37,13 @@ const EMPTY_SNAPSHOT: GameStudySnapshot = {
 
 type SnapshotListener = (s: GameStudySnapshot) => void;
 type StudyLoader = (study: GameStudy) => Promise<void>;
+type InspectHandler = (query: string) => void;
 
 class GameBridge {
   private snapshot: GameStudySnapshot = EMPTY_SNAPSHOT;
   private listeners = new Set<SnapshotListener>();
   private loader: StudyLoader | null = null;
+  private inspector: InspectHandler | null = null;
   private maxActions = 3;
 
   /**
@@ -62,6 +64,14 @@ class GameBridge {
   /** App registers the function the shell calls to load a study. */
   registerLoader(loader: StudyLoader): void {
     this.loader = loader;
+  }
+
+  /**
+   * App registers its Inspect-field setter so game UI (the hints panel)
+   * can pre-fill it — same auto-zoom path as typing in the box.
+   */
+  registerInspector(inspector: InspectHandler): void {
+    this.inspector = inspector;
   }
 
   /** App publishes the current physical snapshot; shell listeners fire. */
@@ -105,6 +115,11 @@ class GameBridge {
       await new Promise((r) => setTimeout(r, 50));
     }
     return this.loader(study);
+  }
+
+  /** Shell asks App to pre-fill the Inspect field. No-op before App mounts. */
+  requestInspect(query: string): void {
+    this.inspector?.(query);
   }
 
   getSnapshot(): GameStudySnapshot {

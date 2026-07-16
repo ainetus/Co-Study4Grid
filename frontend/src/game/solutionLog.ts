@@ -162,3 +162,18 @@ export function sessionNoveltyBonus(studies: GameStudyResult[]): number {
   return studies.reduce(
     (sum, s) => sum + (s.solutionFeedback?.novelty.bonusPoints ?? 0), 0);
 }
+
+/**
+ * Network element a lever hint should pre-fill the Inspect field with.
+ * Injection / PST / switch levers already carry the element id as their
+ * label; catalogue `action:disco_<branch>` / `action:reco_<branch>` ids
+ * embed the branch id — strip the prefix so Inspect can locate the line.
+ */
+export function leverInspectTarget(lever: { signature: string; label: string }): string {
+  if (lever.signature.startsWith('action:')) {
+    const actionId = lever.signature.slice('action:'.length);
+    const branch = actionId.match(/^(?:disco|reco)_(.+)$/);
+    return branch ? branch[1] : actionId;
+  }
+  return lever.label;
+}

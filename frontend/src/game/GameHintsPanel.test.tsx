@@ -4,10 +4,11 @@
 // you can obtain one at http://mozilla.org/MPL/2.0/.
 // SPDX-License-Identifier: MPL-2.0
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { api } from '../api';
 import type { GameLeverStatsResponse } from '../types';
+import { gameBridge } from './gameBridge';
 import GameHintsPanel from './GameHintsPanel';
 import type { GameStudy } from './types';
 
@@ -44,6 +45,10 @@ describe('GameHintsPanel', () => {
     getGameLeverStats.mockReset();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('lists the most-used levers with their equipment category', async () => {
     getGameLeverStats.mockResolvedValue(stats());
     render(<GameHintsPanel study={STUDY} />);
@@ -56,6 +61,20 @@ describe('GameHintsPanel', () => {
     expect(screen.getByText(/Voltage level · used 2×/)).toBeInTheDocument();
     expect(screen.getByText(/Load · used 1×/)).toBeInTheDocument();
     expect(screen.getByText(/From 7 retained solutions by all players/)).toBeInTheDocument();
+  });
+
+  it('pre-fills the Inspect field with the lever element on click', async () => {
+    const inspect = vi.spyOn(gameBridge, 'requestInspect');
+    getGameLeverStats.mockResolvedValue(stats());
+    render(<GameHintsPanel study={STUDY} />);
+    await waitFor(() => expect(screen.getByText(/disco_LINE_A/)).toBeInTheDocument());
+
+    // Catalogue disco lever → the embedded branch id reaches Inspect.
+    fireEvent.click(screen.getByText(/disco_LINE_A/));
+    expect(inspect).toHaveBeenCalledWith('LINE_A');
+    // Injection lever → the generator name itself.
+    fireEvent.click(screen.getByText(/G1/));
+    expect(inspect).toHaveBeenCalledWith('G1');
   });
 
   it('collapses to a pill and reopens', async () => {

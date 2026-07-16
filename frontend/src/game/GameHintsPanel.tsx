@@ -9,7 +9,9 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { colors, space, text, radius } from '../styles/tokens';
 import type { GameLeverStatWire } from '../types';
+import { gameBridge } from './gameBridge';
 import { GAME_HUD_HEIGHT } from './GameHud';
+import { leverInspectTarget } from './solutionLog';
 import type { GameStudy } from './types';
 
 interface GameHintsPanelProps {
@@ -114,9 +116,18 @@ export default function GameHintsPanel({ study }: GameHintsPanelProps) {
       <ol style={{ margin: 0, paddingLeft: space[4] }}>
         {levers.map((lever) => (
           <li key={lever.signature} style={{ marginBottom: space.half }}>
-            <span title={lever.sample_description ?? undefined} style={{ fontWeight: 600 }}>
+            <button
+              onClick={() => gameBridge.requestInspect(leverInspectTarget(lever))}
+              title={`${lever.sample_description ?? lever.label} — click to locate it in the Inspect field`}
+              style={{
+                border: 'none', background: 'transparent', padding: 0,
+                cursor: 'pointer', fontWeight: 600, fontSize: text.sm,
+                color: colors.infoText, textDecoration: 'underline',
+                textUnderlineOffset: 2,
+              }}
+            >
               {CATEGORY_ICONS[lever.category]} {lever.label}
-            </span>
+            </button>
             <span style={{ color: colors.textTertiary, fontSize: text.xs }}>
               {' '}— {LEVER_CATEGORY_LABELS[lever.category]} · used {lever.count}×
             </span>
@@ -124,7 +135,8 @@ export default function GameHintsPanel({ study }: GameHintsPanelProps) {
         ))}
       </ol>
       <p style={{ margin: `${space[1]} 0 0`, fontSize: text.xs, color: colors.textTertiary }}>
-        From {total} retained solution{total === 1 ? '' : 's'} by all players on this contingency.
+        From {total} retained solution{total === 1 ? '' : 's'} by all players on this
+        contingency. Click a lever to pre-fill the Inspect field and locate it.
       </p>
     </div>
   );

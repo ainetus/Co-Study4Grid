@@ -529,7 +529,11 @@ exactly as before.
   most used by all players on the current contingency
   (`GET /api/game/lever-stats`), tagged voltage level / branch /
   generation / load. Best-effort like the solution log — no data or no
-  backend hides the panel.
+  backend hides the panel. Clicking a lever pre-fills the Inspect field
+  (auto-zoom) with its element (`leverInspectTarget`) through the
+  `gameBridge.registerInspector` / `requestInspect` pair — App registers
+  `handleInspectQueryChange` in one `isGameMode()`-guarded effect and
+  never imports game internals beyond the bridge/solutionLog helpers.
 - **`presets.ts`** lists curated **solvable** fr225_400 contingencies; keep
   them winnable (the `scripts/game_mode/e2e_game_session.py` backend replay
   verifies `can_proceed=True`).

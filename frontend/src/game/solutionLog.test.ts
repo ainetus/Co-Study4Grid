@@ -10,6 +10,7 @@ import {
   buildActionLevers,
   buildChosenActionRecord,
   buildSolutionLogRequest,
+  leverInspectTarget,
   sessionNoveltyBonus,
   toStudyFeedback,
 } from './solutionLog';
@@ -225,6 +226,20 @@ describe('toStudyFeedback / sessionNoveltyBonus', () => {
         actionId: 'disco_A', description: 'Ouverture A', count: 0, total: 0, share: 0,
       }],
     });
+  });
+
+  it('derives the Inspect target of a lever hint', () => {
+    // Catalogue disco/reco ids embed the branch — Inspect the branch itself.
+    expect(leverInspectTarget({ signature: 'action:disco_LINE_A', label: 'disco_LINE_A' }))
+      .toBe('LINE_A');
+    expect(leverInspectTarget({ signature: 'action:reco_relation_123-225', label: 'reco_relation_123-225' }))
+      .toBe('relation_123-225');
+    // Other catalogue ids and element levers pass through.
+    expect(leverInspectTarget({ signature: 'action:open_coupler_VL_X', label: 'open_coupler_VL_X' }))
+      .toBe('open_coupler_VL_X');
+    expect(leverInspectTarget({ signature: 'redispatch:G1', label: 'G1' })).toBe('G1');
+    expect(leverInspectTarget({ signature: 'switch:VL1_COUPL=true', label: 'VL1_COUPL' }))
+      .toBe('VL1_COUPL');
   });
 
   it('sums the per-study bonus points on top of the Codabench score', () => {
