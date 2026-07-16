@@ -8,7 +8,8 @@
 import { colors, space, text, radius } from '../styles/tokens';
 import { buildSessionCsv, downloadFile, slugifySession } from './gameLog';
 import { scoreSession } from './scoring';
-import type { GameSessionLog } from './types';
+import { sessionNoveltyBonus } from './solutionLog';
+import type { ActionUsageFrequency, GameSessionLog } from './types';
 
 interface GameResultsProps {
   log: GameSessionLog;
@@ -32,9 +33,19 @@ function pct(v: number | null): string {
   return v == null ? '—' : `${(v * 100).toFixed(0)}%`;
 }
 
+/** End-of-session wording for one retained action's past usage. */
+function frequencyLabel(f: ActionUsageFrequency): string {
+  if (f.total === 0) return 'first solution ever retained on this contingency';
+  if (f.count === 0) return `never retained before (0 / ${f.total} prior retentions)`;
+  return `retained in ${f.count} / ${f.total} prior retentions (${(f.share * 100).toFixed(0)}%)`;
+}
+
 export default function GameResults({ log, onReplay }: GameResultsProps) {
   const score = scoreSession(log);
   const slug = slugifySession(log.sessionName);
+  const noveltyBonus = sessionNoveltyBonus(log.studies);
+  const studiesWithFeedback = log.studies.filter(
+    (s) => s.solutionFeedback && s.solutionFeedback.frequencies.length > 0);
 
   const exportJson = () =>
     downloadFile(`costudy4grid_game_${slug}.json`, JSON.stringify(log, null, 2), 'application/json');
@@ -68,8 +79,14 @@ export default function GameResults({ log, onReplay }: GameResultsProps) {
             <div style={{ fontSize: text.sm }}>
               <strong>{score.solvedCount}</strong> / {score.nStudies} studies solved
             </div>
+            {noveltyBonus > 0 && (
+              <div style={{ fontSize: text.sm, color: colors.accentText, marginTop: space[1], fontWeight: 600 }}>
+                🌟 +{noveltyBonus} novelty bonus pts — {score.finalScore.toFixed(1)} + {noveltyBonus} = {(score.finalScore + noveltyBonus).toFixed(1)} with bonus
+              </div>
+            )}
             <div style={{ fontSize: text.xs, color: colors.textTertiary, marginTop: space[1] }}>
               Score = mean of per-study scores (physical result 60% · action economy 25% · speed 15%).
+              {noveltyBonus > 0 && ' The novelty bonus rewards solutions never retained before and is shown on top of the Codabench score.'}
             </div>
           </div>
         </div>
@@ -109,6 +126,29 @@ export default function GameResults({ log, onReplay }: GameResultsProps) {
                         : s.timedOut
                           ? <span style={{ color: colors.dangerText }}>⏱ timed out</span>
                           : <span style={{ color: colors.warningText }}>⚠ unsolved</span>}
+                      {s.solutionFeedback?.novelty.newProposition && (
+                        <span
+                          title={[
+                            s.solutionFeedback.novelty.newLevers.length
+                              ? `New lever(s): ${s.solutionFeedback.novelty.newLevers.join(', ')}`
+                              : 'New combination of known actions',
+                            s.solutionFeedback.novelty.bonusPoints === 0
+                              ? 'No bonus: the retained actions were not effective enough (a combined action must beat its parts by ≥ 1 loading-point).'
+                              : '',
+                          ].filter(Boolean).join(' — ')}
+                          style={{
+                            marginLeft: space[1], padding: `0 ${space[1]}`,
+                            borderRadius: radius.sm, background: colors.accentSoft,
+                            border: `1px solid ${colors.accentBorder}`,
+                            color: colors.accentText, fontSize: text.xs, fontWeight: 700,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {s.solutionFeedback.novelty.bonusPoints > 0
+                            ? `🌟 new +${s.solutionFeedback.novelty.bonusPoints}`
+                            : '🌟 new (no bonus)'}
+                        </span>
+                      )}
                     </td>
                     <td style={td}>{pct(s.baselineMaxRho)} → {pct(s.finalMaxRho)}</td>
                     <td style={td}>{s.numActions} / {s.maxActions}</td>
@@ -120,6 +160,41 @@ export default function GameResults({ log, onReplay }: GameResultsProps) {
             </tbody>
           </table>
         </div>
+
+        {/* Solution capitalisation feedback — how common were the retained
+            actions across ALL players' stored solutions on each contingency. */}
+        {studiesWithFeedback.length > 0 && (
+          <div style={{
+            background: colors.surfaceRaised, border: `1px solid ${colors.border}`,
+            borderRadius: radius.lg, padding: space[3], marginBottom: space[3],
+          }}>
+            <h2 style={{ margin: `0 0 ${space[1]}`, fontSize: text.lg }}>
+              📚 Your retained actions vs the shared solution base
+            </h2>
+            <p style={{ margin: `0 0 ${space[2]}`, fontSize: text.xs, color: colors.textTertiary }}>
+              Every solution you retain is capitalised (with your player name) into a
+              base shared across players. Counts reflect the base as each study was committed.
+            </p>
+            {studiesWithFeedback.map((s) => (
+              <div key={s.studyId} style={{ marginBottom: space[2] }}>
+                <div style={{ fontWeight: 600, fontSize: text.sm }}>{s.label}</div>
+                <ul style={{ margin: `${space.half} 0 0`, paddingLeft: space[4] }}>
+                  {s.solutionFeedback!.frequencies.map((f) => (
+                    <li key={f.actionId} style={{ fontSize: text.sm, marginBottom: space.half }}>
+                      <span style={{ fontWeight: 600 }}>{f.description || f.actionId}</span>
+                      {' — '}
+                      <span style={{
+                        color: f.count === 0 ? colors.accentText : colors.textSecondary,
+                      }}>
+                        {frequencyLabel(f)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: space[2], justifyContent: 'flex-end' }}>
           <button style={btn(colors.surfaceMuted, colors.textSecondary)} onClick={exportCsv}>⬇ CSV</button>

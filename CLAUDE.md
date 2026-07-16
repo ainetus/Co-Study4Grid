@@ -41,6 +41,9 @@ Co-Study4Grid/
 │   │   ├── simulation_helpers.py  # Stateless helpers extracted from simulation_mixin (PR #104)
 │   │   ├── overflow_overlay.py    # Pin / filter overlay injector for the interactive
 │   │   │                          # HTML overflow viewer (PR #116, 0.7.0)
+│   │   ├── game_solutions.py      # Game Mode shared solution base (per-context
+│   │   │                          # JSON records, novelty/bonus + usage
+│   │   │                          # frequencies; root via COSTUDY4GRID_DATA_DIR)
 │   │   ├── sanitize.py            # NumPy → native-Python recursive coercion
 │   │   ├── analysis/              # PR #104 decomposition — action_enrichment,
 │   │   │                          # mw_start_scoring, analysis_runner, pdf_watcher,
@@ -111,7 +114,12 @@ Co-Study4Grid/
 │       ├── game/                  # Timed, scored Game Mode (0.8.0; active only
 │       │                          # with ?game=1) — GameShell / useGameSession /
 │       │                          # gameBridge / GameConfigScreen / GameHud /
-│       │                          # GameResults / scoring / gameLog / presets /
+│       │                          # GameResults / GameNoveltyToast /
+│       │                          # GameHintsPanel (beginner assistance:
+│       │                          # community's most-used levers) / scoring /
+│       │                          # gameLog / solutionLog (solution
+│       │                          # capitalisation: levers + novelty bonus +
+│       │                          # usage-frequency feedback) / presets /
 │       │                          # types. See docs/features/game-mode-codabench.md
 │       └── utils/                 # svgUtils (barrel re-exporting utils/svg/*),
 │                                  # svgPatch (DOM-recycling patch applier),
@@ -327,6 +335,8 @@ guards the reductions documented in
 | POST | `/api/simulate-manual-action` | Simulate a specific action against a contingency. Accepts an optional `voltage_level_id` field used to auto-name switch-only user actions (interactive SLD-edit feature). |
 | POST | `/api/simulate-and-variant-diagram` | NDJSON stream: `{type:"metrics"}` then `{type:"diagram"}` so sidebar updates ahead of the SVG |
 | POST | `/api/compute-superposition` | Compute combined effect of two actions (superposition theorem) |
+| POST | `/api/game/log-solution` | Capitalise a Game Mode retained proposition into the shared solution base; returns the novelty verdict (+bonus points) and per-action usage frequencies |
+| GET  | `/api/game/lever-stats` | Most-used unitary levers of a (network, contingency) context in the shared solution base — the Game Mode beginner-assistance hints (top-N, tagged voltage_level / branch / generation / load) |
 | POST | `/api/save-session` | Save session folder with JSON snapshot + PDF copy |
 | GET  | `/api/list-sessions` | List available session folders in a directory |
 | POST | `/api/load-session` | Load session JSON and restore PDFs |

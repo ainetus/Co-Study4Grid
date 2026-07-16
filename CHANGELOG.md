@@ -7,6 +7,70 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Game Mode — solution capitalisation: shared base, novelty bonus, usage-frequency feedback
+
+Every remedial-action proposition a player retains (stars) at a study commit
+is now **capitalised into a shared solution base**, mirroring the manoeuvre
+IHM scenario base of `expert_op4grid_recommender` (per-context JSON records
+under a persistent root, exact-duplicate dedup, free-text author
+attribution). See `docs/features/game-mode-codabench.md` § "Solution
+capitalisation".
+
+- **Backend** — new `services/game_solutions.py` (pure file-IO store, no
+  pypowsybl) + `POST /api/game/log-solution`. One record per unique
+  proposition per `(network, contingency)` context; repeat retentions append
+  to the record's `retentions` list. The store serializes its
+  read-modify-write with a module lock and writes atomically
+  (temp + `os.replace`), so concurrent commits can neither lose retentions
+  nor double-award the novelty bonus. Novelty is judged on **magnitude-free
+  unitary signatures**: injections contribute *levers* (`redispatch:<gen>`,
+  `ls:<load>`, `rc:<gen>`, `pst:<pst>` — no MW/tap, so retuning a known
+  lever is not novel but **mobilising a new lever is**), switch-operating
+  actions (manual SLD maneuvers *and* catalogue couplings) decompose into
+  `switch:<id>=<state>` / `load_p:` / `gen_p:` levers, and lever-less
+  actions (line disco/reco) keep their `action:<id>` identity. Response carries
+  the novelty verdict (**+20** bonus pts for a proposition with a never-seen
+  lever, **+10** for a new combination of known actions), plus each retained
+  action's past usage frequency in the base. Bonuses are **only paid when
+  every retained action is effective** — it beats the baseline worst
+  loading (or solves the study), and a combined `a+b` action must sit
+  ≥ 1 loading-point (0.01 pu) below the best of its underlying actions;
+  the frontend computes the per-action `effective` flag
+  (`solutionLog.buildChosenActionRecord`), the backend gates the points
+  and echoes `novelty.effective` so the UI can explain a withheld bonus. Store root:
+  `COSTUDY4GRID_GAME_SOLUTIONS_DIR` → `COSTUDY4GRID_DATA_DIR/game_solutions`
+  (set `COSTUDY4GRID_DATA_DIR=/data` on a Space with persistent storage) →
+  repo-local `game_solutions/` fallback. Full pytest coverage in
+  `test_game_solutions.py`; OpenAPI snapshot regenerated.
+- **Frontend** — the game config screen now **asks for a player name**
+  (required; it signs the retained solutions in the shared base, like the
+  manoeuvre IHM author field). New `game/solutionLog.ts` computes the
+  levers/payload (`buildActionLevers`, reusing `classifyActionType` and the
+  `*_details` the App already publishes — the App.tsx publish effect now
+  delegates to `buildChosenActionRecord`); `useGameSession` fires the log at
+  every study commit (fire-and-forget: a failed log never blocks the game)
+  and merges the async feedback into the study result — the session log is
+  now *derived*, so late feedback still reaches the export. A **novelty
+  toast** (`GameNoveltyToast`) tells the player right away when their
+  proposition is brand new; the results screen shows the bonus **on top of**
+  the (unchanged, Codabench-twin-locked) session score, per-study 🌟 badges,
+  and the per-action usage-frequency feedback. CSV export gains a
+  `novelty_bonus` column; the JSON schema change is additive (optional
+  `solutionFeedback` per study, `schemaVersion` stays `1.0`).
+- **Beginner assistance — community lever hints** — new
+  `GET /api/game/lever-stats` aggregates, per (network, contingency)
+  context, the unitary levers most mobilised across the stored base
+  (weighted by retention events) and tags each with its equipment family
+  (`voltage_level` / `branch` / `generation` / `load`). With the new
+  config-screen **Beginner assistance** checkbox (default on), the
+  collapsible in-play `GameHintsPanel` shows the top 5 for the current
+  study — best-effort: no data or no backend simply hides the panel.
+  Clicking a lever **pre-fills the Inspect field** (auto-zoom included)
+  with the underlying element — catalogue `disco_`/`reco_` ids are
+  stripped down to their branch id — through a new
+  `gameBridge.registerInspector` / `requestInspect` pair, keeping App.tsx
+  decoupled from game internals.
+
 ## [0.9.0] — 2026-07-09
 
 Release **0.9.0** consolidates the 2026-07 full-repo-review revisions — the

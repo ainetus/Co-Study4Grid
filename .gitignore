@@ -14,6 +14,9 @@ dist/
 # Generated outputs
 Overflow_Graph/
 
+# Game Mode shared solution base (dev fallback of COSTUDY4GRID_DATA_DIR)
+/game_solutions/
+
 # Code-quality reports produced by scripts/code_quality_report.py
 reports/
 

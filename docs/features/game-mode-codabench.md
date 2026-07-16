@@ -15,18 +15,27 @@ The Codabench bundle lives in a sibling repo:
 
 Launch the frontend with `?game=1` (e.g. `http://localhost:5173/?game=1`):
 
-1. **Config screen** — name the session, set the per-study timer (min/sec) and
-   the action cap (≤ 3), and build the ordered study list. Pre-filled with the
+1. **Config screen** — name the session, enter your **player name** (required —
+   it signs the solutions you retain in the shared solution base, see below),
+   set the per-study timer (min/sec) and the action cap (≤ 3), and build the
+   ordered study list. Pre-filled with the
    3-study warm-up; add more from the **preset contingency** dropdown (the
    fr225_400 set from `data/pypsa_eur_fr225_400/n1_overload_contingencies.json`)
    or add custom studies (network + action file + contingency id).
 2. **Play** — a fixed HUD shows the study, a live countdown, the action
    counter (`X/3`), and the current best resulting loading. The workspace
-   underneath is the unchanged Co-Study4Grid tool. **Star** the actions you
+   underneath is the unchanged Co-Study4Grid tool. With **Beginner
+   assistance** enabled (config-screen checkbox, on by default), a
+   collapsible 💡 hints panel lists the **5 levers most used by all players**
+   on the current contingency, tagged by equipment family (voltage level /
+   branch / generation / load). **Star** the actions you
    commit to (the star is capped at the configured max). Click **Next study →**
-   (or let the timer expire) to advance.
-3. **Results** — per-study table + final score, with **⬇ JSON (Codabench)** and
-   **⬇ CSV** exports.
+   (or let the timer expire) to advance. If your retained proposition turns
+   out to be **new** in the shared base, a 🌟 toast tells you right away and
+   you earn bonus points.
+3. **Results** — per-study table + final score (+ novelty bonus shown on
+   top), the usage frequency of your retained actions across all players'
+   stored solutions, with **⬇ JSON (Codabench)** and **⬇ CSV** exports.
 
 ## Architecture
 
@@ -37,11 +46,14 @@ The whole feature is additive and inert unless `?game=1` is set.
 | `frontend/src/game/GameShell.tsx` | Entry point (mounted by `main.tsx`); state machine config → playing → results, hosts `<App/>` below a fixed HUD |
 | `frontend/src/game/useGameSession.ts` | Session state machine: load study, timer countdown, commit + advance, build log |
 | `frontend/src/game/gameBridge.ts` | Decoupling singleton (mirrors `interactionLogger`): App registers a study loader + publishes the physical snapshot; the shell drives loads + reads results + enforces the action cap |
-| `frontend/src/game/GameConfigScreen.tsx` | Session/study configuration UI |
+| `frontend/src/game/GameConfigScreen.tsx` | Session/study configuration UI (asks the required player name) |
 | `frontend/src/game/GameHud.tsx` | Timer / action-counter / Next-study HUD bar |
-| `frontend/src/game/GameResults.tsx` | Results table + score preview + JSON/CSV export |
+| `frontend/src/game/GameResults.tsx` | Results table + score preview (+ novelty bonus + usage-frequency feedback) + JSON/CSV export |
+| `frontend/src/game/GameNoveltyToast.tsx` | Transient 🌟 banner when a retained proposition is new in the shared base |
+| `frontend/src/game/GameHintsPanel.tsx` | Beginner assistance: collapsible 💡 panel with the community's 5 most-used levers per contingency |
 | `frontend/src/game/scoring.ts` | Shared scoring model (twin of the Python scorer) |
 | `frontend/src/game/gameLog.ts` | `GameSessionLog` assembly + CSV + download helpers |
+| `frontend/src/game/solutionLog.ts` | Solution capitalisation client: lever/signature computation + log payload + feedback mapping |
 | `frontend/src/game/presets.ts` | Curated **solvable** fr225_400 contingencies |
 | `frontend/src/game/types.ts` | Type contract for the whole module |
 
@@ -72,6 +84,79 @@ TS side). `apply_reference()` in `score.py` overlays trusted per-study numbers
 onto the self-reported log when a `reference.json` is supplied (a no-op
 otherwise); the physical session-log replay that *produces* that trusted
 reference is the `--replay` mode below (FU-2 in `docs/architecture/followups.md`).
+
+The **novelty bonus** (below) is displayed *on top of* this score and lives in
+separate fields — the twin-locked formula never absorbs it, so Codabench
+rankings are unaffected.
+
+## Solution capitalisation (shared solution base)
+
+Every proposition a player retains at a study commit is logged into a
+**shared solution base** via `POST /api/game/log-solution`, mirroring the
+manoeuvre IHM scenario base of `expert_op4grid_recommender` (JSON records
+under a persistent root, exact-duplicate dedup, the player name as author).
+
+- **Store** — `expert_backend/services/game_solutions.py`. One record per
+  unique proposition per `(network, contingency)` context under
+  `<root>/game_solutions/<context_key>/<sha1>.json`; a repeat retention
+  appends `{player, session, timestamp, solved, final_max_rho, …}` to the
+  record's `retentions`. Root resolution (manoeuvre-style cascade):
+  `COSTUDY4GRID_GAME_SOLUTIONS_DIR` env → `COSTUDY4GRID_DATA_DIR/game_solutions`
+  → repo-local `game_solutions/` (dev fallback, gitignored). On a
+  HuggingFace Space, enable **Settings → Persistent storage** and set
+  `COSTUDY4GRID_DATA_DIR=/data` so the base survives restarts and is shared
+  by every player of the Space.
+- **Signatures** — novelty is judged on magnitude-free *unitary signatures*
+  computed client-side by `frontend/src/game/solutionLog.ts`
+  (`buildActionLevers`): injections contribute **levers**
+  (`redispatch:<gen>`, `ls:<load>`, `rc:<gen>`, `pst:<pst>`) with **no
+  MW/tap value** — retuning a known lever is not novel, *mobilising a new
+  lever is*; switch-operating actions decompose into `switch:<id>=<state>`
+  levers — that covers manual SLD maneuvers (whose generated ids are not
+  stable) *and* catalogue coupling actions whose payload exposes switches,
+  so the same physical maneuver signs identically wherever it came from;
+  injection retunes without detail arrays sign `load_p:<load>` /
+  `gen_p:<gen>` (per element — an element already described by a detail
+  array is not double-signed). Actions exposing **no lever** (typically
+  catalogue line disconnections / reconnections) keep their stable
+  `action:<action_id>` identity. The proposition signature is the sorted
+  union of the actions' unitary signatures (order-independent).
+- **Novelty & bonus** — a proposition mobilising ≥ 1 never-seen unitary
+  signature is *completely new*: **+20 bonus pts** and the in-play
+  `GameNoveltyToast` announces it (with the new levers). A new combination
+  of already-known unitary actions earns **+10**. Bonuses are only paid
+  when **every retained action is effective**: it must beat the baseline
+  worst loading (or solve the study), and a combined `a+b` action must
+  additionally sit **≥ 1 loading-point (0.01 pu) below the best of its
+  underlying actions** (`COMBINED_MIN_RHO_GAIN` in solutionLog.ts — the
+  frontend computes the per-action `effective` flag, the backend gates the
+  points and echoes `novelty.effective`). A novel-but-ineffective
+  proposition is still recorded and flagged 🌟 in the results (no toast,
+  no points). Anything else is a
+  duplicate: no bonus, but the response carries each retained action's
+  **usage frequency** (`count / total` past retentions in the context),
+  which the results screen shows as end-of-session feedback.
+- **Beginner assistance (lever hints)** — `GET /api/game/lever-stats`
+  aggregates, per (network, contingency) context, the unitary levers most
+  mobilised across the stored base (each lever weighted by retention
+  events) and tags each with its equipment family (`voltage_level` /
+  `branch` / `generation` / `load` / `other` — derived from the signature
+  prefix, with catalogue-id heuristics for `action:` signatures). With the
+  config-screen **Beginner assistance** checkbox on (default), the
+  `GameHintsPanel` shows the top 5 for the current study in a collapsible
+  in-play panel — best-effort like the log itself (no data or no backend →
+  the panel stays hidden). **Clicking a lever pre-fills the Inspect field**
+  (auto-zoom included) with the underlying element — `leverInspectTarget`
+  strips the `disco_`/`reco_` catalogue prefixes down to the branch id —
+  via a `gameBridge.registerInspector` / `requestInspect` pair, so App.tsx
+  stays decoupled from game internals (one guarded registration effect).
+- **Flow** — `useGameSession` fires the log at every study commit,
+  fire-and-forget (a failed log never blocks or breaks the game — the study
+  simply carries no `solutionFeedback`). The session log is *derived* from
+  the results state, so feedback landing after the last commit still reaches
+  the exported JSON. The export stays `schemaVersion: "1.0"` — the new
+  per-study `solutionFeedback` field and the CSV `novelty_bonus` column are
+  additive and ignored by the Codabench scorer.
 
 ## Local end-to-end check
 

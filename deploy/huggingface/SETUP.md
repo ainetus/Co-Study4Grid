@@ -79,6 +79,31 @@ git add --renormalize . && git commit -m "migrate binaries to LFS"
    reference studies (Medium difficulty). Build without that flag for the bare
    workspace.
 
+## Persistent storage — the shared solution base survives restarts
+
+Game Mode **capitalises every retained proposition** (signed with the player
+name) into a shared solution base — `POST /api/game/log-solution` →
+`expert_backend/services/game_solutions.py` — which powers the novelty bonus
+and the end-of-session usage-frequency feedback. The mechanism mirrors the
+manoeuvre IHM scenario base of `expert_op4grid_recommender`:
+
+| Variable | Default | Role |
+|---|---|---|
+| `COSTUDY4GRID_DATA_DIR` | *(unset)* | Persistent **data root**. Set it to `/data` on a Space with persistent storage; the base lands in `/data/game_solutions`. |
+| `COSTUDY4GRID_GAME_SOLUTIONS_DIR` | `$COSTUDY4GRID_DATA_DIR/game_solutions`, else repo-local `game_solutions/` | Explicit override of the base directory. |
+
+To enable on the Space:
+
+1. Space → **Settings → Persistent storage** → choose a volume (paid HF
+   feature). It is mounted at **`/data`**.
+2. Space → **Settings → Variables** → *New variable*
+   **`COSTUDY4GRID_DATA_DIR` = `/data`**.
+
+Without persistent storage the base still works (players get novelty /
+frequency feedback within the life of the container) but **resets on every
+Space restart**. The store is tiny (one small JSON per unique proposition),
+so it will not crowd a volume.
+
 ## Automated redeploy on merge to `main` (GitHub Action)
 
 `.github/workflows/deploy-huggingface.yml` runs the orphan-snapshot push

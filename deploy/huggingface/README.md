@@ -56,3 +56,9 @@ lightsim2grid). The free CPU tier (2 vCPU / 16 GB) handles the bundled small and
 fr225_400 grids; first load after a cold start is slow while the container
 boots. Storage is ephemeral — game results are downloaded client-side, so
 nothing important lives on the Space disk.
+
+One exception worth persisting: the **shared solution base** (every retained
+proposition, signed with the player name, that feeds the novelty bonus and the
+usage-frequency feedback). Enable **Settings → Persistent storage** and set the
+`COSTUDY4GRID_DATA_DIR=/data` variable so it survives restarts — without it the
+base still works but resets on every reboot. See `deploy/huggingface/SETUP.md`.

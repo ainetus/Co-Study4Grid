@@ -53,6 +53,7 @@ export function buildSessionCsv(log: GameSessionLog): string {
     'final_max_rho',
     'solved',
     'chosen_action_ids',
+    'novelty_bonus',
   ];
   const rows = log.studies.map((s, i) =>
     [
@@ -71,6 +72,7 @@ export function buildSessionCsv(log: GameSessionLog): string {
       fmt(s.finalMaxRho),
       s.solved,
       s.actionsChosen.map((a) => a.actionId).join(' | '),
+      s.solutionFeedback?.novelty.bonusPoints ?? '',
     ]
       .map(csvCell)
       .join(','),

@@ -315,6 +315,22 @@ export const api = {
         });
         return response.data;
     },
+    logGameSolution: async (
+        payload: import('./types').LogGameSolutionRequest,
+    ): Promise<import('./types').LogGameSolutionResponse> => {
+        const response = await axios.post(`${API_BASE_URL}/api/game/log-solution`, payload);
+        return response.data;
+    },
+    getGameLeverStats: async (
+        networkPath: string,
+        contingencyId: string,
+        topN = 5,
+    ): Promise<import('./types').GameLeverStatsResponse> => {
+        const response = await axios.get(`${API_BASE_URL}/api/game/lever-stats`, {
+            params: { network_path: networkPath, contingency_id: contingencyId, top_n: topN },
+        });
+        return response.data;
+    },
     runAnalysisStep1: async (disconnectedElements: string[], signal?: AbortSignal): Promise<{ lines_overloaded: string[]; message: string; can_proceed: boolean }> => {
         const response = await axios.post(`${API_BASE_URL}/api/run-analysis-step1`, { disconnected_elements: disconnectedElements }, { signal });
         return response.data;

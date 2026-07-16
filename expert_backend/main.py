@@ -32,6 +32,7 @@ from expert_backend.services.api_errors import (
     install_error_handlers,
 )
 from expert_backend.services.diagram_mixin import ActionResultUnavailableError
+from expert_backend.game_api import install_game_routes
 from expert_backend.services.network_service import network_service
 from expert_backend.services.overflow_overlay import inject_overlay
 from expert_backend.services.paths import OVERFLOW_DIR
@@ -53,6 +54,11 @@ app = FastAPI()
 # {detail, code}; uncaught exceptions → clean 500 (no path leak) +
 # server-side logger.exception. See services/api_errors.py.
 install_error_handlers(app)
+
+# Game Mode solution-capitalisation routes (POST /api/game/log-solution,
+# GET /api/game/lever-stats) — registered from expert_backend/game_api.py
+# to keep this module under the size ceiling.
+install_game_routes(app)
 
 
 # --- Per-endpoint JSON gzip helper ---

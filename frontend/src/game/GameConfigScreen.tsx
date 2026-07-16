@@ -45,6 +45,7 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
   const [minutes, setMinutes] = useState(5);
   const [seconds, setSeconds] = useState(0);
   const [maxActions, setMaxActions] = useState(3);
+  const [assistance, setAssistance] = useState(true);
   const [difficulty, setDifficulty] = useState<Difficulty>(DEFAULT_DIFFICULTY);
   const tier = difficultyTier(difficulty);
   const [studies, setStudies] = useState<GameStudy[]>(tier.studies);
@@ -94,15 +95,17 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
   };
 
   const canStart = studies.length > 0 && timerSeconds >= 10 &&
+    player.trim().length > 0 &&
     studies.every((s) => s.networkPath && s.actionFilePath && s.contingencyElementId);
 
   const start = () => {
     if (!canStart) return;
     onStart({
       sessionName: sessionName.trim() || 'session',
-      player: player.trim() || undefined,
+      player: player.trim(),
       timerSeconds,
       maxActions,
+      assistance,
       studies,
     });
   };
@@ -132,9 +135,12 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
                 onChange={(e) => setSessionName(e.target.value)} />
             </div>
             <div>
-              <label style={labelStyle}>Player (optional)</label>
+              <label style={labelStyle}>Player name</label>
               <input style={inputStyle} value={player}
-                onChange={(e) => setPlayer(e.target.value)} placeholder="anonymous" />
+                onChange={(e) => setPlayer(e.target.value)} placeholder="your player name" />
+              <p style={{ color: colors.textTertiary, fontSize: text.xs, margin: `${space.half} 0 0` }}>
+                Signs the solutions you retain in the shared solution base.
+              </p>
             </div>
           </div>
           <div style={{ display: 'flex', gap: space[4], marginTop: space[3], alignItems: 'flex-end' }}>
@@ -164,6 +170,15 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
               </select>
             </div>
           </div>
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: space[1], marginTop: space[2],
+            fontSize: text.sm, color: colors.textSecondary, cursor: 'pointer',
+          }}>
+            <input type="checkbox" checked={assistance}
+              onChange={(e) => setAssistance(e.target.checked)} />
+            💡 Beginner assistance — show the 5 levers (voltage level, branch,
+            generation, load) most used by all players on each contingency
+          </label>
           <p style={{ color: colors.textTertiary, fontSize: text.xs, margin: `${space[1]} 0 0` }}>
             {tier.blurb}
           </p>
@@ -250,7 +265,7 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
         </div>
         {!canStart && (
           <p style={{ textAlign: 'right', color: colors.textTertiary, fontSize: text.xs, marginTop: space[1] }}>
-            Need ≥1 study, a ≥10 s timer, and every study must have a network, action file and contingency id.
+            Need a player name, ≥1 study, a ≥10 s timer, and every study must have a network, action file and contingency id.
           </p>
         )}
       </div>

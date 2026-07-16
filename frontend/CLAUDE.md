@@ -40,9 +40,14 @@ frontend/
     ├── test/setup.ts         # Vitest global setup (jest-dom matchers)
     ├── game/                 # Timed, scored Game Mode (0.8.0; active only with
     │                         # ?game=1). GameShell / useGameSession / gameBridge /
-    │                         # GameConfigScreen / GameHud / GameResults / scoring /
-    │                         # gameLog / presets / types. See the Game Mode section
-    │                         # below + docs/features/game-mode-codabench.md
+    │                         # GameConfigScreen / GameHud / GameResults /
+    │                         # GameNoveltyToast / GameHintsPanel (beginner
+    │                         # assistance: community's most-used levers per
+    │                         # contingency) / scoring / gameLog / solutionLog
+    │                         # (solution capitalisation: levers + novelty bonus +
+    │                         # usage frequencies) / presets / types. See the Game
+    │                         # Mode section below +
+    │                         # docs/features/game-mode-codabench.md
     ├── hooks/                # Custom hooks owning a slice of state
     │   ├── useSettings.ts          # All settings + setters → SettingsState
     │   ├── useActions.ts           # Action selection / favorite / reject
@@ -549,6 +554,26 @@ exactly as before.
 - **`scoring.ts`** is the in-browser twin of the Codabench Python scorer
   (`60·R + 25·R·A + 15·R·T`), locked to it by unit tests on both sides —
   edit the two together.
+- **`solutionLog.ts`** is the solution-capitalisation client: at every study
+  commit the retained proposition is logged to the shared solution base
+  (`POST /api/game/log-solution`) under the required player name. It computes
+  the magnitude-free levers (`buildActionLevers` — injections sign as
+  `redispatch:<gen>` / `ls:<load>` / … without MW, manual maneuvers as
+  per-switch levers) and `buildChosenActionRecord`, which the App.tsx publish
+  effect delegates to. Novelty feedback surfaces as the in-play
+  `GameNoveltyToast` (+bonus pts on top of the twin-locked score) and the
+  usage-frequency section of `GameResults`. Logging is fire-and-forget: a
+  failed POST never blocks the game.
+- **`GameHintsPanel.tsx`** is the beginner assistance (config-screen
+  checkbox, default on): a collapsible in-play panel listing the 5 levers
+  most used by all players on the current contingency
+  (`GET /api/game/lever-stats`), tagged voltage level / branch /
+  generation / load. Best-effort like the solution log — no data or no
+  backend hides the panel. Clicking a lever pre-fills the Inspect field
+  (auto-zoom) with its element (`leverInspectTarget`) through the
+  `gameBridge.registerInspector` / `requestInspect` pair — App registers
+  `handleInspectQueryChange` in one `isGameMode()`-guarded effect and
+  never imports game internals beyond the bridge/solutionLog helpers.
 - **`presets.ts`** lists curated **solvable** fr225_400 contingencies; keep
   them winnable (the `scripts/game_mode/e2e_game_session.py` backend replay
   verifies `can_proceed=True`).

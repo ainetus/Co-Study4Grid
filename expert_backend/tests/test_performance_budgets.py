@@ -54,15 +54,20 @@ class TestPerformanceBudgets:
             
             # Warm up
             service.simulate_manual_action("act1", "DISCO_1")
-            
-            # Measured run (using cache for N/N1 to isolate logic)
-            start_time = time.perf_counter()
-            service.simulate_manual_action("act1", "DISCO_1")
-            end_time = time.perf_counter()
-            
-            duration_ms = (end_time - start_time) * 1000
-            print(f"\n[PERF] 2,000 line simulation logic took {duration_ms:.2f}ms")
-            
+
+            # Measured runs (using cache for N/N1 to isolate logic).
+            # Best-of-3: an absolute wall-clock budget on a shared CI runner
+            # is dominated by scheduler noise (CPU steal, GC pauses) — a real
+            # regression slows EVERY run, noise rarely hits all three.
+            durations = []
+            for _ in range(3):
+                start_time = time.perf_counter()
+                service.simulate_manual_action("act1", "DISCO_1")
+                end_time = time.perf_counter()
+                durations.append((end_time - start_time) * 1000)
+            duration_ms = min(durations)
+            print(f"\n[PERF] 2,000 line simulation logic took {duration_ms:.2f}ms (best of 3)")
+
             # Target: < 50ms. Vectorized logic should easily be < 10ms on modern CPUs.
             assert duration_ms < 50, f"Performance regression! Logic took {duration_ms:.2f}ms (budget: 50ms)"
 
@@ -94,20 +99,24 @@ class TestPerformanceBudgets:
             # large-grid test above.
             service.simulate_manual_action("act1", "DISCO_1")
 
-            # Rebuild the side_effect iterator — the warm-up consumed the
-            # first two obs values we prepared. env.get_obs is re-driven
-            # from this iterator on every simulate_manual_action call.
-            obs_n2 = self._make_large_obs(n_lines)
-            obs_n1_2 = self._make_large_obs(n_lines)
-            obs_after2 = self._make_large_obs(n_lines)
-            obs_n1_2.simulate.return_value = (obs_after2, None, None, {"exception": None})
-            env.get_obs.side_effect = [obs_n2, obs_n1_2]
+            # Best-of-3 (same rationale as the large-grid test: shed shared-
+            # runner scheduler noise; a real regression slows every run).
+            # env.get_obs is re-driven from a side_effect iterator on every
+            # simulate_manual_action call, so it is rebuilt per run — the
+            # warm-up consumed the first two obs values we prepared.
+            durations = []
+            for _ in range(3):
+                obs_n2 = self._make_large_obs(n_lines)
+                obs_n1_2 = self._make_large_obs(n_lines)
+                obs_after2 = self._make_large_obs(n_lines)
+                obs_n1_2.simulate.return_value = (obs_after2, None, None, {"exception": None})
+                env.get_obs.side_effect = [obs_n2, obs_n1_2]
 
-            start_time = time.perf_counter()
-            service.simulate_manual_action("act1", "DISCO_1")
-            end_time = time.perf_counter()
-            
-            duration_ms = (end_time - start_time) * 1000
-            print(f"\n[PERF] 100 line simulation logic took {duration_ms:.2f}ms")
-            
+                start_time = time.perf_counter()
+                service.simulate_manual_action("act1", "DISCO_1")
+                end_time = time.perf_counter()
+                durations.append((end_time - start_time) * 1000)
+            duration_ms = min(durations)
+            print(f"\n[PERF] 100 line simulation logic took {duration_ms:.2f}ms (best of 3)")
+
             assert duration_ms < 150, f"Performance regression! Small logic took {duration_ms:.2f}ms (budget: 150ms)"
