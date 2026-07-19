@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, act, cleanup } from '@testing-library/react';
+import { render, act, cleanup, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import App from './App';
 import { gameBridge } from './game/gameBridge';
@@ -150,5 +150,13 @@ describe('Game Mode config propagation', () => {
       action_file_path: STUDY.actionFilePath,
       layout_path: STUDY.layoutPath,
     });
+
+    // Regression: the async boot hydration (getUserConfig → applyLoadedConfig)
+    // resolves AFTER loadGameStudy set the study path and must NOT clobber it
+    // back to config.json's grid. The displayed path field must show the
+    // STUDY's grid, not ENV_CONFIG.network_path (a different grid on purpose).
+    const netInput = screen.getByTestId('header-network-path-input') as HTMLInputElement;
+    expect(netInput.value).toBe(STUDY.networkPath);
+    expect(netInput.value).not.toBe(ENV_CONFIG.network_path);
   });
 });

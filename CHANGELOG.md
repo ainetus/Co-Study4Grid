@@ -29,6 +29,13 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   configured root for writability and falls back to a container-local dir when
   the mount isn't ready, so a misconfigured/absent mount never turns a
   best-effort retention into an HTTP 500. See `deploy/huggingface/SETUP.md`.
+- **Fixed: displayed network path snapping to the wrong grid.** In Game Mode
+  the banner "Network Path" field (and Settings → Paths) sometimes showed the
+  bundled `fr225_400` default while the study's grid was the one actually
+  loaded. Cause: the async boot config hydration (`getUserConfig` →
+  `applyLoadedConfig`) raced `loadGameStudy` and overwrote the study's paths
+  with `config.json`'s. The hydration now skips the grid paths in Game Mode —
+  the active study owns them — so the field always reflects the loaded grid.
 
 ### Game Mode — solution capitalisation: shared base, novelty bonus, usage-frequency feedback
 
