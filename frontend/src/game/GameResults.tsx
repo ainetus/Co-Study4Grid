@@ -9,7 +9,7 @@ import { colors, space, text, radius } from '../styles/tokens';
 import { buildSessionCsv, downloadFile, slugifySession } from './gameLog';
 import { scoreSession } from './scoring';
 import { sessionNoveltyBonus } from './solutionLog';
-import type { ActionUsageFrequency, GameSessionLog } from './types';
+import type { ActionUsageFrequency, GameSessionLog, GameStudyResult } from './types';
 
 interface GameResultsProps {
   log: GameSessionLog;
@@ -40,10 +40,21 @@ function frequencyLabel(f: ActionUsageFrequency): string {
   return `retained in ${f.count} / ${f.total} prior retentions (${(f.share * 100).toFixed(0)}%)`;
 }
 
+/** Novelty bonus earned on one study — the score.perStudy entry stays twin-locked to the Codabench formula. */
+function studyBonus(s: GameStudyResult): number {
+  return s.solutionFeedback?.novelty.bonusPoints ?? 0;
+}
+
 export default function GameResults({ log, onReplay }: GameResultsProps) {
   const score = scoreSession(log);
   const slug = slugifySession(log.sessionName);
   const noveltyBonus = sessionNoveltyBonus(log.studies);
+  // Bonus is attributed to the scenario that earned it, then the session
+  // total is derived from those bonus-inclusive per-study scores — not a
+  // lump sum tacked onto the already-averaged final score.
+  const finalScoreWithBonus = score.nStudies
+    ? score.perStudy.reduce((sum, sc, i) => sum + sc.total + studyBonus(log.studies[i]), 0) / score.nStudies
+    : score.finalScore;
   const studiesWithFeedback = log.studies.filter(
     (s) => s.solutionFeedback && s.solutionFeedback.frequencies.length > 0);
 
@@ -81,12 +92,12 @@ export default function GameResults({ log, onReplay }: GameResultsProps) {
             </div>
             {noveltyBonus > 0 && (
               <div style={{ fontSize: text.sm, color: colors.accentText, marginTop: space[1], fontWeight: 600 }}>
-                🌟 +{noveltyBonus} novelty bonus pts — {score.finalScore.toFixed(1)} + {noveltyBonus} = {(score.finalScore + noveltyBonus).toFixed(1)} with bonus
+                🌟 +{noveltyBonus} novelty bonus pts added to the scenarios that earned them (see Score column) — session score with bonus: {finalScoreWithBonus.toFixed(1)}
               </div>
             )}
             <div style={{ fontSize: text.xs, color: colors.textTertiary, marginTop: space[1] }}>
               Score = mean of per-study scores (physical result 60% · action economy 25% · speed 15%).
-              {noveltyBonus > 0 && ' The novelty bonus rewards solutions never retained before and is shown on top of the Codabench score.'}
+              {noveltyBonus > 0 && ' The novelty bonus rewards solutions never retained before and is added directly to the score of the scenario that earned it.'}
             </div>
           </div>
         </div>
@@ -111,6 +122,7 @@ export default function GameResults({ log, onReplay }: GameResultsProps) {
             <tbody>
               {log.studies.map((s, i) => {
                 const sc = score.perStudy[i];
+                const bonus = studyBonus(s);
                 return (
                   <tr key={s.studyId}>
                     <td style={td}>{i + 1}</td>
@@ -153,7 +165,14 @@ export default function GameResults({ log, onReplay }: GameResultsProps) {
                     <td style={td}>{pct(s.baselineMaxRho)} → {pct(s.finalMaxRho)}</td>
                     <td style={td}>{s.numActions} / {s.maxActions}</td>
                     <td style={td}>{(s.durationMs / 1000).toFixed(0)}s / {s.timeLimitSeconds}s</td>
-                    <td style={{ ...td, fontWeight: 700 }}>{sc.total.toFixed(1)}</td>
+                    <td style={{ ...td, fontWeight: 700 }}>
+                      {(sc.total + bonus).toFixed(1)}
+                      {bonus > 0 && (
+                        <div style={{ fontSize: text.xs, fontWeight: 400, color: colors.accentText }}>
+                          {sc.total.toFixed(1)} + {bonus} bonus
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
