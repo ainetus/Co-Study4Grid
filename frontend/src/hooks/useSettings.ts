@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { api } from '../api';
 import type { ModelDescriptor, UserConfig } from '../api';
 import type { SettingsBackup } from '../types';
+import { gameBridge } from '../game/gameBridge';
 import { interactionLogger } from '../utils/interactionLogger';
 
 export interface SettingsState {
@@ -156,11 +157,20 @@ export function useSettings(): SettingsState {
   const configLoadedRef = useRef(false);
 
   const applyLoadedConfig = useCallback((cfg: UserConfig) => {
-    if (cfg.network_path !== undefined) setNetworkPath(cfg.network_path);
-    if (cfg.action_file_path !== undefined) setActionPath(cfg.action_file_path);
-    if (cfg.layout_path !== undefined) setLayoutPath(cfg.layout_path);
+    // In Game Mode the active STUDY dictates the network / action / layout /
+    // monitoring paths — `loadGameStudy` sets them. This boot hydration is
+    // async and would otherwise race that loader: `config.json` ships the
+    // bundled fr225_400 default, so applying its paths here overwrites the
+    // study's grid in the path field (and Settings) while the study's grid is
+    // the one actually loaded. Skip the grid paths in game mode; the
+    // recommender minima below still come from the persisted config.
+    if (!gameBridge.isGameMode()) {
+      if (cfg.network_path !== undefined) setNetworkPath(cfg.network_path);
+      if (cfg.action_file_path !== undefined) setActionPath(cfg.action_file_path);
+      if (cfg.layout_path !== undefined) setLayoutPath(cfg.layout_path);
+      if (cfg.lines_monitoring_path !== undefined) setLinesMonitoringPath(cfg.lines_monitoring_path);
+    }
     if (cfg.output_folder_path !== undefined) setOutputFolderPath(cfg.output_folder_path);
-    if (cfg.lines_monitoring_path !== undefined) setLinesMonitoringPath(cfg.lines_monitoring_path);
     if (cfg.min_line_reconnections !== undefined) setMinLineReconnections(cfg.min_line_reconnections);
     if (cfg.min_close_coupling !== undefined) setMinCloseCoupling(cfg.min_close_coupling);
     if (cfg.min_open_coupling !== undefined) setMinOpenCoupling(cfg.min_open_coupling);

@@ -25,6 +25,7 @@ from expert_backend.services.game_solution_models import (
     GameLeverStatsResponse,
     LogGameSolutionRequest,
     LogGameSolutionResponse,
+    PlayerSessionsResponse,
 )
 
 
@@ -60,3 +61,10 @@ def install_game_routes(app: FastAPI) -> None:
                 network_path, contingency_id, top_n=top_n)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
+
+    @app.get("/api/game/player-sessions", response_model=PlayerSessionsResponse)
+    def game_player_sessions(player: str = Query("")) -> dict:
+        """Distinct sessions a player has already recorded in the shared
+        solution base — seeds the default session name / index on the Game
+        Mode config screen. Read-only store scan; an empty handle → zero."""
+        return game_solutions.player_session_count(player)

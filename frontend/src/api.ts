@@ -331,6 +331,14 @@ export const api = {
         });
         return response.data;
     },
+    getPlayerSessions: async (
+        player: string,
+    ): Promise<import('./types').PlayerSessionsResponse> => {
+        const response = await axios.get(`${API_BASE_URL}/api/game/player-sessions`, {
+            params: { player },
+        });
+        return response.data;
+    },
     runAnalysisStep1: async (disconnectedElements: string[], signal?: AbortSignal): Promise<{ lines_overloaded: string[]; message: string; can_proceed: boolean }> => {
         const response = await axios.post(`${API_BASE_URL}/api/run-analysis-step1`, { disconnected_elements: disconnectedElements }, { signal });
         return response.data;

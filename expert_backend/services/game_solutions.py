@@ -102,6 +102,48 @@ def solutions_dir() -> Path:
     return _PROJECT_ROOT / "game_solutions"
 
 
+# Remembers which preferred roots already logged a fallback, so a persistently
+# unwritable mount doesn't spam the log on every retention.
+_EFFECTIVE_FALLBACK_WARNED: dict[str, bool] = {}
+
+
+def _effective_base_dir() -> Path:
+    """Resolve the solution base to a directory we can actually write.
+
+    :func:`solutions_dir` returns the *configured* preference — typically a
+    persistent volume such as a HuggingFace bucket mounted read-write and
+    pointed at by ``COSTUDY4GRID_DATA_DIR``. That path may not be ready yet
+    (mount still coming up) or may be read-only; rather than let a retention
+    turn into an HTTP 500 (solution logging is best-effort and must never
+    break the game), probe it and fall back to the repo-local
+    ``game_solutions/`` when it isn't writable. Reads and writes both go
+    through here so they always agree within the process.
+    """
+    preferred = solutions_dir()
+    fallback = _PROJECT_ROOT / "game_solutions"
+    if preferred == fallback:
+        return preferred
+    try:
+        preferred.mkdir(parents=True, exist_ok=True)
+        # Thread-unique probe name so concurrent retentions can't unlink each
+        # other's file and misread the base as unwritable.
+        probe = preferred / f".write_probe_{os.getpid()}_{threading.get_ident()}"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        return preferred
+    except OSError as exc:
+        key = str(preferred)
+        if not _EFFECTIVE_FALLBACK_WARNED.get(key):
+            _EFFECTIVE_FALLBACK_WARNED[key] = True
+            logger.warning(
+                "Game solution base %s is not writable (%s); falling back to %s. "
+                "On a HuggingFace Space, attach the bucket as a read-write volume "
+                "and set COSTUDY4GRID_DATA_DIR to its mount path.",
+                preferred, exc, fallback,
+            )
+        return fallback
+
+
 def _safe_name(name: str, fallback: str = "unnamed") -> str:
     """Filesystem-safe slug (same alphabet as the manoeuvre IHM store —
     path separators collapse to ``_``, so a crafted id cannot escape the
@@ -262,7 +304,7 @@ def lever_stats(network_path: str, contingency_id: str, top_n: int = 5) -> dict:
     key = context_key(network_path, contingency)
 
     with _STORE_LOCK:
-        records = _load_records(solutions_dir() / key)
+        records = _load_records(_effective_base_dir() / key)
 
     counts: dict[str, int] = {}
     samples: dict[str, str] = {}
@@ -325,7 +367,7 @@ def log_solution(payload: dict) -> dict:
 
     signature, all_sigs, per_action_sigs = proposition_signature(actions)
     key = context_key(network_path, contingency_id)
-    ctx_dir = solutions_dir() / key
+    ctx_dir = _effective_base_dir() / key
 
     retention = {
         "player": (str(payload.get("player") or "")).strip() or None,
@@ -419,3 +461,34 @@ def log_solution(payload: dict) -> dict:
             "total_retentions": total_past + 1,
         },
     }
+
+
+def player_session_count(player: str) -> dict:
+    """How many distinct sessions ``player`` has already recorded in the base.
+
+    Used to seed a default session name / index on the Game Mode config
+    screen (``<player> — session <n+1>``). A "session" is a distinct
+    ``session_name`` under which the player signed at least one retained
+    solution; the player handle match is case-insensitive. Read-only scan of
+    the effective base — a player who never retained anything (or an empty
+    handle) counts as zero.
+    """
+    name = (player or "").strip()
+    if not name:
+        return {"player": "", "session_count": 0}
+    target = name.casefold()
+    base = _effective_base_dir()
+    sessions: set[str] = set()
+    if base.is_dir():
+        with _STORE_LOCK:
+            for ctx_dir in sorted(base.iterdir()):
+                if not ctx_dir.is_dir():
+                    continue
+                for _, record in _load_records(ctx_dir):
+                    for retention in record.get("retentions") or []:
+                        if str(retention.get("player") or "").strip().casefold() != target:
+                            continue
+                        session_name = str(retention.get("session_name") or "").strip()
+                        if session_name:
+                            sessions.add(session_name)
+    return {"player": name, "session_count": len(sessions)}

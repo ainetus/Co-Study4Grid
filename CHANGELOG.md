@@ -7,6 +7,43 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Game Mode — simplified landing page, per-network preview, bucket-backed persistence
+
+- **Config screen redesign** — the start screen now leads with a simple landing:
+  **player name → auto-filled session name → beginner-assistance toggle →
+  ▶ Start session**, with a summary of the configured studies and a map of the
+  network to be played shown below. The per-study timer, action cap, difficulty
+  and the full study editor moved behind a **⚙ Configure settings** toggle so a
+  participant arriving on the HuggingFace Space can start in three fields.
+- **Default session name** — auto-filled to `<player> — session <n+1>`, where
+  `n` is the player's existing session count in the shared base, via the new
+  `GET /api/game/player-sessions` (`player_session_count` in
+  `services/game_solutions.py`). Editable; a name the player types is never
+  overwritten. Falls back to `session 1` when the backend is unreachable.
+- **Per-network preview maps** — the landing page shows each grid's network the
+  way the "Network (N)" NAD does fully zoomed out: voltage levels positioned
+  from `grid_layout.json` (north up) with the transmission lines drawn as edges,
+  the ≥350 kV backbone red and lower voltages green (the colour-blind-safe
+  Okabe-Ito vermillion / bluish-green pair).
+  `scripts/game_mode/gen_network_previews.py` reads the line topology straight
+  from `network.xiidm` (the `voltageLevelId1/2` attributes — no pypowsybl
+  needed) into `frontend/public/game/preview-{medium,high}.svg`; when a grid's
+  network file is an un-smudged Git-LFS pointer it falls back to a node-only
+  scatter and never downgrades a committed edge map.
+- **Bucket-backed shared base** — the solution base can now be persisted to a
+  HuggingFace **Bucket** (or persistent storage) mounted read-write at `/data`
+  with `COSTUDY4GRID_DATA_DIR=/data`. `_effective_base_dir` probes the
+  configured root for writability and falls back to a container-local dir when
+  the mount isn't ready, so a misconfigured/absent mount never turns a
+  best-effort retention into an HTTP 500. See `deploy/huggingface/SETUP.md`.
+- **Fixed: displayed network path snapping to the wrong grid.** In Game Mode
+  the banner "Network Path" field (and Settings → Paths) sometimes showed the
+  bundled `fr225_400` default while the study's grid was the one actually
+  loaded. Cause: the async boot config hydration (`getUserConfig` →
+  `applyLoadedConfig`) raced `loadGameStudy` and overwrote the study's paths
+  with `config.json`'s. The hydration now skips the grid paths in Game Mode —
+  the active study owns them — so the field always reflects the loaded grid.
+
 ### Game Mode — solution capitalisation: shared base, novelty bonus, usage-frequency feedback
 
 Every remedial-action proposition a player retains (stars) at a study commit

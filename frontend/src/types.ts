@@ -870,6 +870,12 @@ export interface GameLeverStatsResponse {
     levers: GameLeverStatWire[];
 }
 
+export interface PlayerSessionsResponse {
+    player: string;
+    /** Distinct sessions this player already recorded in the shared base. */
+    session_count: number;
+}
+
 export interface LogGameSolutionResponse {
     stored: boolean;
     duplicate: boolean;

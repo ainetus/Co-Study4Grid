@@ -107,11 +107,16 @@ expert_backend/
 │   ├── game_solutions.py          # Game Mode solution capitalisation store —
 │   │                              # shared per-(network, contingency) JSON base
 │   │                              # (novelty/bonus + usage frequencies) behind
-│   │                              # POST /api/game/log-solution. Pure file IO,
+│   │                              # POST /api/game/log-solution + player-session
+│   │                              # count (player_session_count). Pure file IO,
 │   │                              # no pypowsybl; root resolved per call:
 │   │                              # COSTUDY4GRID_GAME_SOLUTIONS_DIR →
 │   │                              # COSTUDY4GRID_DATA_DIR/game_solutions →
 │   │                              # repo-local game_solutions/ (gitignored).
+│   │                              # _effective_base_dir probes writability and
+│   │                              # falls back to repo-local when the configured
+│   │                              # mount (e.g. an HF bucket) isn't writable, so
+│   │                              # a bad mount never 500s a retention.
 │   │                              # See docs/features/game-mode-codabench.md.
 │   ├── game_solution_models.py    # Pydantic wire models of the two game
 │   │                              # endpoints — kept out of main.py so it
@@ -389,6 +394,9 @@ Game Mode:
   (network, contingency) context, tagged by equipment family
   (`voltage_level` / `branch` / `generation` / `load` / `other`).
   Read-only store scan; feeds the Game Mode beginner-assistance panel.
+- `GET /api/game/player-sessions` — count of distinct sessions a player
+  already recorded in the shared base (`player_session_count`); seeds the
+  default session name / index on the Game Mode config screen. Read-only.
 
 OS pickers & static:
 - `GET  /api/pick-path?type=file|dir` — spawns a tkinter subprocess.

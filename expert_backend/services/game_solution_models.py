@@ -95,3 +95,10 @@ class GameLeverStatsResponse(BaseModel):
     context_key: str
     total_retentions: int
     levers: list[GameLeverStat]
+
+
+class PlayerSessionsResponse(BaseModel):
+    player: str
+    # Distinct sessions this player already recorded in the shared base;
+    # seeds the default session name (`<player> — session <count+1>`).
+    session_count: int
