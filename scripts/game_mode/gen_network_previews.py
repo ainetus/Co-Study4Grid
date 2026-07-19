@@ -9,8 +9,8 @@ Each difficulty tier plays on one grid; the landing page shows a small map of
 that grid so a participant can see the network they are about to work on. This
 renders the same thing the app's "Network (N)" NAD shows fully zoomed out —
 voltage levels positioned from ``grid_layout.json`` with the lines between them
-drawn as edges, coloured by nominal kV — into a compact, dependency-free SVG
-committed under ``frontend/public/game/``.
+drawn as edges, the >= 350 kV backbone red and everything below green — into a
+compact, dependency-free SVG committed under ``frontend/public/game/``.
 
 The line topology (which two voltage levels each line/transformer connects) is
 read straight from ``network.xiidm`` — no pypowsybl needed, just the
@@ -41,15 +41,16 @@ _GRIDS = [
     ("high", "data/pypsa_eur_fr225_400", "preview-high.svg"),
 ]
 
-# Node/edge colour by nominal kV — medium-luminance tones that read on both the
-# light and dark config-screen cards (the SVG is shown as a themeless <img>).
-_KV_COLORS = {
-    220: "#2dd4bf",
-    225: "#38bdf8",
-    380: "#a78bfa",
-    400: "#fb923c",
-}
-_OTHER_COLOR = "#94a3b8"
+# Voltage colouring: the >= 350 kV backbone (380 / 400 kV) is red, everything
+# below (220 / 225 kV) is green. The two shades are the Okabe-Ito "vermillion"
+# and "bluish green" — a warm/cool pair chosen so red-green colour-blind
+# viewers can still tell them apart (they separate on the blue channel and
+# lightness, not only the red-green axis), and both sit at a medium luminance
+# that reads on the light AND dark config-screen card (the SVG is a themeless
+# <img>).
+_HV_THRESHOLD_KV = 350
+_HV_COLOR = "#d55e00"  # >= 350 kV — "red"
+_LV_COLOR = "#009e73"  # < 350 kV — "green"
 
 _WIDTH = 900
 _PADDING = 24
@@ -69,7 +70,12 @@ def _kv_of(node_id: str) -> int:
 
 
 def _color_of(kv: int) -> str:
-    return _KV_COLORS.get(kv, _OTHER_COLOR)
+    return _HV_COLOR if kv >= _HV_THRESHOLD_KV else _LV_COLOR
+
+
+def _draw_order(color: str) -> int:
+    """Draw the LV (green) layer first so the HV (red) backbone sits on top."""
+    return 1 if color == _HV_COLOR else 0
 
 
 def _load_network_xml(grid_dir: Path) -> str | None:
@@ -119,8 +125,11 @@ def _projector(layout: dict):
             return None
         x, y = coords[0], coords[1]
         px = _PADDING + (x - min_x) / span_x * inner_w
-        # Flip Y: layout is metres-up, SVG is pixels-down.
-        py = _PADDING + (max_y - y) / span_y * inner_h
+        # The layout's y already increases SOUTHWARD (north = smaller y — LILLE
+        # sits at a large negative y, TOULOUSE at a large positive one), which
+        # is the same sense as the screen's y-down axis, so map it directly. A
+        # flip here would render the network upside down.
+        py = _PADDING + (y - min_y) / span_y * inner_h
         return round(px, 1), round(py, 1)
 
     return project, height
@@ -162,17 +171,14 @@ def _build_edge_map(layout: dict, edges: list[tuple[str, str]]) -> str:
             continue
         orphan_pts.setdefault(_color_of(_kv_of(node_id)), []).append(p)
 
-    def kv_rank(color: str) -> int:
-        return next((kv for kv, c in _KV_COLORS.items() if c == color), 0)
-
     parts = [_svg_header(height)]
-    for color, segs in sorted(edge_paths.items(), key=lambda kc: kv_rank(kc[0])):
+    for color, segs in sorted(edge_paths.items(), key=lambda kc: _draw_order(kc[0])):
         parts.append(
             f'<path d="{"".join(segs)}" fill="none" stroke="{color}" '
             f'stroke-width="{_EDGE_WIDTH}" stroke-opacity="0.85" '
             f'stroke-linecap="round" stroke-linejoin="round"/>'
         )
-    for color, pts in sorted(orphan_pts.items(), key=lambda kc: kv_rank(kc[0])):
+    for color, pts in sorted(orphan_pts.items(), key=lambda kc: _draw_order(kc[0])):
         parts.append(f'<g fill="{color}" fill-opacity="0.9">')
         parts.append("".join(f'<circle cx="{x}" cy="{y}" r="{_NODE_RADIUS}"/>' for x, y in pts))
         parts.append("</g>")
@@ -192,11 +198,8 @@ def _build_node_scatter(layout: dict) -> str:
             continue
         by_color.setdefault(_color_of(_kv_of(node_id)), []).append(p)
 
-    def kv_rank(color: str) -> int:
-        return next((kv for kv, c in _KV_COLORS.items() if c == color), 0)
-
     parts = [_svg_header(height)]
-    for color, pts in sorted(by_color.items(), key=lambda kc: kv_rank(kc[0])):
+    for color, pts in sorted(by_color.items(), key=lambda kc: _draw_order(kc[0])):
         parts.append(f'<g fill="{color}" fill-opacity="0.82">')
         parts.append("".join(f'<circle cx="{x}" cy="{y}" r="2.3"/>' for x, y in pts))
         parts.append("</g>")

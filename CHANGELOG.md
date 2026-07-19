@@ -22,12 +22,14 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   overwritten. Falls back to `session 1` when the backend is unreachable.
 - **Per-network preview maps** — the landing page shows each grid's network the
   way the "Network (N)" NAD does fully zoomed out: voltage levels positioned
-  from `grid_layout.json` with the transmission lines drawn as edges, coloured
-  by kV. `scripts/game_mode/gen_network_previews.py` reads the line topology
-  straight from `network.xiidm` (the `voltageLevelId1/2` attributes — no
-  pypowsybl needed) into `frontend/public/game/preview-{medium,high}.svg`; when
-  a grid's network file is an un-smudged Git-LFS pointer it falls back to a
-  node-only scatter and never downgrades a committed edge map.
+  from `grid_layout.json` (north up) with the transmission lines drawn as edges,
+  the ≥350 kV backbone red and lower voltages green (the colour-blind-safe
+  Okabe-Ito vermillion / bluish-green pair).
+  `scripts/game_mode/gen_network_previews.py` reads the line topology straight
+  from `network.xiidm` (the `voltageLevelId1/2` attributes — no pypowsybl
+  needed) into `frontend/public/game/preview-{medium,high}.svg`; when a grid's
+  network file is an un-smudged Git-LFS pointer it falls back to a node-only
+  scatter and never downgrades a committed edge map.
 - **Bucket-backed shared base** — the solution base can now be persisted to a
   HuggingFace **Bucket** (or persistent storage) mounted read-write at `/data`
   with `COSTUDY4GRID_DATA_DIR=/data`. `_effective_base_dir` probes the
