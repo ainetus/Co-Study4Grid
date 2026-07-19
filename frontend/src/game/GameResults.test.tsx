@@ -79,6 +79,29 @@ describe('GameResults — solution capitalisation feedback', () => {
     expect(screen.getByText(/retained in 3 \/ 4 prior retentions \(75%\)/)).toBeInTheDocument();
   });
 
+  it('adds the bonus to the scenario that earned it, not just to the global score', () => {
+    // Single study: physical=60, actions=25, time=6 -> sc.total=91, +20 bonus -> 111.0.
+    const log = sessionLog([
+      studyResult({
+        solutionFeedback: {
+          studyId: 's1',
+          novelty: { newProposition: true, newLevers: ['action:disco_A'], effective: true, bonusPoints: 20 },
+          frequencies: [],
+        },
+      }),
+    ]);
+
+    render(<GameResults log={log} onReplay={vi.fn()} />);
+
+    // Score column shows the bonus-inclusive total for that scenario, with
+    // a breakdown of the base + bonus, not the bare base score.
+    expect(screen.getByText('111.0')).toBeInTheDocument();
+    expect(screen.getByText('91.0 + 20 bonus')).toBeInTheDocument();
+    // The session-level "with bonus" figure matches the same 111.0 (mean
+    // of one bonus-inclusive study), not a naive base + total-bonus sum.
+    expect(screen.getByText(/session score with bonus: 111\.0/)).toBeInTheDocument();
+  });
+
   it('flags a novel-but-ineffective proposition without paying the bonus', () => {
     const log = sessionLog([
       studyResult({

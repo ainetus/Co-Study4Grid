@@ -43,6 +43,17 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   `applyLoadedConfig`) raced `loadGameStudy` and overwrote the study's paths
   with `config.json`'s. The hydration now skips the grid paths in Game Mode —
   the active study owns them — so the field always reflects the loaded grid.
+- **Fixed: novelty bonus attributed to the global score instead of its
+  scenario.** The results screen (`GameResults.tsx`) showed each solved
+  study's `🌟 new +N` badge in the Result column, but the Score column next
+  to it still displayed the bare per-study score — the bonus only ever
+  appeared as a single lump sum tacked onto the already-averaged session
+  final score ("80.5 + 60 = 140.5 with bonus"). The Score column now adds
+  the bonus directly to the scenario that earned it, and the session-level
+  "with bonus" figure is derived from those bonus-inclusive per-study totals
+  (their mean) instead of a flat sum added after averaging. The twin-locked
+  60/25/15 `scoring.ts` formula (and the Codabench-submitted JSON) are
+  unchanged — this is a display-only fix.
 
 ### Game Mode — solution capitalisation: shared base, novelty bonus, usage-frequency feedback
 
