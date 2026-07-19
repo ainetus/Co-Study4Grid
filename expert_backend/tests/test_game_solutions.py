@@ -288,6 +288,61 @@ def test_solutions_dir_env_cascade(tmp_path, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# Writable-base fallback (a not-yet-mounted / read-only bucket must not 500)
+# ---------------------------------------------------------------------------
+
+def _wire_unwritable_preferred(tmp_path, monkeypatch):
+    """Point the preferred base at an uncreatable path (parent is a file) and
+    redirect the repo-local fallback into the temp dir."""
+    monkeypatch.setattr(game_solutions, "_PROJECT_ROOT", tmp_path)
+    blocker = tmp_path / "blocker"
+    blocker.write_text("x", encoding="utf-8")
+    monkeypatch.setenv("COSTUDY4GRID_GAME_SOLUTIONS_DIR", str(blocker / "nested"))
+    game_solutions._EFFECTIVE_FALLBACK_WARNED.clear()
+
+
+def test_effective_base_dir_falls_back_when_unwritable(tmp_path, monkeypatch):
+    _wire_unwritable_preferred(tmp_path, monkeypatch)
+    assert game_solutions._effective_base_dir() == tmp_path / "game_solutions"
+
+
+def test_log_solution_survives_unwritable_preferred_base(tmp_path, monkeypatch):
+    _wire_unwritable_preferred(tmp_path, monkeypatch)
+    res = game_solutions.log_solution(payload())
+    assert res["stored"] is True
+    # Landed in the repo-local fallback, not the unwritable preferred base.
+    files = list((tmp_path / "game_solutions").glob("*/*.json"))
+    assert len(files) == 1
+
+
+# ---------------------------------------------------------------------------
+# player_session_count — default session-name / index seed
+# ---------------------------------------------------------------------------
+
+def test_player_session_count_counts_distinct_sessions(store_dir):
+    game_solutions.log_solution(payload(player="alice", session_name="s1"))
+    # Same session, different proposition (same contingency) → still one session.
+    game_solutions.log_solution(payload(player="alice", session_name="s1",
+        actions=[{"action_id": "reco_B", "levers": []}]))
+    # A second session on another contingency.
+    game_solutions.log_solution(payload(player="alice", session_name="s2",
+        contingency_id="other_line"))
+    game_solutions.log_solution(payload(player="bob", session_name="s9"))
+
+    assert game_solutions.player_session_count("alice") == {
+        "player": "alice", "session_count": 2}
+    # Handle match is case-insensitive.
+    assert game_solutions.player_session_count("ALICE")["session_count"] == 2
+    assert game_solutions.player_session_count("bob")["session_count"] == 1
+    assert game_solutions.player_session_count("carol")["session_count"] == 0
+
+
+def test_player_session_count_empty_handle(store_dir):
+    assert game_solutions.player_session_count("  ") == {
+        "player": "", "session_count": 0}
+
+
+# ---------------------------------------------------------------------------
 # lever_stats — beginner-assistance hints
 # ---------------------------------------------------------------------------
 
@@ -395,3 +450,15 @@ def test_lever_stats_endpoint(store_dir, client):
 
     missing = client.get("/api/game/lever-stats", params={"contingency_id": " "})
     assert missing.status_code == 400
+
+
+def test_player_sessions_endpoint(store_dir, client):
+    client.post("/api/game/log-solution", json=payload(player="alice", session_name="s1"))
+    client.post("/api/game/log-solution", json=payload(
+        player="alice", session_name="s2", contingency_id="c2"))
+    resp = client.get("/api/game/player-sessions", params={"player": "alice"})
+    assert resp.status_code == 200
+    assert resp.json() == {"player": "alice", "session_count": 2}
+
+    empty = client.get("/api/game/player-sessions", params={"player": ""})
+    assert empty.json() == {"player": "", "session_count": 0}

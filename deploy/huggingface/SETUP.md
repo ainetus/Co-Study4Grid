@@ -92,17 +92,39 @@ manoeuvre IHM scenario base of `expert_op4grid_recommender`:
 | `COSTUDY4GRID_DATA_DIR` | *(unset)* | Persistent **data root**. Set it to `/data` on a Space with persistent storage; the base lands in `/data/game_solutions`. |
 | `COSTUDY4GRID_GAME_SOLUTIONS_DIR` | `$COSTUDY4GRID_DATA_DIR/game_solutions`, else repo-local `game_solutions/` | Explicit override of the base directory. |
 
-To enable on the Space:
+The store is a plain directory of small JSON files (one per unique
+proposition), so **any read-write volume mounted into the container** persists
+it. Pick one of the two options below and point `COSTUDY4GRID_DATA_DIR` at the
+mount — the store writes there with no code change.
+
+### Option A — HuggingFace Bucket (recommended: shareable, decoupled from the Space)
+
+A [Bucket](https://huggingface.co/docs/hub/storage-buckets) is S3-like object
+storage under your namespace (e.g. `hf://buckets/amarot/Co-Study4Grid-storage`).
+HuggingFace mounts an attached bucket into the Space container **read-write by
+default** — the same idea as `hf-mount`, managed for you — so the solution base
+lands straight in the bucket and survives restarts *and* Space rebuilds.
+
+1. Create the bucket (once): Hub → **Buckets → New** (or `hf buckets create
+   amarot/Co-Study4Grid-storage`).
+2. Attach it to the Space as a volume mounted at **`/data`**: Space →
+   **Settings → Variables and secrets → Volumes** (or when creating the
+   Space) → add the bucket with mount path `/data`, **read-write**.
+3. Space → **Settings → Variables** → **`COSTUDY4GRID_DATA_DIR` = `/data`**
+   (the base then lands in `/data/game_solutions`, i.e. under the bucket).
+
+### Option B — HuggingFace persistent storage volume
 
 1. Space → **Settings → Persistent storage** → choose a volume (paid HF
    feature). It is mounted at **`/data`**.
-2. Space → **Settings → Variables** → *New variable*
-   **`COSTUDY4GRID_DATA_DIR` = `/data`**.
+2. Space → **Settings → Variables** → **`COSTUDY4GRID_DATA_DIR` = `/data`**.
 
-Without persistent storage the base still works (players get novelty /
-frequency feedback within the life of the container) but **resets on every
-Space restart**. The store is tiny (one small JSON per unique proposition),
-so it will not crowd a volume.
+Either way, if the mount is missing or not yet ready when a retention arrives,
+the store logs a warning and **falls back to a container-local directory**
+(`_effective_base_dir` in `services/game_solutions.py`) instead of failing the
+request — solution logging is best-effort and never breaks the game. Without a
+persistent mount the base still works within the life of the container but
+**resets on every restart**.
 
 ## Automated redeploy on merge to `main` (GitHub Action)
 

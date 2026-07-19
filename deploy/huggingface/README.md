@@ -59,6 +59,8 @@ nothing important lives on the Space disk.
 
 One exception worth persisting: the **shared solution base** (every retained
 proposition, signed with the player name, that feeds the novelty bonus and the
-usage-frequency feedback). Enable **Settings → Persistent storage** and set the
-`COSTUDY4GRID_DATA_DIR=/data` variable so it survives restarts — without it the
-base still works but resets on every reboot. See `deploy/huggingface/SETUP.md`.
+usage-frequency feedback). Attach a read-write volume — either a **Bucket**
+(`hf://buckets/<ns>/<name>`, mounted read-write) or **persistent storage** —
+at `/data` and set the `COSTUDY4GRID_DATA_DIR=/data` variable so it survives
+restarts; without it the base still works but resets on every reboot. See
+`deploy/huggingface/SETUP.md`.

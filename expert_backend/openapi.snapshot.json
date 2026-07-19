@@ -849,6 +849,24 @@
         "title": "NSldRequest",
         "type": "object"
       },
+      "PlayerSessionsResponse": {
+        "properties": {
+          "player": {
+            "title": "Player",
+            "type": "string"
+          },
+          "session_count": {
+            "title": "Session Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "player",
+          "session_count"
+        ],
+        "title": "PlayerSessionsResponse",
+        "type": "object"
+      },
       "RecommenderModelRequest": {
         "properties": {
           "compute_overflow_graph": {
@@ -1828,6 +1846,47 @@
           }
         },
         "summary": "Log Game Solution"
+      }
+    },
+    "/api/game/player-sessions": {
+      "get": {
+        "description": "Distinct sessions a player has already recorded in the shared\nsolution base — seeds the default session name / index on the Game\nMode config screen. Read-only store scan; an empty handle → zero.",
+        "operationId": "game_player_sessions_api_game_player_sessions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "player",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Player",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerSessionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Game Player Sessions"
       }
     },
     "/api/list-sessions": {
