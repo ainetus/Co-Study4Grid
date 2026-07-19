@@ -263,7 +263,7 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
                   style={{ display: 'block', width: '100%', height: 'auto', maxHeight: 320, objectFit: 'contain' }} />
               </div>
               <figcaption style={{ color: colors.textTertiary, fontSize: text.xs, marginTop: space[1] }}>
-                The network you'll work on — each dot is a substation, coloured by voltage level.
+                The network you'll work on — transmission lines coloured by voltage level.
               </figcaption>
             </figure>
           )}

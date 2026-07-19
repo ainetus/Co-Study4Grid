@@ -20,9 +20,14 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   `GET /api/game/player-sessions` (`player_session_count` in
   `services/game_solutions.py`). Editable; a name the player types is never
   overwritten. Falls back to `session 1` when the backend is unreachable.
-- **Per-network preview maps** — generated from each grid's `grid_layout.json`
-  (nodes coloured by kV) by `scripts/game_mode/gen_network_previews.py` into
-  `frontend/public/game/preview-{medium,high}.svg`, shown on the landing page.
+- **Per-network preview maps** — the landing page shows each grid's network the
+  way the "Network (N)" NAD does fully zoomed out: voltage levels positioned
+  from `grid_layout.json` with the transmission lines drawn as edges, coloured
+  by kV. `scripts/game_mode/gen_network_previews.py` reads the line topology
+  straight from `network.xiidm` (the `voltageLevelId1/2` attributes — no
+  pypowsybl needed) into `frontend/public/game/preview-{medium,high}.svg`; when
+  a grid's network file is an un-smudged Git-LFS pointer it falls back to a
+  node-only scatter and never downgrades a committed edge map.
 - **Bucket-backed shared base** — the solution base can now be persisted to a
   HuggingFace **Bucket** (or persistent storage) mounted read-write at `/data`
   with `COSTUDY4GRID_DATA_DIR=/data`. `_effective_base_dir` probes the
