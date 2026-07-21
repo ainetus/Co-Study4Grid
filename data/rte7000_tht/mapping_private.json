@@ -1,0 +1,26 @@
+{
+ "grid_5384e039": {
+  "case_label": "hiver_pic_2021",
+  "case_date": "2021-01-11 18:00:00+00:00",
+  "period_title": "January — Monday evening",
+  "network_path": "data/rte7000_tht/grids/grid_5384e039/network.xiidm"
+ },
+ "grid_5fc376c7": {
+  "case_label": "automne_pic_2021",
+  "case_date": "2021-11-29 18:00:00+00:00",
+  "period_title": "November — Monday evening",
+  "network_path": "data/rte7000_tht/grids/grid_5fc376c7/network.xiidm"
+ },
+ "grid_437818d6": {
+  "case_label": "printemps_pic_2022",
+  "case_date": "2022-03-07 07:30:00+00:00",
+  "period_title": "March — Monday morning",
+  "network_path": "data/rte7000_tht/grids/grid_437818d6/network.xiidm"
+ },
+ "grid_e4e81e29": {
+  "case_label": "hiver_pic_2023",
+  "case_date": "2023-01-23 18:00:00+00:00",
+  "period_title": "January — Monday evening",
+  "network_path": "data/rte7000_tht/grids/grid_e4e81e29/network.xiidm"
+ }
+}

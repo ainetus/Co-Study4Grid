@@ -149,3 +149,16 @@ export const PRESET_STUDIES: GameStudy[] = DEFAULT_TIER.studies;
 export const PRESET_NETWORK_PATH = DEFAULT_TIER.networkPath;
 export const PRESET_ACTION_PATH = DEFAULT_TIER.actionFilePath;
 export const PRESET_LAYOUT_PATH = DEFAULT_TIER.layoutPath;
+
+// --- RTE7000 France THT mode ------------------------------------------------
+// Difficulty-graded scenarios on reconstructed real French THT operating points
+// (see docs/features/game-mode-rte7000-tht.md). Generated from
+// data/rte7000_tht/scenarios.json by scripts/game_mode/gen_rte7000_presets.py.
+export {
+  RTE7000_TIERS,
+  RTE7000_EASY,
+  RTE7000_MEDIUM,
+  RTE7000_HARD,
+  sampleRte7000,
+} from './rte7000Presets';
+export type { Rte7000Difficulty, Rte7000Tier } from './rte7000Presets';

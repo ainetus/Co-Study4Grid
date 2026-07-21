@@ -1,0 +1,2596 @@
+{
+ "grid_opaque_id": "grid_437818d6",
+ "period_title": "March — Monday morning",
+ "monitoring_factor": 0.95,
+ "threshold_pct": 95.0,
+ "scenarios": [
+  {
+   "id": "s_437818d6_a71150",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — ALBERL71M.LAN",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "ALBERL71M.LAN",
+   "contingencyLabel": "ALBERL71M.LAN",
+   "baselineMaxLoadingPct": 97.9,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "MALGOL61PASSY"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "node_merging_GEN.PP6",
+     "open_coupler_MALGOP6",
+     "load_shedding_PASSYY631"
+    ],
+    "best": {
+     "id": "node_merging_GEN.PP6",
+     "family": "node_merging",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_274790",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — ALOUEL61MALA6",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "ALOUEL61MALA6",
+   "contingencyLabel": "ALOUEL61MALA6",
+   "baselineMaxLoadingPct": 96.8,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "PLAISL61ROMAI"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_PLAISP6",
+     "open_coupler_PLAISP6_1",
+     "disco_PLAISL62ZAVR5"
+    ],
+    "best": {
+     "id": "open_coupler_PLAISP6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_6d341c",
+   "gridId": "grid_437818d6",
+   "difficulty": "medium",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — ALOUEL61PLAIS",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "ALOUEL61PLAIS",
+   "contingencyLabel": "ALOUEL61PLAIS",
+   "baselineMaxLoadingPct": 108.8,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "PLAISL61ROMAI"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "pair",
+    "actions": [
+     "open_coupler_PLAISP6+load_shedding_ROMAIY631",
+     "open_coupler_PLAISP6+load_shedding_ROMAI6T611",
+     "load_shedding_ROMAIY631+disco_PLAISL61ZAVRO"
+    ],
+    "best": {
+     "converged": true,
+     "true_max_rho": 0.974,
+     "id": "open_coupler_PLAISP6+load_shedding_ROMAIY631",
+     "est_max_rho": 0.925
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_c6819f",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — AMFARL61RATIE",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "AMFARL61RATIE",
+   "contingencyLabel": "AMFARL61RATIE",
+   "baselineMaxLoadingPct": 95.8,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.JERL61VAUPA"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "node_merging_ROUGEP6",
+     "open_coupler_P.JERP6_1",
+     "disco_P.JERL61ROUGE"
+    ],
+    "best": {
+     "id": "node_merging_ROUGEP6",
+     "family": "node_merging",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_782e00",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — ARDOIL61MOTT5",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "ARDOIL61MOTT5",
+   "contingencyLabel": "ARDOIL61MOTT5",
+   "baselineMaxLoadingPct": 112.3,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "DARSEL61RASSU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_RQROUL61SSEST",
+     "disco_SSESTL61SSTUL",
+     "load_shedding_RASSUY631"
+    ],
+    "best": {
+     "id": "disco_RQROUL61SSEST",
+     "family": "line_disconnection",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_afa2e2",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — AUBE L61MEZE5",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "AUBE L61MEZE5",
+   "contingencyLabel": "AUBE L61MEZE5",
+   "baselineMaxLoadingPct": 96.5,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.JERL61VAUPA"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "node_merging_ROUGEP6",
+     "disco_BARNAL71VAUPA",
+     "disco_BARNAL72VAUPA"
+    ],
+    "best": {
+     "id": "node_merging_ROUGEP6",
+     "family": "node_merging",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_f0456c",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — AVIGNL61MOTT5",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "AVIGNL61MOTT5",
+   "contingencyLabel": "AVIGNL61MOTT5",
+   "baselineMaxLoadingPct": 112.1,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "DARSEL61RASSU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_RQROUL61SSEST",
+     "disco_SSESTL61SSTUL",
+     "load_shedding_RASSUY631"
+    ],
+    "best": {
+     "id": "disco_RQROUL61SSEST",
+     "family": "line_disconnection",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_7e4387",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — AVOI5L71G.AVO",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "AVOI5L71G.AVO",
+   "contingencyLabel": "AVOI5L71G.AVO",
+   "baselineMaxLoadingPct": 100.7,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "EGUZOL61ORANG"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_ORANGY642",
+     "load_shedding_ORANGY641",
+     "disco_EGUZOL61ORANG"
+    ],
+    "best": {
+     "id": "load_shedding_ORANGY642",
+     "family": "load_shedding",
+     "max_rho": 0.983,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_bc68bd",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — AVOI5L72G.AVO",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "AVOI5L72G.AVO",
+   "contingencyLabel": "AVOI5L72G.AVO",
+   "baselineMaxLoadingPct": 100.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "EGUZOL61ORANG"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_ORANGY642",
+     "load_shedding_ORANGY641",
+     "disco_EGUZOL61ORANG"
+    ],
+    "best": {
+     "id": "load_shedding_ORANGY642",
+     "family": "load_shedding",
+     "max_rho": 0.983,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_e8d48d",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — B.CARL61T.VIC",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "B.CARL61T.VIC",
+   "contingencyLabel": "B.CARL61T.VIC",
+   "baselineMaxLoadingPct": 105.9,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "LINGOL61T.VIC"
+   ],
+   "nActionsDiscovered": 11,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_T.VICY633",
+     "load_shedding_T.VICY632",
+     "load_shedding_T.VICY631"
+    ],
+    "best": {
+     "id": "load_shedding_T.VICY633",
+     "family": "load_shedding",
+     "max_rho": 0.973,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_5cef2d",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — B.CARL62T.VIC",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "B.CARL62T.VIC",
+   "contingencyLabel": "B.CARL62T.VIC",
+   "baselineMaxLoadingPct": 105.5,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "LINGOL61T.VIC"
+   ],
+   "nActionsDiscovered": 11,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_T.VICY633",
+     "load_shedding_T.VICY632",
+     "load_shedding_T.VICY631"
+    ],
+    "best": {
+     "id": "load_shedding_T.VICY633",
+     "family": "load_shedding",
+     "max_rho": 0.973,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_ce6f13",
+   "gridId": "grid_437818d6",
+   "difficulty": "medium",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — BARNAL71ROUGE",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "BARNAL71ROUGE",
+   "contingencyLabel": "BARNAL71ROUGE",
+   "baselineMaxLoadingPct": 118.4,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.JERL61VAUPA"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "pair",
+    "actions": [
+     "disco_BARNAL72VAUPA+load_shedding_P.JERY641",
+     "disco_BARNAL72VAUPA+load_shedding_P.JERY649",
+     "open_coupler_P.JERP6+disco_BARNAL72VAUPA"
+    ],
+    "best": {
+     "converged": true,
+     "true_max_rho": 0.974,
+     "id": "disco_BARNAL72VAUPA+load_shedding_P.JERY641",
+     "est_max_rho": 0.925
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_a4b31e",
+   "gridId": "grid_437818d6",
+   "difficulty": "medium",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — BARNAL72ROUGE",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "BARNAL72ROUGE",
+   "contingencyLabel": "BARNAL72ROUGE",
+   "baselineMaxLoadingPct": 118.2,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.JERL61VAUPA"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "pair",
+    "actions": [
+     "disco_BARNAL71VAUPA+load_shedding_P.JERY641",
+     "disco_BARNAL71VAUPA+load_shedding_P.JERY649",
+     "open_coupler_P.JERP6+disco_BARNAL71VAUPA"
+    ],
+    "best": {
+     "converged": true,
+     "true_max_rho": 0.974,
+     "id": "disco_BARNAL71VAUPA+load_shedding_P.JERY641",
+     "est_max_rho": 0.925
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_90d2d9",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — BIANCL61MOUGI",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "BIANCL61MOUGI",
+   "contingencyLabel": "BIANCL61MOUGI",
+   "baselineMaxLoadingPct": 96.1,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "BOCCAL61MOUGI"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_BIANCP6",
+     "disco_FREJUL61TRANS",
+     "load_shedding_MOUGIY633"
+    ],
+    "best": {
+     "id": "open_coupler_BIANCP6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_84e485",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — BOLL5L61TERRA",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "BOLL5L61TERRA",
+   "contingencyLabel": "BOLL5L61TERRA",
+   "baselineMaxLoadingPct": 129.0,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "DARSEL61RASSU",
+    "P.ORGL61RQROU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_P.ORG6ISCLE1",
+     "load_shedding_P.ORG6ISCLE2"
+    ],
+    "best": {
+     "id": "load_shedding_P.ORG6ISCLE1",
+     "family": "load_shedding",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_3ecf14",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — BONN6L61ORANG",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "BONN6L61ORANG",
+   "contingencyLabel": "BONN6L61ORANG",
+   "baselineMaxLoadingPct": 109.0,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "EGUZOL61ORANG"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_EGUZOL61ORANG",
+     "disco_DISTRL61MONDI",
+     "disco_MONDIL61ORANG"
+    ],
+    "best": {
+     "id": "disco_EGUZOL61ORANG",
+     "family": "line_disconnection",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_f5aa79",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — BOUTRL61FAVAR",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "BOUTRL61FAVAR",
+   "contingencyLabel": "BOUTRL61FAVAR",
+   "baselineMaxLoadingPct": 109.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "DARSEL61RASSU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_DARSEP6",
+     "load_shedding_RQROUY632",
+     "load_shedding_RASSUY631"
+    ],
+    "best": {
+     "id": "open_coupler_DARSEP6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_9e7813",
+   "gridId": "grid_437818d6",
+   "difficulty": "hard",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — CHAN5L71VLERB",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "CHAN5L71VLERB",
+   "contingencyLabel": "CHAN5L71VLERB",
+   "baselineMaxLoadingPct": 105.3,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "EGUZOL61ORANG",
+    "P.JERL61VAUPA"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "load_shedding_P.JERY641",
+     "family": "load_shedding",
+     "max_rho": 1.102,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.096,
+     "id": "load_shedding_P.JERY641+load_shedding_P.JERY649",
+     "est_max_rho": 1.041
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_b10b23",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — CHIN2L71G.AVO",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "CHIN2L71G.AVO",
+   "contingencyLabel": "CHIN2L71G.AVO",
+   "baselineMaxLoadingPct": 100.7,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "EGUZOL61ORANG"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_ORANGY642",
+     "load_shedding_ORANGY641",
+     "disco_EGUZOL61ORANG"
+    ],
+    "best": {
+     "id": "load_shedding_ORANGY642",
+     "family": "load_shedding",
+     "max_rho": 0.983,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_90a393",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — CHIN2L72G.AVO",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "CHIN2L72G.AVO",
+   "contingencyLabel": "CHIN2L72G.AVO",
+   "baselineMaxLoadingPct": 100.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "EGUZOL61ORANG"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_ORANGY642",
+     "load_shedding_ORANGY641",
+     "disco_EGUZOL61ORANG"
+    ],
+    "best": {
+     "id": "load_shedding_ORANGY642",
+     "family": "load_shedding",
+     "max_rho": 0.983,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_5d8720",
+   "gridId": "grid_437818d6",
+   "difficulty": "medium",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — CHOLEL61RECOU",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "CHOLEL61RECOU",
+   "contingencyLabel": "CHOLEL61RECOU",
+   "baselineMaxLoadingPct": 103.2,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "BXLIEL61SIRMI"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "pair",
+    "actions": [
+     "load_shedding_SIRMIY646+load_shedding_SIRMIY645",
+     "disco_PREGUL61SAINT+load_shedding_SIRMIY646",
+     "disco_PREGUL61SAINT+load_shedding_SIRMIY645"
+    ],
+    "best": {
+     "converged": true,
+     "true_max_rho": 0.974,
+     "id": "load_shedding_SIRMIY646+load_shedding_SIRMIY645",
+     "est_max_rho": 0.925
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_e613ad",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — CHOLEL61V.SEV",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "CHOLEL61V.SEV",
+   "contingencyLabel": "CHOLEL61V.SEV",
+   "baselineMaxLoadingPct": 95.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "BXLIEL61SIRMI"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_MERLAP6",
+     "open_coupler_CHEV5P6",
+     "disco_BXLIEL61FARRA"
+    ],
+    "best": {
+     "id": "open_coupler_MERLAP6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_d1d1d3",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — CIROLL61LOGES",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "CIROLL61LOGES",
+   "contingencyLabel": "CIROLL61LOGES",
+   "baselineMaxLoadingPct": 99.4,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CIROLL62LOGES"
+   ],
+   "nActionsDiscovered": 13,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_LOGESP6",
+     "disco_LIERSL61LOGES",
+     "disco_LIERSL61ZLIN7"
+    ],
+    "best": {
+     "id": "open_coupler_LOGESP6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_67c7a7",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — CIROLL62LOGES",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "CIROLL62LOGES",
+   "contingencyLabel": "CIROLL62LOGES",
+   "baselineMaxLoadingPct": 99.0,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CIROLL61LOGES"
+   ],
+   "nActionsDiscovered": 13,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_LOGESP6",
+     "disco_LIERSL61LOGES",
+     "disco_LIERSL61ZLIN7"
+    ],
+    "best": {
+     "id": "open_coupler_LOGESP6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_2323c9",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — CIROLL72VLEJU",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "CIROLL72VLEJU",
+   "contingencyLabel": "CIROLL72VLEJU",
+   "baselineMaxLoadingPct": 101.1,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CIROLL73VLEJU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_CIROLL73VLEJU",
+     "disco_MEZE5L72VLEJU",
+     "disco_CIROLL72GATI5"
+    ],
+    "best": {
+     "id": "disco_CIROLL73VLEJU",
+     "family": "line_disconnection",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_3a71e6",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — CLEONL61MANOI",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "CLEONL61MANOI",
+   "contingencyLabel": "CLEONL61MANOI",
+   "baselineMaxLoadingPct": 98.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.JERL61VAUPA"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "node_merging_ROUGEP6",
+     "disco_BARNAL71VAUPA",
+     "disco_BARNAL72VAUPA"
+    ],
+    "best": {
+     "id": "node_merging_ROUGEP6",
+     "family": "node_merging",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_9a8743",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — COR.PL72DISTR",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "COR.PL72DISTR",
+   "contingencyLabel": "COR.PL72DISTR",
+   "baselineMaxLoadingPct": 95.2,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "BXLIEL61SIRMI"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_MERLAP6",
+     "open_coupler_CHEV5P6",
+     "disco_PREGUL61SAINT"
+    ],
+    "best": {
+     "id": "open_coupler_MERLAP6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_ed002d",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — COUDOL61ZPELA",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "COUDOL61ZPELA",
+   "contingencyLabel": "COUDOL61ZPELA",
+   "baselineMaxLoadingPct": 99.1,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "BOUTRL61TRANS"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_TRANSP6",
+     "open_coupler_BOUTRP6",
+     "load_shedding_TRANSY633"
+    ],
+    "best": {
+     "id": "open_coupler_TRANSP6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_8240b3",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — CSLLEL61E.BOT",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "CSLLEL61E.BOT",
+   "contingencyLabel": "CSLLEL61E.BOT",
+   "baselineMaxLoadingPct": 110.9,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "DARSEL61RASSU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_DARSEP6"
+    ],
+    "best": {
+     "id": "open_coupler_DARSEP6",
+     "family": "open_coupling",
+     "max_rho": 0.975,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_a42b1e",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — CSLLEL61ESCAI",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "CSLLEL61ESCAI",
+   "contingencyLabel": "CSLLEL61ESCAI",
+   "baselineMaxLoadingPct": 110.5,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "DARSEL61RASSU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_DARSEP6",
+     "load_shedding_RQROUY632"
+    ],
+    "best": {
+     "id": "open_coupler_DARSEP6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_6b287c",
+   "gridId": "grid_437818d6",
+   "difficulty": "hard",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — DARSEL61RASSU",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "DARSEL61RASSU",
+   "contingencyLabel": "DARSEL61RASSU",
+   "baselineMaxLoadingPct": 120.7,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "LAVERL61SEPTE",
+    "PONTEL61REALT",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "disco_E.BOTL61REALT",
+     "family": "line_disconnection",
+     "max_rho": 1.246,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.127,
+     "id": "disco_BOUTRL61SSTUL+disco_CSLLEL61E.BOT",
+     "est_max_rho": 0.747
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_3173f1",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — DISTRL71GALOR",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "DISTRL71GALOR",
+   "contingencyLabel": "DISTRL71GALOR",
+   "baselineMaxLoadingPct": 100.2,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "BXLIEL61SIRMI",
+    "CHOLEL61DISTR",
+    "NIORTL61V.SEV"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_CHEV5P6"
+    ],
+    "best": {
+     "id": "open_coupler_CHEV5P6",
+     "family": "open_coupling",
+     "max_rho": 0.987,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_9fa30b",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — DISTRL71PICOC",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "DISTRL71PICOC",
+   "contingencyLabel": "DISTRL71PICOC",
+   "baselineMaxLoadingPct": 97.2,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "EGUZOL61ORANG"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_BAYETL61MTVIC",
+     "load_shedding_ORANGY642",
+     "load_shedding_ORANGY641"
+    ],
+    "best": {
+     "id": "disco_BAYETL61MTVIC",
+     "family": "line_disconnection",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_2af222",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — E.BOTL61FAVAR",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "E.BOTL61FAVAR",
+   "contingencyLabel": "E.BOTL61FAVAR",
+   "baselineMaxLoadingPct": 109.7,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "DARSEL61RASSU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_DARSEP6",
+     "load_shedding_RQROUY632",
+     "load_shedding_RASSUY631"
+    ],
+    "best": {
+     "id": "open_coupler_DARSEP6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_15b68a",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — E.BOTL61REALT",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "E.BOTL61REALT",
+   "contingencyLabel": "E.BOTL61REALT",
+   "baselineMaxLoadingPct": 110.1,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "DARSEL61RASSU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_RQROUY632",
+     "open_coupler_DARSEP6",
+     "disco_CTAURL61ZVILA"
+    ],
+    "best": {
+     "id": "load_shedding_RQROUY632",
+     "family": "load_shedding",
+     "max_rho": 0.991,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_9598b8",
+   "gridId": "grid_437818d6",
+   "difficulty": "hard",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — FEUILL61SSCHA",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "FEUILL61SSCHA",
+   "contingencyLabel": "FEUILL61SSCHA",
+   "baselineMaxLoadingPct": 127.8,
+   "nOverloadedLines": 4,
+   "overloadedLines": [
+    "DARSEL61RASSU",
+    "LAVERL61SEPTE",
+    "PONTEL61REALT",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "load_shedding_RASSUY631",
+     "family": "load_shedding",
+     "max_rho": 1.232,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.099,
+     "id": "open_coupler_FEUILP6+load_shedding_RASSUY631",
+     "est_max_rho": 1.171
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_0cb001",
+   "gridId": "grid_437818d6",
+   "difficulty": "hard",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — FLAMAL71MENUE",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "FLAMAL71MENUE",
+   "contingencyLabel": "FLAMAL71MENUE",
+   "baselineMaxLoadingPct": 99.6,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "BXLIEL61SIRMI",
+    "EGUZOL61ORANG",
+    "P.JERL61VAUPA"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_CHEV5P6",
+     "family": "open_coupling",
+     "max_rho": 1.038,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.031,
+     "id": "open_coupler_CHEV5P6+load_shedding_P.JERY641",
+     "est_max_rho": 0.98
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_ba53c5",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — G.RIVL61GUERS",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "G.RIVL61GUERS",
+   "contingencyLabel": "G.RIVL61GUERS",
+   "baselineMaxLoadingPct": 95.3,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "BXLIEL61SIRMI"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SIRMIY646",
+     "load_shedding_SIRMIY645",
+     "open_coupler_CHEV5P6"
+    ],
+    "best": {
+     "id": "load_shedding_SIRMIY646",
+     "family": "load_shedding",
+     "max_rho": 0.977,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_c5f106",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — GARCHL61SSELO",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "GARCHL61SSELO",
+   "contingencyLabel": "GARCHL61SSELO",
+   "baselineMaxLoadingPct": 96.2,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "TABARY761",
+    "TABARY762"
+   ],
+   "nActionsDiscovered": 12,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_NEMOUL61VLEMA",
+     "disco_TABARL61ZGLAC",
+     "disco_TABARL61ZGIEN"
+    ],
+    "best": {
+     "id": "disco_NEMOUL61VLEMA",
+     "family": "line_disconnection",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_90fdfe",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — GRANZL61NIORT",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "GRANZL61NIORT",
+   "contingencyLabel": "GRANZL61NIORT",
+   "baselineMaxLoadingPct": 100.1,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "BXLIEL61SIRMI"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "reco_FLEACL61NIORT",
+     "disco_BXLIEL61FARRA",
+     "load_shedding_SIRMIY646"
+    ],
+    "best": {
+     "id": "reco_FLEACL61NIORT",
+     "family": "line_reconnection",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_9b3f8b",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — GRANZL71JUMEA",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "GRANZL71JUMEA",
+   "contingencyLabel": "GRANZL71JUMEA",
+   "baselineMaxLoadingPct": 95.5,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "BXLIEL61SIRMI"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_CHEV5P6",
+     "load_shedding_SIRMIY646",
+     "load_shedding_SIRMIY645"
+    ],
+    "best": {
+     "id": "open_coupler_CHEV5P6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_44bcab",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — GRANZL72JUMEA",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "GRANZL72JUMEA",
+   "contingencyLabel": "GRANZL72JUMEA",
+   "baselineMaxLoadingPct": 95.5,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "BXLIEL61SIRMI"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SIRMIY646",
+     "load_shedding_SIRMIY645",
+     "open_coupler_CHEV5P6"
+    ],
+    "best": {
+     "id": "load_shedding_SIRMIY646",
+     "family": "load_shedding",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_39a47c",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — HARC7L61MOUL8",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "HARC7L61MOUL8",
+   "contingencyLabel": "HARC7L61MOUL8",
+   "baselineMaxLoadingPct": 96.8,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "HARC7L61ROBI5"
+   ],
+   "nActionsDiscovered": 8,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_ROBI5P6",
+     "disco_HARC7L61ROBI5",
+     "disco_ROBI5L61VLEJU"
+    ],
+    "best": {
+     "id": "open_coupler_ROBI5P6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_6e3590",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — JONQUL61MTAG5",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "JONQUL61MTAG5",
+   "contingencyLabel": "JONQUL61MTAG5",
+   "baselineMaxLoadingPct": 109.4,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "DARSEL61RASSU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_DARSEP6",
+     "disco_CTAURL61ZVILA",
+     "load_shedding_RASSUY631"
+    ],
+    "best": {
+     "id": "open_coupler_DARSEP6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_ec9af9",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — JONQUL71TAVEL",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "JONQUL71TAVEL",
+   "contingencyLabel": "JONQUL71TAVEL",
+   "baselineMaxLoadingPct": 111.4,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "DARSEL61RASSU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_DARSEP6",
+     "load_shedding_RASSUY631",
+     "disco_RQROUL61SSEST"
+    ],
+    "best": {
+     "id": "open_coupler_DARSEP6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_2934a5",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — JONQUL72TAVEL",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "JONQUL72TAVEL",
+   "contingencyLabel": "JONQUL72TAVEL",
+   "baselineMaxLoadingPct": 109.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "DARSEL61RASSU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_DARSEP6",
+     "load_shedding_RASSUY631",
+     "load_shedding_RQROUY632"
+    ],
+    "best": {
+     "id": "open_coupler_DARSEP6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_d25bab",
+   "gridId": "grid_437818d6",
+   "difficulty": "medium",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — LAVERL61P.BOU",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "LAVERL61P.BOU",
+   "contingencyLabel": "LAVERL61P.BOU",
+   "baselineMaxLoadingPct": 109.7,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "DARSEL61RASSU",
+    "PONTEL61REALT",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "pair",
+    "actions": [
+     "open_coupler_DARSEP6+disco_DURANL61REALT",
+     "open_coupler_DARSEP6+disco_DURANL61ROGNA"
+    ],
+    "best": {
+     "converged": true,
+     "true_max_rho": 0.979,
+     "id": "open_coupler_DARSEP6+disco_DURANL61REALT",
+     "est_max_rho": 0.93
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_769a3f",
+   "gridId": "grid_437818d6",
+   "difficulty": "medium",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — LAVERL61PONTE",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "LAVERL61PONTE",
+   "contingencyLabel": "LAVERL61PONTE",
+   "baselineMaxLoadingPct": 125.1,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "PONTEL61REALT",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "pair",
+    "actions": [
+     "open_coupler_SEPTEP6+disco_DURANL61REALT",
+     "disco_DURANL61REALT+open_coupler_MOTT5P6",
+     "open_coupler_SEPTEP6+open_coupler_MOTT5P6"
+    ],
+    "best": {
+     "converged": true,
+     "true_max_rho": 0.974,
+     "id": "open_coupler_SEPTEP6+disco_DURANL61REALT",
+     "est_max_rho": 1.201
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_14bf53",
+   "gridId": "grid_437818d6",
+   "difficulty": "medium",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — LAVERL61SEPTE",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "LAVERL61SEPTE",
+   "contingencyLabel": "LAVERL61SEPTE",
+   "baselineMaxLoadingPct": 136.1,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "DARSEL61RASSU",
+    "PONTEL61REALT",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "pair",
+    "actions": [
+     "open_coupler_MOTT5P6+open_coupler_ARDOIP6",
+     "disco_ESCAIL61NEOUL+open_coupler_MOTT5P6"
+    ],
+    "best": {
+     "converged": true,
+     "true_max_rho": 0.974,
+     "id": "open_coupler_MOTT5P6+open_coupler_ARDOIP6",
+     "est_max_rho": 0.434
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_c4860a",
+   "gridId": "grid_437818d6",
+   "difficulty": "hard",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — LINGOL61ZVA10",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "LINGOL61ZVA10",
+   "contingencyLabel": "LINGOL61ZVA10",
+   "baselineMaxLoadingPct": 105.5,
+   "nOverloadedLines": 4,
+   "overloadedLines": [
+    "BOUTRL61TRANS",
+    "C.MERL61LINGO",
+    "C.MERL61MOUGI",
+    "T.VICL61ZMENT"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_BOUTRP6",
+     "family": "open_coupling",
+     "max_rho": 1.092,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.091,
+     "id": "open_coupler_BOUTRP6+open_coupler_SSTULP6",
+     "est_max_rho": 0.877
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_c170ab",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — M.MORL61VLEVA",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "M.MORL61VLEVA",
+   "contingencyLabel": "M.MORL61VLEVA",
+   "baselineMaxLoadingPct": 104.9,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SAUS5L61VLEVA"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "node_merging_P.GASP6",
+     "load_shedding_SAUS56T611",
+     "load_shedding_SAUS56T612"
+    ],
+    "best": {
+     "id": "node_merging_P.GASP6",
+     "family": "node_merging",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_49899e",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — MOUISL61P.ORG",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "MOUISL61P.ORG",
+   "contingencyLabel": "MOUISL61P.ORG",
+   "baselineMaxLoadingPct": 95.3,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.ORGL61RQROU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_P.ORG6ISCLE1",
+     "load_shedding_P.ORG6ISCLE2",
+     "open_coupler_ARDOIP6"
+    ],
+    "best": {
+     "id": "load_shedding_P.ORG6ISCLE1",
+     "family": "load_shedding",
+     "max_rho": 0.973,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_602f16",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — MOUISL61TERRA",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "MOUISL61TERRA",
+   "contingencyLabel": "MOUISL61TERRA",
+   "baselineMaxLoadingPct": 98.1,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.ORGL61RQROU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_P.ORG6ISCLE1",
+     "load_shedding_P.ORG6ISCLE2"
+    ],
+    "best": {
+     "id": "load_shedding_P.ORG6ISCLE1",
+     "family": "load_shedding",
+     "max_rho": 0.973,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_15c7a1",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — NEOULL71REALT",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "NEOULL71REALT",
+   "contingencyLabel": "NEOULL71REALT",
+   "baselineMaxLoadingPct": 96.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "BOUTRL61TRANS"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "pst_tap_BOUTRL61BOUTD_inc2",
+     "open_coupler_BOUTRP6",
+     "open_coupler_TRANSP6"
+    ],
+    "best": {
+     "id": "pst_tap_BOUTRL61BOUTD_inc2",
+     "family": "pst",
+     "max_rho": 0.975,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_bbfc2f",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — NEOULL72REALT",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "NEOULL72REALT",
+   "contingencyLabel": "NEOULL72REALT",
+   "baselineMaxLoadingPct": 96.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "BOUTRL61TRANS"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "pst_tap_BOUTRL61BOUTD_inc2",
+     "open_coupler_BOUTRP6",
+     "open_coupler_TRANSP6"
+    ],
+    "best": {
+     "id": "pst_tap_BOUTRL61BOUTD_inc2",
+     "family": "pst",
+     "max_rho": 0.975,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_16b4ff",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — NIORTL61V.SEV",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "NIORTL61V.SEV",
+   "contingencyLabel": "NIORTL61V.SEV",
+   "baselineMaxLoadingPct": 99.4,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "BXLIEL61SIRMI"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_BXLIEL61FARRA",
+     "load_shedding_SIRMIY646",
+     "load_shedding_SIRMIY645"
+    ],
+    "best": {
+     "id": "disco_BXLIEL61FARRA",
+     "family": "line_disconnection",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_407f1f",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — NIORTL62TDNIO",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "NIORTL62TDNIO",
+   "contingencyLabel": "NIORTL62TDNIO",
+   "baselineMaxLoadingPct": 100.0,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "BXLIEL61SIRMI"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "reco_FLEACL61NIORT",
+     "disco_BXLIEL61FARRA",
+     "load_shedding_SIRMIY646"
+    ],
+    "best": {
+     "id": "reco_FLEACL61NIORT",
+     "family": "line_reconnection",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_29a9b4",
+   "gridId": "grid_437818d6",
+   "difficulty": "hard",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — P.ORGL61RQROU",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "P.ORGL61RQROU",
+   "contingencyLabel": "P.ORGL61RQROU",
+   "baselineMaxLoadingPct": 126.9,
+   "nOverloadedLines": 5,
+   "overloadedLines": [
+    "BOLL5L61TERRA",
+    "LAVERL61SEPTE",
+    "PONTEL61REALT",
+    "PONTEL62REALT",
+    "P.ORGY761"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "reco_TRI.PY76A",
+     "family": "line_reconnection",
+     "max_rho": 1.217,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.212,
+     "id": "reco_TRI.PY76A+open_coupler_PRATCP6",
+     "est_max_rho": 1.548
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_682401",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — P.ORGL71TAVEL",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "P.ORGL71TAVEL",
+   "contingencyLabel": "P.ORGL71TAVEL",
+   "baselineMaxLoadingPct": 116.5,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "DARSEL61RASSU",
+    "P.ORGL61RQROU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_P.ORG6ISCLE1",
+     "load_shedding_P.ORG6ISCLE2"
+    ],
+    "best": {
+     "id": "load_shedding_P.ORG6ISCLE1",
+     "family": "load_shedding",
+     "max_rho": 0.975,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_29bc69",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — P.SEPL61SANDO",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "P.SEPL61SANDO",
+   "contingencyLabel": "P.SEPL61SANDO",
+   "baselineMaxLoadingPct": 96.5,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.JERL61VAUPA"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "node_merging_ROUGEP6",
+     "disco_P.JERL61ROUGE",
+     "disco_BARNAL71VAUPA"
+    ],
+    "best": {
+     "id": "node_merging_ROUGEP6",
+     "family": "node_merging",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_c139e1",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — PALUNL61SSTUL",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "PALUNL61SSTUL",
+   "contingencyLabel": "PALUNL61SSTUL",
+   "baselineMaxLoadingPct": 112.2,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "DARSEL61RASSU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_RQROUP6",
+     "load_shedding_RASSUY631"
+    ],
+    "best": {
+     "id": "open_coupler_RQROUP6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_723c40",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — PICOCL71VLERB",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "PICOCL71VLERB",
+   "contingencyLabel": "PICOCL71VLERB",
+   "baselineMaxLoadingPct": 97.3,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "EGUZOL61ORANG"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_BAYETL61MTVIC",
+     "load_shedding_ORANGY642",
+     "load_shedding_ORANGY641"
+    ],
+    "best": {
+     "id": "disco_BAYETL61MTVIC",
+     "family": "line_disconnection",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_6d8ce0",
+   "gridId": "grid_437818d6",
+   "difficulty": "hard",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — PONTEL61REALT",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "PONTEL61REALT",
+   "contingencyLabel": "PONTEL61REALT",
+   "baselineMaxLoadingPct": 145.5,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "DARSEL61RASSU",
+    "LAVERL61SEPTE",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 9,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_MOTT5P6",
+     "family": "open_coupling",
+     "max_rho": 1.507,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.289,
+     "id": "open_coupler_MOTT5P6+open_coupler_E.BOTP6",
+     "est_max_rho": 2.845
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_7d0521",
+   "gridId": "grid_437818d6",
+   "difficulty": "hard",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — PONTEL62REALT",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "PONTEL62REALT",
+   "contingencyLabel": "PONTEL62REALT",
+   "baselineMaxLoadingPct": 145.5,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "DARSEL61RASSU",
+    "LAVERL61SEPTE",
+    "PONTEL61REALT"
+   ],
+   "nActionsDiscovered": 9,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_MOTT5P6",
+     "family": "open_coupling",
+     "max_rho": 1.507,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.289,
+     "id": "open_coupler_MOTT5P6+open_coupler_E.BOTP6",
+     "est_max_rho": 2.846
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_13bc5a",
+   "gridId": "grid_437818d6",
+   "difficulty": "hard",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — RASSUL61S.AIR",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "RASSUL61S.AIR",
+   "contingencyLabel": "RASSUL61S.AIR",
+   "baselineMaxLoadingPct": 116.6,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "LAVERL61SEPTE",
+    "PONTEL61REALT",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "disco_E.BOTL61REALT",
+     "family": "line_disconnection",
+     "max_rho": 1.203,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.088,
+     "id": "disco_BOUTRL61SSTUL+disco_CSLLEL61E.BOT",
+     "est_max_rho": 0.577
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_055abb",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — REALTL71TAVEL",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "REALTL71TAVEL",
+   "contingencyLabel": "REALTL71TAVEL",
+   "baselineMaxLoadingPct": 104.0,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "PONTEL61REALT",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_REALTP7_1"
+    ],
+    "best": {
+     "id": "open_coupler_REALTP7_1",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_b938e3",
+   "gridId": "grid_437818d6",
+   "difficulty": "medium",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — REALTL72TAVEL",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "REALTL72TAVEL",
+   "contingencyLabel": "REALTL72TAVEL",
+   "baselineMaxLoadingPct": 104.0,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "PONTEL61REALT",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "pair",
+    "actions": [
+     "disco_E.BOTL61FAVAR+load_shedding_SEPTEY631",
+     "disco_E.BOTL61FAVAR+load_shedding_SEPTEY632",
+     "disco_BOUTRL61FAVAR+load_shedding_SEPTEY631"
+    ],
+    "best": {
+     "converged": true,
+     "true_max_rho": 0.975,
+     "id": "disco_E.BOTL61FAVAR+load_shedding_SEPTEY631",
+     "est_max_rho": 0.927
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_090e7b",
+   "gridId": "grid_437818d6",
+   "difficulty": "hard",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — ROGNAL61RQROU",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "ROGNAL61RQROU",
+   "contingencyLabel": "ROGNAL61RQROU",
+   "baselineMaxLoadingPct": 125.5,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "DARSEL61RASSU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_RQROUP6",
+     "family": "open_coupling",
+     "max_rho": 1.135,
+     "reducing": true
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.027,
+     "id": "open_coupler_RQROUP6+load_shedding_RQROUY632",
+     "est_max_rho": 1.078
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_f87211",
+   "gridId": "grid_437818d6",
+   "difficulty": "hard",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — ROGNAL61SSCHA",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "ROGNAL61SSCHA",
+   "contingencyLabel": "ROGNAL61SSCHA",
+   "baselineMaxLoadingPct": 126.8,
+   "nOverloadedLines": 4,
+   "overloadedLines": [
+    "DARSEL61RASSU",
+    "LAVERL61SEPTE",
+    "PONTEL61REALT",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "load_shedding_RASSUY631",
+     "family": "load_shedding",
+     "max_rho": 1.222,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.093,
+     "id": "load_shedding_RASSUY631+redispatch_SSTUL6GROUPE5",
+     "est_max_rho": 1.161
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_a91fd1",
+   "gridId": "grid_437818d6",
+   "difficulty": "hard",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — ROUMOL61ZSSCR",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "ROUMOL61ZSSCR",
+   "contingencyLabel": "ROUMOL61ZSSCR",
+   "baselineMaxLoadingPct": 105.2,
+   "nOverloadedLines": 4,
+   "overloadedLines": [
+    "BOUTRL61TRANS",
+    "C.MERL61LINGO",
+    "C.MERL61MOUGI",
+    "T.VICL61ZMENT"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_BOUTRP6",
+     "family": "open_coupling",
+     "max_rho": 1.09,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.089,
+     "id": "open_coupler_BOUTRP6+open_coupler_SSTULP6",
+     "est_max_rho": 0.855
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_594cad",
+   "gridId": "grid_437818d6",
+   "difficulty": "hard",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — ROUMOL61ZVA10",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "ROUMOL61ZVA10",
+   "contingencyLabel": "ROUMOL61ZVA10",
+   "baselineMaxLoadingPct": 105.5,
+   "nOverloadedLines": 4,
+   "overloadedLines": [
+    "BOUTRL61TRANS",
+    "C.MERL61LINGO",
+    "C.MERL61MOUGI",
+    "T.VICL61ZMENT"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_BOUTRP6",
+     "family": "open_coupling",
+     "max_rho": 1.095,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.094,
+     "id": "open_coupler_BOUTRP6+open_coupler_SSTULP6",
+     "est_max_rho": 0.848
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_c1d62c",
+   "gridId": "grid_437818d6",
+   "difficulty": "hard",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — RQROUL61S.AIR",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "RQROUL61S.AIR",
+   "contingencyLabel": "RQROUL61S.AIR",
+   "baselineMaxLoadingPct": 115.8,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "LAVERL61SEPTE",
+    "PONTEL61REALT",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "disco_E.BOTL61REALT",
+     "family": "line_disconnection",
+     "max_rho": 1.195,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.078,
+     "id": "open_coupler_ROGNAP6+disco_E.BOTL61FAVAR",
+     "est_max_rho": 0.613
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_c5ce55",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — RQROUL61SSEST",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "RQROUL61SSEST",
+   "contingencyLabel": "RQROUL61SSEST",
+   "baselineMaxLoadingPct": 103.6,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "P.ORGL61RQROU",
+    "PONTEL61REALT",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 13,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_MOTT5P6"
+    ],
+    "best": {
+     "id": "open_coupler_MOTT5P6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_554e81",
+   "gridId": "grid_437818d6",
+   "difficulty": "medium",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — SAINNL61YAINV",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "SAINNL61YAINV",
+   "contingencyLabel": "SAINNL61YAINV",
+   "baselineMaxLoadingPct": 109.1,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.JERL61VAUPA"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "pair",
+    "actions": [
+     "load_shedding_P.JERY641+load_shedding_P.JERY649",
+     "node_merging_ROUGEP6+load_shedding_P.JERY641",
+     "node_merging_ROUGEP6+load_shedding_P.JERY649"
+    ],
+    "best": {
+     "converged": true,
+     "true_max_rho": 0.974,
+     "id": "load_shedding_P.JERY641+load_shedding_P.JERY649",
+     "est_max_rho": 0.925
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_8b20f7",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — SAUS5L61VLEVA",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "SAUS5L61VLEVA",
+   "contingencyLabel": "SAUS5L61VLEVA",
+   "baselineMaxLoadingPct": 108.4,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "M.MORL61VLEVA"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "node_merging_P.GASP6",
+     "load_shedding_M.MORY631",
+     "load_shedding_M.MORY632"
+    ],
+    "best": {
+     "id": "node_merging_P.GASP6",
+     "family": "node_merging",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_bf524b",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — SAUS5L71VLEVA",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "SAUS5L71VLEVA",
+   "contingencyLabel": "SAUS5L71VLEVA",
+   "baselineMaxLoadingPct": 109.5,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "M.MORL61VLEVA",
+    "SAUS5L61VLEVA"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SAUS56T612"
+    ],
+    "best": {
+     "id": "load_shedding_SAUS56T612",
+     "family": "load_shedding",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_0031b4",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — SSAVOL61ZSAR6",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "SSAVOL61ZSAR6",
+   "contingencyLabel": "SSAVOL61ZSAR6",
+   "baselineMaxLoadingPct": 99.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.ROSL61SSAVO"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_BERGHP6",
+     "disco_P.ROSL61SSAVO",
+     "disco_P.ROSL61SARR6"
+    ],
+    "best": {
+     "id": "open_coupler_BERGHP6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_544784",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — SSESTL61SSTUL",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "SSESTL61SSTUL",
+   "contingencyLabel": "SSESTL61SSTUL",
+   "baselineMaxLoadingPct": 103.5,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "P.ORGL61RQROU",
+    "PONTEL61REALT",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 13,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_MOTT5P6"
+    ],
+    "best": {
+     "id": "open_coupler_MOTT5P6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_c77cdf",
+   "gridId": "grid_437818d6",
+   "difficulty": "medium",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — VAUPAL61YAINV",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "VAUPAL61YAINV",
+   "contingencyLabel": "VAUPAL61YAINV",
+   "baselineMaxLoadingPct": 109.1,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.JERL61VAUPA"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "pair",
+    "actions": [
+     "load_shedding_P.JERY641+load_shedding_P.JERY649",
+     "node_merging_ROUGEP6+load_shedding_P.JERY641",
+     "node_merging_ROUGEP6+load_shedding_P.JERY649"
+    ],
+    "best": {
+     "converged": true,
+     "true_max_rho": 0.974,
+     "id": "load_shedding_P.JERY641+load_shedding_P.JERY649",
+     "est_max_rho": 0.925
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_60b73f",
+   "gridId": "grid_437818d6",
+   "difficulty": "hard",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — VERGEL71VLERB",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "VERGEL71VLERB",
+   "contingencyLabel": "VERGEL71VLERB",
+   "baselineMaxLoadingPct": 105.8,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "EGUZOL61ORANG",
+    "P.JERL61VAUPA"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "load_shedding_P.JERY641",
+     "family": "load_shedding",
+     "max_rho": 1.107,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.101,
+     "id": "load_shedding_P.JERY641+load_shedding_P.JERY649",
+     "est_max_rho": 1.046
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_532f3d",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — VERGEL72VLERB",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "VERGEL72VLERB",
+   "contingencyLabel": "VERGEL72VLERB",
+   "baselineMaxLoadingPct": 98.2,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "EGUZOL61ORANG"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_ORANGY642",
+     "load_shedding_ORANGY641",
+     "disco_BAYETL61MTVIC"
+    ],
+    "best": {
+     "id": "load_shedding_ORANGY642",
+     "family": "load_shedding",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_63c4a1",
+   "gridId": "grid_437818d6",
+   "difficulty": "easy",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — ZQUINL61ZSSCR",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "contingencyElementId": "ZQUINL61ZSSCR",
+   "contingencyLabel": "ZQUINL61ZSSCR",
+   "baselineMaxLoadingPct": 95.4,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "BOUTRL61TRANS"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_BOUTRP6",
+     "load_shedding_TRANSY633",
+     "load_shedding_TRANSY631"
+    ],
+    "best": {
+     "id": "open_coupler_BOUTRP6",
+     "family": "open_coupling",
+     "max_rho": 0.974,
+     "reducing": true
+    }
+   }
+  }
+ ]
+}
