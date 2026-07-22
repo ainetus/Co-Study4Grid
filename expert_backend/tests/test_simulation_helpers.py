@@ -509,6 +509,43 @@ class TestComputeActionMetrics:
         # The bare topology counter is still surfaced for diagnostics.
         assert metrics["n_components_after"] == 2
 
+    def test_persistent_n_overloads_reports_uninfluenced_preexisting(self):
+        """A line already overloaded in the N base case that the action does not
+        influence and that stays overloaded is reported in persistent_n_overloads
+        (and excluded from lines_overloaded_after)."""
+        metrics = compute_action_metrics(
+            obs=self._obs([0.5, 1.3, 0.5]),            # L2 pre-existing overload in N
+            obs_simu_defaut=self._obs([1.2, 1.3, 0.5]),  # contingency overloads L1
+            obs_simu_action=self._obs([0.8, 1.3, 0.5]),  # action clears L1, L2 untouched
+            info_action={"exception": None},
+            lines_overloaded_ids=[0],                   # L1 is the influenced overload
+            lines_we_care_about={"L1", "L2", "L3"},
+            branches_with_limits={"L1", "L2", "L3"},
+            monitoring_factor=0.95,
+            worsening_threshold=0.02,
+        )
+        assert metrics["persistent_n_overloads"] == ["L2"]
+        assert "L2" not in metrics["lines_overloaded_after"]  # not the player's fault
+        assert metrics["lines_overloaded_after"] == []        # influenced overload cleared
+
+    def test_persistent_n_overloads_empty_when_preexisting_is_influenced(self):
+        """If the action MOVES the pre-existing line beyond the worsening band it
+        is 'influenced' — it belongs to lines_overloaded_after, not the persistent
+        (uninfluenced) bucket."""
+        metrics = compute_action_metrics(
+            obs=self._obs([0.5, 1.3, 0.5]),
+            obs_simu_defaut=self._obs([1.2, 1.3, 0.5]),
+            obs_simu_action=self._obs([0.8, 1.6, 0.5]),  # action pushed L2 up >2% (influenced)
+            info_action={"exception": None},
+            lines_overloaded_ids=[0],
+            lines_we_care_about={"L1", "L2", "L3"},
+            branches_with_limits={"L1", "L2", "L3"},
+            monitoring_factor=0.95,
+            worsening_threshold=0.02,
+        )
+        assert metrics["persistent_n_overloads"] == []
+        assert "L2" in metrics["lines_overloaded_after"]
+
     def test_rho_reduction_detected(self):
         metrics = compute_action_metrics(
             obs=self._obs([0.5, 0.5, 0.5]),

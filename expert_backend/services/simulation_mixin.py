@@ -343,6 +343,7 @@ class SimulationMixin(_Base):
             "n_components": metrics["n_components_after"],
             "non_convergence": non_convergence,
             "lines_overloaded_after": sanitize_for_json(metrics["lines_overloaded_after"]),
+            "persistent_n_overloads": sanitize_for_json(metrics.get("persistent_n_overloads", [])),
             "half_open_overloads": sanitize_for_json(half_open_overloads),
             "is_estimated": False,
         }

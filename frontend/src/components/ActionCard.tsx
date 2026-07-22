@@ -375,6 +375,15 @@ const ActionCard: React.FC<ActionCardProps> = ({
                     🏝️ Islanding detected ({details.disconnected_mw?.toFixed(1)} MW disconnected)
                 </div>
             )}
+            {details.persistent_n_overloads && details.persistent_n_overloads.length > 0 && (
+                <div
+                    data-testid={`action-card-${id}-persistent-n`}
+                    title={`These lines are already overloaded in the base (N) state — before any contingency — so this remedial action can't clear them: ${details.persistent_n_overloads.join(', ')}. They are not counted against solving this study.`}
+                    style={{ fontSize: '11px', background: colors.warningSoft, color: colors.warningText, padding: '4px 8px', marginTop: '6px', borderRadius: '4px', border: `1px solid ${colors.warningBorder}`, cursor: 'help', display: 'inline-block' }}
+                >
+                    ℹ️ {details.persistent_n_overloads.length} pre-existing N overload{details.persistent_n_overloads.length > 1 ? 's' : ''} persist (not caused by this contingency)
+                </div>
+            )}
 
             {/* Progressive disclosure: description, parameter editors,
                 and per-line "Loading after" only render on the viewing

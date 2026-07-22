@@ -111,6 +111,20 @@ describe('ActionCard', () => {
         expect(screen.getByText(/12\.5 MW disconnected/)).toBeInTheDocument();
     });
 
+    it('surfaces persistent pre-existing N overloads with an explanatory bubble', () => {
+        const details = { ...baseDetails, persistent_n_overloads: ['DARSEL61RASSU', 'FESSEL61VOGEL'] };
+        render(<ActionCard {...defaultProps} details={details} />);
+        const bubble = screen.getByTestId('action-card-act_1-persistent-n');
+        expect(bubble).toBeInTheDocument();
+        expect(bubble).toHaveTextContent(/2 pre-existing N overloads persist/);
+        expect(bubble.getAttribute('title')).toContain('DARSEL61RASSU');
+    });
+
+    it('omits the persistent-N bubble when there are none', () => {
+        render(<ActionCard {...defaultProps} details={{ ...baseDetails, persistent_n_overloads: [] }} />);
+        expect(screen.queryByTestId('action-card-act_1-persistent-n')).not.toBeInTheDocument();
+    });
+
     it('marks the card with data-viewing="true" when isViewing is true', () => {
         // The viewing-state signal is now a higher-saturation left-edge
         // accent stripe + a `data-viewing` attribute on the card root,

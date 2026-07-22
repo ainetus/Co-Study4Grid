@@ -109,6 +109,13 @@ export interface ActionDetail {
     action_topology?: ActionTopology;
     lines_overloaded_after?: string[];
     /**
+     * Monitored lines already overloaded in the N base case that this action did
+     * not influence and that stay overloaded after it — pre-existing constraints
+     * the contingency didn't cause and a remedial action can't be expected to
+     * clear. Surfaced so the UI can explain a line staying red the player can't act on.
+     */
+    persistent_n_overloads?: string[];
+    /**
      * ``{line_name: live_end_reactive_mvar}`` for still-"overloaded" lines the
      * action leaves open at ONE end with a loading above ~1 %. Such a line is
      * out of service for active power (the SLD / NAD show p = 0) but its
@@ -501,6 +508,13 @@ export interface SavedActionEntry {
     non_convergence?: string | null;
     action_topology?: ActionTopology;
     lines_overloaded_after?: string[];
+    /**
+     * Monitored lines already overloaded in the N base case that this action did
+     * not influence and that stay overloaded after it — pre-existing constraints
+     * the contingency didn't cause and a remedial action can't be expected to
+     * clear. Surfaced so the UI can explain a line staying red the player can't act on.
+     */
+    persistent_n_overloads?: string[];
     /**
      * ``{line_name: live_end_reactive_mvar}`` for still-"overloaded" lines the
      * action leaves open at ONE end with a loading above ~1 %. Such a line is
