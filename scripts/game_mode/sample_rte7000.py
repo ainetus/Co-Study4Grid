@@ -44,6 +44,7 @@ def to_game_study(s):
         "label": s["label"],
         "networkPath": s["networkPath"],
         "actionFilePath": s["actionFilePath"],
+        "layoutPath": s.get("layoutPath"),
         "contingencyElementId": s["contingencyElementId"],
         "contingencyLabel": s.get("contingencyLabel"),
         "baselineMaxLoadingPct": s.get("baselineMaxLoadingPct"),

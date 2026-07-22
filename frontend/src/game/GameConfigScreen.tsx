@@ -12,6 +12,9 @@ import {
   DEFAULT_DIFFICULTY,
   difficultyTier,
   type Difficulty,
+  RTE7000_TIERS,
+  sampleRte7000,
+  type Rte7000Difficulty,
 } from './presets';
 import type { GameSessionConfig, GameStudy } from './types';
 
@@ -49,6 +52,14 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
   const tier = difficultyTier(difficulty);
   const [studies, setStudies] = useState<GameStudy[]>(tier.studies);
   const [presetToAdd, setPresetToAdd] = useState('');
+
+  // Top-level mode: the European demo grid (curated reference studies) vs the
+  // France THT difficulty-graded scenario database (sampled by level).
+  const [mode, setMode] = useState<'demo' | 'tht'>('demo');
+  const [thtDifficulty, setThtDifficulty] = useState<Rte7000Difficulty>('easy');
+  const [numCases, setNumCases] = useState(5);
+  const thtTier = RTE7000_TIERS.find((t) => t.id === thtDifficulty) ?? RTE7000_TIERS[0];
+  const thtPoolSize = thtTier.studies.length;
 
   const timerSeconds = minutes * 60 + seconds;
 
@@ -93,17 +104,26 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
     }]);
   };
 
-  const canStart = studies.length > 0 && timerSeconds >= 10 &&
-    studies.every((s) => s.networkPath && s.actionFilePath && s.contingencyElementId);
+  const canStart = timerSeconds >= 10 && (
+    mode === 'tht'
+      ? numCases >= 1 && thtPoolSize > 0
+      : studies.length > 0 &&
+        studies.every((s) => s.networkPath && s.actionFilePath && s.contingencyElementId));
 
   const start = () => {
     if (!canStart) return;
+    // France THT: draw `numCases` scenarios of the chosen level across the
+    // available graded cases (round-robined over the distinct grid snapshots).
+    const finalStudies = mode === 'tht'
+      ? sampleRte7000(thtDifficulty, numCases)
+      : studies;
+    if (finalStudies.length === 0) return;
     onStart({
       sessionName: sessionName.trim() || 'session',
       player: player.trim() || undefined,
       timerSeconds,
       maxActions,
-      studies,
+      studies: finalStudies,
     });
   };
 
@@ -122,6 +142,38 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
           contingency to remediate with at most <strong>{maxActions}</strong> action
           {maxActions === 1 ? '' : 's'} before the clock runs out.
         </p>
+
+        {/* Mode: European demo grid vs France THT graded scenarios */}
+        <div style={card}>
+          <label style={labelStyle}>Mode</label>
+          <div style={{ display: 'flex', gap: space[2] }}>
+            <button
+              style={{
+                ...btn(mode === 'demo' ? colors.brand : colors.surfaceMuted,
+                       mode === 'demo' ? colors.textOnBrand : colors.textSecondary),
+                flex: 1, padding: `${space[2]} ${space[3]}`, textAlign: 'left',
+              }}
+              onClick={() => setMode('demo')}>
+              🌍 European grid — demo
+              <div style={{ fontSize: text.xs, fontWeight: 400, marginTop: space.half, opacity: 0.85 }}>
+                The three pan-European reference studies (and the French worst-case set).
+              </div>
+            </button>
+            <button
+              style={{
+                ...btn(mode === 'tht' ? colors.brand : colors.surfaceMuted,
+                       mode === 'tht' ? colors.textOnBrand : colors.textSecondary),
+                flex: 1, padding: `${space[2]} ${space[3]}`, textAlign: 'left',
+              }}
+              onClick={() => setMode('tht')}>
+              🇫🇷 France THT — graded
+              <div style={{ fontSize: text.xs, fontWeight: 400, marginTop: space.half, opacity: 0.85 }}>
+                Real reconstructed French THT snapshots, graded easy / medium / hard — pick a
+                level and how many cases to play.
+              </div>
+            </button>
+          </div>
+        </div>
 
         {/* Session parameters */}
         <div style={card}>
@@ -154,22 +206,62 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
               <input type="number" min={1} max={3} value={maxActions} style={{ ...inputStyle, width: 80 }}
                 onChange={(e) => setMaxActions(Math.min(3, Math.max(1, Number(e.target.value))))} />
             </div>
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <label style={labelStyle}>Difficulty</label>
-              <select style={inputStyle} value={difficulty}
-                onChange={(e) => changeDifficulty(e.target.value as Difficulty)}>
-                {DIFFICULTY_TIERS.map((t) => (
-                  <option key={t.id} value={t.id}>{t.label}</option>
-                ))}
-              </select>
-            </div>
+            {mode === 'demo' ? (
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <label style={labelStyle}>Difficulty</label>
+                <select style={inputStyle} value={difficulty}
+                  onChange={(e) => changeDifficulty(e.target.value as Difficulty)}>
+                  {DIFFICULTY_TIERS.map((t) => (
+                    <option key={t.id} value={t.id}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <label style={labelStyle}>Difficulty level</label>
+                  <select style={inputStyle} value={thtDifficulty}
+                    onChange={(e) => setThtDifficulty(e.target.value as Rte7000Difficulty)}>
+                    {RTE7000_TIERS.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.id.charAt(0).toUpperCase() + t.id.slice(1)} ({t.studies.length} cases)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Number of cases</label>
+                  <input type="number" min={1} max={thtPoolSize} value={numCases}
+                    style={{ ...inputStyle, width: 96 }}
+                    onChange={(e) => setNumCases(
+                      Math.min(thtPoolSize, Math.max(1, Number(e.target.value))))} />
+                </div>
+              </>
+            )}
           </div>
           <p style={{ color: colors.textTertiary, fontSize: text.xs, margin: `${space[1]} 0 0` }}>
-            {tier.blurb}
+            {mode === 'demo'
+              ? tier.blurb
+              : `${thtTier.blurb} A random draw of ${Math.min(numCases, thtPoolSize)} of the `
+                + `${thtPoolSize} ${thtDifficulty} case(s) will be played, spread across the `
+                + `reconstructed France THT grid snapshots.`}
           </p>
         </div>
 
-        {/* Studies */}
+        {/* Studies — demo mode edits the list; France THT samples it at start. */}
+        {mode === 'tht' ? (
+          <div style={card}>
+            <h2 style={{ margin: 0, fontSize: text.lg }}>
+              Cases to play: {Math.min(numCases, thtPoolSize)}
+            </h2>
+            <p style={{ color: colors.textSecondary, fontSize: text.sm, marginTop: space[1] }}>
+              {Math.min(numCases, thtPoolSize)} <strong>{thtDifficulty}</strong> case
+              {numCases === 1 ? '' : 's'} will be drawn at random from the {thtPoolSize} available
+              and played in sequence. Dates are hidden — each is titled by month, weekday and
+              time-of-day only.
+            </p>
+          </div>
+        ) : (
         <div style={card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: space[2] }}>
             <h2 style={{ margin: 0, fontSize: text.lg }}>Studies ({studies.length})</h2>
@@ -240,6 +332,7 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
             </div>
           ))}
         </div>
+        )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: space[2] }}>
           <button
@@ -250,7 +343,9 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
         </div>
         {!canStart && (
           <p style={{ textAlign: 'right', color: colors.textTertiary, fontSize: text.xs, marginTop: space[1] }}>
-            Need ≥1 study, a ≥10 s timer, and every study must have a network, action file and contingency id.
+            {mode === 'tht'
+              ? 'Need a ≥10 s timer and at least one case for the chosen level.'
+              : 'Need ≥1 study, a ≥10 s timer, and every study must have a network, action file and contingency id.'}
           </p>
         )}
       </div>

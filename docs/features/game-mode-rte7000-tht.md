@@ -28,12 +28,32 @@ backend computes when a player loads the scenario.
 
 ```
 data/rte7000_tht/
-  grids/<opaqueGridId>/network.xiidm      # one reconstructed operating point
-  grids/<opaqueGridId>/actions.json       # curated topological action space
+  grids/<opaqueGridId>/network.xiidm         # one reconstructed operating point (~8.8 MB XML)
+  grids/<opaqueGridId>/actions.json          # curated topological action space
+  grids/<opaqueGridId>/grid_layout.json      # {voltageLevelId: [x, y]} for rendering
   grids/<opaqueGridId>/graded_contingencies.json
-  scenarios.json                          # the samplable graded database
-  mapping_private.json                    # opaqueGridId -> real label/date (analysis only)
+  scenarios.json                             # the samplable graded database
+  mapping_private.json                       # opaqueGridId -> real label/date (analysis only)
 ```
+
+The four grids share the RTE7000 topology, so their `grid_layout.json` is derived
+from the France-shaped planar layout `grid_layout_rte.json` (in the
+`grid_snapshot_reconstruct` repo): each grid's voltage levels are filtered from it
+(~97 % covered) and the few uncovered nodes get the centroid of their connected,
+covered neighbours. The `network.xiidm` files are ~8.8 MB XML (text, under
+HuggingFace's 10 MiB git limit), so they ship uncompressed and are bundled into
+the Docker Space image by `COPY data/`.
+
+## Playing it (opening page)
+
+The Game Mode config screen (`frontend/src/game/GameConfigScreen.tsx`) has a
+top-level **Mode** choice:
+
+- **European grid — demo**: the existing pan-European / French reference studies.
+- **France THT — graded**: pick a **difficulty level** (easy / medium / hard) and
+  a **number of cases**; on start, `sampleRte7000(difficulty, n)` draws that many
+  scenarios of the chosen level, round-robined across the distinct grid snapshots,
+  and plays them in sequence. No manual study list to edit.
 
 ### Hidden dates
 
