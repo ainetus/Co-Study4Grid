@@ -156,6 +156,64 @@ class TestLoadNetworkZip:
             service.load_network(str(tmp_path))
 
 
+class TestLoadNetworkGzB64:
+    """Decode of a ``network.xiidm.gz.b64`` companion (the France THT game grids
+    ship the network compressed + text-encoded so it rides Git without LFS; the
+    Docker build normally decodes it, but the backend also decodes on demand so
+    the grids load in local dev / any build that skipped the decode step)."""
+
+    @staticmethod
+    def _make_gz_b64(dir_path, member="network.xiidm", xml=b"<network/>"):
+        import base64
+        import gzip
+        b64_path = os.path.join(str(dir_path), member + ".gz.b64")
+        with open(b64_path, "wb") as f:
+            f.write(base64.b64encode(gzip.compress(xml)))
+        return b64_path
+
+    @patch("expert_backend.services.network_service.pn")
+    def test_loads_xiidm_when_only_companion_gz_b64_exists(self, mock_pn, tmp_path):
+        self._make_gz_b64(tmp_path)
+        requested = os.path.join(str(tmp_path), "network.xiidm")  # absent on disk
+        assert not os.path.exists(requested)
+        mock_pn.load.return_value = MagicMock(id="g")
+
+        NetworkService().load_network(requested)
+
+        loaded = mock_pn.load.call_args[0][0]
+        assert loaded.endswith("network.xiidm")
+        assert os.path.isfile(loaded)
+        assert open(loaded, "rb").read() == b"<network/>"
+
+    def test_resolve_decodes_and_is_cached(self, tmp_path):
+        self._make_gz_b64(tmp_path)
+        requested = os.path.join(str(tmp_path), "network.xiidm")
+        svc = NetworkService()
+        first = svc._resolve_network_file(requested)
+        # Second resolve reuses the already-decoded .xiidm (no re-decode).
+        second = svc._resolve_network_file(requested)
+        assert first == second and os.path.isfile(first)
+        assert first.endswith("network.xiidm")
+
+    def test_decode_falls_back_to_tempdir_when_grid_dir_readonly(self, tmp_path):
+        # Force the in-place write to fail (a read-only grid dir can't be
+        # simulated as root, so raise OSError on the target open instead).
+        b64_path = self._make_gz_b64(tmp_path)
+        out_target = os.path.join(str(tmp_path), "network.xiidm")
+        real_open = open
+
+        def fake_open(path, *a, **k):
+            if os.path.abspath(path) == os.path.abspath(out_target) and "w" in (a[0] if a else k.get("mode", "")):
+                raise OSError("read-only")
+            return real_open(path, *a, **k)
+
+        with patch("builtins.open", side_effect=fake_open):
+            out = NetworkService()._decode_network_gz_b64(b64_path)
+        assert os.path.isfile(out)
+        assert real_open(out, "rb").read() == b"<network/>"
+        assert not out.startswith(str(tmp_path))  # landed in a temp dir
+
+
 class TestGetDisconnectableElements:
     def test_network_not_loaded(self):
         service = NetworkService()

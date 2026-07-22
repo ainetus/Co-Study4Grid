@@ -6,6 +6,8 @@
 # This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study. 
 
 import pypowsybl.network as pn
+import base64
+import gzip
 import logging
 import os
 import tempfile
@@ -130,6 +132,30 @@ class NetworkService:
             logger.info("Decompressed %s -> %s", zip_path, out_path)
             return out_path
 
+    def _decode_network_gz_b64(self, b64_path: str) -> str:
+        """Decode a ``*.xiidm.gz.b64`` (gzip + base64 text) companion to its raw
+        ``*.xiidm`` and return that path. The France THT game grids ship this way
+        (small + Git-LFS-free); the image build normally decodes them, but decode
+        here too so the grids load in local dev / any build that skipped the step.
+        Targets the file's own directory (cached for reuse); falls back to a temp
+        dir if that directory is read-only.
+        """
+        with open(b64_path, 'rb') as f:
+            raw = gzip.decompress(base64.b64decode(f.read()))
+        out_path = b64_path[:-len('.gz.b64')]  # network.xiidm.gz.b64 -> network.xiidm
+        if os.path.isfile(out_path):
+            return out_path  # already decoded — reuse
+        try:
+            with open(out_path, 'wb') as f:
+                f.write(raw)
+        except OSError:
+            tmp_dir = tempfile.mkdtemp(prefix='cs4g_net_')
+            out_path = os.path.join(tmp_dir, os.path.basename(out_path))
+            with open(out_path, 'wb') as f:
+                f.write(raw)
+        logger.info("Decoded %s -> %s", b64_path, out_path)
+        return out_path
+
     def _resolve_network_file(self, network_path: str) -> str:
         """Resolve a network path to a loadable file, transparently
         decompressing a zip when the path is (or only exists as) a ``.zip``.
@@ -160,6 +186,10 @@ class NetworkService:
                           os.path.splitext(network_path)[0] + '.zip'):
             if os.path.isfile(candidate):
                 return self._extract_network_zip(candidate)
+
+        # …or a companion ``.gz.b64`` (the France THT game grids ship this way).
+        if os.path.isfile(network_path + '.gz.b64'):
+            return self._decode_network_gz_b64(network_path + '.gz.b64')
 
         return network_path
 

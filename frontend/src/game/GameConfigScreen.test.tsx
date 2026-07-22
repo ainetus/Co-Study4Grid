@@ -91,6 +91,8 @@ describe('GameConfigScreen — France THT mode', () => {
     expect(screen.getByTestId('game-tht-difficulty')).toBeInTheDocument();
     expect(screen.getByTestId('game-tht-count')).toBeInTheDocument();
     expect(screen.getByTestId('game-tht-summary')).toBeInTheDocument();
+    // France THT shows its own network map (the shared RTE7000 backbone).
+    expect(screen.getByTestId('game-tht-preview')).toBeInTheDocument();
     // The demo studies list + per-network preview belong to demo mode only.
     expect(screen.queryByTestId('game-studies-summary')).not.toBeInTheDocument();
     expect(screen.queryByTestId('game-network-preview')).not.toBeInTheDocument();

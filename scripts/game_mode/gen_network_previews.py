@@ -26,6 +26,8 @@ network files smudged — the Space Docker build extracts them):
 """
 from __future__ import annotations
 
+import base64
+import gzip
 import json
 import re
 import zipfile
@@ -39,6 +41,9 @@ _OUT_DIR = _REPO_ROOT / "frontend" / "public" / "game"
 _GRIDS = [
     ("medium", "data/pypsa_eur_eur220_225_380_400", "preview-medium.svg"),
     ("high", "data/pypsa_eur_fr225_400", "preview-high.svg"),
+    # All 4 France THT grids share the RTE7000 topology, so one preview map
+    # (from any of them) represents the whole family.
+    ("tht", "data/rte7000_tht/grids/grid_e4e81e29", "preview-tht.svg"),
 ]
 
 # Voltage colouring: the >= 350 kV backbone (380 / 400 kV) is red, everything
@@ -94,6 +99,13 @@ def _load_network_xml(grid_dir: Path) -> str | None:
                 if name:
                     return zf.read(name).decode("utf-8", errors="replace")
         except zipfile.BadZipFile:
+            return None
+    # France THT grids ship compressed + text-encoded as network.xiidm.gz.b64.
+    b64 = grid_dir / "network.xiidm.gz.b64"
+    if b64.is_file():
+        try:
+            return gzip.decompress(base64.b64decode(b64.read_bytes())).decode("utf-8", errors="replace")
+        except (ValueError, OSError):
             return None
     return None
 
