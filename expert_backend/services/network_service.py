@@ -143,8 +143,8 @@ class NetworkService:
         with open(b64_path, 'rb') as f:
             raw = gzip.decompress(base64.b64decode(f.read()))
         out_path = b64_path[:-len('.gz.b64')]  # network.xiidm.gz.b64 -> network.xiidm
-        if os.path.isfile(out_path):
-            return out_path  # already decoded — reuse
+        if os.path.isfile(out_path) and self._looks_like_network_xml(out_path):
+            return out_path  # already decoded and valid — reuse
         try:
             with open(out_path, 'wb') as f:
                 f.write(raw)
@@ -156,18 +156,45 @@ class NetworkService:
         logger.info("Decoded %s -> %s", b64_path, out_path)
         return out_path
 
+    @staticmethod
+    def _looks_like_network_xml(path: str) -> bool:
+        """True if the file starts like an XIIDM/XML network (``<?xml`` or a
+        ``<...network`` root). Guards against a truncated decode, a Git-LFS
+        pointer smudged in as text, or a ``.gz.b64`` mistaken for raw XML —
+        any of which make pypowsybl raise "Unsupported file format"."""
+        try:
+            with open(path, 'rb') as f:
+                head = f.read(512).lstrip()
+        except OSError:
+            return False
+        return head[:5] == b'<?xml' or (head[:1] == b'<' and b'network' in head[:400].lower())
+
     def _resolve_network_file(self, network_path: str) -> str:
         """Resolve a network path to a loadable file, transparently
-        decompressing a zip when the path is (or only exists as) a ``.zip``.
+        decompressing a zip when the path is (or only exists as) a ``.zip``,
+        or decoding a ``.gz.b64`` (the France THT game grids ship this way).
 
-        Handles: an explicit ``*.zip`` path; a missing ``foo.xiidm`` whose
-        sibling ``foo.xiidm.zip`` exists; and a directory that holds only a
-        ``.zip`` archive.
+        Handles: an explicit ``*.zip`` / ``*.gz.b64`` path; a missing
+        ``foo.xiidm`` whose sibling ``foo.xiidm.zip`` / ``foo.xiidm.gz.b64``
+        exists; a directory that holds only a ``.zip`` archive; and a present-
+        but-unloadable ``foo.xiidm`` (truncated / LFS pointer) that has a
+        sibling ``.gz.b64`` to re-decode from.
         """
         if network_path.lower().endswith('.zip') and os.path.isfile(network_path):
             return self._extract_network_zip(network_path)
 
+        # An explicit ``.gz.b64`` path (e.g. config pointed straight at the
+        # committed transport) — decode it to raw XML.
+        if network_path.endswith('.gz.b64') and os.path.isfile(network_path):
+            return self._decode_network_gz_b64(network_path)
+
         if os.path.isfile(network_path):
+            # Present but unparseable (truncated decode / un-smudged LFS
+            # pointer) — re-decode from a sibling ``.gz.b64`` if one is there,
+            # rather than handing pypowsybl a file it will reject.
+            if (not self._looks_like_network_xml(network_path)
+                    and os.path.isfile(network_path + '.gz.b64')):
+                return self._decode_network_gz_b64(network_path + '.gz.b64')
             return network_path
 
         if os.path.isdir(network_path):
@@ -178,6 +205,10 @@ class NetworkService:
                 if zips:
                     return self._extract_network_zip(
                         os.path.join(network_path, zips[0]))
+                b64s = [f for f in os.listdir(network_path) if f.endswith('.gz.b64')]
+                if b64s:
+                    return self._decode_network_gz_b64(
+                        os.path.join(network_path, b64s[0]))
             return network_path
 
         # Missing path: try a sibling/companion .zip (e.g. the shipped
