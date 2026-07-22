@@ -45,6 +45,7 @@ docs/
 | [`adding-action-type.md`](features/adding-action-type.md) | Cross-cutting checklist to integrate / upgrade a remedial-action type (lib → backend → frontend → save/log/reload triad → regression specs). Read before adding a family or touching session persistence. |
 | [`frontend-ui-improvements.md`](features/frontend-ui-improvements.md) | Voltage filter, run-button placement, color codes, always-visible tabs. |
 | [`game-mode-codabench.md`](features/game-mode-codabench.md) | Timed, scored Game Mode wrapper (`?game=1`) + Codabench benchmark bundle: session config, timer, ≤3-action cap, JSON/CSV log export, shared scoring, local E2E. |
+| [`game-mode-rte7000-tht.md`](features/game-mode-rte7000-tht.md) | France THT scenario family: 656 N-1 cases on reconstructed French THT snapshots, graded easy/medium/hard by expert-model solvability; opening-page difficulty + count picker, sampler, hidden dates, bundled data. |
 | [`dark-mode.md`](features/dark-mode.md) | Light/dark theme: design-token source of truth, `useTheme` hook + pre-mount script, the "soft-background" trap, NAD/SLD diagram + overflow-viewer theming, tests. |
 
 ## Performance (`performance/`)

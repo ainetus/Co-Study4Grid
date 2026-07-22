@@ -1,0 +1,121 @@
+# Game Mode: RTE7000 France THT — difficulty-graded scenario database
+
+A second Game Mode scenario family, alongside the PyPSA-EUR presets: **real
+French THT (≥ 200 kV) operating points**, reconstructed from public RTE
+structural data + éco2mix injections, with every playable N-1 **graded
+easy / medium / hard** by what it takes the expert model to solve it. You pick a
+difficulty and sample how many scenarios you want to play.
+
+## What "difficulty" means
+
+Difficulty is the **expert recommender's solvability at the 95 % monitoring
+factor** (the same `monitoring_factor = 0.95` the backend uses, so a monitored
+`rho > 1.0` means real loading > 95 %):
+
+| Difficulty | Definition |
+|---|---|
+| **easy** | At least one **suggested unitary** action brings every monitored line back under 95 %. |
+| **medium** | No unitary action suffices, but a **first-identified combination** (top-K superposition pair, true-simulated) resolves it. |
+| **hard** | Neither a unitary action nor the best estimated combinations resolve it. |
+
+Only **non-antenna** scenarios are included: contingencies that island a radial
+pocket (antenna mode) or break the grid apart are recorded for accounting but
+kept out of the graded pool. Each scenario is screened and graded through the
+recommender's own `run_analysis_step1/step2`, so the labels match what the game
+backend computes when a player loads the scenario.
+
+## Data layout
+
+```
+data/rte7000_tht/
+  grids/<opaqueGridId>/network.xiidm.gz.b64  # one reconstructed operating point (compressed, text)
+  grids/<opaqueGridId>/actions.json          # curated topological action space
+  grids/<opaqueGridId>/grid_layout.json      # {voltageLevelId: [x, y]} for rendering
+  grids/<opaqueGridId>/graded_contingencies.json
+  scenarios.json                             # the samplable graded database
+  mapping_private.json                       # opaqueGridId -> real label/date (analysis only)
+```
+
+The four grids share the RTE7000 topology, so their `grid_layout.json` is derived
+from the France-shaped planar layout `grid_layout_rte.json` (in the
+`grid_snapshot_reconstruct` repo): each grid's voltage levels are filtered from it
+(~97 % covered) and the few uncovered nodes get the centroid of their connected,
+covered neighbours.
+
+Each `network.xiidm` (~8.8 MB XML) is committed **compressed and text-encoded** as
+`network.xiidm.gz.b64` (gzip + base64, ~1.1 MB) — 33 MB of raw XML becomes ~4 MB
+of text. Text (not binary) keeps it small **and** pushable without Git-LFS. The
+Docker build (and local dev) decode it back to `network.xiidm`:
+
+```bash
+python scripts/game_mode/decode_tht_grids.py
+```
+
+`scenarios.json` / the presets reference the decoded `network.xiidm` path (the
+`.gz.b64` is transport only), so nothing else changes once decoded.
+
+## Playing it (opening page)
+
+The Game Mode config screen (`frontend/src/game/GameConfigScreen.tsx`) has a
+top-level **Mode** choice:
+
+- **European grid — demo**: the existing pan-European / French reference studies.
+- **France THT — graded**: pick a **difficulty level** (easy / medium / hard) and
+  a **number of cases**; on start, `sampleRte7000(difficulty, n)` draws that many
+  scenarios of the chosen level, round-robined across the distinct grid snapshots,
+  and plays them in sequence. No manual study list to edit.
+
+### Hidden dates
+
+Players must not read the exact date/hour of a case. Every scenario exposes only
+**month + weekday + hour-period** (night 00–06, morning 06–12, afternoon 12–18,
+evening 18–24), e.g. *"January — Monday evening"*. The on-disk grid folder is an
+**opaque hash** (`grid_<sha1[:8]>`), so the filename never leaks the season/year.
+The real timestamp is preserved (a) inside each `network.xiidm` `case_date`
+attribute and (b) in `mapping_private.json`, so the mapping stays recoverable for
+later analysis or resampling — it is simply never surfaced in the UI.
+
+`scenarios.json` schema (per scenario): `id`, `gridId`, `difficulty`, `title`,
+`label`, `networkPath`, `actionFilePath`, `contingencyElementId`,
+`contingencyLabel`, `baselineMaxLoadingPct`, `nOverloadedLines`,
+`overloadedLines`, `nActionsDiscovered`, and a server-side `solution` (the
+reference remediation — **never shown to players**).
+
+## Sampling
+
+**Python (CLI / session generation):**
+
+```bash
+python3 scripts/game_mode/sample_rte7000.py --difficulty easy --n 5
+python3 scripts/game_mode/sample_rte7000.py --difficulty hard --n 3 --seed 7 --out session.json
+```
+
+Emits a `GameStudy[]` list (player-safe fields only — the `solution` is dropped)
+ready to drop into a session config. The sampler round-robins across distinct
+grids first, so a small draw spans different operating points.
+
+**Frontend (TypeScript):** `frontend/src/game/rte7000Presets.ts` exports
+`RTE7000_TIERS` (easy/medium/hard, each with its studies) and a seedable
+`sampleRte7000(difficulty, n, seed?)`. To keep that source module small (the
+code-quality gate caps frontend components at 1450 lines), the ~7 k lines of
+player-safe `GameStudy` data live in a sibling **`rte7000Scenarios.json`** that
+the module imports (`resolveJsonModule`); both are generated together.
+
+## Regenerating the database
+
+The database is built offline from the reconstructed networks + curated action
+spaces by the classifier that screens every ≥ 200 kV backbone N-1 and grades the
+non-antenna overloads. After (re)building `scenarios.json`, refresh the two
+generated frontend files (`rte7000Scenarios.json` + `rte7000Presets.ts`):
+
+```bash
+python3 scripts/game_mode/gen_rte7000_presets.py
+```
+
+## Scope note (viable cases)
+
+Scenarios come only from reconstructed operating points whose N-1 AC load flow
+**converges** on the game backend's AC 95 % basis. Over-stressed reconstructions
+(base loading already ≫ 100 % with many pre-existing overloads) whose N-1 diverge
+even in slow mode are excluded, since they cannot be simulated consistently with
+how the game evaluates a player's actions.

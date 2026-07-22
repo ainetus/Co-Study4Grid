@@ -7,6 +7,30 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Game Mode — France THT difficulty-graded scenario family
+
+- **New scenario family on the opening screen** — a top-level **Mode** choice
+  picks between **European grid — demo** (the existing reference studies) and
+  **France THT — graded**: **656** N-1 scenarios on 4 reconstructed real French
+  THT (≥ 200 kV) operating points, graded **easy (453) / medium (79) / hard
+  (124)** by the expert model's solvability at the 95 % monitoring factor
+  (easy = a suggested unitary action resolves; medium = a first-identified
+  combination does; hard = neither). Non-antenna scenarios only.
+- **Sample by level** — in France THT mode the player picks a difficulty and a
+  number of cases; `sampleRte7000(difficulty, n)` draws that many across the
+  graded pool, round-robined over the distinct grid snapshots. `GameStudy` data
+  ships in `frontend/src/game/rte7000Scenarios.json` (imported by the small
+  `rte7000Presets.ts`); a Python CLI (`scripts/game_mode/sample_rte7000.py`)
+  mirrors it. See [`docs/features/game-mode-rte7000-tht.md`](docs/features/game-mode-rte7000-tht.md).
+- **Dates hidden** — each grid lives under an opaque hash folder and scenario
+  titles carry only month + weekday + hour-period; the real timestamp stays
+  inside each `network.xiidm` `case_date` and in a private mapping. Reference
+  solutions stay server-side, never in the player-facing sampler output.
+- **Bundled data** — each ~8.8 MB `network.xiidm` ships as a gzip+base64 text
+  file (`network.xiidm.gz.b64`, ~1.1 MB, no Git-LFS needed), decoded at image
+  build (`scripts/game_mode/decode_tht_grids.py`); per-grid `grid_layout.json`
+  is derived from the France-shaped RTE layout for rendering.
+
 ### Game Mode — simplified landing page, per-network preview, bucket-backed persistence
 
 - **Config screen redesign** — the start screen now leads with a simple landing:

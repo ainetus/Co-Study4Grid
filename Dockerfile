@@ -72,6 +72,10 @@ COPY --chown=user scripts/ ./scripts/
 # The helper FAILS LOUDLY on an un-smudged LFS pointer or a corrupt archive
 # (QW25) instead of silently baking a broken grid into the image.
 RUN python scripts/extract_network_zip.py data/pypsa_eur_eur220_225_380_400/network.xiidm.zip
+# The 4 France THT grids (Game Mode "France THT" tiers) ship each ~8.8 MB
+# network.xiidm compressed + text-encoded as network.xiidm.gz.b64 (gzip+base64) —
+# small, and pushes without Git-LFS. Decode them all back to network.xiidm.
+RUN python scripts/game_mode/decode_tht_grids.py
 COPY --chown=user --from=frontend /build/dist ./frontend/dist
 # The overflow-viewer overlay (services/overflow_overlay.py) inlines this
 # shared pin-glyph source module at request time, so it must exist at the

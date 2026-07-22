@@ -1,0 +1,3666 @@
+{
+ "grid_opaque_id": "grid_5384e039",
+ "period_title": "January — Monday evening",
+ "monitoring_factor": 0.95,
+ "threshold_pct": 95.0,
+ "scenarios": [
+  {
+   "id": "s_5384e039_0d0b4d",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — ARGIEL61SIERE",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "ARGIEL61SIERE",
+   "contingencyLabel": "ARGIEL61SIERE",
+   "baselineMaxLoadingPct": 101.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "ETUPEL61ZHIRS"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_ETUPEP6",
+     "disco_ETUPEL61ZHIRS",
+     "disco_SIEREL61ZHIRS"
+    ],
+    "best": {
+     "id": "open_coupler_ETUPEP6",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_1a1e0c",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — AVALLL61J.VIL",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "AVALLL61J.VIL",
+   "contingencyLabel": "AVALLL61J.VIL",
+   "baselineMaxLoadingPct": 114.1,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "SSELOY766",
+    "TABARY761",
+    "TABARY762"
+   ],
+   "nActionsDiscovered": 12,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_SSELOP7",
+     "family": "open_coupling",
+     "max_rho": 1.145,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.174,
+     "id": "open_coupler_SSELOP6+disco_NEMOUL61VLEMA",
+     "est_max_rho": 1.961
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_4a4a4e",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — AVALLL61VNOL",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "AVALLL61VNOL",
+   "contingencyLabel": "AVALLL61VNOL",
+   "baselineMaxLoadingPct": 102.7,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 7,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_CHARPP7",
+     "family": "open_coupling",
+     "max_rho": 1.074,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.039,
+     "id": "open_coupler_SSELOP7+disco_GAUGLL72SSELO",
+     "est_max_rho": 1.064
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_5597f4",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — AVOI5L71DISTR",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "AVOI5L71DISTR",
+   "contingencyLabel": "AVOI5L71DISTR",
+   "baselineMaxLoadingPct": 95.7,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "AVOI5Y761"
+   ],
+   "nActionsDiscovered": 14,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_DISTRP6",
+     "open_coupler_AVOI5P7_1",
+     "disco_AVOINL61DISTR"
+    ],
+    "best": {
+     "id": "open_coupler_DISTRP6",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_de63ea",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — AVOI5L72DISTR",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "AVOI5L72DISTR",
+   "contingencyLabel": "AVOI5L72DISTR",
+   "baselineMaxLoadingPct": 95.7,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "AVOI5Y761"
+   ],
+   "nActionsDiscovered": 14,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_DISTRP6",
+     "open_coupler_AVOI5P7_1",
+     "disco_AVOINL61DISTR"
+    ],
+    "best": {
+     "id": "open_coupler_DISTRP6",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_beb490",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — BALARL61MTPEL",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "BALARL61MTPEL",
+   "contingencyLabel": "BALARL61MTPEL",
+   "baselineMaxLoadingPct": 97.9,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "MTAHUL61SSVIN"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSVINY631",
+     "disco_O.CHAL61RUEYR",
+     "load_shedding_SSVINY633"
+    ],
+    "best": {
+     "id": "load_shedding_SSVINY631",
+     "family": "load_shedding",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_a1525a",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — BARNAL71PALUE",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "BARNAL71PALUE",
+   "contingencyLabel": "BARNAL71PALUE",
+   "baselineMaxLoadingPct": 96.9,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSELOY631",
+     "load_shedding_SSELOY633",
+     "load_shedding_SSELOY634"
+    ],
+    "best": {
+     "id": "load_shedding_SSELOY631",
+     "family": "load_shedding",
+     "max_rho": 0.997,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_aee889",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — BARNAL73PALUE",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "BARNAL73PALUE",
+   "contingencyLabel": "BARNAL73PALUE",
+   "baselineMaxLoadingPct": 96.9,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSELOY631",
+     "load_shedding_SSELOY633",
+     "load_shedding_SSELOY634"
+    ],
+    "best": {
+     "id": "load_shedding_SSELOY631",
+     "family": "load_shedding",
+     "max_rho": 0.997,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_6c6200",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — BARNAL74PALUE",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "BARNAL74PALUE",
+   "contingencyLabel": "BARNAL74PALUE",
+   "baselineMaxLoadingPct": 96.9,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSELOY631",
+     "load_shedding_SSELOY633",
+     "load_shedding_SSELOY634"
+    ],
+    "best": {
+     "id": "load_shedding_SSELOY631",
+     "family": "load_shedding",
+     "max_rho": 0.997,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_dc4526",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — BAYETL72SSELO",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "BAYETL72SSELO",
+   "contingencyLabel": "BAYETL72SSELO",
+   "baselineMaxLoadingPct": 97.3,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 14,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSELOY631",
+     "load_shedding_SSELOY633",
+     "load_shedding_SSELOY634"
+    ],
+    "best": {
+     "id": "load_shedding_SSELOY631",
+     "family": "load_shedding",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_6fcf80",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — BOCTOL71MORBR",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "BOCTOL71MORBR",
+   "contingencyLabel": "BOCTOL71MORBR",
+   "baselineMaxLoadingPct": 95.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CRENEY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_CRENEP6",
+     "disco_BOCTOL71M.SEI",
+     "disco_CRENEL61ZP.V5"
+    ],
+    "best": {
+     "id": "open_coupler_CRENEP6",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_b7b551",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — BOCTOL72MORBR",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "BOCTOL72MORBR",
+   "contingencyLabel": "BOCTOL72MORBR",
+   "baselineMaxLoadingPct": 95.4,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CRENEY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_CRENEP6",
+     "disco_FOSSEL61ORSON",
+     "disco_CRENEL61ZP.V5"
+    ],
+    "best": {
+     "id": "open_coupler_CRENEP6",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_84e485",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — BOLL5L61TERRA",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "BOLL5L61TERRA",
+   "contingencyLabel": "BOLL5L61TERRA",
+   "baselineMaxLoadingPct": 147.4,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "P.ORGL61RQROU",
+    "P.ORGY761"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_RQROUP6",
+     "family": "open_coupling",
+     "max_rho": 1.397,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.369,
+     "id": "open_coupler_RQROUP6+open_coupler_ROGNAP6",
+     "est_max_rho": 0.552
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_79bd5f",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — BRAUDL71MQIS",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "BRAUDL71MQIS",
+   "contingencyLabel": "BRAUDL71MQIS",
+   "baselineMaxLoadingPct": 95.3,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CUBNEL72MQIS"
+   ],
+   "nActionsDiscovered": 10,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "reco_BLAYAL61BRAUD",
+     "open_coupler_SAUCAP7",
+     "load_shedding_MQIS Y631"
+    ],
+    "best": {
+     "id": "reco_BLAYAL61BRAUD",
+     "family": "line_reconnection",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_d62b31",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — BXLIEL61SIRMI",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "BXLIEL61SIRMI",
+   "contingencyLabel": "BXLIEL61SIRMI",
+   "baselineMaxLoadingPct": 111.8,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "MERLAL61RECOU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_MERLAP6"
+    ],
+    "best": {
+     "id": "open_coupler_MERLAP6",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_4c82ab",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — BXTO5L61H.VIE",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "BXTO5L61H.VIE",
+   "contingencyLabel": "BXTO5L61H.VIE",
+   "baselineMaxLoadingPct": 100.0,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "MAUBEL61P.SAM"
+   ],
+   "nActionsDiscovered": 12,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_P.SAMP6",
+     "disco_ESTR6L61FAMAR",
+     "disco_ESTR6L61VALEN"
+    ],
+    "best": {
+     "id": "open_coupler_P.SAMP6",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_73ce12",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CANTEL73SAUCA",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CANTEL73SAUCA",
+   "contingencyLabel": "CANTEL73SAUCA",
+   "baselineMaxLoadingPct": 101.5,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CANTEL72SAUCA"
+   ],
+   "nActionsDiscovered": 12,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "node_merging_CAZARP6",
+     "node_merging_PRAGNP6",
+     "open_coupler_MQIS P7"
+    ],
+    "best": {
+     "id": "node_merging_CAZARP6",
+     "family": "node_merging",
+     "max_rho": 0.991,
+     "reducing": false
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_0e2657",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CARRIL61MORU",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CARRIL61MORU",
+   "contingencyLabel": "CARRIL61MORU",
+   "baselineMaxLoadingPct": 96.5,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "COMPIL61LATEN"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_BXTO5P6",
+     "disco_P.GASL61ZLIE5",
+     "load_shedding_COMPIY632"
+    ],
+    "best": {
+     "id": "open_coupler_BXTO5P6",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_25840f",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CATG1L71VIGY",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CATG1L71VIGY",
+   "contingencyLabel": "CATG1L71VIGY",
+   "baselineMaxLoadingPct": 96.4,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_GARCHY633",
+     "disco_SSELOL61VNOL",
+     "load_shedding_SSELOY631"
+    ],
+    "best": {
+     "id": "load_shedding_GARCHY633",
+     "family": "load_shedding",
+     "max_rho": 0.994,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_fef7ab",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CATG2L72VIGY",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CATG2L72VIGY",
+   "contingencyLabel": "CATG2L72VIGY",
+   "baselineMaxLoadingPct": 96.4,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_GARCHY633",
+     "disco_SSELOL61VNOL",
+     "load_shedding_SSELOY631"
+    ],
+    "best": {
+     "id": "load_shedding_GARCHY633",
+     "family": "load_shedding",
+     "max_rho": 0.994,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_e8e80f",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CATG3L73VIGY",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CATG3L73VIGY",
+   "contingencyLabel": "CATG3L73VIGY",
+   "baselineMaxLoadingPct": 96.4,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_GARCHY633",
+     "disco_SSELOL61VNOL",
+     "load_shedding_SSELOY631"
+    ],
+    "best": {
+     "id": "load_shedding_GARCHY633",
+     "family": "load_shedding",
+     "max_rho": 0.994,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_b5ee30",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CATG4L74VIGY",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CATG4L74VIGY",
+   "contingencyLabel": "CATG4L74VIGY",
+   "baselineMaxLoadingPct": 96.4,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_GARCHY633",
+     "disco_SSELOL61VNOL",
+     "load_shedding_SSELOY631"
+    ],
+    "best": {
+     "id": "load_shedding_GARCHY633",
+     "family": "load_shedding",
+     "max_rho": 0.994,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_149ed1",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CHESNL61NEMOU",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CHESNL61NEMOU",
+   "contingencyLabel": "CHESNL61NEMOU",
+   "baselineMaxLoadingPct": 144.8,
+   "nOverloadedLines": 5,
+   "overloadedLines": [
+    "NEMOUL61VLEMA",
+    "VLEMAL61ZGLAC",
+    "SSELOY766",
+    "TABARY761",
+    "TABARY762"
+   ],
+   "nActionsDiscovered": 4,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_TABARP6",
+     "family": "open_coupling",
+     "max_rho": 1.503,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.518,
+     "id": "open_coupler_TABARP6+open_coupler_SSELOP7",
+     "est_max_rho": 2.798
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_3f6c14",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CHESNL71M.SEI",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CHESNL71M.SEI",
+   "contingencyLabel": "CHESNL71M.SEI",
+   "baselineMaxLoadingPct": 98.1,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CRENEY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_CRENEP7",
+     "open_coupler_CRENEP6",
+     "disco_BARBUL61CRENE"
+    ],
+    "best": {
+     "id": "open_coupler_CRENEP7",
+     "family": "open_coupling",
+     "max_rho": 0.991,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_c23e6c",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CHOLEL62DISTR",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CHOLEL62DISTR",
+   "contingencyLabel": "CHOLEL62DISTR",
+   "baselineMaxLoadingPct": 98.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CHOLEL61DISTR"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_DISTRP6",
+     "disco_CHOLEL61DISTR",
+     "disco_CHOLEL61RECOU"
+    ],
+    "best": {
+     "id": "open_coupler_DISTRP6",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_6f8087",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CHOO2L72LONNY",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CHOO2L72LONNY",
+   "contingencyLabel": "CHOO2L72LONNY",
+   "baselineMaxLoadingPct": 97.4,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_GARCHY633",
+     "load_shedding_SSELOY631",
+     "load_shedding_SSELOY633"
+    ],
+    "best": {
+     "id": "load_shedding_GARCHY633",
+     "family": "load_shedding",
+     "max_rho": 0.997,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_d1d1d3",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CIROLL61LOGES",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CIROLL61LOGES",
+   "contingencyLabel": "CIROLL61LOGES",
+   "baselineMaxLoadingPct": 102.9,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CIROLL62LOGES"
+   ],
+   "nActionsDiscovered": 14,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "node_merging_VLEJUP6",
+     "open_coupler_LOGESP6",
+     "load_shedding_LOGESY641"
+    ],
+    "best": {
+     "id": "node_merging_VLEJUP6",
+     "family": "node_merging",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_67c7a7",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CIROLL62LOGES",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CIROLL62LOGES",
+   "contingencyLabel": "CIROLL62LOGES",
+   "baselineMaxLoadingPct": 102.2,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CIROLL61LOGES"
+   ],
+   "nActionsDiscovered": 14,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "node_merging_VLEJUP6",
+     "open_coupler_LOGESP6",
+     "load_shedding_LOGESY641"
+    ],
+    "best": {
+     "id": "node_merging_VLEJUP6",
+     "family": "node_merging",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_d7f1ef",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CONF5L61CPNIE",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CONF5L61CPNIE",
+   "contingencyLabel": "CONF5L61CPNIE",
+   "baselineMaxLoadingPct": 103.2,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "CPNIEL61PARIS",
+    "CPNIEL61SELF2"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_PARISY633",
+     "load_shedding_PARISY632",
+     "load_shedding_PARISY631"
+    ],
+    "best": {
+     "id": "load_shedding_PARISY633",
+     "family": "load_shedding",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_09e2ad",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — COR.PL62PTCHA",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "COR.PL62PTCHA",
+   "contingencyLabel": "COR.PL62PTCHA",
+   "baselineMaxLoadingPct": 104.3,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "COR.PL61PTCHA"
+   ],
+   "nActionsDiscovered": 4,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_BEZONL61PTCHA"
+    ],
+    "best": {
+     "id": "disco_BEZONL61PTCHA",
+     "family": "line_disconnection",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_53f4bc",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — COSSIL61MORBR",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "COSSIL61MORBR",
+   "contingencyLabel": "COSSIL61MORBR",
+   "baselineMaxLoadingPct": 101.8,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "TABARY762"
+   ],
+   "nActionsDiscovered": 12,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_TABAR6AUXIL1.2",
+     "load_shedding_TABAR6AUXIL3.4",
+     "load_shedding_NEMOUY631"
+    ],
+    "best": {
+     "id": "load_shedding_TABAR6AUXIL1.2",
+     "family": "load_shedding",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_ed002d",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — COUDOL61ZPELA",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "COUDOL61ZPELA",
+   "contingencyLabel": "COUDOL61ZPELA",
+   "baselineMaxLoadingPct": 97.7,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "BOUTRL61TRANS"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_TRANSY633",
+     "open_coupler_BOUTRP6",
+     "load_shedding_TRANSY631"
+    ],
+    "best": {
+     "id": "load_shedding_TRANSY633",
+     "family": "load_shedding",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_5ed363",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CPNIEL61MOIRA",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CPNIEL61MOIRA",
+   "contingencyLabel": "CPNIEL61MOIRA",
+   "baselineMaxLoadingPct": 95.1,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CONF5L61CPNIE"
+   ],
+   "nActionsDiscovered": 14,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_CPNIEP6",
+     "disco_CONF5L61ZP.IL",
+     "disco_MOIRAL61ZP.IL"
+    ],
+    "best": {
+     "id": "open_coupler_CPNIEP6",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_c31d02",
+   "gridId": "grid_5384e039",
+   "difficulty": "medium",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CPNIEL61PARIS",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CPNIEL61PARIS",
+   "contingencyLabel": "CPNIEL61PARIS",
+   "baselineMaxLoadingPct": 104.8,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CONF5L61CPNIE"
+   ],
+   "nActionsDiscovered": 9,
+   "solution": {
+    "kind": "pair",
+    "actions": [
+     "open_coupler_CPNIEP6+load_shedding_CONF5Y612",
+     "open_coupler_CPNIEP6+load_shedding_CONF5Y611",
+     "load_shedding_CONF5Y611+load_shedding_CONF5Y612"
+    ],
+    "best": {
+     "converged": true,
+     "true_max_rho": 0.99,
+     "id": "open_coupler_CPNIEP6+load_shedding_CONF5Y612",
+     "est_max_rho": 0.941
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_3f4713",
+   "gridId": "grid_5384e039",
+   "difficulty": "medium",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CPNIEL61SELF2",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CPNIEL61SELF2",
+   "contingencyLabel": "CPNIEL61SELF2",
+   "baselineMaxLoadingPct": 104.8,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CONF5L61CPNIE"
+   ],
+   "nActionsDiscovered": 9,
+   "solution": {
+    "kind": "pair",
+    "actions": [
+     "open_coupler_CPNIEP6+load_shedding_CONF5Y612",
+     "open_coupler_CPNIEP6+load_shedding_CONF5Y611",
+     "load_shedding_CONF5Y611+load_shedding_CONF5Y612"
+    ],
+    "best": {
+     "converged": true,
+     "true_max_rho": 0.99,
+     "id": "open_coupler_CPNIEP6+load_shedding_CONF5Y612",
+     "est_max_rho": 0.941
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_c2556e",
+   "gridId": "grid_5384e039",
+   "difficulty": "medium",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CPNIEL63SELF2",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CPNIEL63SELF2",
+   "contingencyLabel": "CPNIEL63SELF2",
+   "baselineMaxLoadingPct": 104.8,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CONF5L61CPNIE"
+   ],
+   "nActionsDiscovered": 10,
+   "solution": {
+    "kind": "pair",
+    "actions": [
+     "open_coupler_CPNIEP6+load_shedding_CONF5Y612",
+     "open_coupler_CPNIEP6+load_shedding_CONF5Y611",
+     "load_shedding_CONF5Y611+load_shedding_CONF5Y612"
+    ],
+    "best": {
+     "converged": true,
+     "true_max_rho": 0.99,
+     "id": "open_coupler_CPNIEP6+load_shedding_CONF5Y612",
+     "est_max_rho": 0.941
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_4680f7",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CRENEL61FRONC",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CRENEL61FRONC",
+   "contingencyLabel": "CRENEL61FRONC",
+   "baselineMaxLoadingPct": 101.4,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CRENEY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_CRENEP7",
+     "open_coupler_CRENEP6",
+     "disco_BARBUL61CRENE"
+    ],
+    "best": {
+     "id": "open_coupler_CRENEP7",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_6b1700",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CRENEL61MAROL",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CRENEL61MAROL",
+   "contingencyLabel": "CRENEL61MAROL",
+   "baselineMaxLoadingPct": 106.8,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CRENEY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_CRENEP6",
+     "open_coupler_CRENEP7",
+     "disco_BARBUL61CRENE"
+    ],
+    "best": {
+     "id": "open_coupler_CRENEP6",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_dfb6fc",
+   "gridId": "grid_5384e039",
+   "difficulty": "medium",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CRENEL71REVIG",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CRENEL71REVIG",
+   "contingencyLabel": "CRENEL71REVIG",
+   "baselineMaxLoadingPct": 106.7,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "MAROLL61REVIG"
+   ],
+   "nActionsDiscovered": 13,
+   "solution": {
+    "kind": "pair",
+    "actions": [
+     "open_coupler_CRENEP6+load_shedding_MAROLY631",
+     "load_shedding_MAROLY632+load_shedding_MAROLY631",
+     "open_coupler_CRENEP6+load_shedding_MAROLY632"
+    ],
+    "best": {
+     "converged": true,
+     "true_max_rho": 0.99,
+     "id": "open_coupler_CRENEP6+load_shedding_MAROLY631",
+     "est_max_rho": 0.94
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_04bc4e",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CRENEL71VIELM",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CRENEL71VIELM",
+   "contingencyLabel": "CRENEL71VIELM",
+   "baselineMaxLoadingPct": 95.1,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CRENEY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_CRENEP6",
+     "open_coupler_CRENEP7",
+     "disco_BARBUL61CRENE"
+    ],
+    "best": {
+     "id": "open_coupler_CRENEP6",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_8240b3",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CSLLEL61E.BOT",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CSLLEL61E.BOT",
+   "contingencyLabel": "CSLLEL61E.BOT",
+   "baselineMaxLoadingPct": 95.3,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.ORGL61RQROU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_P.ORG6ISCLE1",
+     "load_shedding_P.ORG6ISCLE2",
+     "open_coupler_MOTT5P6"
+    ],
+    "best": {
+     "id": "load_shedding_P.ORG6ISCLE1",
+     "family": "load_shedding",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_27cf89",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CTAURL61ZVILA",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CTAURL61ZVILA",
+   "contingencyLabel": "CTAURL61ZVILA",
+   "baselineMaxLoadingPct": 95.8,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.ORGL61RQROU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_P.ORG6ISCLE1",
+     "load_shedding_P.ORG6ISCLE2",
+     "open_coupler_RQROUP6"
+    ],
+    "best": {
+     "id": "load_shedding_P.ORG6ISCLE1",
+     "family": "load_shedding",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_ac739f",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — CUBNEL61ZSS11",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "CUBNEL61ZSS11",
+   "contingencyLabel": "CUBNEL61ZSS11",
+   "baselineMaxLoadingPct": 104.5,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "DANTOL61VERLH"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "disco_CUBNEL72DONZA",
+     "family": "line_disconnection",
+     "max_rho": 1.09,
+     "reducing": true
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.092,
+     "id": "open_coupler_CUBNEP7+disco_CUBNEL72DONZA",
+     "est_max_rho": 2.167
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_eacf5a",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — D.BURL71TABAR",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "D.BURL71TABAR",
+   "contingencyLabel": "D.BURL71TABAR",
+   "baselineMaxLoadingPct": 96.0,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSELOY631",
+     "load_shedding_GARCHY633",
+     "load_shedding_SSELOY633"
+    ],
+    "best": {
+     "id": "load_shedding_SSELOY631",
+     "family": "load_shedding",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_312f77",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — D.BURL72TABAR",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "D.BURL72TABAR",
+   "contingencyLabel": "D.BURL72TABAR",
+   "baselineMaxLoadingPct": 96.2,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSELOY631",
+     "load_shedding_GARCHY633",
+     "load_shedding_SSELOY633"
+    ],
+    "best": {
+     "id": "load_shedding_SSELOY631",
+     "family": "load_shedding",
+     "max_rho": 0.991,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_a5d0be",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — D.BUXL73TABAR",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "D.BUXL73TABAR",
+   "contingencyLabel": "D.BUXL73TABAR",
+   "baselineMaxLoadingPct": 96.1,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSELOY631",
+     "load_shedding_GARCHY633",
+     "load_shedding_SSELOY633"
+    ],
+    "best": {
+     "id": "load_shedding_SSELOY631",
+     "family": "load_shedding",
+     "max_rho": 0.991,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_350b00",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — D.BUXL74TABAR",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "D.BUXL74TABAR",
+   "contingencyLabel": "D.BUXL74TABAR",
+   "baselineMaxLoadingPct": 96.0,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_GARCHY633",
+     "load_shedding_SSELOY631",
+     "load_shedding_SSELOY633"
+    ],
+    "best": {
+     "id": "load_shedding_GARCHY633",
+     "family": "load_shedding",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_6b287c",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — DARSEL61RASSU",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "DARSEL61RASSU",
+   "contingencyLabel": "DARSEL61RASSU",
+   "baselineMaxLoadingPct": 101.8,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "PONTEL61REALT",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "disco_DURANL61REALT",
+     "family": "line_disconnection",
+     "max_rho": 1.047,
+     "reducing": true
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.02,
+     "id": "disco_DURANL61REALT+disco_E.BOTL61REALT",
+     "est_max_rho": 0.969
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_3173f1",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — DISTRL71GALOR",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "DISTRL71GALOR",
+   "contingencyLabel": "DISTRL71GALOR",
+   "baselineMaxLoadingPct": 107.2,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CHOLEL61DISTR"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_CHOLEL61RECOU"
+    ],
+    "best": {
+     "id": "disco_CHOLEL61RECOU",
+     "family": "line_disconnection",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_313e74",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — DONZAL71GOLF5",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "DONZAL71GOLF5",
+   "contingencyLabel": "DONZAL71GOLF5",
+   "baselineMaxLoadingPct": 101.5,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "MTAHUL61SSVIN",
+    "TRI.PY761"
+   ],
+   "nActionsDiscovered": 13,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "disco_COUFFL61SSVIC",
+     "family": "line_disconnection",
+     "max_rho": 1.006,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.0,
+     "id": "open_coupler_SSVINP6+disco_LIVIEL61SSVIN",
+     "est_max_rho": 0.397
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_5a16f9",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — DONZAL72GOLF5",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "DONZAL72GOLF5",
+   "contingencyLabel": "DONZAL72GOLF5",
+   "baselineMaxLoadingPct": 101.5,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "MTAHUL61SSVIN",
+    "TRI.PY761"
+   ],
+   "nActionsDiscovered": 13,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "disco_COUFFL61SSVIC",
+     "family": "line_disconnection",
+     "max_rho": 1.006,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.0,
+     "id": "open_coupler_SSVINP6+disco_LIVIEL61SSVIN",
+     "est_max_rho": 0.396
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_f5c457",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — ECHALL61SOLEI",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "ECHALL61SOLEI",
+   "contingencyLabel": "ECHALL61SOLEI",
+   "baselineMaxLoadingPct": 108.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "ECHALL62SOLEI"
+   ],
+   "nActionsDiscovered": 8,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SOLEIY632"
+    ],
+    "best": {
+     "id": "load_shedding_SOLEIY632",
+     "family": "load_shedding",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_57b30a",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — FALLOL62ZV.BE",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "FALLOL62ZV.BE",
+   "contingencyLabel": "FALLOL62ZV.BE",
+   "baselineMaxLoadingPct": 100.1,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "NOVIOL61SSOU5"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_P.GASP6_1",
+     "disco_NOVIOL61SSOU5",
+     "disco_P.GASL63SEINE"
+    ],
+    "best": {
+     "id": "open_coupler_P.GASP6_1",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_c3ba30",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — FALLOL63ZFANA",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "FALLOL63ZFANA",
+   "contingencyLabel": "FALLOL63ZFANA",
+   "baselineMaxLoadingPct": 99.1,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "NOVIOL61SSOU5"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_NOVIOL61SSOU5",
+     "disco_P.GASL63SEINE",
+     "disco_SEINEL62SSOU5"
+    ],
+    "best": {
+     "id": "disco_NOVIOL61SSOU5",
+     "family": "line_disconnection",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_f2bf7c",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — FALLOL64ZFAN5",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "FALLOL64ZFAN5",
+   "contingencyLabel": "FALLOL64ZFAN5",
+   "baselineMaxLoadingPct": 99.8,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "NOVIOL61SSOU5"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_P.GASP6_1",
+     "disco_NOVIOL61SSOU5",
+     "disco_P.GASL63SEINE"
+    ],
+    "best": {
+     "id": "open_coupler_P.GASP6_1",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_9598b8",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — FEUILL61SSCHA",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "FEUILL61SSCHA",
+   "contingencyLabel": "FEUILL61SSCHA",
+   "baselineMaxLoadingPct": 98.4,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "DARSEL61RASSU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "disco_DARSEL62FEUIL",
+     "family": "line_disconnection",
+     "max_rho": 1.004,
+     "reducing": true
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.001,
+     "id": "disco_DARSEL62FEUIL+open_coupler_PONTEP6",
+     "est_max_rho": 0.951
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_c445b6",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — FLAMAL72MENUE",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "FLAMAL72MENUE",
+   "contingencyLabel": "FLAMAL72MENUE",
+   "baselineMaxLoadingPct": 95.0,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSELOY631",
+     "load_shedding_SSELOY633",
+     "load_shedding_SSELOY634"
+    ],
+    "best": {
+     "id": "load_shedding_SSELOY631",
+     "family": "load_shedding",
+     "max_rho": 0.997,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_d013b0",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — FRONCL61ZEPIZ",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "FRONCL61ZEPIZ",
+   "contingencyLabel": "FRONCL61ZEPIZ",
+   "baselineMaxLoadingPct": 117.1,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CRENEY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_CRENEP7",
+     "open_coupler_CRENEP6",
+     "disco_BARBUL61CRENE"
+    ],
+    "best": {
+     "id": "open_coupler_CRENEP7",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_d1d853",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — GALORL61MAUGE",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "GALORL61MAUGE",
+   "contingencyLabel": "GALORL61MAUGE",
+   "baselineMaxLoadingPct": 99.7,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CHOLEL61DISTR"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_CHOLEL61RECOU",
+     "disco_CHOLEL61MAUGE",
+     "disco_MERLAL61RECOU"
+    ],
+    "best": {
+     "id": "disco_CHOLEL61RECOU",
+     "family": "line_disconnection",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_c5f106",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — GARCHL61SSELO",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "GARCHL61SSELO",
+   "contingencyLabel": "GARCHL61SSELO",
+   "baselineMaxLoadingPct": 114.4,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "TABARY761",
+    "TABARY762"
+   ],
+   "nActionsDiscovered": 12,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "disco_NEMOUL61VLEMA",
+     "family": "line_disconnection",
+     "max_rho": 1.094,
+     "reducing": true
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.094,
+     "id": "disco_GIEN L61ZGIEN+disco_NEMOUL61VLEMA",
+     "est_max_rho": 1.93
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_ebc7e7",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — GARCHL61ZGIEN",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "GARCHL61ZGIEN",
+   "contingencyLabel": "GARCHL61ZGIEN",
+   "baselineMaxLoadingPct": 98.7,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 9,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_SSELOP7",
+     "disco_GAUGLL72SSELO",
+     "open_coupler_SSELOP6"
+    ],
+    "best": {
+     "id": "open_coupler_SSELOP7",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_ea6086",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — GATI5L71GAUGL",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "GATI5L71GAUGL",
+   "contingencyLabel": "GATI5L71GAUGL",
+   "baselineMaxLoadingPct": 115.7,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "disco_GAUGLL72SSELO",
+     "family": "line_disconnection",
+     "max_rho": 1.039,
+     "reducing": true
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.003,
+     "id": "load_shedding_SSELOY631+disco_SSELOL61VNOL",
+     "est_max_rho": 0.954
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_ca9121",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — GATI5L71TABAR",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "GATI5L71TABAR",
+   "contingencyLabel": "GATI5L71TABAR",
+   "baselineMaxLoadingPct": 102.2,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "TABARY762"
+   ],
+   "nActionsDiscovered": 12,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_TABARL61ZGIEN",
+     "disco_TABARL61ZGLAC",
+     "load_shedding_TABAR6AUXIL1.2"
+    ],
+    "best": {
+     "id": "disco_TABARL61ZGIEN",
+     "family": "line_disconnection",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_3d960d",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — GATI5L72TABAR",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "GATI5L72TABAR",
+   "contingencyLabel": "GATI5L72TABAR",
+   "baselineMaxLoadingPct": 102.2,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "TABARY762"
+   ],
+   "nActionsDiscovered": 12,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_TABARL61ZGIEN",
+     "disco_TABARL61ZGLAC",
+     "load_shedding_TABAR6AUXIL1.2"
+    ],
+    "best": {
+     "id": "disco_TABARL61ZGIEN",
+     "family": "line_disconnection",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_569bd5",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — GAUDIL71RUEYR",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "GAUDIL71RUEYR",
+   "contingencyLabel": "GAUDIL71RUEYR",
+   "baselineMaxLoadingPct": 116.8,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "MTAHUL61SSVIN",
+    "MTAHUL61ZGARR",
+    "TRI.PY761"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_SSVINP6",
+     "family": "open_coupling",
+     "max_rho": 1.175,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.131,
+     "id": "open_coupler_SSVINP6+load_shedding_SSVINY631",
+     "est_max_rho": 1.087
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_f4d949",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — GAUGLL72SSELO",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "GAUGLL72SSELO",
+   "contingencyLabel": "GAUGLL72SSELO",
+   "baselineMaxLoadingPct": 103.4,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "TABARY761",
+    "TABARY762"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_GARCHL61ZGIEN",
+     "disco_TABARL61ZGLAC",
+     "load_shedding_TABAR6AUXIL1.2"
+    ],
+    "best": {
+     "id": "disco_GARCHL61ZGIEN",
+     "family": "line_disconnection",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_9b4826",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — GRAV5L71WARAN",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "GRAV5L71WARAN",
+   "contingencyLabel": "GRAV5L71WARAN",
+   "baselineMaxLoadingPct": 95.5,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSELOY631",
+     "load_shedding_SSELOY633",
+     "load_shedding_SSELOY634"
+    ],
+    "best": {
+     "id": "load_shedding_SSELOY631",
+     "family": "load_shedding",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_fce567",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — GRAV5L72WARAN",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "GRAV5L72WARAN",
+   "contingencyLabel": "GRAV5L72WARAN",
+   "baselineMaxLoadingPct": 95.5,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSELOY631",
+     "load_shedding_SSELOY633",
+     "load_shedding_SSELOY634"
+    ],
+    "best": {
+     "id": "load_shedding_SSELOY631",
+     "family": "load_shedding",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_757247",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — GRAV5L74WARAN",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "GRAV5L74WARAN",
+   "contingencyLabel": "GRAV5L74WARAN",
+   "baselineMaxLoadingPct": 95.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_GARCHY633",
+     "load_shedding_SSELOY631",
+     "load_shedding_SSELOY633"
+    ],
+    "best": {
+     "id": "load_shedding_GARCHY633",
+     "family": "load_shedding",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_0625d0",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — GRAV5L75WARAN",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "GRAV5L75WARAN",
+   "contingencyLabel": "GRAV5L75WARAN",
+   "baselineMaxLoadingPct": 95.5,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSELOY631",
+     "load_shedding_SSELOY633",
+     "load_shedding_SSELOY634"
+    ],
+    "best": {
+     "id": "load_shedding_SSELOY631",
+     "family": "load_shedding",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_24751b",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — GRAV5L76WARAN",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "GRAV5L76WARAN",
+   "contingencyLabel": "GRAV5L76WARAN",
+   "baselineMaxLoadingPct": 95.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSELOY631",
+     "load_shedding_GARCHY633",
+     "load_shedding_SSELOY633"
+    ],
+    "best": {
+     "id": "load_shedding_SSELOY631",
+     "family": "load_shedding",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_b4be07",
+   "gridId": "grid_5384e039",
+   "difficulty": "medium",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — HOUDRL71VINCE",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "HOUDRL71VINCE",
+   "contingencyLabel": "HOUDRL71VINCE",
+   "baselineMaxLoadingPct": 108.1,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "VINCEL61ZMAD6",
+    "CRENEY766"
+   ],
+   "nActionsDiscovered": 16,
+   "solution": {
+    "kind": "pair",
+    "actions": [
+     "open_coupler_CRENEP7+disco_LANEUL61ZMAD6",
+     "reco_MARL6L71VIGY+load_shedding_VINCEY633",
+     "reco_MARL6L71VIGY+load_shedding_VINCEY634"
+    ],
+    "best": {
+     "converged": true,
+     "true_max_rho": 0.99,
+     "id": "open_coupler_CRENEP7+disco_LANEUL61ZMAD6",
+     "est_max_rho": 0.94
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_3065fe",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — J.VILL61ZTONN",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "J.VILL61ZTONN",
+   "contingencyLabel": "J.VILL61ZTONN",
+   "baselineMaxLoadingPct": 113.0,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "SSELOY766",
+    "TABARY761",
+    "TABARY762"
+   ],
+   "nActionsDiscovered": 12,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "disco_NEMOUL61VLEMA",
+     "family": "line_disconnection",
+     "max_rho": 1.143,
+     "reducing": true
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.174,
+     "id": "open_coupler_SSELOP6+disco_NEMOUL61VLEMA",
+     "est_max_rho": 1.967
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_769a3f",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — LAVERL61PONTE",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "LAVERL61PONTE",
+   "contingencyLabel": "LAVERL61PONTE",
+   "baselineMaxLoadingPct": 108.2,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "PONTEL61REALT",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_SEPTEP6",
+     "family": "open_coupling",
+     "max_rho": 1.111,
+     "reducing": true
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.071,
+     "id": "open_coupler_SEPTEP6+disco_E.BOTL61REALT",
+     "est_max_rho": 1.025
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_14bf53",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — LAVERL61SEPTE",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "LAVERL61SEPTE",
+   "contingencyLabel": "LAVERL61SEPTE",
+   "baselineMaxLoadingPct": 115.1,
+   "nOverloadedLines": 4,
+   "overloadedLines": [
+    "DARSEL61RASSU",
+    "P.ORGL61RQROU",
+    "PONTEL61REALT",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 12,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_PONTEP6",
+     "family": "open_coupling",
+     "max_rho": 1.136,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.19,
+     "id": "open_coupler_MOTT5P6+open_coupler_ARDOIP6",
+     "est_max_rho": 1.9
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_3f7251",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — LINGOL61ROUMO",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "LINGOL61ROUMO",
+   "contingencyLabel": "LINGOL61ROUMO",
+   "baselineMaxLoadingPct": 99.9,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "BOUTRL61TRANS"
+   ],
+   "nActionsDiscovered": 14,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_GRIM5L61TRANS",
+     "disco_GRIM5L62TRANS"
+    ],
+    "best": {
+     "id": "disco_GRIM5L61TRANS",
+     "family": "line_disconnection",
+     "max_rho": 0.994,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_56746e",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — M.PONL65PONTE",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "M.PONL65PONTE",
+   "contingencyLabel": "M.PONL65PONTE",
+   "baselineMaxLoadingPct": 101.8,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "BOLL5L61TERRA"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_TERRAY631",
+     "load_shedding_TERRAY633"
+    ],
+    "best": {
+     "id": "load_shedding_TERRAY631",
+     "family": "load_shedding",
+     "max_rho": 0.992,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_c4857b",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — MAMBEL61PUSY",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "MAMBEL61PUSY",
+   "contingencyLabel": "MAMBEL61PUSY",
+   "baselineMaxLoadingPct": 103.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CRENEY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_CRENEP6",
+     "open_coupler_CRENEP7",
+     "disco_BARBUL61CRENE"
+    ],
+    "best": {
+     "id": "open_coupler_CRENEP6",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_91f681",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — MAMBEL71SIERE",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "MAMBEL71SIERE",
+   "contingencyLabel": "MAMBEL71SIERE",
+   "baselineMaxLoadingPct": 114.6,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "ARGIEL61SIERE",
+    "ETUPEL61ZHIRS",
+    "SIEREL61ZHIRS"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_ETUPEP6",
+     "family": "open_coupling",
+     "max_rho": 1.139,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.073,
+     "id": "open_coupler_ETUPEP6+load_shedding_ETUPEY632",
+     "est_max_rho": 1.033
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_fbf59f",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — MANDAL71WARAN",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "MANDAL71WARAN",
+   "contingencyLabel": "MANDAL71WARAN",
+   "baselineMaxLoadingPct": 97.2,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "ATTAQL72WARAN"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_ARGOEL71MANDA",
+     "disco_FRUGEL71MANDA",
+     "disco_ARGOEL71FRUGE"
+    ],
+    "best": {
+     "id": "disco_ARGOEL71MANDA",
+     "family": "line_disconnection",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_0857a6",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — MAROLL61REVIG",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "MAROLL61REVIG",
+   "contingencyLabel": "MAROLL61REVIG",
+   "baselineMaxLoadingPct": 124.1,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CRENEY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_CRENEP7",
+     "disco_BARBUL61CRENE",
+     "disco_BARBUL61FOSSE"
+    ],
+    "best": {
+     "id": "open_coupler_CRENEP7",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_e013a3",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — MASTAL61P.SAM",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "MASTAL61P.SAM",
+   "contingencyLabel": "MASTAL61P.SAM",
+   "baselineMaxLoadingPct": 109.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "MAUBEL61P.SAM"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "disco_ESTR6L61VALEN",
+     "family": "line_disconnection",
+     "max_rho": 1.104,
+     "reducing": true
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.071,
+     "id": "disco_ESTR6L61FAMAR+load_shedding_MAUBEY641",
+     "est_max_rho": 1.017
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_6b3e07",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — MAUBEL61P.SAM",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "MAUBEL61P.SAM",
+   "contingencyLabel": "MAUBEL61P.SAM",
+   "baselineMaxLoadingPct": 98.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "MASTAL61P.SAM"
+   ],
+   "nActionsDiscovered": 11,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "reco_CAPELY761"
+    ],
+    "best": {
+     "id": "reco_CAPELY761",
+     "family": "line_reconnection",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_49899e",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — MOUISL61P.ORG",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "MOUISL61P.ORG",
+   "contingencyLabel": "MOUISL61P.ORG",
+   "baselineMaxLoadingPct": 104.8,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.ORGL61RQROU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_P.ORG6ISCLE1",
+     "load_shedding_P.ORG6ISCLE2"
+    ],
+    "best": {
+     "id": "load_shedding_P.ORG6ISCLE1",
+     "family": "load_shedding",
+     "max_rho": 0.989,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_602f16",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — MOUISL61TERRA",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "MOUISL61TERRA",
+   "contingencyLabel": "MOUISL61TERRA",
+   "baselineMaxLoadingPct": 108.4,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.ORGL61RQROU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_P.ORG6ISCLE1",
+     "load_shedding_P.ORG6ISCLE2"
+    ],
+    "best": {
+     "id": "load_shedding_P.ORG6ISCLE1",
+     "family": "load_shedding",
+     "max_rho": 0.989,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_7c9506",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — MQIS L71SAUCA",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "MQIS L71SAUCA",
+   "contingencyLabel": "MQIS L71SAUCA",
+   "baselineMaxLoadingPct": 97.0,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "MQIS Y761"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "reco_BLAYAL61BRAUD",
+     "open_coupler_MQIS P7",
+     "disco_CUBNEL72MQIS"
+    ],
+    "best": {
+     "id": "reco_BLAYAL61BRAUD",
+     "family": "line_reconnection",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_06d68c",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — MTAHUL61SSVIN",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "MTAHUL61SSVIN",
+   "contingencyLabel": "MTAHUL61SSVIN",
+   "baselineMaxLoadingPct": 95.9,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "BALARL61MTPEL",
+    "O.CHAL61ZS.CU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_BALARY632",
+     "load_shedding_BALARY633"
+    ],
+    "best": {
+     "id": "load_shedding_BALARY632",
+     "family": "load_shedding",
+     "max_rho": 0.995,
+     "reducing": false
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_58d046",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — MUREML61ZEPIZ",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "MUREML61ZEPIZ",
+   "contingencyLabel": "MUREML61ZEPIZ",
+   "baselineMaxLoadingPct": 113.0,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CRENEY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_CRENEP7",
+     "open_coupler_CRENEP6",
+     "disco_BARBUL61CRENE"
+    ],
+    "best": {
+     "id": "open_coupler_CRENEP7",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_7bffb6",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — MUREML61ZG.HA",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "MUREML61ZG.HA",
+   "contingencyLabel": "MUREML61ZG.HA",
+   "baselineMaxLoadingPct": 109.2,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CRENEY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_CRENEP7",
+     "open_coupler_CRENEP6",
+     "disco_BARBUL61CRENE"
+    ],
+    "best": {
+     "id": "open_coupler_CRENEP7",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_3474b2",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — P.CORL71SSAL7",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "P.CORL71SSAL7",
+   "contingencyLabel": "P.CORL71SSAL7",
+   "baselineMaxLoadingPct": 95.3,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "MTAHUL61SSVIN"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSVINY631",
+     "load_shedding_SSVINY633",
+     "open_coupler_SSVINP6"
+    ],
+    "best": {
+     "id": "load_shedding_SSVINY631",
+     "family": "load_shedding",
+     "max_rho": 0.996,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_431798",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — P.CORL72SSAL7",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "P.CORL72SSAL7",
+   "contingencyLabel": "P.CORL72SSAL7",
+   "baselineMaxLoadingPct": 95.3,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "MTAHUL61SSVIN"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSVINY631",
+     "load_shedding_SSVINY633",
+     "open_coupler_SSVINP6"
+    ],
+    "best": {
+     "id": "load_shedding_SSVINY631",
+     "family": "load_shedding",
+     "max_rho": 0.996,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_e1bfc3",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — P.GASL62ZV.BE",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "P.GASL62ZV.BE",
+   "contingencyLabel": "P.GASL62ZV.BE",
+   "baselineMaxLoadingPct": 103.0,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "NOVIOL61SSOU5"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_NOVIOL61SSOU5",
+     "disco_P.GASL63SEINE",
+     "disco_SEINEL62SSOU5"
+    ],
+    "best": {
+     "id": "disco_NOVIOL61SSOU5",
+     "family": "line_disconnection",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_d6b9eb",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — P.GASL63ZFANA",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "P.GASL63ZFANA",
+   "contingencyLabel": "P.GASL63ZFANA",
+   "baselineMaxLoadingPct": 101.7,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "NOVIOL61SSOU5"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_NOVIOL61SSOU5",
+     "disco_P.GASL63SEINE",
+     "disco_SEINEL62SSOU5"
+    ],
+    "best": {
+     "id": "disco_NOVIOL61SSOU5",
+     "family": "line_disconnection",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_c75070",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — P.GASL64ZFAN5",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "P.GASL64ZFAN5",
+   "contingencyLabel": "P.GASL64ZFAN5",
+   "baselineMaxLoadingPct": 100.9,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "NOVIOL61SSOU5"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_P.GASP6_1",
+     "disco_NOVIOL61SSOU5",
+     "disco_P.GASL63SEINE"
+    ],
+    "best": {
+     "id": "open_coupler_P.GASP6_1",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_29a9b4",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — P.ORGL61RQROU",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "P.ORGL61RQROU",
+   "contingencyLabel": "P.ORGL61RQROU",
+   "baselineMaxLoadingPct": 133.2,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "BOLL5L61TERRA",
+    "P.ORGY761"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "disco_TAVELL71TRI.P",
+     "family": "line_disconnection",
+     "max_rho": 1.374,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.405,
+     "id": "pst_tap_L.NEUL61L.NTD_inc2+open_coupler_MTGROP6",
+     "est_max_rho": 1.618
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_682401",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — P.ORGL71TAVEL",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "P.ORGL71TAVEL",
+   "contingencyLabel": "P.ORGL71TAVEL",
+   "baselineMaxLoadingPct": 115.8,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "BOLL5L61TERRA",
+    "P.ORGL61RQROU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_MOTT5P6",
+     "family": "open_coupling",
+     "max_rho": 1.123,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.139,
+     "id": "open_coupler_RQROUP6+disco_FEUILL61LAVER",
+     "est_max_rho": 0.582
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_25022d",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — PENL5L71PENLY",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "PENL5L71PENLY",
+   "contingencyLabel": "PENL5L71PENLY",
+   "baselineMaxLoadingPct": 97.0,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSELOY631",
+     "load_shedding_SSELOY633",
+     "load_shedding_SSELOY634"
+    ],
+    "best": {
+     "id": "load_shedding_SSELOY631",
+     "family": "load_shedding",
+     "max_rho": 0.997,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_e1f877",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — PENL5L72PENLY",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "PENL5L72PENLY",
+   "contingencyLabel": "PENL5L72PENLY",
+   "baselineMaxLoadingPct": 97.0,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSELOY631",
+     "load_shedding_SSELOY633",
+     "load_shedding_SSELOY634"
+    ],
+    "best": {
+     "id": "load_shedding_SSELOY631",
+     "family": "load_shedding",
+     "max_rho": 0.997,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_6d8ce0",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — PONTEL61REALT",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "PONTEL61REALT",
+   "contingencyLabel": "PONTEL61REALT",
+   "baselineMaxLoadingPct": 122.9,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "DARSEL61RASSU",
+    "LAVERL61SEPTE",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 9,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_MOTT5P6",
+     "family": "open_coupling",
+     "max_rho": 1.271,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.271,
+     "id": "open_coupler_MOTT5P6+open_coupler_ARDOIP6",
+     "est_max_rho": 1.905
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_7d0521",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — PONTEL62REALT",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "PONTEL62REALT",
+   "contingencyLabel": "PONTEL62REALT",
+   "baselineMaxLoadingPct": 123.0,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "DARSEL61RASSU",
+    "LAVERL61SEPTE",
+    "PONTEL61REALT"
+   ],
+   "nActionsDiscovered": 9,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_MOTT5P6",
+     "family": "open_coupling",
+     "max_rho": 1.271,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.271,
+     "id": "open_coupler_MOTT5P6+open_coupler_ARDOIP6",
+     "est_max_rho": 1.905
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_437878",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — RASSUL61RQROU",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "RASSUL61RQROU",
+   "contingencyLabel": "RASSUL61RQROU",
+   "baselineMaxLoadingPct": 96.2,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "PONTEL61REALT",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_E.BOTL61REALT",
+     "disco_DURANL61REALT",
+     "open_coupler_PONTEP6"
+    ],
+    "best": {
+     "id": "disco_E.BOTL61REALT",
+     "family": "line_disconnection",
+     "max_rho": 0.994,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_090e7b",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — ROGNAL61RQROU",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "ROGNAL61RQROU",
+   "contingencyLabel": "ROGNAL61RQROU",
+   "baselineMaxLoadingPct": 97.7,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "DARSEL61RASSU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_RASSUY631",
+     "disco_RQROUL61ZVILA"
+    ],
+    "best": {
+     "id": "load_shedding_RASSUY631",
+     "family": "load_shedding",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_f87211",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — ROGNAL61SSCHA",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "ROGNAL61SSCHA",
+   "contingencyLabel": "ROGNAL61SSCHA",
+   "baselineMaxLoadingPct": 103.6,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "DARSEL61RASSU",
+    "PONTEL61REALT",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_DARSEP6",
+     "family": "open_coupling",
+     "max_rho": 1.07,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.065,
+     "id": "open_coupler_DARSEP6+open_coupler_SSTULP6",
+     "est_max_rho": 1.012
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_a91fd1",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — ROUMOL61ZSSCR",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "ROUMOL61ZSSCR",
+   "contingencyLabel": "ROUMOL61ZSSCR",
+   "baselineMaxLoadingPct": 99.9,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "BOUTRL61TRANS"
+   ],
+   "nActionsDiscovered": 14,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_GRIM5L61TRANS",
+     "disco_GRIM5L62TRANS"
+    ],
+    "best": {
+     "id": "disco_GRIM5L61TRANS",
+     "family": "line_disconnection",
+     "max_rho": 0.994,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_4f46bb",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — RQROUL61ZVILA",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "RQROUL61ZVILA",
+   "contingencyLabel": "RQROUL61ZVILA",
+   "baselineMaxLoadingPct": 99.8,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.ORGL61RQROU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_P.ORG6ISCLE1",
+     "load_shedding_P.ORG6ISCLE2",
+     "open_coupler_RQROUP6"
+    ],
+    "best": {
+     "id": "load_shedding_P.ORG6ISCLE1",
+     "family": "load_shedding",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_52c6d8",
+   "gridId": "grid_5384e039",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — SEREIL61ZTONN",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "SEREIL61ZTONN",
+   "contingencyLabel": "SEREIL61ZTONN",
+   "baselineMaxLoadingPct": 132.6,
+   "nOverloadedLines": 3,
+   "overloadedLines": [
+    "SSELOY766",
+    "TABARY761",
+    "TABARY762"
+   ],
+   "nActionsDiscovered": 12,
+   "solution": {
+    "kind": "none",
+    "best_unitary": {
+     "id": "open_coupler_SSELOP7",
+     "family": "open_coupling",
+     "max_rho": 1.236,
+     "reducing": false
+    },
+    "best_pair": {
+     "converged": true,
+     "true_max_rho": 1.174,
+     "id": "open_coupler_SSELOP6+disco_NEMOUL61VLEMA",
+     "est_max_rho": 1.961
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_fd09ea",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — SEREIL71VIELM",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "SEREIL71VIELM",
+   "contingencyLabel": "SEREIL71VIELM",
+   "baselineMaxLoadingPct": 100.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "SSELOY766"
+   ],
+   "nActionsDiscovered": 14,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "disco_SSELOL61VNOL",
+     "load_shedding_SSELOY631",
+     "load_shedding_SSELOY633"
+    ],
+    "best": {
+     "id": "disco_SSELOL61VNOL",
+     "family": "line_disconnection",
+     "max_rho": 0.991,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_0031b4",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — SSAVOL61ZSAR6",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "SSAVOL61ZSAR6",
+   "contingencyLabel": "SSAVOL61ZSAR6",
+   "baselineMaxLoadingPct": 119.9,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.ROSL61SSAVO"
+   ],
+   "nActionsDiscovered": 14,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "reco_MARL6L71VIGY",
+     "open_coupler_BERGHP6",
+     "disco_BERGHL61MARL6"
+    ],
+    "best": {
+     "id": "reco_MARL6L71VIGY",
+     "family": "line_reconnection",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_544784",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — SSESTL61SSTUL",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "SSESTL61SSTUL",
+   "contingencyLabel": "SSESTL61SSTUL",
+   "baselineMaxLoadingPct": 97.9,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.ORGL61RQROU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_P.ORG6ISCLE1",
+     "load_shedding_P.ORG6ISCLE2",
+     "open_coupler_MOTT5P6"
+    ],
+    "best": {
+     "id": "load_shedding_P.ORG6ISCLE1",
+     "family": "load_shedding",
+     "max_rho": 0.989,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_9b960f",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — T.VICL61ZMENT",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "T.VICL61ZMENT",
+   "contingencyLabel": "T.VICL61ZMENT",
+   "baselineMaxLoadingPct": 96.6,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "P.ORGL61RQROU"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_P.ORG6ISCLE1",
+     "load_shedding_P.ORG6ISCLE2",
+     "open_coupler_MOTT5P6"
+    ],
+    "best": {
+     "id": "load_shedding_P.ORG6ISCLE1",
+     "family": "load_shedding",
+     "max_rho": 0.986,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_00de85",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — TAMARL71TAVEL",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "TAMARL71TAVEL",
+   "contingencyLabel": "TAMARL71TAVEL",
+   "baselineMaxLoadingPct": 97.2,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "MTAHUL61SSVIN"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSVINY631",
+     "load_shedding_SSVINY633",
+     "open_coupler_SSVINP6"
+    ],
+    "best": {
+     "id": "load_shedding_SSVINY631",
+     "family": "load_shedding",
+     "max_rho": 0.996,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_edd29e",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — TAMARL72TAVEL",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "TAMARL72TAVEL",
+   "contingencyLabel": "TAMARL72TAVEL",
+   "baselineMaxLoadingPct": 97.1,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "MTAHUL61SSVIN"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "load_shedding_SSVINY631",
+     "load_shedding_SSVINY633",
+     "open_coupler_SSVINP6"
+    ],
+    "best": {
+     "id": "load_shedding_SSVINY631",
+     "family": "load_shedding",
+     "max_rho": 0.996,
+     "reducing": true
+    }
+   }
+  },
+  {
+   "id": "s_5384e039_bdedb3",
+   "gridId": "grid_5384e039",
+   "difficulty": "easy",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — VINCEL61ZG.HA",
+   "networkPath": "data/rte7000_tht/grids/grid_5384e039/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5384e039/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5384e039/grid_layout.json",
+   "contingencyElementId": "VINCEL61ZG.HA",
+   "contingencyLabel": "VINCEL61ZG.HA",
+   "baselineMaxLoadingPct": 110.9,
+   "nOverloadedLines": 1,
+   "overloadedLines": [
+    "CRENEY766"
+   ],
+   "nActionsDiscovered": 15,
+   "solution": {
+    "kind": "unitary",
+    "actions": [
+     "open_coupler_CRENEP7",
+     "open_coupler_CRENEP6",
+     "disco_BARBUL61CRENE"
+    ],
+    "best": {
+     "id": "open_coupler_CRENEP7",
+     "family": "open_coupling",
+     "max_rho": 0.99,
+     "reducing": true
+    }
+   }
+  }
+ ]
+}
