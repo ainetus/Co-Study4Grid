@@ -7,6 +7,19 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Dependencies — lift the pypowsybl upper bound
+
+- **`pypowsybl` is no longer capped below 1.15** (`pyproject.toml`). The earlier
+  `>=1.13.0,<1.15` pin assumed pypowsybl 1.15 shifted the
+  `test_independent_actions_simulation` flow deltas beyond the committed
+  baseline's ±1 MW tolerance (PR #99). Re-verified against pypowsybl 1.14, 1.15
+  and 1.16 on the small test grid: all three reproduce
+  `expert_backend/tests/baseline_scenario.json` within tolerance (max abs delta
+  0.0 MW, no COUCHY632 Q sign-flip), so the baseline needs no regeneration and
+  the constraint is now `pypowsybl>=1.13.0`. The floor stays at 1.13.0 because
+  the oldest supported pypowsybl also bounds the IIDM schema the shipped game
+  networks may use (`scripts/game_mode/test_rte7000_game_mode.py`).
+
 ### Game Mode — France THT difficulty-graded scenario family
 
 - **New scenario family on the opening screen** — a top-level **Mode** choice
