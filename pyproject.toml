@@ -19,13 +19,16 @@ classifiers = [
 ]
 dependencies = [
     "ExpertOp4Grid>=0.3.2.post1",
-    # Pinned below 1.15 until the test baseline
-    # (`expert_backend/tests/baseline_scenario.json`) is regenerated with
-    # the newer solver. pypowsybl 1.15.0 shifts both P (~±2.6 MW) and Q
-    # (sign-flipping +1.8 → −10.2 Mvar on COUCHY632) on double-busbar
-    # node_merging actions, breaking the ±1 MW tolerance of
-    # `test_independent_actions_simulation`. See PR #99 discussion.
-    "pypowsybl>=1.13.0,<1.15",
+    # No upper bound. The earlier `<1.15` cap assumed pypowsybl 1.15 shifted the
+    # `test_independent_actions_simulation` deltas beyond the ±1 MW tolerance of
+    # the committed baseline (`expert_backend/tests/baseline_scenario.json`, see
+    # PR #99). Re-verified since: pypowsybl 1.14 / 1.15 / 1.16 all reproduce that
+    # baseline within tolerance (max abs delta 0.0 MW on the small test grid, no
+    # COUCHY632 Q sign-flip), so the drift no longer applies and the cap is
+    # lifted. Floor kept at 1.13.0 — the oldest supported pypowsybl also bounds
+    # the IIDM schema the shipped game networks may use (see
+    # scripts/game_mode/test_rte7000_game_mode.py).
+    "pypowsybl>=1.13.0",
     "pypowsybl_jupyter",
     "pydantic-settings",
     "uv",
