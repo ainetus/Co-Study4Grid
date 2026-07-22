@@ -8,6 +8,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef, type Dispatch, type SetStateAction, type MutableRefObject } from 'react';
 import type { ActionDetail, AnalysisResult, TabId } from '../types';
 import { interactionLogger } from '../utils/interactionLogger';
+import { parseNdjsonStream } from '../utils/ndjsonStream';
+import { notifications, notifyError, notifyInfo } from '../utils/notifications';
 
 export interface AnalysisState {
   result: AnalysisResult | null;
@@ -16,9 +18,9 @@ export interface AnalysisState {
   setPendingAnalysisResult: (v: AnalysisResult | null) => void;
   analysisLoading: boolean;
   setAnalysisLoading: (v: boolean) => void;
-  infoMessage: string;
+  /** Raise an auto-dismissing info toast (`''` clears the info channel). */
   setInfoMessage: (v: string) => void;
-  error: string;
+  /** Raise a sticky error toast (`''` clears the error channel). */
   setError: (v: string) => void;
 
   // Analysis flow
@@ -59,6 +61,9 @@ export interface AnalysisState {
   ) => Promise<void>;
   handleDisplayPrioritizedActions: (selectedActionIds: Set<string>, setActiveTab?: (tab: TabId) => void) => void;
   handleToggleOverload: (overload: string) => void;
+  /** Abort the in-flight analysis run (step 1 request, step 2 fetch, and
+   *  the NDJSON stream). No-op when nothing is running. */
+  cancelAnalysis: () => void;
 }
 
 export function useAnalysis(): AnalysisState {
@@ -68,15 +73,24 @@ export function useAnalysis(): AnalysisState {
 
   const [pendingAnalysisResult, setPendingAnalysisResult] = useState<AnalysisResult | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
-  const [infoMessage, setInfoMessage] = useState('');
-  const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (infoMessage) {
-      const timer = setTimeout(() => { setInfoMessage(''); }, 3000);
-      return () => clearTimeout(timer);
+  // Errors / info route through the shared notification store (D5) rather
+  // than local `error` / `infoMessage` string state with a bespoke 3s
+  // timer. These adapters keep the historical `(v: string) => void`
+  // call-site contract: a message raises a toast; an empty string clears
+  // that channel (the "reset before a run" gesture).
+  const setError = useCallback((message: string) => {
+    if (message) notifyError(message);
+    else notifications.clearSeverity('error');
+  }, []);
+  const setInfoMessage = useCallback((message: string) => {
+    if (message) {
+      notifyInfo(message);
+    } else {
+      notifications.clearSeverity('info');
+      notifications.clearSeverity('success');
     }
-  }, [infoMessage]);
+  }, []);
 
   // Analysis flow
   const [selectedOverloads, setSelectedOverloads] = useState<Set<string>>(new Set());
@@ -87,6 +101,14 @@ export function useAnalysis(): AnalysisState {
   // notice so the operator keeps sight of the hypothesis the
   // current ``result`` was computed against.
   const [committedAdditionalLinesToCut, setCommittedAdditionalLinesToCut] = useState<Set<string>>(new Set());
+
+  // Cancellation (D5): the in-flight analysis run's AbortController, so a
+  // visible Cancel can abort the step-1 request, the step-2 fetch, and the
+  // NDJSON stream read. Null between runs.
+  const abortRef = useRef<AbortController | null>(null);
+  const cancelAnalysis = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
 
   const handleRunAnalysis = useCallback(async (
     selectedContingency: string[],
@@ -100,6 +122,10 @@ export function useAnalysis(): AnalysisState {
     setError('');
     setInfoMessage('');
 
+    // Fresh AbortController for this run; `cancelAnalysis()` aborts it.
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     const step1CorrId = interactionLogger.record('analysis_step1_started', { element: selectedContingency.join('+') });
     const step1StartTs = new Date().toISOString();
     // Wall-clock from the "Analyze & Suggest" click until the result
@@ -111,7 +137,7 @@ export function useAnalysis(): AnalysisState {
     try {
       // Step 1: Detection
       const { api } = await import('../api');
-      const res1 = await api.runAnalysisStep1(selectedContingency);
+      const res1 = await api.runAnalysisStep1(selectedContingency, controller.signal);
       if (!res1.can_proceed) {
         setError(res1.message || 'Analysis cannot proceed.');
         if (res1.message) setInfoMessage(res1.message);
@@ -172,76 +198,67 @@ export function useAnalysis(): AnalysisState {
         all_overloads: detected,
         monitor_deselected: monitorDeselected,
         additional_lines_to_cut: additionalLinesArr,
-      });
+      }, controller.signal);
 
-      const reader = response2.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
       let step2ActionsCount = 0;
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop()!;
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const event = JSON.parse(line);
-            if (event.type === 'pdf') {
-              setResult((p: AnalysisResult | null) => ({
-                ...(p || {}),
-                pdf_url: event.pdf_url,
-                pdf_path: event.pdf_path,
-                // The overflow-graph build time is emitted on the
-                // ``pdf`` event (before discovery + assessment finish)
-                // so the iframe can display it below its title as soon
-                // as the file is ready.
-                ...(typeof event.overflow_graph_time === 'number'
-                    ? { overflow_graph_time: event.overflow_graph_time }
-                    : (event.overflow_graph_time === null
-                        ? { overflow_graph_time: null }
-                        : {})),
-              } as AnalysisResult));
-              if (setActiveTab) {
-                setActiveTab('overflow');
-              }
-            } else if (event.type === 'result') {
-              const actionsWithFlags = { ...event.actions };
-              // Provenance for recommender-produced actions: the model
-              // the backend actually ran (echoed as `active_model` on
-              // the result event). Preserve an existing `origin` so a
-              // "first guess" the operator added before analysis keeps
-              // its `"user"` provenance even when the model re-emits
-              // the same id.
-              const resultModel: string = event.active_model || 'expert';
-              for (const id in actionsWithFlags) {
-                const existing = (prevResultRef.current?.actions?.[id] || {}) as Partial<ActionDetail>;
-                actionsWithFlags[id] = {
-                  ...actionsWithFlags[id],
-                  is_manual: false,
-                  origin: existing.origin ?? resultModel,
-                  is_islanded: existing.is_islanded ?? actionsWithFlags[id].is_islanded,
-                  estimated_max_rho: existing.estimated_max_rho ?? actionsWithFlags[id].max_rho,
-                  estimated_max_rho_line: existing.estimated_max_rho_line ?? actionsWithFlags[id].max_rho_line,
-                };
-              }
-              setSuggestedByRecommenderIds(prev => new Set([...prev, ...Object.keys(actionsWithFlags)]));
-              step2ActionsCount = Object.keys(actionsWithFlags).length;
-              const wallClockTime = (performance.now() - wallClockStart) / 1000;
-              setPendingAnalysisResult({
-                ...event,
-                actions: actionsWithFlags,
-                wall_clock_time: wallClockTime,
-              });
-              if (event.message) setInfoMessage(event.message);
-            } else if (event.type === 'error') {
-              setError('Analysis failed: ' + event.message);
-            }
-          } catch {
-            // Silent catch for incomplete rows
+      for await (const raw of parseNdjsonStream(response2, { signal: controller.signal })) {
+        const event = raw as Partial<AnalysisResult> & { type?: string };
+        if (event.type === 'pdf') {
+          setResult((p: AnalysisResult | null) => ({
+            ...(p || {}),
+            pdf_url: event.pdf_url,
+            pdf_path: event.pdf_path,
+            // The overflow-graph build time is emitted on the
+            // ``pdf`` event (before discovery + assessment finish)
+            // so the iframe can display it below its title as soon
+            // as the file is ready.
+            ...(typeof event.overflow_graph_time === 'number'
+                ? { overflow_graph_time: event.overflow_graph_time }
+                : (event.overflow_graph_time === null
+                    ? { overflow_graph_time: null }
+                    : {})),
+          } as AnalysisResult));
+          if (setActiveTab) {
+            setActiveTab('overflow');
           }
+        } else if (event.type === 'result') {
+          const actionsWithFlags = { ...event.actions };
+          // Provenance for recommender-produced actions: the model
+          // the backend actually ran (echoed as `active_model` on
+          // the result event). Preserve an existing `origin` so a
+          // "first guess" the operator added before analysis keeps
+          // its `"user"` provenance even when the model re-emits
+          // the same id.
+          const resultModel: string = event.active_model || 'expert';
+          for (const id in actionsWithFlags) {
+            const existing = (prevResultRef.current?.actions?.[id] || {}) as Partial<ActionDetail>;
+            actionsWithFlags[id] = {
+              ...actionsWithFlags[id],
+              is_manual: false,
+              origin: existing.origin ?? resultModel,
+              is_islanded: existing.is_islanded ?? actionsWithFlags[id].is_islanded,
+              estimated_max_rho: existing.estimated_max_rho ?? actionsWithFlags[id].max_rho,
+              estimated_max_rho_line: existing.estimated_max_rho_line ?? actionsWithFlags[id].max_rho_line,
+            };
+          }
+          setSuggestedByRecommenderIds(prev => new Set([...prev, ...Object.keys(actionsWithFlags)]));
+          step2ActionsCount = Object.keys(actionsWithFlags).length;
+          const wallClockTime = (performance.now() - wallClockStart) / 1000;
+          setPendingAnalysisResult({
+            ...(event as AnalysisResult),
+            actions: actionsWithFlags,
+            wall_clock_time: wallClockTime,
+          });
+          if (event.message) setInfoMessage(event.message);
+        } else if (event.type === 'error') {
+          setError('Analysis failed: ' + event.message);
         }
+      }
+      // The operator cancelled mid-stream: don't record a normal
+      // completion — surface the cancellation instead.
+      if (controller.signal.aborted) {
+        setInfoMessage('Analysis cancelled.');
+        return;
       }
       // Replay contract (docs/features/interaction-logging.md):
       //   { n_actions, action_ids, dc_fallback, message, pdf_url }.
@@ -252,12 +269,19 @@ export function useAnalysis(): AnalysisState {
         n_actions: step2ActionsCount,
       }, step2StartTs);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'An error occurred during analysis.';
-      setError(message);
+      // An abort (step-1 request / step-2 fetch) surfaces as a rejection;
+      // it's a cancellation, not a failure.
+      if (controller.signal.aborted) {
+        setInfoMessage('Analysis cancelled.');
+      } else {
+        const message = err instanceof Error ? err.message : 'An error occurred during analysis.';
+        setError(message);
+      }
     } finally {
       setAnalysisLoading(false);
+      if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [selectedOverloads, monitorDeselected, additionalLinesToCut]);
+  }, [selectedOverloads, monitorDeselected, additionalLinesToCut, setError, setInfoMessage]);
 
   const handleToggleAdditionalLineToCut = useCallback((line: string) => {
     if (!line) return;
@@ -349,8 +373,8 @@ export function useAnalysis(): AnalysisState {
     result, setResult,
     pendingAnalysisResult, setPendingAnalysisResult,
     analysisLoading, setAnalysisLoading,
-    infoMessage, setInfoMessage,
-    error, setError,
+    setInfoMessage,
+    setError,
     selectedOverloads, setSelectedOverloads,
     monitorDeselected, setMonitorDeselected,
     additionalLinesToCut, setAdditionalLinesToCut,
@@ -360,11 +384,12 @@ export function useAnalysis(): AnalysisState {
     handleRunAnalysis,
     handleDisplayPrioritizedActions,
     handleToggleOverload,
+    cancelAnalysis,
   }), [
-    result, pendingAnalysisResult, analysisLoading, infoMessage, error,
+    result, pendingAnalysisResult, analysisLoading, setInfoMessage, setError,
     selectedOverloads, monitorDeselected, additionalLinesToCut,
     committedAdditionalLinesToCut,
     handleRunAnalysis, handleDisplayPrioritizedActions, handleToggleOverload,
-    handleToggleAdditionalLineToCut,
+    handleToggleAdditionalLineToCut, cancelAnalysis,
   ]);
 }

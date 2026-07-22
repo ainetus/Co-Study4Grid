@@ -9,6 +9,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useAnalysis } from './useAnalysis';
 import { interactionLogger } from '../utils/interactionLogger';
+import { notifications, DEFAULT_TIMEOUT_MS, type NotificationSeverity } from '../utils/notifications';
+
+/** Messages currently in the notification store for a given severity. */
+function toastMessages(severity: NotificationSeverity): string[] {
+    return notifications.getSnapshot().filter(n => n.severity === severity).map(n => n.message);
+}
 
 // Mock the api module (dynamic import in useAnalysis)
 const mockRunAnalysisStep1 = vi.fn();
@@ -36,13 +42,14 @@ describe('useAnalysis', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         interactionLogger.clear();
+        notifications.clear();
     });
 
     it('initializes with null result and no loading', () => {
         const { result } = renderHook(() => useAnalysis());
         expect(result.current.result).toBeNull();
         expect(result.current.analysisLoading).toBe(false);
-        expect(result.current.error).toBe('');
+        expect(notifications.getSnapshot()).toHaveLength(0);
     });
 
     it('does nothing when selectedBranch is empty', async () => {
@@ -73,7 +80,7 @@ describe('useAnalysis', () => {
             await result.current.handleRunAnalysis(['LINE_X'], clear, setSuggested);
         });
 
-        expect(result.current.error).toBe('Network not loaded');
+        expect(toastMessages('error')).toContain('Network not loaded');
         expect(result.current.analysisLoading).toBe(false);
         expect(mockRunAnalysisStep2Stream).not.toHaveBeenCalled();
     });
@@ -91,7 +98,7 @@ describe('useAnalysis', () => {
             await result.current.handleRunAnalysis(['LINE_X'], vi.fn(), vi.fn());
         });
 
-        expect(result.current.infoMessage).toBe('No overloads detected');
+        expect(toastMessages('info')).toContain('No overloads detected');
         expect(result.current.analysisLoading).toBe(false);
     });
 
@@ -129,7 +136,7 @@ describe('useAnalysis', () => {
             all_overloads: detected,
             monitor_deselected: false,
             additional_lines_to_cut: [],
-        });
+        }, expect.any(AbortSignal));
     });
 
     it('passes monitor_deselected=true when enabled', async () => {
@@ -156,6 +163,7 @@ describe('useAnalysis', () => {
 
         expect(mockRunAnalysisStep2Stream).toHaveBeenCalledWith(
             expect.objectContaining({ monitor_deselected: true }),
+            expect.any(AbortSignal),
         );
     });
 
@@ -210,6 +218,7 @@ describe('useAnalysis', () => {
             expect.objectContaining({
                 additional_lines_to_cut: expect.arrayContaining(['EXTRA_1', 'EXTRA_2']),
             }),
+            expect.any(AbortSignal),
         );
         // Sanity: the extras pass-through preserves the operator's exact
         // selection — no reordering / dedup at the hook layer.
@@ -307,7 +316,7 @@ describe('useAnalysis', () => {
             await result.current.handleRunAnalysis(['LINE_X'], vi.fn(), vi.fn());
         });
 
-        expect(result.current.error).toBe('Analysis failed: Backend crashed');
+        expect(toastMessages('error')).toContain('Analysis failed: Backend crashed');
     });
 
     it('sets error when step2 rejects', async () => {
@@ -322,8 +331,52 @@ describe('useAnalysis', () => {
             await result.current.handleRunAnalysis(['LINE_X'], vi.fn(), vi.fn());
         });
 
-        expect(result.current.error).toBe('Network error');
+        expect(toastMessages('error')).toContain('Network error');
         expect(result.current.analysisLoading).toBe(false);
+    });
+
+    describe('cancellation (D5)', () => {
+        it('passes an AbortSignal to step 1', async () => {
+            mockRunAnalysisStep1.mockResolvedValue({ can_proceed: false, message: 'stop', lines_overloaded: [] });
+            const { result } = renderHook(() => useAnalysis());
+            await act(async () => {
+                await result.current.handleRunAnalysis(['LINE_X'], vi.fn(), vi.fn());
+            });
+            expect(mockRunAnalysisStep1).toHaveBeenCalledWith(['LINE_X'], expect.any(AbortSignal));
+        });
+
+        it('cancelAnalysis aborts the run and surfaces a cancellation notice, not an error', async () => {
+            // Step 1 hangs until its signal aborts, then rejects like a real
+            // aborted request.
+            mockRunAnalysisStep1.mockImplementation((_els: string[], signal?: AbortSignal) =>
+                new Promise((_resolve, reject) => {
+                    signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+                }),
+            );
+            const { result } = renderHook(() => useAnalysis());
+
+            let runPromise!: Promise<void>;
+            await act(async () => {
+                runPromise = result.current.handleRunAnalysis(['LINE_X'], vi.fn(), vi.fn());
+                await Promise.resolve();
+            });
+            expect(result.current.analysisLoading).toBe(true);
+
+            await act(async () => {
+                result.current.cancelAnalysis();
+                await runPromise;
+            });
+
+            expect(result.current.analysisLoading).toBe(false);
+            expect(toastMessages('info')).toContain('Analysis cancelled.');
+            expect(toastMessages('error')).toEqual([]);
+            expect(mockRunAnalysisStep2Stream).not.toHaveBeenCalled();
+        });
+
+        it('cancelAnalysis is a no-op when nothing is running', () => {
+            const { result } = renderHook(() => useAnalysis());
+            expect(() => result.current.cancelAnalysis()).not.toThrow();
+        });
     });
 
     describe('handleToggleOverload', () => {
@@ -542,6 +595,7 @@ describe('useAnalysis', () => {
                     selected_overloads: ['LINE_A', 'LINE_B'],
                     all_overloads: detected,
                 }),
+                expect.any(AbortSignal),
             );
         });
 
@@ -571,20 +625,21 @@ describe('useAnalysis', () => {
                     selected_overloads: detected,
                     all_overloads: detected,
                 }),
+                expect.any(AbortSignal),
             );
         });
     });
 
     describe('info message auto-clear', () => {
-        it('clears info message after timeout', async () => {
+        it('raises an info toast that the store auto-dismisses after its timeout', () => {
             vi.useFakeTimers();
             const { result } = renderHook(() => useAnalysis());
 
             act(() => { result.current.setInfoMessage('Temporary message'); });
-            expect(result.current.infoMessage).toBe('Temporary message');
+            expect(toastMessages('info')).toContain('Temporary message');
 
-            act(() => { vi.advanceTimersByTime(3000); });
-            expect(result.current.infoMessage).toBe('');
+            act(() => { vi.advanceTimersByTime(DEFAULT_TIMEOUT_MS); });
+            expect(toastMessages('info')).not.toContain('Temporary message');
 
             vi.useRealTimers();
         });

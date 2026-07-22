@@ -9,9 +9,11 @@ import React, { type RefObject } from 'react';
 import type { TabId } from '../types';
 
 // Prevents React from diffing massive SVG DOM trees on every parent render.
-// Uses replaceChildren(svgElement) instead of innerHTML to avoid the double-parse:
-//   OLD: string → XMLSerializer → string → browser parse (twice)
-//   NEW: DOMParser (in processSvg) → SVGSVGElement → replaceChildren (zero extra parse)
+// Uses replaceChildren(svgElement) instead of innerHTML to avoid the re-parse:
+//   processSvg (D6) / applyPatchToClone hand us an already-parsed SVGSVGElement,
+//   which we adopt directly — no serialize + innerHTML re-parse round-trip.
+// A plain string (e.g. SLD overlays not routed through processSvg, or a
+// processSvg parse-failure fallback) still takes the innerHTML path.
 interface SvgContainerProps {
     svg: SVGSVGElement | string;
     containerRef: RefObject<HTMLDivElement | null>;
@@ -27,12 +29,14 @@ const MemoizedSvgContainer = React.memo(({ svg, containerRef, display, tabId, hi
         if (!container || !svg) return;
 
         const start = performance.now();
-        if (svg instanceof SVGSVGElement) {
-            // DOM-reuse path: move the already-parsed element directly — no second parse
-            container.replaceChildren(svg);
-        } else {
-            // Fallback for plain string SVGs (e.g. SLD overlays not going through processSvg)
+        if (typeof svg === 'string') {
+            // Fallback for plain string SVGs (SLD overlays not going through
+            // processSvg, or a processSvg parse-failure fallback).
             container.innerHTML = svg;
+        } else {
+            // Element-adoption path: adopt the already-parsed element directly
+            // (auto-adopted across documents by replaceChildren) — no re-parse.
+            container.replaceChildren(svg);
         }
         console.log(`[SVG] DOM injection for ${tabId} took ${(performance.now() - start).toFixed(2)}ms`);
     }, [svg, containerRef, tabId]);

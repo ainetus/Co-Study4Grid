@@ -7,6 +7,202 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Game Mode — simplified landing page, per-network preview, bucket-backed persistence
+
+- **Config screen redesign** — the start screen now leads with a simple landing:
+  **player name → auto-filled session name → beginner-assistance toggle →
+  ▶ Start session**, with a summary of the configured studies and a map of the
+  network to be played shown below. The per-study timer, action cap, difficulty
+  and the full study editor moved behind a **⚙ Configure settings** toggle so a
+  participant arriving on the HuggingFace Space can start in three fields.
+- **Default session name** — auto-filled to `<player> — session <n+1>`, where
+  `n` is the player's existing session count in the shared base, via the new
+  `GET /api/game/player-sessions` (`player_session_count` in
+  `services/game_solutions.py`). Editable; a name the player types is never
+  overwritten. Falls back to `session 1` when the backend is unreachable.
+- **Per-network preview maps** — the landing page shows each grid's network the
+  way the "Network (N)" NAD does fully zoomed out: voltage levels positioned
+  from `grid_layout.json` (north up) with the transmission lines drawn as edges,
+  the ≥350 kV backbone red and lower voltages green (the colour-blind-safe
+  Okabe-Ito vermillion / bluish-green pair).
+  `scripts/game_mode/gen_network_previews.py` reads the line topology straight
+  from `network.xiidm` (the `voltageLevelId1/2` attributes — no pypowsybl
+  needed) into `frontend/public/game/preview-{medium,high}.svg`; when a grid's
+  network file is an un-smudged Git-LFS pointer it falls back to a node-only
+  scatter and never downgrades a committed edge map.
+- **Bucket-backed shared base** — the solution base can now be persisted to a
+  HuggingFace **Bucket** (or persistent storage) mounted read-write at `/data`
+  with `COSTUDY4GRID_DATA_DIR=/data`. `_effective_base_dir` probes the
+  configured root for writability and falls back to a container-local dir when
+  the mount isn't ready, so a misconfigured/absent mount never turns a
+  best-effort retention into an HTTP 500. See `deploy/huggingface/SETUP.md`.
+- **Fixed: displayed network path snapping to the wrong grid.** In Game Mode
+  the banner "Network Path" field (and Settings → Paths) sometimes showed the
+  bundled `fr225_400` default while the study's grid was the one actually
+  loaded. Cause: the async boot config hydration (`getUserConfig` →
+  `applyLoadedConfig`) raced `loadGameStudy` and overwrote the study's paths
+  with `config.json`'s. The hydration now skips the grid paths in Game Mode —
+  the active study owns them — so the field always reflects the loaded grid.
+- **Fixed: novelty bonus attributed to the global score instead of its
+  scenario.** The results screen (`GameResults.tsx`) showed each solved
+  study's `🌟 new +N` badge in the Result column, but the Score column next
+  to it still displayed the bare per-study score — the bonus only ever
+  appeared as a single lump sum tacked onto the already-averaged session
+  final score ("80.5 + 60 = 140.5 with bonus"). The Score column now adds
+  the bonus directly to the scenario that earned it, and the session-level
+  "with bonus" figure is derived from those bonus-inclusive per-study totals
+  (their mean) instead of a flat sum added after averaging. The twin-locked
+  60/25/15 `scoring.ts` formula (and the Codabench-submitted JSON) are
+  unchanged — this is a display-only fix.
+
+### Game Mode — solution capitalisation: shared base, novelty bonus, usage-frequency feedback
+
+Every remedial-action proposition a player retains (stars) at a study commit
+is now **capitalised into a shared solution base**, mirroring the manoeuvre
+IHM scenario base of `expert_op4grid_recommender` (per-context JSON records
+under a persistent root, exact-duplicate dedup, free-text author
+attribution). See `docs/features/game-mode-codabench.md` § "Solution
+capitalisation".
+
+- **Backend** — new `services/game_solutions.py` (pure file-IO store, no
+  pypowsybl) + `POST /api/game/log-solution`. One record per unique
+  proposition per `(network, contingency)` context; repeat retentions append
+  to the record's `retentions` list. The store serializes its
+  read-modify-write with a module lock and writes atomically
+  (temp + `os.replace`), so concurrent commits can neither lose retentions
+  nor double-award the novelty bonus. Novelty is judged on **magnitude-free
+  unitary signatures**: injections contribute *levers* (`redispatch:<gen>`,
+  `ls:<load>`, `rc:<gen>`, `pst:<pst>` — no MW/tap, so retuning a known
+  lever is not novel but **mobilising a new lever is**), switch-operating
+  actions (manual SLD maneuvers *and* catalogue couplings) decompose into
+  `switch:<id>=<state>` / `load_p:` / `gen_p:` levers, and lever-less
+  actions (line disco/reco) keep their `action:<id>` identity. Response carries
+  the novelty verdict (**+20** bonus pts for a proposition with a never-seen
+  lever, **+10** for a new combination of known actions), plus each retained
+  action's past usage frequency in the base. Bonuses are **only paid when
+  every retained action is effective** — it beats the baseline worst
+  loading (or solves the study), and a combined `a+b` action must sit
+  ≥ 1 loading-point (0.01 pu) below the best of its underlying actions;
+  the frontend computes the per-action `effective` flag
+  (`solutionLog.buildChosenActionRecord`), the backend gates the points
+  and echoes `novelty.effective` so the UI can explain a withheld bonus. Store root:
+  `COSTUDY4GRID_GAME_SOLUTIONS_DIR` → `COSTUDY4GRID_DATA_DIR/game_solutions`
+  (set `COSTUDY4GRID_DATA_DIR=/data` on a Space with persistent storage) →
+  repo-local `game_solutions/` fallback. Full pytest coverage in
+  `test_game_solutions.py`; OpenAPI snapshot regenerated.
+- **Frontend** — the game config screen now **asks for a player name**
+  (required; it signs the retained solutions in the shared base, like the
+  manoeuvre IHM author field). New `game/solutionLog.ts` computes the
+  levers/payload (`buildActionLevers`, reusing `classifyActionType` and the
+  `*_details` the App already publishes — the App.tsx publish effect now
+  delegates to `buildChosenActionRecord`); `useGameSession` fires the log at
+  every study commit (fire-and-forget: a failed log never blocks the game)
+  and merges the async feedback into the study result — the session log is
+  now *derived*, so late feedback still reaches the export. A **novelty
+  toast** (`GameNoveltyToast`) tells the player right away when their
+  proposition is brand new; the results screen shows the bonus **on top of**
+  the (unchanged, Codabench-twin-locked) session score, per-study 🌟 badges,
+  and the per-action usage-frequency feedback. CSV export gains a
+  `novelty_bonus` column; the JSON schema change is additive (optional
+  `solutionFeedback` per study, `schemaVersion` stays `1.0`).
+- **Beginner assistance — community lever hints** — new
+  `GET /api/game/lever-stats` aggregates, per (network, contingency)
+  context, the unitary levers most mobilised across the stored base
+  (weighted by retention events) and tags each with its equipment family
+  (`voltage_level` / `branch` / `generation` / `load`). With the new
+  config-screen **Beginner assistance** checkbox (default on), the
+  collapsible in-play `GameHintsPanel` shows the top 5 for the current
+  study — best-effort: no data or no backend simply hides the panel.
+  Clicking a lever **pre-fills the Inspect field** (auto-zoom included)
+  with the underlying element — catalogue `disco_`/`reco_` ids are
+  stripped down to their branch id — through a new
+  `gameBridge.registerInspector` / `requestInspect` pair, keeping App.tsx
+  decoupled from game internals.
+
+## [0.9.0] — 2026-07-09
+
+Release **0.9.0** consolidates the 2026-07 full-repo-review revisions — the
+de-ghosted recommender subsystem (**D1**), the API-contract machine-check +
+`{detail, code}` error envelope (**D2**), shared-`Network` concurrency ownership
+(**D3**), the two frontend-hub relief stages (**D4**), the single streaming +
+notification pipeline (**D5**), the SVG element-adoption pipeline (**D6**),
+deployment trust & reproducibility (**D7**), and the reproducible-data +
+benchmark supply chain (**D8**) — and adds a follow-up pass of quick wins, the
+Game-Mode session-log replay (**FU-2**), and a new docs-as-a-checked-artifact
+gate (**D9**). Remaining tails are tracked in
+[`docs/architecture/followups.md`](docs/architecture/followups.md).
+
+### Backend performance & robustness (2026-07 quick wins)
+
+- **QW11 — vectorised `_diff_switches`.** The action-vs-contingency switch diff
+  ran a per-row `.loc` lookup (~85 k iterations on the France grid); it now uses
+  pandas `.isin` membership + `reindex(fill_value=False)` on boolean columns.
+  Guarded by `test_diff_switches.py`.
+- **QW17 — single `Overflow_Graph` anchor + `reset()` completeness.** The output
+  directory is now one constant (`services/paths.py::OVERFLOW_DIR`) instead of
+  several ad-hoc joins, and every per-study cache added to
+  `RecommenderService` is swept by `test_reset_completeness.py` so a field that
+  is initialised but not cleared on reload fails a test (the class of leak that
+  bit `_layout_cache`).
+- **QW6 — no path leaks in error details.** The filesystem / config endpoints
+  return a generic message with the real traceback `logger.exception`-logged,
+  instead of `str(e)` (which leaked absolute server paths). Complements the D2
+  envelope.
+- **QW22 — legacy-analysis watchdog.** The legacy `/api/run-analysis` PDF-poll
+  loop now has a deadline (`COSTUDY4GRID_ANALYSIS_TIMEOUT_S`, default 600 s) so a
+  stuck computation can no longer pin the worker forever.
+
+### Frontend (2026-07 quick wins)
+
+- **QW14 — highlight pipeline no longer re-runs on every pan/zoom settle.** The
+  driving effect's dependency array was narrowed from the whole `diagrams`
+  object to the container refs + metadata indices it actually reads.
+- **QW15 — LRU-capped action-variant diagram cache** (`ACTION_DIAGRAM_CACHE_CAP`)
+  so the primed-diagram map can't grow unbounded across a long session.
+- **QW19 — theme mirrored into detached popup windows**, kept in sync via a
+  `MutationObserver` on the host document's theme attribute.
+- **QW20 — `useModalKeyboard`** centralises Escape-to-close, a focus trap, and
+  `role="dialog"` / `aria-modal`, wired into the confirmation, settings, and
+  reload-session modals.
+- **QW21 — frontend `console.log` ceiling** added to the code-quality gate
+  (frozen at the current count and ratcheted down; D6's boost diagnostics were
+  deliberately kept).
+
+### Delivery & CI (2026-07 quick wins)
+
+- **QW8 — per-PR recommender pin.** `recommender-pin.txt` pins
+  `expert_op4grid_recommender` for the PR lanes so an upstream release can't
+  silently turn a green PR red; a weekly `canary.yml` floats to latest and flags
+  regressions early.
+- **QW23 — single CI provider.** Removed `.circleci/config.yml`; GitHub Actions
+  is the sole pipeline.
+- **QW25 — Dockerfile hygiene.** Recommender pin, `HEALTHCHECK`, real `PORT`,
+  dead-weight trim, and `scripts/extract_network_zip.py` that validates the
+  zipped France grid is a real archive (not an unresolved Git-LFS pointer)
+  before extraction.
+
+### Game Mode — resilience + trusted replay
+
+- **QW24 — mid-session recovery.** A study that fails to load no longer discards
+  the completed ones: the loading overlay offers **Retry**, **Finish with N
+  results**, and **Quit to setup**. A `presets ↔ overload-data` consistency test
+  fails fast if a regenerated grid drops a preset contingency.
+- **FU-2 — physically replayable session log.** `e2e_game_session.py --replay`
+  re-derives trusted `finalMaxRho` / `solved` from a session log's recorded
+  actions by re-driving the backend, writes a `reference.json` the Codabench
+  scorer consumes, and flags divergence from self-reported numbers. Hermetic
+  coverage in `scripts/game_mode/test_replay.py`.
+
+### Docs as a checked artifact (D9)
+
+- **`scripts/check_docs_tree.py`** gates the hand-maintained `CLAUDE.md`
+  inventory: every directory-qualified path reference must resolve to a real file
+  (with generated-artifact and referenced-as-removed exemptions), and rotting
+  `file.py:NNN` line anchors are forbidden in favour of symbol anchors. The seven
+  pre-existing stale anchors were converted; unit coverage + a real-repo
+  self-guard live in `scripts/test_check_docs_tree.py`. See
+  `docs/architecture/code-quality-analysis.md` §23.
+
 ### Tests + docs — coverage and reference for the 2026-07 deep revisions
 
 - **New `test_api_errors.py`** (D2): direct coverage of the error envelope —
@@ -1701,7 +1897,8 @@ the authoritative reference for pre-0.5.0 work.
 
 ---
 
-[Unreleased]: https://github.com/marota/Co-Study4Grid/compare/0.8.0...HEAD
+[Unreleased]: https://github.com/marota/Co-Study4Grid/compare/0.9.0...HEAD
+[0.9.0]: https://github.com/marota/Co-Study4Grid/releases/tag/0.9.0
 [0.8.0]: https://github.com/marota/Co-Study4Grid/releases/tag/0.8.0
 [0.7.5]: https://github.com/marota/Co-Study4Grid/releases/tag/0.7.5
 [0.7.0]: https://github.com/marota/Co-Study4Grid/releases/tag/0.7.0

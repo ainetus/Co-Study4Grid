@@ -25,6 +25,8 @@ The operator file's 65 × ratio is comfortable: the next neighbour sits 65 r awa
 
 `scripts/pypsa_eur/regenerate_grid_layout.py` (originally cribbed from Step 9 of `convert_pypsa_to_xiidm.py`) projected raw `(lon, lat)` to Web Mercator, then rescaled every coordinate by `8000 / (max_x − min_x)` to fit a fixed 8 000-unit target width. The constant `TARGET_WIDTH = 8000` was inherited from the conversion pipeline. It made smaller test grids look "right-sized" at hand-curated `viewBox`es but broke for any production-scale dataset.
 
+> **D8 (2026-07-09):** the *source* of the constant — `convert_pypsa_to_xiidm.py`'s `step_write_metadata` — still carried the same `TARGET_WIDTH = 8_000` rescale, so a pipeline rebuild silently re-emitted the forbidden layout. It now writes `grid_layout.json` in raw Mercator metres directly (re-centred, no rescale), matching `regenerate_grid_layout.py`'s default. `test_grid_layout.py::test_coordinate_spans_in_reasonable_range` was corrected from the stale `[5000, 20000]` assertion (which encoded the forbidden scale) to the raw-metres regime.
+
 ## Fix (2026-05-08)
 
 `regenerate_grid_layout.py`:

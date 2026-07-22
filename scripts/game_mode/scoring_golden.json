@@ -1,0 +1,151 @@
+{
+  "_comment": "Shared cross-language parity fixture for the Game Mode scorer (D8). Both scripts/game_mode/scoring_program/score.py (via test_score.py) and frontend/src/game/scoring.ts (via scoring.test.ts) assert their output against these expected values, locking numerical parity. Regenerate with: python scripts/game_mode/gen_scoring_golden.py",
+  "studies": [
+    {
+      "name": "solved-1action-fast",
+      "input": {
+        "studyId": "A",
+        "label": "A",
+        "finalMaxRho": 0.8,
+        "solved": true,
+        "baselineMaxRho": 1.5,
+        "numActions": 1,
+        "maxActions": 3,
+        "timeLimitSeconds": 300,
+        "durationMs": 60000
+      },
+      "expected": {
+        "physical": 60.0,
+        "actions": 25.0,
+        "time": 12.0,
+        "total": 97.0,
+        "remediationFraction": 1.0,
+        "solved": true
+      }
+    },
+    {
+      "name": "partial-2actions-mid",
+      "input": {
+        "studyId": "B",
+        "label": "B",
+        "finalMaxRho": 1.2,
+        "solved": false,
+        "baselineMaxRho": 1.6,
+        "numActions": 2,
+        "maxActions": 3,
+        "timeLimitSeconds": 300,
+        "durationMs": 150000
+      },
+      "expected": {
+        "physical": 40.00000000000001,
+        "actions": 11.111111111111112,
+        "time": 5.000000000000001,
+        "total": 56.11111111111112,
+        "remediationFraction": 0.6666666666666667,
+        "solved": false
+      }
+    },
+    {
+      "name": "no-improvement-3actions",
+      "input": {
+        "studyId": "C",
+        "label": "C",
+        "finalMaxRho": 1.7,
+        "solved": false,
+        "baselineMaxRho": 1.5,
+        "numActions": 3,
+        "maxActions": 3,
+        "timeLimitSeconds": 300,
+        "durationMs": 290000
+      },
+      "expected": {
+        "physical": 0.0,
+        "actions": 0.0,
+        "time": 0.0,
+        "total": 0.0,
+        "remediationFraction": 0.0,
+        "solved": false
+      }
+    },
+    {
+      "name": "no-action-null-final",
+      "input": {
+        "studyId": "D",
+        "label": "D",
+        "finalMaxRho": null,
+        "solved": false,
+        "baselineMaxRho": 1.5,
+        "numActions": 0,
+        "maxActions": 3,
+        "timeLimitSeconds": 300,
+        "durationMs": 300000
+      },
+      "expected": {
+        "physical": 0.0,
+        "actions": 0.0,
+        "time": 0.0,
+        "total": 0.0,
+        "remediationFraction": 0.0,
+        "solved": false
+      }
+    },
+    {
+      "name": "solved-timedout-timeeff-clamp",
+      "input": {
+        "studyId": "E",
+        "label": "E",
+        "finalMaxRho": 0.95,
+        "solved": true,
+        "baselineMaxRho": 1.3,
+        "numActions": 3,
+        "maxActions": 3,
+        "timeLimitSeconds": 200,
+        "durationMs": 250000
+      },
+      "expected": {
+        "physical": 60.0,
+        "actions": 8.333333333333334,
+        "time": 0.0,
+        "total": 68.33333333333333,
+        "remediationFraction": 1.0,
+        "solved": true
+      }
+    }
+  ],
+  "sessions": [
+    {
+      "name": "two-study-session",
+      "input": {
+        "studies": [
+          {
+            "studyId": "A",
+            "label": "A",
+            "finalMaxRho": 0.8,
+            "solved": true,
+            "baselineMaxRho": 1.5,
+            "numActions": 1,
+            "maxActions": 3,
+            "timeLimitSeconds": 300,
+            "durationMs": 60000
+          },
+          {
+            "studyId": "B",
+            "label": "B",
+            "finalMaxRho": 1.2,
+            "solved": false,
+            "baselineMaxRho": 1.6,
+            "numActions": 2,
+            "maxActions": 3,
+            "timeLimitSeconds": 300,
+            "durationMs": 150000
+          }
+        ]
+      },
+      "expected": {
+        "finalScore": 76.55555555555556,
+        "solvedCount": 1,
+        "nStudies": 2
+      }
+    }
+  ]
+}

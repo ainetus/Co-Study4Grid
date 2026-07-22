@@ -391,6 +391,19 @@ Returns `{ "sessions": ["session_name_1", "session_name_2", ...] }` sorted most-
 
 Returns the parsed `session.json` content. Also restores the overflow PDF to `Overflow_Graph/` if it was removed since saving.
 
+#### Path validation (`session_name`)
+
+`session_name` is joined onto the caller-supplied folder to build the
+session directory, so both `save-session` and `load-session` route it
+through `_safe_session_dir` (`main.py`) first. It must be a **single
+path component**: a `..`, a path separator, or an absolute path (which
+`os.path.join` silently honours, dropping the base) is rejected with
+**HTTP 400 `{"detail": "Invalid session name", "code": "BAD_REQUEST"}`**
+before any filesystem access, backed by a `resolve()`+`relative_to()`
+containment check that mirrors the `/results/pdf` traversal guard (QW7,
+2026-07). Regression-guarded by `TestSessionPathTraversal` in
+`expert_backend/tests/test_api_endpoints.py`.
+
 ### Restore Analysis Context
 
 `POST /api/restore-analysis-context` — Re-push the session's monitored-line set and computed-pair cache into the backend service's `_analysis_context` so any subsequent `simulate-manual-action` / `compute-superposition` call on the reloaded session uses the same policy as the original study. Called from `useSession::handleRestoreSession` right after the base-diagram `Promise.all` (step 4 of the reload flow).

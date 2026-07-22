@@ -7,6 +7,24 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { TabId } from '../types';
+import { colors } from '../styles/tokens';
+
+/** Resolve the opener's current theme ('dark' | 'light'). */
+function currentTheme(): 'dark' | 'light' {
+    return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+}
+
+/**
+ * Mirror the opener's theme onto a popup document (QW19). The popup clones the
+ * opener's stylesheets (incl. tokens.css with its `[data-theme="dark"]`
+ * overrides), but NOT the `data-theme` attribute the theme toggle writes on the
+ * opener's <html> — so without this a detached tab always rendered light.
+ */
+function mirrorTheme(popupDoc: Document): void {
+    const theme = currentTheme();
+    popupDoc.documentElement.setAttribute('data-theme', theme);
+    popupDoc.documentElement.style.colorScheme = theme;
+}
 
 /**
  * A "detached" tab lives in a secondary browser window. The React component
@@ -56,7 +74,7 @@ function cloneStylesIntoPopup(popupDoc: Document): void {
     bodyStyle.width = '100vw';
     bodyStyle.display = 'flex';
     bodyStyle.flexDirection = 'column';
-    bodyStyle.background = 'white';
+    bodyStyle.background = colors.surface;
     popupDoc.documentElement.style.height = '100%';
 }
 
@@ -67,7 +85,7 @@ function cloneStylesIntoPopup(popupDoc: Document): void {
 function buildMountNode(popupDoc: Document): HTMLElement {
     const mount = popupDoc.createElement('div');
     mount.id = 'costudy4grid-detached-root';
-    mount.style.cssText = 'flex: 1; position: relative; width: 100%; min-height: 0; background: white;';
+    mount.style.cssText = `flex: 1; position: relative; width: 100%; min-height: 0; background: ${colors.surface};`;
     popupDoc.body.appendChild(mount);
     return mount;
 }
@@ -164,6 +182,7 @@ export function useDetachedTabs(
         popup.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Co-Study4Grid — ${TAB_TITLES[tabId]}</title></head><body></body></html>`);
         popup.document.close();
         cloneStylesIntoPopup(popup.document);
+        mirrorTheme(popup.document);
         const mountNode = buildMountNode(popup.document);
 
         // When the popup is closed (by the user, by reload, or by our
@@ -178,6 +197,28 @@ export function useDetachedTabs(
         setDetachedTabs(prev => ({ ...prev, [tabId]: entry }));
         return entry;
     }, [pruneTab]);
+
+    // Keep open popups in sync with live theme toggles (QW19): observe the
+    // opener's <html> data-theme and mirror every change onto each popup
+    // document. Reads detachedRef so it needs no dep churn.
+    useEffect(() => {
+        const observer = new MutationObserver(() => {
+            const theme = currentTheme();
+            for (const entry of Object.values(detachedRef.current)) {
+                if (entry && !entry.window.closed) {
+                    try {
+                        entry.window.document.documentElement.setAttribute('data-theme', theme);
+                        entry.window.document.documentElement.style.colorScheme = theme;
+                    } catch { /* popup navigating away */ }
+                }
+            }
+        });
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['data-theme'],
+        });
+        return () => observer.disconnect();
+    }, []);
 
     const isDetached = useCallback((tabId: TabId) => {
         const entry = detachedRef.current[tabId];

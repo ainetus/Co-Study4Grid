@@ -1590,6 +1590,187 @@ class TestResponseModels:
         assert resp.json()["pdf_copied"] is False
 
 
+class TestSessionPathTraversal:
+    """`session_name` is joined onto a caller-supplied folder to build the
+    session directory, so it must be a single path component — a `..`, a
+    path separator, or an absolute path (which `os.path.join` honours,
+    silently dropping the base) would let save/load escape the output
+    folder (QW7, 2026-07). `_safe_session_dir` rejects those with a 400
+    before any filesystem write."""
+
+    def test_save_session_rejects_parent_traversal(self, client, mock_services, tmp_path):
+        base = tmp_path / "sessions"
+        base.mkdir()
+        resp = client.post(
+            "/api/save-session",
+            json={
+                "session_name": "../escaped",
+                "json_content": "{}",
+                "output_folder_path": str(base),
+            },
+        )
+        assert resp.status_code == 400
+        assert resp.json()["detail"] == "Invalid session name"
+        # Nothing was written outside the base folder.
+        assert not (tmp_path / "escaped").exists()
+
+    def test_save_session_rejects_path_separator(self, client, mock_services, tmp_path):
+        resp = client.post(
+            "/api/save-session",
+            json={
+                "session_name": "nested/child",
+                "json_content": "{}",
+                "output_folder_path": str(tmp_path),
+            },
+        )
+        assert resp.status_code == 400
+        assert not (tmp_path / "nested").exists()
+
+    def test_save_session_rejects_absolute_name(self, client, mock_services, tmp_path):
+        evil = tmp_path / "abs_escape"
+        resp = client.post(
+            "/api/save-session",
+            json={
+                "session_name": str(evil),
+                "json_content": "{}",
+                "output_folder_path": str(tmp_path / "base"),
+            },
+        )
+        assert resp.status_code == 400
+        assert not evil.exists()
+
+    def test_load_session_rejects_parent_traversal(self, client, mock_services, tmp_path):
+        resp = client.post(
+            "/api/load-session",
+            json={"folder_path": str(tmp_path), "session_name": "../../etc"},
+        )
+        assert resp.status_code == 400
+        assert resp.json()["detail"] == "Invalid session name"
+
+    def test_save_session_allows_plain_name(self, client, mock_services, tmp_path):
+        resp = client.post(
+            "/api/save-session",
+            json={
+                "session_name": "costudy4grid_session_ok",
+                "json_content": "{}",
+                "output_folder_path": str(tmp_path),
+            },
+        )
+        assert resp.status_code == 200
+        assert (tmp_path / "costudy4grid_session_ok" / "session.json").is_file()
+
+    def test_load_session_allows_plain_name(self, client, mock_services, tmp_path):
+        # The guard must not break a legitimate round-trip.
+        import json as _json
+        sess = tmp_path / "costudy4grid_session_ok"
+        sess.mkdir()
+        (sess / "session.json").write_text(_json.dumps({"hello": "world"}))
+        resp = client.post(
+            "/api/load-session",
+            json={"folder_path": str(tmp_path), "session_name": "costudy4grid_session_ok"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["hello"] == "world"
+
+
+class TestCorsDefault:
+    """CORS defaults to the loopback dev-server origins, NOT a wildcard
+    (QW3, 2026-07): a `*` default lets any web page the operator visits
+    read `/api/*` (incl. the filesystem RPCs) off the localhost backend,
+    so the wildcard is now explicit opt-in via `CORS_ALLOWED_ORIGINS`."""
+
+    def test_unset_env_resolves_to_loopback_not_wildcard(self):
+        from expert_backend import main
+        origins = main._resolve_cors_origins(None)
+        assert "*" not in origins
+        assert origins == main._CORS_DEFAULT_ORIGINS
+        assert "http://localhost:5173" in origins
+        assert "http://127.0.0.1:5173" in origins
+
+    def test_empty_env_resolves_to_loopback(self):
+        from expert_backend import main
+        assert main._resolve_cors_origins("   ") == main._CORS_DEFAULT_ORIGINS
+
+    def test_explicit_wildcard_is_opt_in(self):
+        from expert_backend import main
+        assert main._resolve_cors_origins("*") == ["*"]
+
+    def test_comma_separated_list_overrides(self):
+        from expert_backend import main
+        assert main._resolve_cors_origins("https://a.example, https://b.example") == [
+            "https://a.example",
+            "https://b.example",
+        ]
+
+    def test_live_app_default_is_not_wildcard(self):
+        # The app is configured at import from the (unset in tests) env.
+        from expert_backend import main
+        assert main._CORS_ORIGINS != ["*"]
+
+    def test_credentials_invariant(self):
+        # The middleware sets allow_credentials = (origins != ["*"]):
+        # ON for a concrete allow-list, OFF under the wildcard (browsers
+        # reject `*` + credentials anyway).
+        from expert_backend import main
+        assert (main._resolve_cors_origins("") != ["*"]) is True
+        assert (main._resolve_cors_origins("*") != ["*"]) is False
+
+    def test_disallowed_origin_gets_no_cors_header(self, client):
+        resp = client.get("/api/user-config", headers={"Origin": "http://evil.example"})
+        acao = resp.headers.get("access-control-allow-origin")
+        assert acao != "*"
+        assert acao != "http://evil.example"
+
+    def test_allowed_loopback_origin_is_reflected(self, client):
+        resp = client.get("/api/user-config", headers={"Origin": "http://localhost:5173"})
+        assert resp.headers.get("access-control-allow-origin") == "http://localhost:5173"
+
+
+class TestLockdownProfile:
+    """D7: on a locked-down (hosted, anonymous-visitor) deployment the
+    desktop-era filesystem RPCs are disabled with a 403 `{code:
+    LOCKED_DOWN}`, while the read-only app config stays available so the
+    SPA still boots. Toggled by `COSTUDY4GRID_LOCKDOWN` (read into
+    `main._LOCKDOWN` at import; patched here)."""
+
+    def test_filesystem_rpcs_are_403_when_locked_down(self, client, mock_services, monkeypatch, tmp_path):
+        from expert_backend import main
+        monkeypatch.setattr(main, "_LOCKDOWN", True)
+
+        cases = [
+            ("post", "/api/config-file-path", {"json": {"path": "/etc/evil.json"}}),
+            ("get", "/api/pick-path", {"params": {"type": "file"}}),
+            ("post", "/api/save-session", {"json": {
+                "session_name": "s", "json_content": "{}", "output_folder_path": str(tmp_path),
+            }}),
+            ("get", "/api/list-sessions", {"params": {"folder_path": str(tmp_path)}}),
+            ("post", "/api/load-session", {"json": {"folder_path": str(tmp_path), "session_name": "s"}}),
+        ]
+        for method, path, kwargs in cases:
+            resp = getattr(client, method)(path, **kwargs)
+            assert resp.status_code == 403, f"{path} should be 403 when locked down"
+            assert resp.json()["code"] == "LOCKED_DOWN", f"{path} should carry the LOCKED_DOWN code"
+        # Nothing was written under the locked-down deployment.
+        assert not (tmp_path / "s").exists()
+
+    def test_read_only_config_still_available_when_locked_down(self, client, mock_services, monkeypatch):
+        from expert_backend import main
+        monkeypatch.setattr(main, "_LOCKDOWN", True)
+        # The SPA boot reads still work.
+        assert client.get("/api/user-config").status_code == 200
+        assert client.get("/api/config-file-path").status_code == 200
+
+    def test_filesystem_rpcs_work_when_not_locked_down(self, client, mock_services, monkeypatch, tmp_path):
+        from expert_backend import main
+        monkeypatch.setattr(main, "_LOCKDOWN", False)
+        resp = client.post("/api/save-session", json={
+            "session_name": "costudy4grid_session_ok", "json_content": "{}",
+            "output_folder_path": str(tmp_path),
+        })
+        assert resp.status_code == 200
+        assert (tmp_path / "costudy4grid_session_ok" / "session.json").is_file()
+
+
 class TestEventLoopSafety:
     """`/api/run-analysis-step1` runs seconds of synchronous pypowsybl /
     grid2op work, so it MUST be a sync `def` route (dispatched to
@@ -1772,3 +1953,35 @@ class TestPickPath:
         assert argv[0] != "osascript"
         # The inlined script must contain the tkinter import.
         assert any("import tkinter" in a for a in argv)
+
+
+class TestErrorLeakGuard:
+    """QW6 — the FS/config endpoints must not leak filesystem paths (or raw
+    exception text) into client-visible error `detail`. D2 genericises only
+    UNCAUGHT exceptions; these endpoints raise explicit HTTPException(400)s, so
+    they need their own generic messages + server-side logger.exception."""
+
+    def test_save_user_config_failure_is_generic(self, client, monkeypatch):
+        def boom(_cfg):
+            raise OSError("/secret/abs/path/config.json: permission denied")
+
+        monkeypatch.setattr("expert_backend.main._save_user_config", boom)
+        r = client.post("/api/user-config", json={"foo": "bar"})
+        assert r.status_code == 400
+        detail = r.json()["detail"]
+        assert detail == "Failed to save configuration."
+        assert "/secret" not in detail
+
+    def test_save_session_failure_is_generic(self, client, monkeypatch):
+        # os.makedirs failing must not echo the absolute session path.
+        def boom(*_a, **_k):
+            raise OSError("/private/sessions/leak: no space left")
+
+        monkeypatch.setattr("expert_backend.main.os.makedirs", boom)
+        r = client.post("/api/save-session", json={
+            "output_folder_path": "out", "session_name": "s1", "json_content": "{}",
+        })
+        assert r.status_code == 400
+        detail = r.json()["detail"]
+        assert detail == "Cannot create the session directory."
+        assert "/private" not in detail

@@ -6,9 +6,15 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study. 
 
 import '@testing-library/jest-dom/vitest';
+import { afterEach } from 'vitest';
+import { notifications } from '../utils/notifications';
 
 // @ts-expect-error: IS_REACT_ACT_ENVIRONMENT is not in the global type definitions
 global.IS_REACT_ACT_ENVIRONMENT = true;
+
+// The notification store (D5) is a module singleton, so reset it between
+// tests to keep toasts from one test leaking into the next.
+afterEach(() => { notifications.clear(); });
 
 // Mock SVG getScreenCTM and related methods which are not implemented in JSDOM
 if (typeof window !== 'undefined') {

@@ -150,3 +150,51 @@ describe('useDiagramHighlights — halo call order matches product spec', () => 
         expect(overloadOrder).toBeLessThan(actionOrder);
     });
 });
+
+// QW14: the highlight pipeline used to re-run on every pan/zoom settle because
+// applyHighlightsForTab depended on the whole `diagrams` object, whose identity
+// churns when the per-tab pan/zoom (nPZ/n1PZ/actionPZ) changes. Narrowing that
+// dependency to the specific members the callback reads (the two container refs
+// + two metaIndexes) makes a settle a no-op for highlighting.
+describe('useDiagramHighlights — no re-run on pan/zoom settle (QW14)', () => {
+    const callCount = (fn: unknown) =>
+        (fn as unknown as { mock: { calls: unknown[] } }).mock.calls.length;
+
+    beforeEach(() => vi.clearAllMocks());
+
+    it('does not re-invoke the highlight helpers when only the diagrams object identity changes', () => {
+        const diagrams = makeDiagramsState({ activeTab: 'contingency' });
+        const result = {
+            lines_overloaded: ['OVL_LINE'], actions: {}, action_scores: {},
+        } as unknown as AnalysisResult;
+        // Hoisted so ONLY the `diagrams` object identity changes on rerender —
+        // otherwise a fresh Set / {} each render would trip other effect deps.
+        const selectedOverloads = new Set<string>();
+        const detachedTabs = {};
+        const props = (d: DiagramsState) => ({
+            diagrams: d,
+            result,
+            selectedBranch: 'CONT_LINE',
+            selectedOverloads,
+            monitoringFactor: 0.95,
+            detachedTabs,
+        });
+
+        const { rerender } = renderHook(
+            (p: ReturnType<typeof props>) => useDiagramHighlights(p),
+            { initialProps: props(diagrams) },
+        );
+        // Initial pass ran the pipeline.
+        expect(callCount(applyContingencyHighlight)).toBeGreaterThan(0);
+        vi.clearAllMocks();
+
+        // Simulate a pan/zoom settle: a NEW `diagrams` object identity, but every
+        // member (container refs, metaIndexes, the three diagrams) is the SAME
+        // reference. With the narrowed deps this must not re-run the pipeline.
+        rerender(props({ ...diagrams }));
+
+        expect(callCount(applyContingencyHighlight)).toBe(0);
+        expect(callCount(applyOverloadedHighlights)).toBe(0);
+        expect(callCount(applyDeltaVisuals)).toBe(0);
+    });
+});

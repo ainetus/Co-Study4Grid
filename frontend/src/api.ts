@@ -315,8 +315,32 @@ export const api = {
         });
         return response.data;
     },
-    runAnalysisStep1: async (disconnectedElements: string[]): Promise<{ lines_overloaded: string[]; message: string; can_proceed: boolean }> => {
-        const response = await axios.post(`${API_BASE_URL}/api/run-analysis-step1`, { disconnected_elements: disconnectedElements });
+    logGameSolution: async (
+        payload: import('./types').LogGameSolutionRequest,
+    ): Promise<import('./types').LogGameSolutionResponse> => {
+        const response = await axios.post(`${API_BASE_URL}/api/game/log-solution`, payload);
+        return response.data;
+    },
+    getGameLeverStats: async (
+        networkPath: string,
+        contingencyId: string,
+        topN = 5,
+    ): Promise<import('./types').GameLeverStatsResponse> => {
+        const response = await axios.get(`${API_BASE_URL}/api/game/lever-stats`, {
+            params: { network_path: networkPath, contingency_id: contingencyId, top_n: topN },
+        });
+        return response.data;
+    },
+    getPlayerSessions: async (
+        player: string,
+    ): Promise<import('./types').PlayerSessionsResponse> => {
+        const response = await axios.get(`${API_BASE_URL}/api/game/player-sessions`, {
+            params: { player },
+        });
+        return response.data;
+    },
+    runAnalysisStep1: async (disconnectedElements: string[], signal?: AbortSignal): Promise<{ lines_overloaded: string[]; message: string; can_proceed: boolean }> => {
+        const response = await axios.post(`${API_BASE_URL}/api/run-analysis-step1`, { disconnected_elements: disconnectedElements }, { signal });
         return response.data;
     },
     runAnalysisStep2Stream: async (params: {
@@ -324,7 +348,7 @@ export const api = {
         all_overloads: string[];
         monitor_deselected: boolean;
         additional_lines_to_cut?: string[];
-    }): Promise<Response> => {
+    }, signal?: AbortSignal): Promise<Response> => {
         const response = await fetch(`${API_BASE_URL}/api/run-analysis-step2`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -332,6 +356,7 @@ export const api = {
                 ...params,
                 additional_lines_to_cut: params.additional_lines_to_cut ?? [],
             }),
+            signal,
         });
         if (!response.ok) {
             throw new Error(`Analysis Resolution failed: ${response.statusText}`);

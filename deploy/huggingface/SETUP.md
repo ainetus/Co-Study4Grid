@@ -79,12 +79,61 @@ git add --renormalize . && git commit -m "migrate binaries to LFS"
    reference studies (Medium difficulty). Build without that flag for the bare
    workspace.
 
+## Persistent storage — the shared solution base survives restarts
+
+Game Mode **capitalises every retained proposition** (signed with the player
+name) into a shared solution base — `POST /api/game/log-solution` →
+`expert_backend/services/game_solutions.py` — which powers the novelty bonus
+and the end-of-session usage-frequency feedback. The mechanism mirrors the
+manoeuvre IHM scenario base of `expert_op4grid_recommender`:
+
+| Variable | Default | Role |
+|---|---|---|
+| `COSTUDY4GRID_DATA_DIR` | *(unset)* | Persistent **data root**. Set it to `/data` on a Space with persistent storage; the base lands in `/data/game_solutions`. |
+| `COSTUDY4GRID_GAME_SOLUTIONS_DIR` | `$COSTUDY4GRID_DATA_DIR/game_solutions`, else repo-local `game_solutions/` | Explicit override of the base directory. |
+
+The store is a plain directory of small JSON files (one per unique
+proposition), so **any read-write volume mounted into the container** persists
+it. Pick one of the two options below and point `COSTUDY4GRID_DATA_DIR` at the
+mount — the store writes there with no code change.
+
+### Option A — HuggingFace Bucket (recommended: shareable, decoupled from the Space)
+
+A [Bucket](https://huggingface.co/docs/hub/storage-buckets) is S3-like object
+storage under your namespace (e.g. `hf://buckets/amarot/Co-Study4Grid-storage`).
+HuggingFace mounts an attached bucket into the Space container **read-write by
+default** — the same idea as `hf-mount`, managed for you — so the solution base
+lands straight in the bucket and survives restarts *and* Space rebuilds.
+
+1. Create the bucket (once): Hub → **Buckets → New** (or `hf buckets create
+   amarot/Co-Study4Grid-storage`).
+2. Attach it to the Space as a volume mounted at **`/data`**: Space →
+   **Settings → Variables and secrets → Volumes** (or when creating the
+   Space) → add the bucket with mount path `/data`, **read-write**.
+3. Space → **Settings → Variables** → **`COSTUDY4GRID_DATA_DIR` = `/data`**
+   (the base then lands in `/data/game_solutions`, i.e. under the bucket).
+
+### Option B — HuggingFace persistent storage volume
+
+1. Space → **Settings → Persistent storage** → choose a volume (paid HF
+   feature). It is mounted at **`/data`**.
+2. Space → **Settings → Variables** → **`COSTUDY4GRID_DATA_DIR` = `/data`**.
+
+Either way, if the mount is missing or not yet ready when a retention arrives,
+the store logs a warning and **falls back to a container-local directory**
+(`_effective_base_dir` in `services/game_solutions.py`) instead of failing the
+request — solution logging is best-effort and never breaks the game. Without a
+persistent mount the base still works within the life of the container but
+**resets on every restart**.
+
 ## Automated redeploy on merge to `main` (GitHub Action)
 
-`.github/workflows/deploy-huggingface.yml` runs the same orphan-snapshot push
-automatically on every merge to `main` (and on manual `workflow_dispatch`). It
-checks out the current tree with LFS, squashes it to one history-free commit,
-and force-pushes it to the Space's `main`.
+`.github/workflows/deploy-huggingface.yml` runs the orphan-snapshot push
+automatically. It is **test-gated (D7)**: it fires on `workflow_run` when the
+**Tests** workflow completes *successfully* on `main` (not merely on a merge),
+checks out that exact tested commit with LFS, squashes it to one history-free
+commit, and force-pushes it to the Space's `main`. A manual `workflow_dispatch`
+always runs (the rollback path — see below).
 
 Opt in by setting, in the GitHub repo **Settings → Secrets and variables →
 Actions**:
@@ -98,8 +147,49 @@ Actions**:
 The job is inert (it logs a notice and exits cleanly) until both `HF_TOKEN` and
 `HF_SPACE` are set, so merging the workflow doesn't break anything before you
 opt in. The push reuses LFS objects already on the Space, so repeat deploys only
-upload what changed. If you want the deploy gated on green tests, change the
-trigger to a `workflow_run` on the **Tests** workflow instead of `push`.
+upload what changed.
+
+### Rolling back a bad deploy
+
+The Space push is force-pushed and history-free, so the Space's own git log is
+not a rollback trail. Instead, every successful deploy tags the exact commit it
+shipped on **origin** as `space-deploy-<UTC-timestamp>-<shortsha>`. To roll back:
+
+1. Find the last good tag: `git tag --list 'space-deploy-*' | sort | tail`.
+2. Re-deploy that commit: **Actions → Deploy to HuggingFace Space → Run
+   workflow**, and pick the good tag (or its commit) as the ref. The manual
+   `workflow_dispatch` path is not test-gated, so it redeploys immediately.
+
+### Reproducible Python closure (tracked follow-up)
+
+The image still resolves the Python dependency tree at build time (floors in
+`pyproject.toml` + the recommender floor), so a rebuild can pick up newer
+transitive releases. To make the build reproducible, generate a lockfile **on
+Python 3.10** (matching the image base) and have both the `Dockerfile` and the
+**Tests** workflow install from it:
+
+```bash
+# on Python 3.10:
+pip install pip-tools
+pip-compile --output-file requirements.lock pyproject.toml
+```
+
+Commit `requirements.lock` and `pip install -r requirements.lock` in both places
+so "the Docker image mirrors CI" becomes literally true. (Not generated in-repo
+yet: a lockfile must be resolved on the deployment's 3.10 interpreter, not a
+dev 3.11, or it pins the wrong wheels.)
+
+## Lockdown profile (hosted deployments)
+
+The Docker image sets `COSTUDY4GRID_LOCKDOWN=1` (see the `Dockerfile`). On the
+public Space the desktop-era filesystem RPCs — custom config-file path, session
+save / list / load, and the native file picker — are **disabled** with a
+`403 {code: "LOCKED_DOWN"}`, because they assume "the client is the operator on
+their own machine" and would otherwise give an anonymous visitor read/write
+access to the container filesystem. The read-only app config (`GET
+/api/user-config`, `GET /api/config-file-path`) stays available so the SPA
+boots. Local/dev installs leave the variable unset and behave exactly as before.
+See [`docs/architecture/deployment-trust.md`](../../docs/architecture/deployment-trust.md).
 
 ## Test the image locally first (recommended)
 

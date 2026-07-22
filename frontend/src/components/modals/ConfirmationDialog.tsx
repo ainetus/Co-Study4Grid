@@ -6,6 +6,7 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
 import { colors } from '../../styles/tokens';
+import { useModalKeyboard } from '../../hooks/useModalKeyboard';
 
 export type ConfirmDialogState = {
   type: 'contingency' | 'loadStudy' | 'applySettings' | 'changeNetwork' | 'clearSuggested';
@@ -24,6 +25,12 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   onCancel,
   onConfirm,
 }) => {
+  // Escape-to-cancel + focus trap/restore (QW20). Called before the early
+  // return so the hook order stays stable across open/closed renders.
+  const { containerRef, dialogProps } = useModalKeyboard({
+    isOpen: !!confirmDialog,
+    onClose: onCancel,
+  });
   if (!confirmDialog) return null;
 
   const title =
@@ -66,7 +73,8 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
       display: 'flex', justifyContent: 'center', alignItems: 'center'
     }}>
       <div
-        role="dialog"
+        ref={containerRef}
+        {...dialogProps}
         data-testid={`confirm-dialog-${confirmDialog.type}`}
         style={{
           background: colors.surface, padding: '25px', borderRadius: '10px',

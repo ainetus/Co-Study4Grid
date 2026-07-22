@@ -46,14 +46,21 @@ lines/CC remaining before the gate fails.
 | `services/network_service.py::get_element_names` | — | CC 33 | +5 CC | |
 | `services/analysis_mixin.py::_narrow_context_to_selected_overloads` | — | CC 30 / **nest 7** | +1 nest | deep nesting |
 
-### Frontend component size (ceiling 1450; `App.tsx` hub ceiling 2100)
+### Frontend component size (ceiling 1450; `App.tsx` hub ceiling 1850)
+
+> The `App.tsx` / `useDiagrams` rows below are a **pre-D4 snapshot**; the D4
+> hub-relief work (2026-07-08) has since shrunk `App.tsx` to ~1,807 (ceiling
+> ratcheted 2100 → 1850) and `useDiagrams.ts` to ~1,145. The
+> `VisualizationPanel` / `ActionFeed` rows are current — their D4 props
+> consolidation kept LoC roughly flat (grouped-object props replaced the
+> exploded ones), so both remain riders and stay listed as decompose targets.
 
 | Component | Lines | Margin | Note |
 |-----------|------:|-------:|------|
-| `App.tsx` | 1982 | +118 | hub; decomposition already scoped (see below) |
-| `components/VisualizationPanel.tsx` | **1407** | **+43** | tightest frontend file |
-| `components/ActionFeed.tsx` | 1328 | +122 | already shed ActionCard / ActionSearchDropdown |
-| `hooks/useDiagrams.ts` | 1221 | +229 | already shed useSldOverlay |
+| `App.tsx` | 1982 | +118 | hub; pre-D4 snapshot — now ~1,807 (see note) |
+| `components/VisualizationPanel.tsx` | **1410** | **+40** | tightest frontend file |
+| `components/ActionFeed.tsx` | 1362 | +88 | already shed ActionCard / ActionSearchDropdown |
+| `hooks/useDiagrams.ts` | 1221 | +229 | pre-D4 snapshot — now ~1,145 (sub-hook split) |
 | `components/SldOverlay.tsx` | 1147 | +303 | |
 | `components/ActionOverviewDiagram.tsx` | 1097 | +353 | |
 

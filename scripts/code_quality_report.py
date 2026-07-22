@@ -59,6 +59,11 @@ ANY_TYPE_RE = re.compile(r":\s*any\b|<\s*any\s*>|\bany\[\]|\bas\s+any\b")
 TS_IGNORE_RE = re.compile(r"@ts-(?:ignore|expect-error|nocheck)\b")
 AS_UNKNOWN_RE = re.compile(r"as\s+unknown\s+as\b")
 RECORD_STR_UNK_RE = re.compile(r"Record<string,\s*unknown>")
+# `console.log` in frontend source (excl. tests). Left over from perf
+# instrumentation in the SVG / diagram hot paths; noisy in production. Gated as
+# a ratchet (freeze at the current count, lower over time) — `console.warn` /
+# `console.error` stay allowed for genuine diagnostics.
+CONSOLE_LOG_RE = re.compile(r"\bconsole\.log\b")
 # Backend lint / type suppressions ("noqa" / "type: ignore" markers).
 # Often legitimate (a re-exported import, a logged broad except) so they
 # are reported + ratcheted rather than hard-zeroed.
@@ -246,6 +251,7 @@ class FrontendReport:
     ts_ignores: int = 0
     weak_casts: int = 0
     record_str_unknown: int = 0
+    console_logs: int = 0
     test_files: int = 0
     source_files: int = 0
     hex_literals: int = 0
@@ -424,6 +430,7 @@ def scan_frontend() -> FrontendReport:
         rep.ts_ignores += len(TS_IGNORE_RE.findall(src))
         rep.weak_casts += len(AS_UNKNOWN_RE.findall(src))
         rep.record_str_unknown += len(RECORD_STR_UNK_RE.findall(src))
+        rep.console_logs += len(CONSOLE_LOG_RE.findall(src))
 
     rep.components.sort(key=lambda m: m.lines, reverse=True)
     if rep.components:
@@ -538,6 +545,7 @@ def to_markdown(report: QualityReport) -> str:
             f"- `@ts-ignore` directives: **{fe.ts_ignores}**",
             f"- `as unknown as` casts: **{fe.weak_casts}**",
             f"- `Record<string, unknown>` usages: **{fe.record_str_unknown}**",
+            f"- `console.log` calls (ratcheted): **{fe.console_logs}**",
             f"- Hex color literals (outside tokens.css): **{fe.hex_literals}**",
             "",
         ]

@@ -12,6 +12,7 @@ import { createRef } from 'react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import MemoizedSvgContainer from './MemoizedSvgContainer';
+import { processSvg } from '../utils/svgUtils';
 
 describe('MemoizedSvgContainer', () => {
     it('renders a container div with correct id and class', () => {
@@ -53,6 +54,24 @@ describe('MemoizedSvgContainer', () => {
             <MemoizedSvgContainer svg={svgEl} containerRef={containerRef} display="block" tabId="action" />
         );
         expect(containerRef.current?.querySelector('circle')).toBeTruthy();
+    });
+
+    // ===== D6: the SVG element-adoption pipeline =====
+    // processSvg hands us an already-parsed SVGSVGElement; MemoizedSvgContainer
+    // must adopt that exact element via replaceChildren (no serialize +
+    // innerHTML re-parse). Proven by identity: the mounted <svg> is the SAME
+    // instance processSvg returned, which innerHTML could never produce.
+    it('adopts the exact element processSvg returned (no re-parse round-trip)', () => {
+        const containerRef = createRef<HTMLDivElement>();
+        const raw = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g id="marker"/></svg>';
+        const { svg } = processSvg(raw, 100);
+        expect(typeof svg).not.toBe('string'); // element rail engaged
+        render(
+            <MemoizedSvgContainer svg={svg} containerRef={containerRef} display="block" tabId="n" />
+        );
+        // Identity check: same element instance moved into the container.
+        expect(containerRef.current?.firstElementChild).toBe(svg);
+        expect(containerRef.current?.querySelector('#marker')).toBeTruthy();
     });
 
     it('uses correct id for different tabId values', () => {

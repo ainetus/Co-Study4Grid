@@ -8,7 +8,9 @@
 import App from '../App';
 import { colors, space, text, radius } from '../styles/tokens';
 import GameConfigScreen from './GameConfigScreen';
+import GameHintsPanel from './GameHintsPanel';
 import GameHud from './GameHud';
+import GameNoveltyToast from './GameNoveltyToast';
 import GameResults from './GameResults';
 import { useGameSession } from './useGameSession';
 
@@ -59,6 +61,14 @@ export default function GameShell() {
         <App />
       </div>
 
+      {cfg.assistance && game.phase === 'playing' && study && (
+        <GameHintsPanel key={study.id} study={study} />
+      )}
+
+      {game.noveltyToast && (
+        <GameNoveltyToast feedback={game.noveltyToast} onDismiss={game.dismissNoveltyToast} />
+      )}
+
       {game.phase === 'loading' && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 9500,
@@ -78,16 +88,42 @@ export default function GameShell() {
                 <div style={{ fontSize: text.sm, color: colors.textSecondary, marginBottom: space[3] }}>
                   {game.loadError}
                 </div>
-                <button
-                  onClick={game.quit}
-                  style={{
-                    padding: `${space[2]} ${space[4]}`, borderRadius: radius.md, border: 'none',
-                    background: colors.brand, color: colors.textOnBrand, cursor: 'pointer',
-                    fontWeight: 600,
-                  }}
-                >
-                  Back to setup
-                </button>
+                <div style={{ display: 'flex', gap: space[2], justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={game.retryStudy}
+                    style={{
+                      padding: `${space[2]} ${space[4]}`, borderRadius: radius.md, border: 'none',
+                      background: colors.brand, color: colors.textOnBrand, cursor: 'pointer',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Retry
+                  </button>
+                  <button
+                    onClick={game.finishEarly}
+                    disabled={game.results.length === 0}
+                    style={{
+                      padding: `${space[2]} ${space[4]}`, borderRadius: radius.md,
+                      border: `1px solid ${colors.border}`,
+                      background: colors.surface,
+                      color: game.results.length === 0 ? colors.textTertiary : colors.textPrimary,
+                      cursor: game.results.length === 0 ? 'not-allowed' : 'pointer',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Finish with {game.results.length} result{game.results.length === 1 ? '' : 's'}
+                  </button>
+                  <button
+                    onClick={game.quit}
+                    style={{
+                      padding: `${space[2]} ${space[4]}`, borderRadius: radius.md,
+                      border: `1px solid ${colors.border}`, background: 'transparent',
+                      color: colors.textSecondary, cursor: 'pointer', fontWeight: 600,
+                    }}
+                  >
+                    Quit to setup
+                  </button>
+                </div>
               </>
             ) : (
               <>

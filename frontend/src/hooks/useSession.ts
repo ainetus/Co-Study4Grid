@@ -10,6 +10,7 @@ import { api } from '../api';
 import { buildSessionResult } from '../utils/sessionUtils';
 import { interactionLogger } from '../utils/interactionLogger';
 import { apiErrorMessage } from '../utils/apiError';
+import { notifySuccess } from '../utils/notifications';
 import type { AnalysisResult, CombinedAction, ActionDetail, SessionResult, DiagramData } from '../types';
 
 export interface SessionState {
@@ -67,7 +68,6 @@ export interface SaveParams {
   rejectedActionIds: Set<string>;
   manuallyAddedIds: Set<string>;
   suggestedByRecommenderIds: Set<string>;
-  setInfoMessage: (v: string) => void;
   setError: (v: string) => void;
 }
 
@@ -137,7 +137,6 @@ export interface RestoreContext {
    *  ``committedBranchRef`` while the restore is still in flight.
    *  Optional for test mocks that predate the field. */
   resetAllState?: () => void;
-  setInfoMessage: (v: string) => void;
   setError: (v: string) => void;
 }
 
@@ -203,7 +202,7 @@ export function useSession(): SessionState {
           interaction_log: JSON.stringify(interactionLogger.getLog(), null, 2),
         });
         const pdfMsg = res.pdf_copied ? " (including PDF)" : " (PDF not found)";
-        params.setInfoMessage(`SUCCESS: Session saved to: ${res.session_folder}${pdfMsg}`);
+        notifySuccess(`Session saved to: ${res.session_folder}${pdfMsg}`);
       } catch (err: unknown) {
         const e = err as { response?: { data?: { detail?: string } }; message?: string };
         params.setError('Failed to save session: ' + apiErrorMessage(e));
@@ -510,7 +509,7 @@ export function useSession(): SessionState {
 
       setShowReloadModal(false);
       interactionLogger.record('session_reloaded', { session_name: sessionName });
-      ctx.setInfoMessage(`SUCCESS: Session "${sessionName}" restored`);
+      notifySuccess(`Session "${sessionName}" restored`);
     } catch (err: unknown) {
       // If the restore aborts before useContingencyFetch had a chance
       // to consume the flag, clear it here — leaving it sticky would
