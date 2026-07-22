@@ -31,6 +31,10 @@ const PREVIEW_SRC: Record<Difficulty, string> = {
   high: '/game/preview-high.svg',
 };
 
+// France THT map (the RTE7000 400/225 kV backbone). All four snapshots share
+// the same topology, so one map represents every difficulty tier.
+const RTE7000_PREVIEW_SRC = '/game/preview-tht.svg';
+
 const card: React.CSSProperties = {
   background: colors.surfaceRaised, border: `1px solid ${colors.border}`,
   borderRadius: radius.lg, padding: space[4], marginBottom: space[3],
@@ -310,12 +314,29 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
           </div>
 
           {mode === 'tht' ? (
-            <p data-testid="game-tht-summary" style={{ color: colors.textSecondary, fontSize: text.sm }}>
-              {thtCases} <strong>{thtDifficulty}</strong> case{thtCases === 1 ? '' : 's'} will be
-              drawn at random from the {thtPoolSize} available and played in sequence, spread across
-              the reconstructed France THT grid snapshots. Dates are hidden — each is titled by
-              month, weekday and time-of-day only.
-            </p>
+            <>
+              <p data-testid="game-tht-summary" style={{ color: colors.textSecondary, fontSize: text.sm }}>
+                {thtCases} <strong>{thtDifficulty}</strong> case{thtCases === 1 ? '' : 's'} will be
+                drawn at random from the {thtPoolSize} available and played in sequence, spread across
+                the reconstructed France THT grid snapshots. Dates are hidden — each is titled by
+                month, weekday and time-of-day only.
+              </p>
+              {!previewError && (
+                <figure data-testid="game-tht-preview" style={{ margin: `${space[3]} 0 0` }}>
+                  <div style={{
+                    border: `1px solid ${colors.borderSubtle}`, borderRadius: radius.md,
+                    background: colors.surface, padding: space[2], overflow: 'hidden',
+                  }}>
+                    <img src={RTE7000_PREVIEW_SRC} alt="France THT (RTE7000) network map"
+                      loading="lazy" onError={() => setPreviewError(true)}
+                      style={{ display: 'block', width: '100%', height: 'auto', maxHeight: 320, objectFit: 'contain' }} />
+                  </div>
+                  <figcaption style={{ color: colors.textTertiary, fontSize: text.xs, marginTop: space[1] }}>
+                    The France THT network — the 400 kV backbone in red, 225 kV in green.
+                  </figcaption>
+                </figure>
+              )}
+            </>
           ) : (
             <>
               {studies.length === 0 ? (
