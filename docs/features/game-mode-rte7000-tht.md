@@ -28,7 +28,7 @@ backend computes when a player loads the scenario.
 
 ```
 data/rte7000_tht/
-  grids/<opaqueGridId>/network.xiidm         # one reconstructed operating point (~8.8 MB XML)
+  grids/<opaqueGridId>/network.xiidm.gz.b64  # one reconstructed operating point (compressed, text)
   grids/<opaqueGridId>/actions.json          # curated topological action space
   grids/<opaqueGridId>/grid_layout.json      # {voltageLevelId: [x, y]} for rendering
   grids/<opaqueGridId>/graded_contingencies.json
@@ -40,9 +40,19 @@ The four grids share the RTE7000 topology, so their `grid_layout.json` is derive
 from the France-shaped planar layout `grid_layout_rte.json` (in the
 `grid_snapshot_reconstruct` repo): each grid's voltage levels are filtered from it
 (~97 % covered) and the few uncovered nodes get the centroid of their connected,
-covered neighbours. The `network.xiidm` files are ~8.8 MB XML (text, under
-HuggingFace's 10 MiB git limit), so they ship uncompressed and are bundled into
-the Docker Space image by `COPY data/`.
+covered neighbours.
+
+Each `network.xiidm` (~8.8 MB XML) is committed **compressed and text-encoded** as
+`network.xiidm.gz.b64` (gzip + base64, ~1.1 MB) — 33 MB of raw XML becomes ~4 MB
+of text. Text (not binary) keeps it small **and** pushable without Git-LFS. The
+Docker build (and local dev) decode it back to `network.xiidm`:
+
+```bash
+python scripts/game_mode/decode_tht_grids.py
+```
+
+`scenarios.json` / the presets reference the decoded `network.xiidm` path (the
+`.gz.b64` is transport only), so nothing else changes once decoded.
 
 ## Playing it (opening page)
 

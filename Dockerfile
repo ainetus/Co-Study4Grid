@@ -67,6 +67,10 @@ COPY --chown=user data/ ./data/
 # 10 MiB git file limit, so it travels as a Git-LFS .zip). Decompress it here
 # so pypowsybl can load network.xiidm directly — the "Medium" game difficulty.
 RUN python -c "import zipfile, pathlib; z = pathlib.Path('data/pypsa_eur_eur220_225_380_400/network.xiidm.zip'); zipfile.ZipFile(z).extractall(z.parent) if z.exists() else print('eur220 network zip absent — skipping')"
+# The 4 France THT grids ship each ~8.8 MB network.xiidm compressed + text-encoded
+# as network.xiidm.gz.b64 (gzip+base64) — small, and pushes without Git-LFS.
+# Decode them all back to network.xiidm so pypowsybl can load them directly.
+RUN python -c "import gzip, base64, pathlib; [pathlib.Path(str(b)[:-7]).write_bytes(gzip.decompress(base64.b64decode(b.read_bytes()))) for b in pathlib.Path('data/rte7000_tht/grids').glob('*/network.xiidm.gz.b64')]"
 COPY --chown=user scripts/ ./scripts/
 COPY --chown=user --from=frontend /build/dist ./frontend/dist
 # The overflow-viewer overlay (services/overflow_overlay.py) inlines this

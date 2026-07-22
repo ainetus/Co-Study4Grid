@@ -45,3 +45,4 @@ env/
 config_*.json
 .idea/
 *DS_Store
+data/rte7000_tht/grids/*/network.xiidm
