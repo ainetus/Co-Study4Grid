@@ -81,3 +81,52 @@ describe('GameConfigScreen landing', () => {
     expect(cfg.studies.length).toBeGreaterThan(0);
   });
 });
+
+describe('GameConfigScreen — France THT mode', () => {
+  it('reveals the difficulty + case-count pickers and hides the demo studies/preview', () => {
+    render(<GameConfigScreen onStart={vi.fn()} />);
+    // Demo is the default: its studies summary + network preview are shown.
+    expect(screen.getByTestId('game-studies-summary')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('game-mode-tht'));
+    expect(screen.getByTestId('game-tht-difficulty')).toBeInTheDocument();
+    expect(screen.getByTestId('game-tht-count')).toBeInTheDocument();
+    expect(screen.getByTestId('game-tht-summary')).toBeInTheDocument();
+    // The demo studies list + per-network preview belong to demo mode only.
+    expect(screen.queryByTestId('game-studies-summary')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('game-network-preview')).not.toBeInTheDocument();
+  });
+
+  it('starts a France THT session by sampling the chosen number of cases', async () => {
+    const onStart = vi.fn();
+    render(<GameConfigScreen onStart={onStart} />);
+    fireEvent.change(screen.getByTestId('game-player'), { target: { value: 'amarot' } });
+    await waitFor(() => expect(sessionInput().value).toBe('amarot — session 3'));
+    fireEvent.click(screen.getByTestId('game-mode-tht'));
+    fireEvent.change(screen.getByTestId('game-tht-count'), { target: { value: '3' } });
+    fireEvent.click(screen.getByTestId('game-start'));
+
+    expect(onStart).toHaveBeenCalledTimes(1);
+    const cfg = onStart.mock.calls[0][0];
+    expect(cfg.studies).toHaveLength(3);
+    for (const s of cfg.studies) {
+      expect(s.networkPath).toContain('data/rte7000_tht/grids/');
+      expect(s.contingencyElementId).toBeTruthy();
+    }
+  });
+
+  it('caps the number of cases at the pool size', () => {
+    render(<GameConfigScreen onStart={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('game-mode-tht'));
+    const count = screen.getByTestId('game-tht-count') as HTMLInputElement;
+    fireEvent.change(count, { target: { value: '999999' } });
+    // Clamped to the difficulty's available cases (a positive, finite pool).
+    expect(Number(count.value)).toBeGreaterThan(0);
+    expect(Number(count.value)).toBeLessThan(999999);
+  });
+
+  it('still requires a player name to start in THT mode', () => {
+    render(<GameConfigScreen onStart={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('game-mode-tht'));
+    expect(screen.getByTestId('game-start')).toBeDisabled();
+  });
+});
