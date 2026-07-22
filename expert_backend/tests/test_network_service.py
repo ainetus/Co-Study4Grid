@@ -195,6 +195,32 @@ class TestLoadNetworkGzB64:
         assert first == second and os.path.isfile(first)
         assert first.endswith("network.xiidm")
 
+    @patch("expert_backend.services.network_service.pn")
+    def test_redecodes_when_present_xiidm_is_invalid(self, mock_pn, tmp_path):
+        # A stale / truncated network.xiidm (e.g. an un-smudged LFS pointer)
+        # sits next to a valid .gz.b64 — the resolver must re-decode rather
+        # than hand pypowsybl the unparseable file.
+        self._make_gz_b64(tmp_path)
+        bad = tmp_path / "network.xiidm"
+        bad.write_text("version https://git-lfs.github.com/spec/v1\noid sha256:deadbeef\n")
+        mock_pn.load.return_value = MagicMock(id="g")
+
+        NetworkService().load_network(str(bad))
+
+        loaded = mock_pn.load.call_args[0][0]
+        assert open(loaded, "rb").read() == b"<network/>"  # the decoded XML, not the pointer
+
+    @patch("expert_backend.services.network_service.pn")
+    def test_loads_when_given_the_gz_b64_path_directly(self, mock_pn, tmp_path):
+        b64_path = self._make_gz_b64(tmp_path)
+        mock_pn.load.return_value = MagicMock(id="g")
+
+        NetworkService().load_network(b64_path)
+
+        loaded = mock_pn.load.call_args[0][0]
+        assert loaded.endswith("network.xiidm")
+        assert open(loaded, "rb").read() == b"<network/>"
+
     def test_decode_falls_back_to_tempdir_when_grid_dir_readonly(self, tmp_path):
         # Force the in-place write to fail (a read-only grid dir can't be
         # simulated as root, so raise OSError on the target open instead).

@@ -47,29 +47,53 @@ _GRIDS = [
 ]
 
 # Voltage colouring: the >= 350 kV backbone (380 / 400 kV) is red, everything
-# below (220 / 225 kV) is green. The two shades are the Okabe-Ito "vermillion"
-# and "bluish green" — a warm/cool pair chosen so red-green colour-blind
-# viewers can still tell them apart (they separate on the blue channel and
-# lightness, not only the red-green axis), and both sit at a medium luminance
-# that reads on the light AND dark config-screen card (the SVG is a themeless
-# <img>).
+# below (220 / 225 kV) is green. Each voltage level's nominal kV is read from
+# the network's ``<voltageLevel nominalV=...>`` — the substation IDs (RTE codes
+# like ``1ARGIP7``) do NOT carry a 3-digit kV, so a regex over the id would put
+# the whole map on one colour.
+#
+# The two shades are chosen for red-green colour-blind viewers: a warm
+# vermillion vs a cool blue-leaning teal that separate on the BLUE channel and
+# on LUMINANCE (the teal is markedly darker), not only on the red-green axis
+# that deuteranopes/protanopes cannot use. As a belt-and-braces redundant cue —
+# so the backbone is legible even in total colour-blindness / greyscale — the
+# HV backbone is also drawn THICKER and fully opaque, the LV layer thinner and
+# slightly translucent. Both read on the light AND dark config-screen card
+# (the SVG is a themeless <img>).
 _HV_THRESHOLD_KV = 350
-_HV_COLOR = "#d55e00"  # >= 350 kV — "red"
-_LV_COLOR = "#009e73"  # < 350 kV — "green"
+_HV_COLOR = "#d55e00"  # >= 350 kV — warm vermillion "red"
+_LV_COLOR = "#166a5a"  # < 350 kV — dark teal "green" (darker + bluer than the
+#                        old #009e73, for a wider luminance + blue-channel gap)
 
 _WIDTH = 900
 _PADDING = 24
 _NODE_RADIUS = 1.6
-_EDGE_WIDTH = 1.6
+_HV_EDGE_WIDTH = 2.3  # backbone drawn heavier — a non-colour cue on top of hue
+_LV_EDGE_WIDTH = 1.2
 _MAX_NODES = 2600  # stride-sample nodes in the fallback (no-edge) scatter
 
 _KV_RE = re.compile(r"-(\d{3})(?:\D|$)")
 _BRANCH_TAG_RE = re.compile(r"<(?:\w+:)?(?:line|twoWindingsTransformer)\b([^>]*)>")
 _V1_RE = re.compile(r'voltageLevelId1="([^"]+)"')
 _V2_RE = re.compile(r'voltageLevelId2="([^"]+)"')
+_VL_TAG_RE = re.compile(
+    r'<(?:\w+:)?voltageLevel\b[^>]*\bid="([^"]+)"[^>]*\bnominalV="([^"]+)"')
 
 
-def _kv_of(node_id: str) -> int:
+def _nominal_kv_map(xml: str) -> dict[str, int]:
+    """{voltageLevelId: nominal kV} from the network's <voltageLevel> tags."""
+    out: dict[str, int] = {}
+    for vid, v in _VL_TAG_RE.findall(xml):
+        try:
+            out[vid] = round(float(v))
+        except ValueError:
+            continue
+    return out
+
+
+def _kv_of(node_id: str, vmap: dict[str, int] | None = None) -> int:
+    if vmap is not None and node_id in vmap:
+        return vmap[node_id]
     m = _KV_RE.search(node_id)
     return int(m.group(1)) if m else 0
 
@@ -154,7 +178,8 @@ def _svg_header(height: float) -> str:
     )
 
 
-def _build_edge_map(layout: dict, edges: list[tuple[str, str]]) -> str:
+def _build_edge_map(layout: dict, edges: list[tuple[str, str]],
+                    vmap: dict[str, int] | None = None) -> str:
     project, height = _projector(layout)
 
     # Group edges by colour (max kV of the two endpoints → HV backbone on top).
@@ -169,7 +194,7 @@ def _build_edge_map(layout: dict, edges: list[tuple[str, str]]) -> str:
             continue
         connected.add(vl1)
         connected.add(vl2)
-        color = _color_of(max(_kv_of(vl1), _kv_of(vl2)))
+        color = _color_of(max(_kv_of(vl1, vmap), _kv_of(vl2, vmap)))
         edge_paths.setdefault(color, []).append(f"M{p1[0]} {p1[1]}L{p2[0]} {p2[1]}")
 
     # Only VLs with no line at all get a dot (so islanded substations don't
@@ -181,13 +206,18 @@ def _build_edge_map(layout: dict, edges: list[tuple[str, str]]) -> str:
         p = project(node_id)
         if p is None:
             continue
-        orphan_pts.setdefault(_color_of(_kv_of(node_id)), []).append(p)
+        orphan_pts.setdefault(_color_of(_kv_of(node_id, vmap)), []).append(p)
 
     parts = [_svg_header(height)]
     for color, segs in sorted(edge_paths.items(), key=lambda kc: _draw_order(kc[0])):
+        # Redundant (non-colour) encoding: the HV backbone is drawn thicker and
+        # fully opaque so it stands out by weight too, not by hue alone.
+        is_hv = color == _HV_COLOR
+        width = _HV_EDGE_WIDTH if is_hv else _LV_EDGE_WIDTH
+        opacity = 0.95 if is_hv else 0.7
         parts.append(
             f'<path d="{"".join(segs)}" fill="none" stroke="{color}" '
-            f'stroke-width="{_EDGE_WIDTH}" stroke-opacity="0.85" '
+            f'stroke-width="{width}" stroke-opacity="{opacity}" '
             f'stroke-linecap="round" stroke-linejoin="round"/>'
         )
     for color, pts in sorted(orphan_pts.items(), key=lambda kc: _draw_order(kc[0])):
@@ -198,7 +228,7 @@ def _build_edge_map(layout: dict, edges: list[tuple[str, str]]) -> str:
     return "".join(parts)
 
 
-def _build_node_scatter(layout: dict) -> str:
+def _build_node_scatter(layout: dict, vmap: dict[str, int] | None = None) -> str:
     """Fallback when the network topology isn't available: nodes only."""
     project, height = _projector(layout)
     ids = list(layout)
@@ -208,7 +238,7 @@ def _build_node_scatter(layout: dict) -> str:
         p = project(node_id)
         if p is None:
             continue
-        by_color.setdefault(_color_of(_kv_of(node_id)), []).append(p)
+        by_color.setdefault(_color_of(_kv_of(node_id, vmap)), []).append(p)
 
     parts = [_svg_header(height)]
     for color, pts in sorted(by_color.items(), key=lambda kc: _draw_order(kc[0])):
@@ -231,10 +261,13 @@ def main() -> int:
         out_path = _OUT_DIR / out_name
         xml = _load_network_xml(grid_dir)
         if xml:
+            vmap = _nominal_kv_map(xml)
             edges = _edges(xml)
-            svg = _build_edge_map(layout, edges)
+            svg = _build_edge_map(layout, edges, vmap)
+            hv = sum(1 for v in vmap.values() if v >= _HV_THRESHOLD_KV)
             out_path.write_text(svg, encoding="utf-8")
-            print(f"{tier}: {len(layout)} nodes → {out_path.relative_to(_REPO_ROOT)} "
+            print(f"{tier}: {len(layout)} nodes ({hv} HV ≥{_HV_THRESHOLD_KV}kV) → "
+                  f"{out_path.relative_to(_REPO_ROOT)} "
                   f"[edge map, {len(edges)} lines, {len(svg) // 1024} KB]")
         elif out_path.is_file():
             # Network file is an un-smudged LFS pointer here. Never downgrade a
