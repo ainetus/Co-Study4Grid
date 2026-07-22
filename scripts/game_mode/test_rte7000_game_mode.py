@@ -91,6 +91,25 @@ def test_every_grid_ships_a_decodable_network():
         assert len(raw) > 1_000_000  # ~8.8 MB XML, not a truncated stub
 
 
+def test_network_iidm_version_is_readable_by_the_pinned_pypowsybl():
+    """The networks must serialise at an IIDM schema the deployed pypowsybl can
+    read. pyproject pins pypowsybl>=1.13,<1.15, and pypowsybl 1.14 rejects
+    IIDM 1.16 ("Unsupported file format") — so the shipped transports must be
+    IIDM <= 1.14. Guards against re-shipping a network exported by a newer
+    pypowsybl (which defaults to 1.16)."""
+    import re
+    max_major, max_minor = 1, 14
+    for enc in sorted(GRIDS.glob("*/network.xiidm.gz.b64")):
+        raw = gzip.decompress(base64.b64decode(enc.read_bytes()))
+        m = re.search(rb"iidm/(\d+)_(\d+)", raw[:400])
+        assert m, f"no IIDM version in {enc.parent.name}/network.xiidm"
+        major, minor = int(m.group(1)), int(m.group(2))
+        assert (major, minor) <= (max_major, max_minor), (
+            f"{enc.parent.name}: IIDM {major}.{minor} > 1.14 — the pinned "
+            f"pypowsybl (<1.15) cannot read it; re-export with "
+            f"parameters={{'iidm.export.xml.version': '1.14'}}")
+
+
 # --------------------------------------------------------------------------- #
 # DB <-> frontend JSON <-> on-disk assets consistency
 # --------------------------------------------------------------------------- #
