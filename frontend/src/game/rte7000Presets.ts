@@ -5330,6 +5330,16 @@ export const RTE7000_MEDIUM: GameStudy[] = [
     "description": "January — Monday evening. Loss of SSEA2L71VERGE drives a worst-case 101.0% line loading. Bring every monitored line back under the 95% monitoring limit."
   },
   {
+    "id": "s_e4e81e29_224551",
+    "label": "January — Monday evening — SSVICL61ZLACA",
+    "networkPath": "data/rte7000_tht/grids/grid_e4e81e29/network.xiidm",
+    "actionFilePath": "data/rte7000_tht/grids/grid_e4e81e29/actions.json",
+    "contingencyElementId": "SSVICL61ZLACA",
+    "contingencyLabel": "SSVICL61ZLACA",
+    "baselineMaxLoadingPct": 99.1,
+    "description": "January — Monday evening. Loss of SSVICL61ZLACA drives a worst-case 99.1% line loading. Bring every monitored line back under the 95% monitoring limit."
+  },
+  {
     "id": "s_e4e81e29_f7ae0b",
     "label": "January — Monday evening — TUILIL61ZSS11",
     "networkPath": "data/rte7000_tht/grids/grid_e4e81e29/network.xiidm",
@@ -6551,16 +6561,6 @@ export const RTE7000_HARD: GameStudy[] = [
     "contingencyLabel": "SAUS5L61VLEVA",
     "baselineMaxLoadingPct": 121.2,
     "description": "January — Monday evening. Loss of SAUS5L61VLEVA drives a worst-case 121.2% line loading. Bring every monitored line back under the 95% monitoring limit."
-  },
-  {
-    "id": "s_e4e81e29_224551",
-    "label": "January — Monday evening — SSVICL61ZLACA",
-    "networkPath": "data/rte7000_tht/grids/grid_e4e81e29/network.xiidm",
-    "actionFilePath": "data/rte7000_tht/grids/grid_e4e81e29/actions.json",
-    "contingencyElementId": "SSVICL61ZLACA",
-    "contingencyLabel": "SSVICL61ZLACA",
-    "baselineMaxLoadingPct": 99.1,
-    "description": "January — Monday evening. Loss of SSVICL61ZLACA drives a worst-case 99.1% line loading. Bring every monitored line back under the 95% monitoring limit."
   },
   {
     "id": "s_e4e81e29_00de85",

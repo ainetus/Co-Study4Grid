@@ -6950,7 +6950,7 @@
   {
    "id": "s_e4e81e29_224551",
    "gridId": "grid_e4e81e29",
-   "difficulty": "hard",
+   "difficulty": "medium",
    "title": "January — Monday evening",
    "label": "January — Monday evening — SSVICL61ZLACA",
    "networkPath": "data/rte7000_tht/grids/grid_e4e81e29/network.xiidm",
@@ -6964,18 +6964,15 @@
    ],
    "nActionsDiscovered": 16,
    "solution": {
-    "kind": "none",
-    "best_unitary": {
-     "id": "open_coupler_MOLE P6",
-     "family": "open_coupling",
-     "max_rho": 1.015,
-     "reducing": true
-    },
-    "best_pair": {
-     "converged": true,
-     "true_max_rho": 1.0,
+    "kind": "pair",
+    "actions": [
+     "open_coupler_MOLE P6+load_shedding_MOLE Y641"
+    ],
+    "best": {
      "id": "open_coupler_MOLE P6+load_shedding_MOLE Y641",
-     "est_max_rho": 0.95
+     "true_max_rho": 1.0,
+     "true_max_rho_exact": 0.9999994896574,
+     "converged": true
     }
    }
   },
