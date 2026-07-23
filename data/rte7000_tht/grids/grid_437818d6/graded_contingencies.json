@@ -21,18 +21,23 @@
     "MALGOL61PASSY"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 70.0,
    "solution": {
     "kind": "unitary",
     "actions": [
      "node_merging_GEN.PP6",
-     "open_coupler_MALGOP6",
-     "load_shedding_PASSYY631"
+     "load_shedding_PASSYY631",
+     "load_shedding_PASSYY632"
     ],
     "best": {
+     "max_rho": 0.7,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
      "id": "node_merging_GEN.PP6",
-     "family": "node_merging",
-     "max_rho": 0.974,
-     "reducing": true
+     "family": "node_merging"
     }
    }
   },
@@ -53,25 +58,30 @@
     "PLAISL61ROMAI"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "open_coupler_PLAISP6",
-     "open_coupler_PLAISP6_1",
-     "disco_PLAISL62ZAVR5"
+     "disco_PLAISL61ROMAI",
+     "open_coupler_ROMAIP6",
+     "open_coupler_VLEVAP6"
     ],
     "best": {
-     "id": "open_coupler_PLAISP6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_PLAISL61ROMAI",
+     "family": "line_disconnection"
     }
    }
   },
   {
    "id": "s_437818d6_6d341c",
    "gridId": "grid_437818d6",
-   "difficulty": "medium",
+   "difficulty": "easy",
    "title": "March — Monday morning",
    "label": "March — Monday morning — ALOUEL61PLAIS",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -85,18 +95,23 @@
     "PLAISL61ROMAI"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
-    "kind": "pair",
+    "kind": "unitary",
     "actions": [
-     "open_coupler_PLAISP6+load_shedding_ROMAIY631",
-     "open_coupler_PLAISP6+load_shedding_ROMAI6T611",
-     "load_shedding_ROMAIY631+disco_PLAISL61ZAVRO"
+     "disco_PLAISL61ROMAI",
+     "open_coupler_ROMAIP6",
+     "open_coupler_VLEVAP6"
     ],
     "best": {
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
      "converged": true,
-     "true_max_rho": 0.974,
-     "id": "open_coupler_PLAISP6+load_shedding_ROMAIY631",
-     "est_max_rho": 0.925
+     "resolves": true,
+     "id": "disco_PLAISL61ROMAI",
+     "family": "line_disconnection"
     }
    }
   },
@@ -117,18 +132,23 @@
     "P.JERL61VAUPA"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 77.6,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "node_merging_ROUGEP6",
-     "open_coupler_P.JERP6_1",
-     "disco_P.JERL61ROUGE"
+     "open_coupler_P.JERP6",
+     "node_merging_YAINVP6",
+     "disco_BARQUL61BOSCH"
     ],
     "best": {
-     "id": "node_merging_ROUGEP6",
-     "family": "node_merging",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.776,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_P.JERP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -149,18 +169,21 @@
     "DARSEL61RASSU"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 84.8,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "disco_RQROUL61SSEST",
-     "disco_SSESTL61SSTUL",
-     "load_shedding_RASSUY631"
+     "open_coupler_RQROUP6"
     ],
     "best": {
-     "id": "disco_RQROUL61SSEST",
-     "family": "line_disconnection",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.848,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_RQROUP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -181,18 +204,23 @@
     "P.JERL61VAUPA"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 71.2,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "node_merging_ROUGEP6",
-     "disco_BARNAL71VAUPA",
-     "disco_BARNAL72VAUPA"
+     "open_coupler_P.JERP6",
+     "node_merging_YAINVP6",
+     "disco_BOSCHL61ROUGE"
     ],
     "best": {
-     "id": "node_merging_ROUGEP6",
-     "family": "node_merging",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.712,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_P.JERP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -213,18 +241,21 @@
     "DARSEL61RASSU"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 84.8,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "disco_RQROUL61SSEST",
-     "disco_SSESTL61SSTUL",
-     "load_shedding_RASSUY631"
+     "open_coupler_RQROUP6"
     ],
     "best": {
-     "id": "disco_RQROUL61SSEST",
-     "family": "line_disconnection",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.848,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_RQROUP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -245,18 +276,23 @@
     "EGUZOL61ORANG"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "load_shedding_ORANGY642",
-     "load_shedding_ORANGY641",
-     "disco_EGUZOL61ORANG"
+     "disco_EGUZOL61ORANG",
+     "disco_MONDIL61ORANG",
+     "disco_DISTRL61MONDI"
     ],
     "best": {
-     "id": "load_shedding_ORANGY642",
-     "family": "load_shedding",
-     "max_rho": 0.983,
-     "reducing": true
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_EGUZOL61ORANG",
+     "family": "line_disconnection"
     }
    }
   },
@@ -277,18 +313,23 @@
     "EGUZOL61ORANG"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "load_shedding_ORANGY642",
-     "load_shedding_ORANGY641",
-     "disco_EGUZOL61ORANG"
+     "disco_EGUZOL61ORANG",
+     "disco_MONDIL61ORANG",
+     "disco_DISTRL61MONDI"
     ],
     "best": {
-     "id": "load_shedding_ORANGY642",
-     "family": "load_shedding",
-     "max_rho": 0.983,
-     "reducing": true
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_EGUZOL61ORANG",
+     "family": "line_disconnection"
     }
    }
   },
@@ -309,18 +350,23 @@
     "LINGOL61T.VIC"
    ],
    "nActionsDiscovered": 11,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "unitary",
     "actions": [
+     "disco_LINGOL61T.VIC",
      "load_shedding_T.VICY633",
-     "load_shedding_T.VICY632",
-     "load_shedding_T.VICY631"
+     "load_shedding_T.VICY632"
     ],
     "best": {
-     "id": "load_shedding_T.VICY633",
-     "family": "load_shedding",
-     "max_rho": 0.973,
-     "reducing": true
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_LINGOL61T.VIC",
+     "family": "line_disconnection"
     }
    }
   },
@@ -341,25 +387,30 @@
     "LINGOL61T.VIC"
    ],
    "nActionsDiscovered": 11,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "unitary",
     "actions": [
+     "disco_LINGOL61T.VIC",
      "load_shedding_T.VICY633",
-     "load_shedding_T.VICY632",
-     "load_shedding_T.VICY631"
+     "load_shedding_T.VICY632"
     ],
     "best": {
-     "id": "load_shedding_T.VICY633",
-     "family": "load_shedding",
-     "max_rho": 0.973,
-     "reducing": true
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_LINGOL61T.VIC",
+     "family": "line_disconnection"
     }
    }
   },
   {
    "id": "s_437818d6_ce6f13",
    "gridId": "grid_437818d6",
-   "difficulty": "medium",
+   "difficulty": "easy",
    "title": "March — Monday morning",
    "label": "March — Monday morning — BARNAL71ROUGE",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -373,25 +424,28 @@
     "P.JERL61VAUPA"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 93.7,
    "solution": {
-    "kind": "pair",
+    "kind": "unitary",
     "actions": [
-     "disco_BARNAL72VAUPA+load_shedding_P.JERY641",
-     "disco_BARNAL72VAUPA+load_shedding_P.JERY649",
-     "open_coupler_P.JERP6+disco_BARNAL72VAUPA"
+     "open_coupler_P.JERP6"
     ],
     "best": {
+     "max_rho": 0.937,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
      "converged": true,
-     "true_max_rho": 0.974,
-     "id": "disco_BARNAL72VAUPA+load_shedding_P.JERY641",
-     "est_max_rho": 0.925
+     "resolves": true,
+     "id": "open_coupler_P.JERP6",
+     "family": "open_coupling"
     }
    }
   },
   {
    "id": "s_437818d6_a4b31e",
    "gridId": "grid_437818d6",
-   "difficulty": "medium",
+   "difficulty": "easy",
    "title": "March — Monday morning",
    "label": "March — Monday morning — BARNAL72ROUGE",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -405,18 +459,21 @@
     "P.JERL61VAUPA"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 93.6,
    "solution": {
-    "kind": "pair",
+    "kind": "unitary",
     "actions": [
-     "disco_BARNAL71VAUPA+load_shedding_P.JERY641",
-     "disco_BARNAL71VAUPA+load_shedding_P.JERY649",
-     "open_coupler_P.JERP6+disco_BARNAL71VAUPA"
+     "open_coupler_P.JERP6"
     ],
     "best": {
+     "max_rho": 0.936,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
      "converged": true,
-     "true_max_rho": 0.974,
-     "id": "disco_BARNAL71VAUPA+load_shedding_P.JERY641",
-     "est_max_rho": 0.925
+     "resolves": true,
+     "id": "open_coupler_P.JERP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -437,25 +494,30 @@
     "BOCCAL61MOUGI"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "open_coupler_BIANCP6",
-     "disco_FREJUL61TRANS",
-     "load_shedding_MOUGIY633"
+     "disco_BOCCAL61MOUGI",
+     "disco_C.MERL61MOUGI",
+     "disco_C.MERL61LINGO"
     ],
     "best": {
-     "id": "open_coupler_BIANCP6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_BOCCAL61MOUGI",
+     "family": "line_disconnection"
     }
    }
   },
   {
    "id": "s_437818d6_84e485",
    "gridId": "grid_437818d6",
-   "difficulty": "easy",
+   "difficulty": "hard",
    "title": "March — Monday morning",
    "label": "March — Monday morning — BOLL5L61TERRA",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -470,17 +532,30 @@
     "P.ORGL61RQROU"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 101.0,
    "solution": {
-    "kind": "unitary",
-    "actions": [
-     "load_shedding_P.ORG6ISCLE1",
-     "load_shedding_P.ORG6ISCLE2"
-    ],
-    "best": {
+    "kind": "none",
+    "best_nonisl_max_rho": 1.01,
+    "best_unitary": {
+     "max_rho": 1.069,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 1,
+     "converged": true,
+     "resolves": false,
      "id": "load_shedding_P.ORG6ISCLE1",
-     "family": "load_shedding",
-     "max_rho": 0.974,
-     "reducing": true
+     "family": "load_shedding"
+    },
+    "best_pair": {
+     "max_rho": 1.01,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 1,
+     "converged": true,
+     "resolves": false,
+     "rank": 1,
+     "id": "load_shedding_P.ORG6ISCLE1+load_shedding_P.ORG6ISCLE2",
+     "est_max_rho": 0.925
     }
    }
   },
@@ -501,18 +576,23 @@
     "EGUZOL61ORANG"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "unitary",
     "actions": [
      "disco_EGUZOL61ORANG",
-     "disco_DISTRL61MONDI",
-     "disco_MONDIL61ORANG"
+     "disco_MONDIL61ORANG",
+     "disco_DISTRL61MONDI"
     ],
     "best": {
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
      "id": "disco_EGUZOL61ORANG",
-     "family": "line_disconnection",
-     "max_rho": 0.974,
-     "reducing": true
+     "family": "line_disconnection"
     }
    }
   },
@@ -533,18 +613,21 @@
     "DARSEL61RASSU"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 89.1,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "open_coupler_DARSEP6",
-     "load_shedding_RQROUY632",
-     "load_shedding_RASSUY631"
+     "open_coupler_RQROUP6"
     ],
     "best": {
-     "id": "open_coupler_DARSEP6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.891,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_RQROUP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -566,17 +649,28 @@
     "P.JERL61VAUPA"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 104.1,
    "solution": {
     "kind": "none",
+    "best_nonisl_max_rho": 1.041,
     "best_unitary": {
+     "max_rho": 1.047,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 1,
+     "converged": true,
+     "resolves": false,
      "id": "load_shedding_P.JERY641",
-     "family": "load_shedding",
-     "max_rho": 1.102,
-     "reducing": false
+     "family": "load_shedding"
     },
     "best_pair": {
+     "max_rho": 1.041,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 1,
      "converged": true,
-     "true_max_rho": 1.096,
+     "resolves": false,
+     "rank": 1,
      "id": "load_shedding_P.JERY641+load_shedding_P.JERY649",
      "est_max_rho": 1.041
     }
@@ -599,18 +693,23 @@
     "EGUZOL61ORANG"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "load_shedding_ORANGY642",
-     "load_shedding_ORANGY641",
-     "disco_EGUZOL61ORANG"
+     "disco_EGUZOL61ORANG",
+     "disco_MONDIL61ORANG",
+     "disco_DISTRL61MONDI"
     ],
     "best": {
-     "id": "load_shedding_ORANGY642",
-     "family": "load_shedding",
-     "max_rho": 0.983,
-     "reducing": true
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_EGUZOL61ORANG",
+     "family": "line_disconnection"
     }
    }
   },
@@ -631,25 +730,30 @@
     "EGUZOL61ORANG"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "load_shedding_ORANGY642",
-     "load_shedding_ORANGY641",
-     "disco_EGUZOL61ORANG"
+     "disco_EGUZOL61ORANG",
+     "disco_MONDIL61ORANG",
+     "disco_DISTRL61MONDI"
     ],
     "best": {
-     "id": "load_shedding_ORANGY642",
-     "family": "load_shedding",
-     "max_rho": 0.983,
-     "reducing": true
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_EGUZOL61ORANG",
+     "family": "line_disconnection"
     }
    }
   },
   {
    "id": "s_437818d6_5d8720",
    "gridId": "grid_437818d6",
-   "difficulty": "medium",
+   "difficulty": "easy",
    "title": "March — Monday morning",
    "label": "March — Monday morning — CHOLEL61RECOU",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -663,18 +767,21 @@
     "BXLIEL61SIRMI"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 83.9,
    "solution": {
-    "kind": "pair",
+    "kind": "unitary",
     "actions": [
-     "load_shedding_SIRMIY646+load_shedding_SIRMIY645",
-     "disco_PREGUL61SAINT+load_shedding_SIRMIY646",
-     "disco_PREGUL61SAINT+load_shedding_SIRMIY645"
+     "open_coupler_BXLIEP6"
     ],
     "best": {
+     "max_rho": 0.839,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
      "converged": true,
-     "true_max_rho": 0.974,
-     "id": "load_shedding_SIRMIY646+load_shedding_SIRMIY645",
-     "est_max_rho": 0.925
+     "resolves": true,
+     "id": "open_coupler_BXLIEP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -695,18 +802,23 @@
     "BXLIEL61SIRMI"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 75.7,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "open_coupler_MERLAP6",
-     "open_coupler_CHEV5P6",
-     "disco_BXLIEL61FARRA"
+     "open_coupler_BXLIEP6",
+     "disco_BXLIEL61FARRA",
+     "load_shedding_SIRMIY646"
     ],
     "best": {
-     "id": "open_coupler_MERLAP6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.757,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_BXLIEP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -727,18 +839,23 @@
     "CIROLL62LOGES"
    ],
    "nActionsDiscovered": 13,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "open_coupler_LOGESP6",
-     "disco_LIERSL61LOGES",
-     "disco_LIERSL61ZLIN7"
+     "disco_CIROLL62LOGES",
+     "load_shedding_LOGESY641",
+     "load_shedding_LOGESY642"
     ],
     "best": {
-     "id": "open_coupler_LOGESP6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_CIROLL62LOGES",
+     "family": "line_disconnection"
     }
    }
   },
@@ -759,18 +876,23 @@
     "CIROLL61LOGES"
    ],
    "nActionsDiscovered": 13,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "unitary",
     "actions": [
+     "disco_CIROLL61LOGES",
      "open_coupler_LOGESP6",
-     "disco_LIERSL61LOGES",
-     "disco_LIERSL61ZLIN7"
+     "load_shedding_LOGESY641"
     ],
     "best": {
-     "id": "open_coupler_LOGESP6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_CIROLL61LOGES",
+     "family": "line_disconnection"
     }
    }
   },
@@ -791,6 +913,7 @@
     "CIROLL73VLEJU"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "unitary",
     "actions": [
@@ -799,10 +922,14 @@
      "disco_CIROLL72GATI5"
     ],
     "best": {
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
      "id": "disco_CIROLL73VLEJU",
-     "family": "line_disconnection",
-     "max_rho": 0.974,
-     "reducing": true
+     "family": "line_disconnection"
     }
    }
   },
@@ -823,18 +950,23 @@
     "P.JERL61VAUPA"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 76.4,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "node_merging_ROUGEP6",
-     "disco_BARNAL71VAUPA",
-     "disco_BARNAL72VAUPA"
+     "open_coupler_P.JERP6",
+     "node_merging_YAINVP6",
+     "disco_BOSCHL61ROUGE"
     ],
     "best": {
-     "id": "node_merging_ROUGEP6",
-     "family": "node_merging",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.764,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_P.JERP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -855,18 +987,23 @@
     "BXLIEL61SIRMI"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 74.8,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "open_coupler_MERLAP6",
+     "open_coupler_BXLIEP6",
      "open_coupler_CHEV5P6",
-     "disco_PREGUL61SAINT"
+     "load_shedding_SIRMIY646"
     ],
     "best": {
-     "id": "open_coupler_MERLAP6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.748,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_BXLIEP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -887,18 +1024,23 @@
     "BOUTRL61TRANS"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 90.9,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "open_coupler_TRANSP6",
      "open_coupler_BOUTRP6",
-     "load_shedding_TRANSY633"
+     "disco_BIANCL61FREJU",
+     "open_coupler_TRANSP6"
     ],
     "best": {
-     "id": "open_coupler_TRANSP6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.909,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_BOUTRP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -919,16 +1061,21 @@
     "DARSEL61RASSU"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 89.4,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "open_coupler_DARSEP6"
+     "open_coupler_RQROUP6"
     ],
     "best": {
-     "id": "open_coupler_DARSEP6",
-     "family": "open_coupling",
-     "max_rho": 0.975,
-     "reducing": true
+     "max_rho": 0.894,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_RQROUP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -949,24 +1096,28 @@
     "DARSEL61RASSU"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 89.1,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "open_coupler_DARSEP6",
-     "load_shedding_RQROUY632"
+     "open_coupler_RQROUP6"
     ],
     "best": {
-     "id": "open_coupler_DARSEP6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.891,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_RQROUP6",
+     "family": "open_coupling"
     }
    }
   },
   {
    "id": "s_437818d6_6b287c",
    "gridId": "grid_437818d6",
-   "difficulty": "hard",
+   "difficulty": "medium",
    "title": "March — Monday morning",
    "label": "March — Monday morning — DARSEL61RASSU",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -982,20 +1133,26 @@
     "PONTEL62REALT"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
-    "kind": "none",
-    "best_unitary": {
-     "id": "disco_E.BOTL61REALT",
-     "family": "line_disconnection",
-     "max_rho": 1.246,
-     "reducing": false
-    },
-    "best_pair": {
+    "kind": "pair",
+    "actions": [
+     "open_coupler_SSTULP6+disco_BOUTRL61SSTUL",
+     "disco_BOUTRL61SSTUL+disco_E.BOTL61FAVAR",
+     "disco_BOUTRL61SSTUL+disco_BOUTRL61FAVAR"
+    ],
+    "best": {
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 0,
      "converged": true,
-     "true_max_rho": 1.127,
-     "id": "disco_BOUTRL61SSTUL+disco_CSLLEL61E.BOT",
-     "est_max_rho": 0.747
-    }
+     "resolves": true,
+     "rank": 1,
+     "id": "open_coupler_SSTULP6+disco_BOUTRL61SSTUL",
+     "est_max_rho": 0.132
+    },
+    "solving_pair_rank": 1
    }
   },
   {
@@ -1017,16 +1174,21 @@
     "NIORTL61V.SEV"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 93.8,
    "solution": {
     "kind": "unitary",
     "actions": [
      "open_coupler_CHEV5P6"
     ],
     "best": {
+     "max_rho": 0.938,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
      "id": "open_coupler_CHEV5P6",
-     "family": "open_coupling",
-     "max_rho": 0.987,
-     "reducing": true
+     "family": "open_coupling"
     }
    }
   },
@@ -1047,18 +1209,23 @@
     "EGUZOL61ORANG"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "disco_BAYETL61MTVIC",
-     "load_shedding_ORANGY642",
-     "load_shedding_ORANGY641"
+     "disco_EGUZOL61ORANG",
+     "disco_MONDIL61ORANG",
+     "disco_DISTRL61MONDI"
     ],
     "best": {
-     "id": "disco_BAYETL61MTVIC",
-     "family": "line_disconnection",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_EGUZOL61ORANG",
+     "family": "line_disconnection"
     }
    }
   },
@@ -1079,18 +1246,21 @@
     "DARSEL61RASSU"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 89.2,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "open_coupler_DARSEP6",
-     "load_shedding_RQROUY632",
-     "load_shedding_RASSUY631"
+     "open_coupler_RQROUP6"
     ],
     "best": {
-     "id": "open_coupler_DARSEP6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.892,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_RQROUP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -1111,18 +1281,22 @@
     "DARSEL61RASSU"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "load_shedding_RQROUY632",
-     "open_coupler_DARSEP6",
-     "disco_CTAURL61ZVILA"
+     "disco_DARSEL61RASSU",
+     "open_coupler_RQROUP6"
     ],
     "best": {
-     "id": "load_shedding_RQROUY632",
-     "family": "load_shedding",
-     "max_rho": 0.991,
-     "reducing": true
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_DARSEL61RASSU",
+     "family": "line_disconnection"
     }
    }
   },
@@ -1146,19 +1320,30 @@
     "PONTEL62REALT"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 116.8,
    "solution": {
     "kind": "none",
+    "best_nonisl_max_rho": 1.168,
     "best_unitary": {
+     "max_rho": 1.171,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 4,
+     "converged": true,
+     "resolves": false,
      "id": "load_shedding_RASSUY631",
-     "family": "load_shedding",
-     "max_rho": 1.232,
-     "reducing": false
+     "family": "load_shedding"
     },
     "best_pair": {
+     "max_rho": 1.168,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 4,
      "converged": true,
-     "true_max_rho": 1.099,
-     "id": "open_coupler_FEUILP6+load_shedding_RASSUY631",
-     "est_max_rho": 1.171
+     "resolves": false,
+     "rank": 1,
+     "id": "load_shedding_RASSUY631+redispatch_SSEST6GROUPE3",
+     "est_max_rho": 1.168
     }
    }
   },
@@ -1181,17 +1366,28 @@
     "P.JERL61VAUPA"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 98.6,
    "solution": {
     "kind": "none",
+    "best_nonisl_max_rho": 0.986,
     "best_unitary": {
+     "max_rho": 0.986,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 2,
+     "converged": true,
+     "resolves": false,
      "id": "open_coupler_CHEV5P6",
-     "family": "open_coupling",
-     "max_rho": 1.038,
-     "reducing": false
+     "family": "open_coupling"
     },
     "best_pair": {
+     "max_rho": 0.98,
+     "islanded": true,
+     "reduces": true,
+     "n_over_after": 1,
      "converged": true,
-     "true_max_rho": 1.031,
+     "resolves": false,
+     "rank": 1,
      "id": "open_coupler_CHEV5P6+load_shedding_P.JERY641",
      "est_max_rho": 0.98
     }
@@ -1214,18 +1410,23 @@
     "BXLIEL61SIRMI"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 74.6,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "load_shedding_SIRMIY646",
-     "load_shedding_SIRMIY645",
-     "open_coupler_CHEV5P6"
+     "open_coupler_BXLIEP6",
+     "open_coupler_CHEV5P6",
+     "disco_PREGUL61SAINT"
     ],
     "best": {
-     "id": "load_shedding_SIRMIY646",
-     "family": "load_shedding",
-     "max_rho": 0.977,
-     "reducing": true
+     "max_rho": 0.746,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_BXLIEP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -1247,18 +1448,23 @@
     "TABARY762"
    ],
    "nActionsDiscovered": 12,
+   "bestAchievableLoadingPct": 76.0,
    "solution": {
     "kind": "unitary",
     "actions": [
+     "disco_VLEMAL61ZGLAC",
      "disco_NEMOUL61VLEMA",
-     "disco_TABARL61ZGLAC",
-     "disco_TABARL61ZGIEN"
+     "disco_TABARL61ZGLAC"
     ],
     "best": {
-     "id": "disco_NEMOUL61VLEMA",
-     "family": "line_disconnection",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.76,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_VLEMAL61ZGLAC",
+     "family": "line_disconnection"
     }
    }
   },
@@ -1279,18 +1485,23 @@
     "BXLIEL61SIRMI"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 79.6,
    "solution": {
     "kind": "unitary",
     "actions": [
+     "open_coupler_BXLIEP6",
      "reco_FLEACL61NIORT",
-     "disco_BXLIEL61FARRA",
-     "load_shedding_SIRMIY646"
+     "disco_BXLIEL61FARRA"
     ],
     "best": {
-     "id": "reco_FLEACL61NIORT",
-     "family": "line_reconnection",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.796,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_BXLIEP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -1311,18 +1522,23 @@
     "BXLIEL61SIRMI"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 75.2,
    "solution": {
     "kind": "unitary",
     "actions": [
+     "open_coupler_BXLIEP6",
      "open_coupler_CHEV5P6",
-     "load_shedding_SIRMIY646",
-     "load_shedding_SIRMIY645"
+     "load_shedding_SIRMIY646"
     ],
     "best": {
-     "id": "open_coupler_CHEV5P6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.752,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_BXLIEP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -1343,18 +1559,23 @@
     "BXLIEL61SIRMI"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 75.2,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "load_shedding_SIRMIY646",
-     "load_shedding_SIRMIY645",
-     "open_coupler_CHEV5P6"
+     "open_coupler_BXLIEP6",
+     "open_coupler_CHEV5P6",
+     "load_shedding_SIRMIY646"
     ],
     "best": {
-     "id": "load_shedding_SIRMIY646",
-     "family": "load_shedding",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.752,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_BXLIEP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -1375,18 +1596,23 @@
     "HARC7L61ROBI5"
    ],
    "nActionsDiscovered": 8,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "open_coupler_ROBI5P6",
      "disco_HARC7L61ROBI5",
+     "open_coupler_ROBI5P6",
      "disco_ROBI5L61VLEJU"
     ],
     "best": {
-     "id": "open_coupler_ROBI5P6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_HARC7L61ROBI5",
+     "family": "line_disconnection"
     }
    }
   },
@@ -1407,18 +1633,21 @@
     "DARSEL61RASSU"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 85.5,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "open_coupler_DARSEP6",
-     "disco_CTAURL61ZVILA",
-     "load_shedding_RASSUY631"
+     "open_coupler_RQROUP6"
     ],
     "best": {
-     "id": "open_coupler_DARSEP6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.855,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_RQROUP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -1439,18 +1668,21 @@
     "DARSEL61RASSU"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 85.1,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "open_coupler_DARSEP6",
-     "load_shedding_RASSUY631",
-     "disco_RQROUL61SSEST"
+     "open_coupler_RQROUP6"
     ],
     "best": {
-     "id": "open_coupler_DARSEP6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.851,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_RQROUP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -1471,25 +1703,28 @@
     "DARSEL61RASSU"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 85.6,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "open_coupler_DARSEP6",
-     "load_shedding_RASSUY631",
-     "load_shedding_RQROUY632"
+     "open_coupler_RQROUP6"
     ],
     "best": {
-     "id": "open_coupler_DARSEP6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.856,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_RQROUP6",
+     "family": "open_coupling"
     }
    }
   },
   {
    "id": "s_437818d6_d25bab",
    "gridId": "grid_437818d6",
-   "difficulty": "medium",
+   "difficulty": "hard",
    "title": "March — Monday morning",
    "label": "March — Monday morning — LAVERL61P.BOU",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -1505,24 +1740,37 @@
     "PONTEL62REALT"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 107.2,
    "solution": {
-    "kind": "pair",
-    "actions": [
-     "open_coupler_DARSEP6+disco_DURANL61REALT",
-     "open_coupler_DARSEP6+disco_DURANL61ROGNA"
-    ],
-    "best": {
+    "kind": "none",
+    "best_nonisl_max_rho": 1.072,
+    "best_unitary": {
+     "max_rho": 1.072,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 2,
      "converged": true,
-     "true_max_rho": 0.979,
-     "id": "open_coupler_DARSEP6+disco_DURANL61REALT",
-     "est_max_rho": 0.93
+     "resolves": false,
+     "id": "open_coupler_RQROUP6",
+     "family": "open_coupling"
+    },
+    "best_pair": {
+     "max_rho": 1.074,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 3,
+     "converged": true,
+     "resolves": false,
+     "rank": 3,
+     "id": "open_coupler_DARSEP6+disco_REALTL63SEPTE",
+     "est_max_rho": 0.978
     }
    }
   },
   {
    "id": "s_437818d6_769a3f",
    "gridId": "grid_437818d6",
-   "difficulty": "medium",
+   "difficulty": "hard",
    "title": "March — Monday morning",
    "label": "March — Monday morning — LAVERL61PONTE",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -1537,16 +1785,28 @@
     "PONTEL62REALT"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 120.0,
    "solution": {
-    "kind": "pair",
-    "actions": [
-     "open_coupler_SEPTEP6+disco_DURANL61REALT",
-     "disco_DURANL61REALT+open_coupler_MOTT5P6",
-     "open_coupler_SEPTEP6+open_coupler_MOTT5P6"
-    ],
-    "best": {
+    "kind": "none",
+    "best_nonisl_max_rho": 1.2,
+    "best_unitary": {
+     "max_rho": 1.226,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 2,
      "converged": true,
-     "true_max_rho": 0.974,
+     "resolves": false,
+     "id": "open_coupler_SEPTEP6",
+     "family": "open_coupling"
+    },
+    "best_pair": {
+     "max_rho": 1.2,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 2,
+     "converged": true,
+     "resolves": false,
+     "rank": 1,
      "id": "open_coupler_SEPTEP6+disco_DURANL61REALT",
      "est_max_rho": 1.201
     }
@@ -1571,24 +1831,32 @@
     "PONTEL62REALT"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "pair",
     "actions": [
      "open_coupler_MOTT5P6+open_coupler_ARDOIP6",
-     "disco_ESCAIL61NEOUL+open_coupler_MOTT5P6"
+     "disco_ESCAIL61NEOUL+open_coupler_MOTT5P6",
+     "disco_CSLLEL61E.BOT+open_coupler_E.BOTP6"
     ],
     "best": {
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 0,
      "converged": true,
-     "true_max_rho": 0.974,
+     "resolves": true,
+     "rank": 1,
      "id": "open_coupler_MOTT5P6+open_coupler_ARDOIP6",
      "est_max_rho": 0.434
-    }
+    },
+    "solving_pair_rank": 1
    }
   },
   {
    "id": "s_437818d6_c4860a",
    "gridId": "grid_437818d6",
-   "difficulty": "hard",
+   "difficulty": "medium",
    "title": "March — Monday morning",
    "label": "March — Monday morning — LINGOL61ZVA10",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -1605,20 +1873,26 @@
     "T.VICL61ZMENT"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
-    "kind": "none",
-    "best_unitary": {
-     "id": "open_coupler_BOUTRP6",
-     "family": "open_coupling",
-     "max_rho": 1.092,
-     "reducing": false
-    },
-    "best_pair": {
+    "kind": "pair",
+    "actions": [
+     "disco_PALUNL61SEPTE+open_coupler_PALUNP6",
+     "open_coupler_BOUTRP6+open_coupler_SSTULP6",
+     "open_coupler_SEPTEP6+open_coupler_PALUNP6"
+    ],
+    "best": {
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 0,
      "converged": true,
-     "true_max_rho": 1.091,
-     "id": "open_coupler_BOUTRP6+open_coupler_SSTULP6",
-     "est_max_rho": 0.877
-    }
+     "resolves": true,
+     "rank": 1,
+     "id": "disco_PALUNL61SEPTE+open_coupler_PALUNP6",
+     "est_max_rho": 0.58
+    },
+    "solving_pair_rank": 1
    }
   },
   {
@@ -1638,18 +1912,23 @@
     "SAUS5L61VLEVA"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 70.1,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "node_merging_P.GASP6",
      "load_shedding_SAUS56T611",
-     "load_shedding_SAUS56T612"
+     "node_merging_P.GASP6",
+     "open_coupler_VLEVAP6"
     ],
     "best": {
-     "id": "node_merging_P.GASP6",
-     "family": "node_merging",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.701,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "load_shedding_SAUS56T611",
+     "family": "load_shedding"
     }
    }
   },
@@ -1670,18 +1949,23 @@
     "P.ORGL61RQROU"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 57.2,
    "solution": {
     "kind": "unitary",
     "actions": [
      "load_shedding_P.ORG6ISCLE1",
      "load_shedding_P.ORG6ISCLE2",
-     "open_coupler_ARDOIP6"
+     "open_coupler_MOTT5P6"
     ],
     "best": {
+     "max_rho": 0.572,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
      "id": "load_shedding_P.ORG6ISCLE1",
-     "family": "load_shedding",
-     "max_rho": 0.973,
-     "reducing": true
+     "family": "load_shedding"
     }
    }
   },
@@ -1702,17 +1986,23 @@
     "P.ORGL61RQROU"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 59.9,
    "solution": {
     "kind": "unitary",
     "actions": [
      "load_shedding_P.ORG6ISCLE1",
-     "load_shedding_P.ORG6ISCLE2"
+     "load_shedding_P.ORG6ISCLE2",
+     "open_coupler_RQROUP6"
     ],
     "best": {
+     "max_rho": 0.599,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
      "id": "load_shedding_P.ORG6ISCLE1",
-     "family": "load_shedding",
-     "max_rho": 0.973,
-     "reducing": true
+     "family": "load_shedding"
     }
    }
   },
@@ -1733,18 +2023,23 @@
     "BOUTRL61TRANS"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 90.0,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "pst_tap_BOUTRL61BOUTD_inc2",
-     "open_coupler_BOUTRP6",
-     "open_coupler_TRANSP6"
+     "disco_BIANCL61FREJU",
+     "open_coupler_TRANSP6",
+     "open_coupler_BOUTRP6"
     ],
     "best": {
-     "id": "pst_tap_BOUTRL61BOUTD_inc2",
-     "family": "pst",
-     "max_rho": 0.975,
-     "reducing": true
+     "max_rho": 0.9,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_BIANCL61FREJU",
+     "family": "line_disconnection"
     }
    }
   },
@@ -1765,18 +2060,23 @@
     "BOUTRL61TRANS"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 90.0,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "pst_tap_BOUTRL61BOUTD_inc2",
-     "open_coupler_BOUTRP6",
-     "open_coupler_TRANSP6"
+     "disco_BIANCL61FREJU",
+     "open_coupler_TRANSP6",
+     "open_coupler_BOUTRP6"
     ],
     "best": {
-     "id": "pst_tap_BOUTRL61BOUTD_inc2",
-     "family": "pst",
-     "max_rho": 0.975,
-     "reducing": true
+     "max_rho": 0.9,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_BIANCL61FREJU",
+     "family": "line_disconnection"
     }
    }
   },
@@ -1797,18 +2097,23 @@
     "BXLIEL61SIRMI"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 79.0,
    "solution": {
     "kind": "unitary",
     "actions": [
+     "open_coupler_BXLIEP6",
      "disco_BXLIEL61FARRA",
-     "load_shedding_SIRMIY646",
-     "load_shedding_SIRMIY645"
+     "load_shedding_SIRMIY646"
     ],
     "best": {
-     "id": "disco_BXLIEL61FARRA",
-     "family": "line_disconnection",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.79,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_BXLIEP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -1829,25 +2134,30 @@
     "BXLIEL61SIRMI"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 79.6,
    "solution": {
     "kind": "unitary",
     "actions": [
+     "open_coupler_BXLIEP6",
      "reco_FLEACL61NIORT",
-     "disco_BXLIEL61FARRA",
-     "load_shedding_SIRMIY646"
+     "disco_BXLIEL61FARRA"
     ],
     "best": {
-     "id": "reco_FLEACL61NIORT",
-     "family": "line_reconnection",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.796,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_BXLIEP6",
+     "family": "open_coupling"
     }
    }
   },
   {
    "id": "s_437818d6_29a9b4",
    "gridId": "grid_437818d6",
-   "difficulty": "hard",
+   "difficulty": "medium",
    "title": "March — Monday morning",
    "label": "March — Monday morning — P.ORGL61RQROU",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -1865,26 +2175,32 @@
     "P.ORGY761"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
-    "kind": "none",
-    "best_unitary": {
-     "id": "reco_TRI.PY76A",
-     "family": "line_reconnection",
-     "max_rho": 1.217,
-     "reducing": false
-    },
-    "best_pair": {
+    "kind": "pair",
+    "actions": [
+     "pst_tap_L.NEUL61L.NTD_inc2+open_coupler_L.NEUP6",
+     "reco_TRI.PY76A+open_coupler_PRATCP6",
+     "reco_TRI.PY76A+node_merging_TRI.PP6"
+    ],
+    "best": {
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 0,
      "converged": true,
-     "true_max_rho": 1.212,
-     "id": "reco_TRI.PY76A+open_coupler_PRATCP6",
-     "est_max_rho": 1.548
-    }
+     "resolves": true,
+     "rank": 1,
+     "id": "pst_tap_L.NEUL61L.NTD_inc2+open_coupler_L.NEUP6",
+     "est_max_rho": 0.786
+    },
+    "solving_pair_rank": 1
    }
   },
   {
    "id": "s_437818d6_682401",
    "gridId": "grid_437818d6",
-   "difficulty": "easy",
+   "difficulty": "hard",
    "title": "March — Monday morning",
    "label": "March — Monday morning — P.ORGL71TAVEL",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -1899,17 +2215,30 @@
     "P.ORGL61RQROU"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 104.1,
    "solution": {
-    "kind": "unitary",
-    "actions": [
-     "load_shedding_P.ORG6ISCLE1",
-     "load_shedding_P.ORG6ISCLE2"
-    ],
-    "best": {
+    "kind": "none",
+    "best_nonisl_max_rho": 1.041,
+    "best_unitary": {
+     "max_rho": 1.055,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 1,
+     "converged": true,
+     "resolves": false,
      "id": "load_shedding_P.ORG6ISCLE1",
-     "family": "load_shedding",
-     "max_rho": 0.975,
-     "reducing": true
+     "family": "load_shedding"
+    },
+    "best_pair": {
+     "max_rho": 1.041,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 1,
+     "converged": true,
+     "resolves": false,
+     "rank": 1,
+     "id": "reco_TRI.PY76A+load_shedding_P.ORG6ISCLE1",
+     "est_max_rho": 0.925
     }
    }
   },
@@ -1930,18 +2259,23 @@
     "P.JERL61VAUPA"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 73.2,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "node_merging_ROUGEP6",
-     "disco_P.JERL61ROUGE",
-     "disco_BARNAL71VAUPA"
+     "open_coupler_P.JERP6",
+     "node_merging_YAINVP6",
+     "disco_BOSCHL61ROUGE"
     ],
     "best": {
-     "id": "node_merging_ROUGEP6",
-     "family": "node_merging",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.732,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_P.JERP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -1962,17 +2296,21 @@
     "DARSEL61RASSU"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 93.3,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "open_coupler_RQROUP6",
-     "load_shedding_RASSUY631"
+     "open_coupler_RQROUP6"
     ],
     "best": {
+     "max_rho": 0.933,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
      "id": "open_coupler_RQROUP6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "family": "open_coupling"
     }
    }
   },
@@ -1993,25 +2331,30 @@
     "EGUZOL61ORANG"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "disco_BAYETL61MTVIC",
-     "load_shedding_ORANGY642",
-     "load_shedding_ORANGY641"
+     "disco_EGUZOL61ORANG",
+     "disco_MONDIL61ORANG",
+     "disco_DISTRL61MONDI"
     ],
     "best": {
-     "id": "disco_BAYETL61MTVIC",
-     "family": "line_disconnection",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_EGUZOL61ORANG",
+     "family": "line_disconnection"
     }
    }
   },
   {
    "id": "s_437818d6_6d8ce0",
    "gridId": "grid_437818d6",
-   "difficulty": "hard",
+   "difficulty": "medium",
    "title": "March — Monday morning",
    "label": "March — Monday morning — PONTEL61REALT",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -2027,26 +2370,32 @@
     "PONTEL62REALT"
    ],
    "nActionsDiscovered": 9,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
-    "kind": "none",
-    "best_unitary": {
-     "id": "open_coupler_MOTT5P6",
-     "family": "open_coupling",
-     "max_rho": 1.507,
-     "reducing": false
-    },
-    "best_pair": {
+    "kind": "pair",
+    "actions": [
+     "open_coupler_MOTT5P6+open_coupler_ARDOIP6",
+     "open_coupler_RQROUP6+open_coupler_SSTULP6",
+     "open_coupler_RQROUP6+open_coupler_DARSEP6"
+    ],
+    "best": {
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 0,
      "converged": true,
-     "true_max_rho": 1.289,
-     "id": "open_coupler_MOTT5P6+open_coupler_E.BOTP6",
-     "est_max_rho": 2.845
-    }
+     "resolves": true,
+     "rank": 1,
+     "id": "open_coupler_MOTT5P6+open_coupler_ARDOIP6",
+     "est_max_rho": 0.558
+    },
+    "solving_pair_rank": 1
    }
   },
   {
    "id": "s_437818d6_7d0521",
    "gridId": "grid_437818d6",
-   "difficulty": "hard",
+   "difficulty": "medium",
    "title": "March — Monday morning",
    "label": "March — Monday morning — PONTEL62REALT",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -2062,26 +2411,32 @@
     "PONTEL61REALT"
    ],
    "nActionsDiscovered": 9,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
-    "kind": "none",
-    "best_unitary": {
-     "id": "open_coupler_MOTT5P6",
-     "family": "open_coupling",
-     "max_rho": 1.507,
-     "reducing": false
-    },
-    "best_pair": {
+    "kind": "pair",
+    "actions": [
+     "open_coupler_MOTT5P6+open_coupler_ARDOIP6",
+     "open_coupler_RQROUP6+open_coupler_SSTULP6",
+     "open_coupler_RQROUP6+open_coupler_DARSEP6"
+    ],
+    "best": {
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 0,
      "converged": true,
-     "true_max_rho": 1.289,
-     "id": "open_coupler_MOTT5P6+open_coupler_E.BOTP6",
-     "est_max_rho": 2.846
-    }
+     "resolves": true,
+     "rank": 1,
+     "id": "open_coupler_MOTT5P6+open_coupler_ARDOIP6",
+     "est_max_rho": 0.557
+    },
+    "solving_pair_rank": 1
    }
   },
   {
    "id": "s_437818d6_13bc5a",
    "gridId": "grid_437818d6",
-   "difficulty": "hard",
+   "difficulty": "medium",
    "title": "March — Monday morning",
    "label": "March — Monday morning — RASSUL61S.AIR",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -2097,20 +2452,26 @@
     "PONTEL62REALT"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
-    "kind": "none",
-    "best_unitary": {
-     "id": "disco_E.BOTL61REALT",
-     "family": "line_disconnection",
-     "max_rho": 1.203,
-     "reducing": false
-    },
-    "best_pair": {
+    "kind": "pair",
+    "actions": [
+     "open_coupler_SSTULP6+disco_BOUTRL61SSTUL",
+     "disco_BOUTRL61SSTUL+disco_BOUTRL61FAVAR",
+     "disco_BOUTRL61SSTUL+disco_E.BOTL61FAVAR"
+    ],
+    "best": {
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 0,
      "converged": true,
-     "true_max_rho": 1.088,
-     "id": "disco_BOUTRL61SSTUL+disco_CSLLEL61E.BOT",
-     "est_max_rho": 0.577
-    }
+     "resolves": true,
+     "rank": 1,
+     "id": "open_coupler_SSTULP6+disco_BOUTRL61SSTUL",
+     "est_max_rho": 0.302
+    },
+    "solving_pair_rank": 1
    }
   },
   {
@@ -2131,23 +2492,28 @@
     "PONTEL62REALT"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 92.8,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "open_coupler_REALTP7_1"
+     "open_coupler_PONTEP6"
     ],
     "best": {
-     "id": "open_coupler_REALTP7_1",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.928,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_PONTEP6",
+     "family": "open_coupling"
     }
    }
   },
   {
    "id": "s_437818d6_b938e3",
    "gridId": "grid_437818d6",
-   "difficulty": "medium",
+   "difficulty": "easy",
    "title": "March — Monday morning",
    "label": "March — Monday morning — REALTL72TAVEL",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -2162,25 +2528,28 @@
     "PONTEL62REALT"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 92.8,
    "solution": {
-    "kind": "pair",
+    "kind": "unitary",
     "actions": [
-     "disco_E.BOTL61FAVAR+load_shedding_SEPTEY631",
-     "disco_E.BOTL61FAVAR+load_shedding_SEPTEY632",
-     "disco_BOUTRL61FAVAR+load_shedding_SEPTEY631"
+     "open_coupler_PONTEP6"
     ],
     "best": {
+     "max_rho": 0.928,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
      "converged": true,
-     "true_max_rho": 0.975,
-     "id": "disco_E.BOTL61FAVAR+load_shedding_SEPTEY631",
-     "est_max_rho": 0.927
+     "resolves": true,
+     "id": "open_coupler_PONTEP6",
+     "family": "open_coupling"
     }
    }
   },
   {
    "id": "s_437818d6_090e7b",
    "gridId": "grid_437818d6",
-   "difficulty": "hard",
+   "difficulty": "easy",
    "title": "March — Monday morning",
    "label": "March — Monday morning — ROGNAL61RQROU",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -2194,19 +2563,22 @@
     "DARSEL61RASSU"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
-    "kind": "none",
-    "best_unitary": {
-     "id": "open_coupler_RQROUP6",
-     "family": "open_coupling",
-     "max_rho": 1.135,
-     "reducing": true
-    },
-    "best_pair": {
+    "kind": "unitary",
+    "actions": [
+     "disco_DARSEL61RASSU",
+     "open_coupler_RQROUP6"
+    ],
+    "best": {
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
      "converged": true,
-     "true_max_rho": 1.027,
-     "id": "open_coupler_RQROUP6+load_shedding_RQROUY632",
-     "est_max_rho": 1.078
+     "resolves": true,
+     "id": "disco_DARSEL61RASSU",
+     "family": "line_disconnection"
     }
    }
   },
@@ -2230,26 +2602,37 @@
     "PONTEL62REALT"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 116.0,
    "solution": {
     "kind": "none",
+    "best_nonisl_max_rho": 1.16,
     "best_unitary": {
+     "max_rho": 1.161,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 4,
+     "converged": true,
+     "resolves": false,
      "id": "load_shedding_RASSUY631",
-     "family": "load_shedding",
-     "max_rho": 1.222,
-     "reducing": false
+     "family": "load_shedding"
     },
     "best_pair": {
+     "max_rho": 1.16,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 4,
      "converged": true,
-     "true_max_rho": 1.093,
-     "id": "load_shedding_RASSUY631+redispatch_SSTUL6GROUPE5",
-     "est_max_rho": 1.161
+     "resolves": false,
+     "rank": 1,
+     "id": "load_shedding_RASSUY631+redispatch_SSEST6GROUPE3",
+     "est_max_rho": 1.16
     }
    }
   },
   {
    "id": "s_437818d6_a91fd1",
    "gridId": "grid_437818d6",
-   "difficulty": "hard",
+   "difficulty": "medium",
    "title": "March — Monday morning",
    "label": "March — Monday morning — ROUMOL61ZSSCR",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -2266,26 +2649,32 @@
     "T.VICL61ZMENT"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
-    "kind": "none",
-    "best_unitary": {
-     "id": "open_coupler_BOUTRP6",
-     "family": "open_coupling",
-     "max_rho": 1.09,
-     "reducing": false
-    },
-    "best_pair": {
+    "kind": "pair",
+    "actions": [
+     "disco_PALUNL61SEPTE+open_coupler_PALUNP6",
+     "open_coupler_BOUTRP6+open_coupler_SSTULP6",
+     "open_coupler_SEPTEP6+open_coupler_PALUNP6"
+    ],
+    "best": {
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 0,
      "converged": true,
-     "true_max_rho": 1.089,
-     "id": "open_coupler_BOUTRP6+open_coupler_SSTULP6",
-     "est_max_rho": 0.855
-    }
+     "resolves": true,
+     "rank": 1,
+     "id": "disco_PALUNL61SEPTE+open_coupler_PALUNP6",
+     "est_max_rho": 0.579
+    },
+    "solving_pair_rank": 1
    }
   },
   {
    "id": "s_437818d6_594cad",
    "gridId": "grid_437818d6",
-   "difficulty": "hard",
+   "difficulty": "medium",
    "title": "March — Monday morning",
    "label": "March — Monday morning — ROUMOL61ZVA10",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -2302,26 +2691,32 @@
     "T.VICL61ZMENT"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
-    "kind": "none",
-    "best_unitary": {
-     "id": "open_coupler_BOUTRP6",
-     "family": "open_coupling",
-     "max_rho": 1.095,
-     "reducing": false
-    },
-    "best_pair": {
+    "kind": "pair",
+    "actions": [
+     "disco_PALUNL61SEPTE+open_coupler_PALUNP6",
+     "open_coupler_BOUTRP6+open_coupler_SSTULP6",
+     "open_coupler_SEPTEP6+open_coupler_PALUNP6"
+    ],
+    "best": {
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 0,
      "converged": true,
-     "true_max_rho": 1.094,
-     "id": "open_coupler_BOUTRP6+open_coupler_SSTULP6",
-     "est_max_rho": 0.848
-    }
+     "resolves": true,
+     "rank": 1,
+     "id": "disco_PALUNL61SEPTE+open_coupler_PALUNP6",
+     "est_max_rho": 0.578
+    },
+    "solving_pair_rank": 1
    }
   },
   {
    "id": "s_437818d6_c1d62c",
    "gridId": "grid_437818d6",
-   "difficulty": "hard",
+   "difficulty": "medium",
    "title": "March — Monday morning",
    "label": "March — Monday morning — RQROUL61S.AIR",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -2337,26 +2732,32 @@
     "PONTEL62REALT"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
-    "kind": "none",
-    "best_unitary": {
-     "id": "disco_E.BOTL61REALT",
-     "family": "line_disconnection",
-     "max_rho": 1.195,
-     "reducing": false
-    },
-    "best_pair": {
+    "kind": "pair",
+    "actions": [
+     "open_coupler_SSTULP6+disco_BOUTRL61SSTUL",
+     "disco_BOUTRL61SSTUL+disco_BOUTRL61FAVAR",
+     "disco_BOUTRL61SSTUL+disco_E.BOTL61FAVAR"
+    ],
+    "best": {
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 0,
      "converged": true,
-     "true_max_rho": 1.078,
-     "id": "open_coupler_ROGNAP6+disco_E.BOTL61FAVAR",
-     "est_max_rho": 0.613
-    }
+     "resolves": true,
+     "rank": 1,
+     "id": "open_coupler_SSTULP6+disco_BOUTRL61SSTUL",
+     "est_max_rho": 0.333
+    },
+    "solving_pair_rank": 1
    }
   },
   {
    "id": "s_437818d6_c5ce55",
    "gridId": "grid_437818d6",
-   "difficulty": "easy",
+   "difficulty": "hard",
    "title": "March — Monday morning",
    "label": "March — Monday morning — RQROUL61SSEST",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -2372,23 +2773,37 @@
     "PONTEL62REALT"
    ],
    "nActionsDiscovered": 13,
+   "bestAchievableLoadingPct": 100.2,
    "solution": {
-    "kind": "unitary",
-    "actions": [
-     "open_coupler_MOTT5P6"
-    ],
-    "best": {
-     "id": "open_coupler_MOTT5P6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+    "kind": "none",
+    "best_nonisl_max_rho": 1.002,
+    "best_unitary": {
+     "max_rho": 1.002,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 1,
+     "converged": true,
+     "resolves": false,
+     "id": "open_coupler_PONTEP6",
+     "family": "open_coupling"
+    },
+    "best_pair": {
+     "max_rho": 1.016,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 2,
+     "converged": true,
+     "resolves": false,
+     "rank": 2,
+     "id": "open_coupler_MOTT5P6+open_coupler_SSCESP6",
+     "est_max_rho": 0.926
     }
    }
   },
   {
    "id": "s_437818d6_554e81",
    "gridId": "grid_437818d6",
-   "difficulty": "medium",
+   "difficulty": "easy",
    "title": "March — Monday morning",
    "label": "March — Monday morning — SAINNL61YAINV",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -2402,18 +2817,21 @@
     "P.JERL61VAUPA"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 88.9,
    "solution": {
-    "kind": "pair",
+    "kind": "unitary",
     "actions": [
-     "load_shedding_P.JERY641+load_shedding_P.JERY649",
-     "node_merging_ROUGEP6+load_shedding_P.JERY641",
-     "node_merging_ROUGEP6+load_shedding_P.JERY649"
+     "open_coupler_P.JERP6"
     ],
     "best": {
+     "max_rho": 0.889,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
      "converged": true,
-     "true_max_rho": 0.974,
-     "id": "load_shedding_P.JERY641+load_shedding_P.JERY649",
-     "est_max_rho": 0.925
+     "resolves": true,
+     "id": "open_coupler_P.JERP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -2434,18 +2852,23 @@
     "M.MORL61VLEVA"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 39.1,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "node_merging_P.GASP6",
-     "load_shedding_M.MORY631",
-     "load_shedding_M.MORY632"
+     "open_coupler_M.MORP6",
+     "open_coupler_VLEVAP6",
+     "node_merging_P.GASP6"
     ],
     "best": {
-     "id": "node_merging_P.GASP6",
-     "family": "node_merging",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.391,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "open_coupler_M.MORP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -2467,16 +2890,22 @@
     "SAUS5L61VLEVA"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 84.0,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "load_shedding_SAUS56T612"
+     "load_shedding_SAUS56T612",
+     "open_coupler_VLEVAP6"
     ],
     "best": {
+     "max_rho": 0.84,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
      "id": "load_shedding_SAUS56T612",
-     "family": "load_shedding",
-     "max_rho": 0.974,
-     "reducing": true
+     "family": "load_shedding"
     }
    }
   },
@@ -2497,25 +2926,30 @@
     "P.ROSL61SSAVO"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "open_coupler_BERGHP6",
      "disco_P.ROSL61SSAVO",
-     "disco_P.ROSL61SARR6"
+     "disco_P.ROSL61SARR6",
+     "disco_BERGHL61ZSAR6"
     ],
     "best": {
-     "id": "open_coupler_BERGHP6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_P.ROSL61SSAVO",
+     "family": "line_disconnection"
     }
    }
   },
   {
    "id": "s_437818d6_544784",
    "gridId": "grid_437818d6",
-   "difficulty": "easy",
+   "difficulty": "hard",
    "title": "March — Monday morning",
    "label": "March — Monday morning — SSESTL61SSTUL",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -2531,23 +2965,37 @@
     "PONTEL62REALT"
    ],
    "nActionsDiscovered": 13,
+   "bestAchievableLoadingPct": 99.1,
    "solution": {
-    "kind": "unitary",
-    "actions": [
-     "open_coupler_MOTT5P6"
-    ],
-    "best": {
-     "id": "open_coupler_MOTT5P6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+    "kind": "none",
+    "best_nonisl_max_rho": 0.991,
+    "best_unitary": {
+     "max_rho": 0.991,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 1,
+     "converged": true,
+     "resolves": false,
+     "id": "open_coupler_PONTEP6",
+     "family": "open_coupling"
+    },
+    "best_pair": {
+     "max_rho": 1.013,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 2,
+     "converged": true,
+     "resolves": false,
+     "rank": 3,
+     "id": "open_coupler_MOTT5P6+open_coupler_SSCESP6",
+     "est_max_rho": 0.926
     }
    }
   },
   {
    "id": "s_437818d6_c77cdf",
    "gridId": "grid_437818d6",
-   "difficulty": "medium",
+   "difficulty": "easy",
    "title": "March — Monday morning",
    "label": "March — Monday morning — VAUPAL61YAINV",
    "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
@@ -2561,18 +3009,21 @@
     "P.JERL61VAUPA"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 88.9,
    "solution": {
-    "kind": "pair",
+    "kind": "unitary",
     "actions": [
-     "load_shedding_P.JERY641+load_shedding_P.JERY649",
-     "node_merging_ROUGEP6+load_shedding_P.JERY641",
-     "node_merging_ROUGEP6+load_shedding_P.JERY649"
+     "open_coupler_P.JERP6"
     ],
     "best": {
+     "max_rho": 0.889,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
      "converged": true,
-     "true_max_rho": 0.974,
-     "id": "load_shedding_P.JERY641+load_shedding_P.JERY649",
-     "est_max_rho": 0.925
+     "resolves": true,
+     "id": "open_coupler_P.JERP6",
+     "family": "open_coupling"
     }
    }
   },
@@ -2594,17 +3045,28 @@
     "P.JERL61VAUPA"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 104.6,
    "solution": {
     "kind": "none",
+    "best_nonisl_max_rho": 1.046,
     "best_unitary": {
+     "max_rho": 1.052,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 1,
+     "converged": true,
+     "resolves": false,
      "id": "load_shedding_P.JERY641",
-     "family": "load_shedding",
-     "max_rho": 1.107,
-     "reducing": false
+     "family": "load_shedding"
     },
     "best_pair": {
+     "max_rho": 1.046,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 1,
      "converged": true,
-     "true_max_rho": 1.101,
+     "resolves": false,
+     "rank": 1,
      "id": "load_shedding_P.JERY641+load_shedding_P.JERY649",
      "est_max_rho": 1.046
     }
@@ -2627,18 +3089,23 @@
     "EGUZOL61ORANG"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 64.1,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "load_shedding_ORANGY642",
-     "load_shedding_ORANGY641",
-     "disco_BAYETL61MTVIC"
+     "disco_MONDIL61ORANG",
+     "disco_DISTRL61MONDI",
+     "load_shedding_ORANGY642"
     ],
     "best": {
-     "id": "load_shedding_ORANGY642",
-     "family": "load_shedding",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.641,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_MONDIL61ORANG",
+     "family": "line_disconnection"
     }
    }
   },
@@ -2659,18 +3126,23 @@
     "BOUTRL61TRANS"
    ],
    "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 0.0,
    "solution": {
     "kind": "unitary",
     "actions": [
-     "open_coupler_BOUTRP6",
-     "load_shedding_TRANSY633",
-     "load_shedding_TRANSY631"
+     "disco_BOUTRL61TRANS",
+     "open_coupler_TRANSP6",
+     "open_coupler_BOUTRP6"
     ],
     "best": {
-     "id": "open_coupler_BOUTRP6",
-     "family": "open_coupling",
-     "max_rho": 0.974,
-     "reducing": true
+     "max_rho": 0.0,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": true,
+     "id": "disco_BOUTRL61TRANS",
+     "family": "line_disconnection"
     }
    }
   }

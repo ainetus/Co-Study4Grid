@@ -629,6 +629,25 @@ def compute_action_metrics(
     except Exception as e:
         logger.warning("compute_action_metrics: max_rho / overload calc failed: %s", e)
 
+    # Persistent N-state overloads: monitored lines already overloaded in the N
+    # base case that this action did NOT influence (excluded from the care mask
+    # by build_care_mask's ``pre_existing & not_impacted`` rule) and that remain
+    # overloaded after it. These are pre-existing constraints the contingency
+    # didn't cause and the remedial action can't be expected to clear — surfaced
+    # so the UI can explain a line staying red that the player cannot act on.
+    result["persistent_n_overloads"] = []
+    try:
+        wt = float(worsening_threshold)
+        in_scope = np.isin(action_names, list(lines_we_care_about)) & np.isin(
+            action_names, list(branches_with_limits)
+        )
+        pre_existing = base_rho >= 1.0
+        not_impacted = (action_rho >= base_rho * (1 - wt)) & (action_rho <= base_rho * (1 + wt))
+        persistent = in_scope & pre_existing & not_impacted & (action_rho >= 1.0)
+        result["persistent_n_overloads"] = action_names[persistent].tolist()
+    except Exception as e:
+        logger.debug("compute_action_metrics: persistent N-overload calc failed: %s", e)
+
     return result
 
 
