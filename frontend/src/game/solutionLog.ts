@@ -27,6 +27,8 @@
 import type {
   ActionDetail,
   AnalysisResult,
+  GameLeverStatWire,
+  LeverInteraction,
   LogGameSolutionRequest,
   LogGameSolutionResponse,
 } from '../types';
@@ -213,4 +215,31 @@ export function leverInspectTarget(lever: { signature: string; label: string }):
     return branch ? branch[1] : actionId;
   }
   return lever.label;
+}
+
+/**
+ * Translate a lever hint into a workspace interaction the App handler can act
+ * on without knowing lever-signature semantics:
+ *   - `inspectQuery` locates the element (branch id, injection / switch name);
+ *   - `simulate` is present only when the lever maps to a fully-specified
+ *     action — a catalogue branch disco/reco (`action:<id>`) or a coupling
+ *     maneuver (`switch:<id>=<state>`). Magnitude-free injection / PST levers
+ *     carry no `simulate`, so a double-click on them degrades to inspect.
+ */
+export function buildLeverInteraction(lever: GameLeverStatWire): LeverInteraction {
+  const interaction: LeverInteraction = {
+    inspectQuery: leverInspectTarget(lever),
+    category: lever.category,
+  };
+  const { signature } = lever;
+  if (signature.startsWith('action:')) {
+    interaction.simulate = { actionId: signature.slice('action:'.length) };
+  } else if (signature.startsWith('switch:')) {
+    const body = signature.slice('switch:'.length);
+    const eq = body.lastIndexOf('=');
+    const switchId = eq >= 0 ? body.slice(0, eq) : body;
+    const targetOpen = eq >= 0 ? body.slice(eq + 1) === 'true' : true;
+    interaction.simulate = { switches: { [switchId]: targetOpen } };
+  }
+  return interaction;
 }

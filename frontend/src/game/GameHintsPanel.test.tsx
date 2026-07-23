@@ -63,18 +63,39 @@ describe('GameHintsPanel', () => {
     expect(screen.getByText(/From 7 retained solutions by all players/)).toBeInTheDocument();
   });
 
-  it('pre-fills the Inspect field with the lever element on click', async () => {
-    const inspect = vi.spyOn(gameBridge, 'requestInspect');
+  it('requests an inspect interaction after the single-click delay', async () => {
+    const lever = vi.spyOn(gameBridge, 'requestLeverInteraction');
     getGameLeverStats.mockResolvedValue(stats());
     render(<GameHintsPanel study={STUDY} />);
-    await waitFor(() => expect(screen.getByText(/disco_LINE_A/)).toBeInTheDocument());
+    await screen.findByText(/disco_LINE_A/);
 
-    // Catalogue disco lever → the embedded branch id reaches Inspect.
+    // Single-click is deferred so a double-click can pre-empt it.
     fireEvent.click(screen.getByText(/disco_LINE_A/));
-    expect(inspect).toHaveBeenCalledWith('LINE_A');
-    // Injection lever → the generator name itself.
-    fireEvent.click(screen.getByText(/G1/));
-    expect(inspect).toHaveBeenCalledWith('G1');
+    expect(lever).not.toHaveBeenCalled();
+    await waitFor(() => expect(lever).toHaveBeenCalledWith(
+      expect.objectContaining({ inspectQuery: 'LINE_A', simulate: { actionId: 'disco_LINE_A' } }),
+      'inspect',
+    ));
+  });
+
+  it('requests a simulate interaction on double-click and cancels the pending inspect', async () => {
+    const lever = vi.spyOn(gameBridge, 'requestLeverInteraction');
+    getGameLeverStats.mockResolvedValue(stats());
+    render(<GameHintsPanel study={STUDY} />);
+    await screen.findByText(/VL1_COUPL/);
+
+    const target = screen.getByText(/VL1_COUPL/);
+    fireEvent.click(target);       // schedules the deferred inspect
+    fireEvent.doubleClick(target); // pre-empts it and fires the simulate now
+
+    expect(lever).toHaveBeenCalledTimes(1);
+    expect(lever).toHaveBeenCalledWith(
+      expect.objectContaining({ inspectQuery: 'VL1_COUPL', simulate: { switches: { VL1_COUPL: true } } }),
+      'simulate',
+    );
+    // Wait past the single-click delay — the pending inspect stays cancelled.
+    await new Promise((r) => setTimeout(r, 300));
+    expect(lever).toHaveBeenCalledTimes(1);
   });
 
   it('collapses to a pill and reopens', async () => {

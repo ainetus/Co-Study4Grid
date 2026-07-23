@@ -112,6 +112,55 @@ describe('useManualSimulation', () => {
         });
     });
 
+    describe('handleSimulateLever', () => {
+        it('is a no-op when no switches are staged', async () => {
+            const { result } = renderHook(() => useManualSimulation(makeParams()));
+
+            await act(async () => { await result.current.handleSimulateLever({ voltageLevelId: 'VL1', switches: {} }); });
+
+            expect(mockSimStream).not.toHaveBeenCalled();
+        });
+
+        it('errors (no API call) when no contingency is selected', async () => {
+            const setError = vi.fn();
+            const { result } = renderHook(() =>
+                useManualSimulation(makeParams({ selectedContingency: [], setError })));
+
+            await act(async () => {
+                await result.current.handleSimulateLever({ voltageLevelId: 'VL1', switches: { SW: true } });
+            });
+
+            expect(setError).toHaveBeenCalledWith('Select a contingency first.');
+            expect(mockSimStream).not.toHaveBeenCalled();
+        });
+
+        it('streams the coupling maneuver and registers a user-provenance card', async () => {
+            const diagrams = makeDiagrams();
+            const wrappedManualActionAdded = vi.fn();
+            mockSimStream.mockResolvedValue(ndjson([
+                { type: 'metrics', action_id: 'user_topo_VL1_1', description_unitaire: 'coupling', rho_before: [1], rho_after: [0.8], max_rho: 0.8, max_rho_line: 'LINE_1', is_rho_reduction: true, lines_overloaded: [] },
+                { type: 'diagram', svg: '<svg/>', metadata: '{}', action_id: 'user_topo_VL1_1' },
+            ]));
+            const { result } = renderHook(() => useManualSimulation(makeParams({ diagrams, wrappedManualActionAdded })));
+
+            await act(async () => {
+                await result.current.handleSimulateLever({ voltageLevelId: 'VL1', switches: { SW_A: true } });
+            });
+
+            // Request carries the switch content + the resolved VL id.
+            expect(mockSimStream).toHaveBeenCalledWith(expect.objectContaining({
+                action_content: { switches: { SW_A: true } },
+                voltage_level_id: 'VL1',
+                disconnected_elements: ['LINE_X'],
+            }));
+            // Card registered under the backend-canonical id with 'user' provenance.
+            expect(diagrams.primeActionDiagram).toHaveBeenCalledWith('user_topo_VL1_1', expect.objectContaining({ svg: '<svg/>' }), 1);
+            expect(wrappedManualActionAdded).toHaveBeenCalledWith(
+                'user_topo_VL1_1', expect.objectContaining({ max_rho: 0.8 }), [], 'user',
+            );
+        });
+    });
+
     describe('handleSimulateSldEdit', () => {
         it('is a no-op when nothing is staged', async () => {
             const { result } = renderHook(() =>

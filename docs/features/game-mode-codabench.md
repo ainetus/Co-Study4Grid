@@ -162,11 +162,20 @@ under a persistent root, exact-duplicate dedup, the player name as author).
   config-screen **Beginner assistance** checkbox on (default), the
   `GameHintsPanel` shows the top 5 for the current study in a collapsible
   in-play panel — best-effort like the log itself (no data or no backend →
-  the panel stays hidden). **Clicking a lever pre-fills the Inspect field**
-  (auto-zoom included) with the underlying element — `leverInspectTarget`
-  strips the `disco_`/`reco_` catalogue prefixes down to the branch id —
-  via a `gameBridge.registerInspector` / `requestInspect` pair, so App.tsx
-  stays decoupled from game internals (one guarded registration effect).
+  the panel stays hidden). Each lever is **actionable**: **single-click**
+  locates & inspects it — fills the Inspect field, centers the NAD (an
+  injection or coupling switch is resolved to its home VL through
+  `/api/element-voltage-levels`), and opens that substation's SLD;
+  **double-click** simulates the mapped action directly — a catalogue branch
+  disco/reco (`handleSimulateUnsimulatedAction`) or a coupling maneuver at the
+  resolved VL (`handleSimulateLever`), producing a card in the feed. A
+  magnitude-free injection / PST lever carries no self-contained action, so a
+  double-click degrades to inspect with a hint to set the amount in the SLD.
+  The game side maps a lever signature to a workspace-agnostic
+  `LeverInteraction` (`buildLeverInteraction`) and routes it via a
+  `gameBridge.registerLeverHandler` / `requestLeverInteraction` pair (App's
+  handler lives in the `useLeverInteraction` hook; single-click is deferred so
+  a double-click pre-empts it), so App.tsx stays decoupled from game internals.
 - **Flow** — `useGameSession` fires the log at every study commit,
   fire-and-forget (a failed log never blocks or breaks the game — the study
   simply carries no `solutionFeedback`). The session log is *derived* from

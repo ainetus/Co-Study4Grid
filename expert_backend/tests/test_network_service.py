@@ -331,3 +331,50 @@ class TestGetElementVoltageLevels:
     def test_unknown_element_returns_empty(self, mock_network_service):
         result = mock_network_service.get_element_voltage_levels("NONEXISTENT")
         assert result == []
+
+    @staticmethod
+    def _service_with_injections_and_switches():
+        """A NetworkService whose network also exposes generators, loads and
+        switches — the single-VL equipment the Game-Mode lever hints locate."""
+        from expert_backend.services.network_service import NetworkService
+
+        network = MagicMock()
+        network.get_voltage_levels.return_value = pd.DataFrame(
+            {"nominal_v": [400.0, 225.0]}, index=["VL1", "VL2"])
+        network.get_lines.return_value = pd.DataFrame(
+            {"voltage_level1_id": [], "voltage_level2_id": []}, index=[])
+        network.get_2_windings_transformers.return_value = pd.DataFrame(
+            {"voltage_level1_id": [], "voltage_level2_id": []}, index=[])
+        network.get_generators.return_value = pd.DataFrame(
+            {"voltage_level_id": ["VL1"], "energy_source": ["WIND"],
+             "min_p": [0.0], "max_p": [100.0]},
+            index=["GEN_1"])
+        network.get_loads.return_value = pd.DataFrame(
+            {"voltage_level_id": ["VL2"]}, index=["LOAD_1"])
+        network.get_switches.return_value = pd.DataFrame(
+            {"voltage_level_id": ["VL1"]}, index=["VL1_COUPL"])
+
+        service = NetworkService()
+        service.network = network
+        return service
+
+    def test_generator_resolves_to_its_voltage_level(self):
+        service = self._service_with_injections_and_switches()
+        assert service.get_element_voltage_levels("GEN_1") == ["VL1"]
+
+    def test_load_resolves_to_its_voltage_level(self):
+        service = self._service_with_injections_and_switches()
+        assert service.get_element_voltage_levels("LOAD_1") == ["VL2"]
+
+    def test_switch_resolves_to_its_voltage_level(self):
+        service = self._service_with_injections_and_switches()
+        assert service.get_element_voltage_levels("VL1_COUPL") == ["VL1"]
+
+    def test_unknown_injection_still_returns_empty(self):
+        service = self._service_with_injections_and_switches()
+        assert service.get_element_voltage_levels("GEN_NOPE") == []
+
+    def test_switch_lookup_tolerates_network_without_switches(self, mock_network_service):
+        """The default mock network has no get_switches DataFrame; resolution
+        must fall through to [] rather than raise."""
+        assert mock_network_service.get_element_voltage_levels("SOME_SWITCH") == []

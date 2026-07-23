@@ -495,7 +495,14 @@ class NetworkService:
         }
 
     def get_element_voltage_levels(self, element_id: str) -> list:
-        """Resolve an equipment ID (line, transformer, or VL) to its voltage level IDs."""
+        """Resolve an equipment ID to its voltage level IDs.
+
+        Handles voltage levels, branches (lines / 2-winding transformers →
+        two VLs) and single-VL equipment: generators, loads and switches
+        (busbar couplers / disconnectors). The single-VL cases back the
+        Game-Mode lever hints, which must locate an injection or a coupling
+        switch on the network and open its substation SLD.
+        """
         if not self.network:
             raise ValueError("Network not loaded")
 
@@ -526,7 +533,38 @@ class NetworkService:
                 vls.add(row['voltage_level2_id'])
             return sorted(vls)
 
+        # Single-VL equipment: generators and loads each live in exactly one VL.
+        gen_vl = self._get_gen_vl_map().get(element_id)
+        if isinstance(gen_vl, str) and gen_vl:
+            return [gen_vl]
+        load_vl = self._get_load_vl_map().get(element_id)
+        if isinstance(load_vl, str) and load_vl:
+            return [load_vl]
+
+        # Switches (busbar couplers / disconnectors) also belong to one VL.
+        switch_vl = self._get_switch_voltage_level(element_id)
+        if switch_vl:
+            return [switch_vl]
+
         return []
+
+    def _get_switch_voltage_level(self, switch_id: str) -> str | None:
+        """Return the voltage level ID a switch belongs to, or None.
+
+        Queried on demand (not memoized) — the only caller is the interactive
+        element→VL resolution, hit on a user gesture, so a per-call
+        ``get_switches()`` is cheap enough and keeps the reset() surface small.
+        """
+        try:
+            switches = self.network.get_switches()
+        except Exception:
+            return None
+        if (switches is None or not hasattr(switches, 'index')
+                or switch_id not in switches.index
+                or 'voltage_level_id' not in getattr(switches, 'columns', [])):
+            return None
+        vl = switches.loc[switch_id, 'voltage_level_id']
+        return vl if isinstance(vl, str) and vl else None
 
     def get_load_voltage_level(self, load_id: str) -> str | None:
         """Return the voltage level ID that a given load belongs to."""
