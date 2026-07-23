@@ -134,7 +134,9 @@ describe('useLeverInteraction', () => {
         expect(notifyError).toHaveBeenCalledWith('Could not locate the substation for this maneuver.');
     });
 
-    it('double-clicking a magnitude-free injection lever degrades to inspect with a hint', async () => {
+    it('double-clicking a magnitude-free lever (PST / raw setpoint) degrades to inspect with a hint', async () => {
+        // redispatch / ls / rc levers now carry a simulate spec; a lever that
+        // reaches the handler with NO simulate (PST, raw gen_p/load_p) degrades.
         getElementVoltageLevels.mockResolvedValue({ voltage_level_ids: ['VL_G1'] });
         const params = makeParams();
         const handler = renderAndGetHandler(params);

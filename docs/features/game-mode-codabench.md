@@ -18,9 +18,13 @@ Launch the frontend with `?game=1` (e.g. `http://localhost:5173/?game=1`):
 1. **Config screen** — a simple landing asks only what a participant needs to
    start: your **player name** (required — it signs the solutions you retain in
    the shared solution base, see below), the **session name** (auto-filled to
-   `<player> — session <n+1>`, where `n` counts the player's existing sessions
-   in the shared base via `GET /api/game/player-sessions`; editable), the
-   **beginner assistance** toggle, and **▶ Start session**. Below it, a preview
+   the first *free* `<player> — session <n>` index, scanning the player's
+   existing session names in the shared base via `GET /api/game/player-sessions`
+   so a re-play never re-suggests a name that already exists; editable but a
+   name that collides with one already recorded **blocks ▶ Start** with an
+   inline warning — the shared base keys retentions by session name, so a
+   duplicate would merge two runs), the **beginner assistance** toggle, and
+   **▶ Start session**. Below it, a preview
    card lists the configured studies and shows a map of the network you'll work
    on — the same thing the "Network (N)" NAD shows fully zoomed out (voltage
    levels from `grid_layout.json` with the transmission lines drawn as edges,
@@ -40,7 +44,12 @@ Launch the frontend with `?game=1` (e.g. `http://localhost:5173/?game=1`):
    assistance** enabled (config-screen checkbox, on by default), a
    collapsible 💡 hints panel lists the **5 levers most used by all players**
    on the current contingency, tagged by equipment family (voltage level /
-   branch / generation / load). **Star** the actions you
+   branch / generation / load). **Single-click** a lever to locate & inspect
+   it; **double-click** to simulate it — the row shows a **⏳ simulating…** →
+   **✓ simulated** transition and a second double-click is ignored once
+   simulated, so you never fire the same lever twice (a lever whose action
+   surfaces through the recommender's suggestions is marked ✓ too). **Star**
+   the actions you
    commit to (the star is capped at the configured max). Click **Next study →**
    (or let the timer expire) to advance. If your retained proposition turns
    out to be **new** in the shared base, a 🌟 toast tells you right away and
@@ -167,13 +176,26 @@ under a persistent root, exact-duplicate dedup, the player name as author).
   injection or coupling switch is resolved to its home VL through
   `/api/element-voltage-levels`), and opens that substation's SLD;
   **double-click** simulates the mapped action directly — a catalogue branch
-  disco/reco (`handleSimulateUnsimulatedAction`) or a coupling maneuver at the
-  resolved VL (`handleSimulateLever`), producing a card in the feed. A
-  magnitude-free injection / PST lever carries no self-contained action, so a
-  double-click degrades to inspect with a hint to set the amount in the SLD.
-  The game side maps a lever signature to a workspace-agnostic
+  disco/reco (`handleSimulateUnsimulatedAction`), an **injection** (redispatch
+  / load-shedding / curtailment) run with the backend's **default incremental
+  delta** (the lever signature maps to the backend dynamic-action id —
+  `redispatch:<g>` → `redispatch_<g>`, `ls:<l>` → `load_shedding_<l>`,
+  `rc:<g>` → `curtail_<g>` — simulated with no `target_mw`, so
+  `_create_dynamic_actions_if_needed` applies the default delta), or a coupling
+  maneuver at the resolved VL (`handleSimulateLever`), producing a card in the
+  feed. Only a **PST** lever or a raw `gen_p:` / `load_p:` setpoint lever still
+  degrades to inspect with a hint to set the amount in the SLD (a tap / signed
+  setpoint is needed). **Simulation feedback:** the double-clicked lever shows a
+  **⏳ simulating… → ✓ simulated** transition, and re-simulation is blocked —
+  the panel reads the App-published `simulatedActionIds` set on the game bridge
+  snapshot, so a lever also flips to ✓ when its action arrives through the
+  recommender's suggestions, and a failed run self-clears (its id never enters
+  the set) leaving the lever runnable again; a coupling maneuver (whose fresh
+  `user_topo_*` id the snapshot can't match) is marked done locally on
+  completion. The game side maps a lever signature to a workspace-agnostic
   `LeverInteraction` (`buildLeverInteraction`) and routes it via a
-  `gameBridge.registerLeverHandler` / `requestLeverInteraction` pair (App's
+  `gameBridge.registerLeverHandler` / `requestLeverInteraction` pair — now
+  awaitable so the panel can drive the simulating→simulated transition (App's
   handler lives in the `useLeverInteraction` hook; single-click is deferred so
   a double-click pre-empts it), so App.tsx stays decoupled from game internals.
 - **Flow** — `useGameSession` fires the log at every study commit,

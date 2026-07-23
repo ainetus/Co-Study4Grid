@@ -14,7 +14,10 @@ const mockApi = vi.hoisted(() => ({ getPlayerSessions: vi.fn() }));
 vi.mock('../api', () => ({ api: mockApi }));
 
 beforeEach(() => {
-  mockApi.getPlayerSessions.mockResolvedValue({ player: 'amarot', session_count: 2 });
+  mockApi.getPlayerSessions.mockResolvedValue({
+    player: 'amarot', session_count: 2,
+    session_names: ['amarot — session 1', 'amarot — session 2'],
+  });
 });
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
@@ -46,7 +49,57 @@ describe('GameConfigScreen landing', () => {
     fireEvent.change(screen.getByTestId('game-player'), { target: { value: 'amarot' } });
     await new Promise((r) => setTimeout(r, 400));
     expect(sessionInput().value).toBe('My custom run');
-    expect(mockApi.getPlayerSessions).not.toHaveBeenCalled();
+    // The names are still fetched (they drive the duplicate block), but the
+    // typed name is preserved.
+    expect(mockApi.getPlayerSessions).toHaveBeenCalledWith('amarot');
+  });
+
+  it('auto-suggests the first FREE index, skipping gaps in the recorded names', async () => {
+    // Recorded {1, 3} → the count-plus-one heuristic would collide on 3; the
+    // names-based suggestion fills the gap and picks 2.
+    mockApi.getPlayerSessions.mockResolvedValue({
+      player: 'amarot', session_count: 2,
+      session_names: ['amarot — session 1', 'amarot — session 3'],
+    });
+    render(<GameConfigScreen onStart={vi.fn()} />);
+    fireEvent.change(screen.getByTestId('game-player'), { target: { value: 'amarot' } });
+    await waitFor(() => expect(sessionInput().value).toBe('amarot — session 2'));
+  });
+
+  it('suggests the next index after finishing a session (no collision)', async () => {
+    // Sessions 1-3 already recorded → the next free index is 4, never a
+    // re-suggested 3 (the reported bug).
+    mockApi.getPlayerSessions.mockResolvedValue({
+      player: 'amarot', session_count: 3,
+      session_names: ['amarot — session 1', 'amarot — session 2', 'amarot — session 3'],
+    });
+    render(<GameConfigScreen onStart={vi.fn()} />);
+    fireEvent.change(screen.getByTestId('game-player'), { target: { value: 'amarot' } });
+    await waitFor(() => expect(sessionInput().value).toBe('amarot — session 4'));
+  });
+
+  it('blocks Start and shows an error when the name collides with an existing session', async () => {
+    const onStart = vi.fn();
+    render(<GameConfigScreen onStart={onStart} />);
+    fireEvent.change(screen.getByTestId('game-player'), { target: { value: 'amarot' } });
+    await waitFor(() => expect(sessionInput().value).toBe('amarot — session 3'));
+    // Type a name that already exists (case-insensitive).
+    fireEvent.change(sessionInput(), { target: { value: 'Amarot — Session 1' } });
+    await waitFor(() => expect(screen.getByTestId('game-session-name-error')).toBeInTheDocument());
+    expect(screen.getByTestId('game-start')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('game-start'));
+    expect(onStart).not.toHaveBeenCalled();
+  });
+
+  it('re-enables Start once the colliding name is changed to a free one', async () => {
+    render(<GameConfigScreen onStart={vi.fn()} />);
+    fireEvent.change(screen.getByTestId('game-player'), { target: { value: 'amarot' } });
+    await waitFor(() => expect(sessionInput().value).toBe('amarot — session 3'));
+    fireEvent.change(sessionInput(), { target: { value: 'amarot — session 2' } });
+    await waitFor(() => expect(screen.getByTestId('game-start')).toBeDisabled());
+    fireEvent.change(sessionInput(), { target: { value: 'amarot — session 9' } });
+    expect(screen.queryByTestId('game-session-name-error')).toBeNull();
+    expect(screen.getByTestId('game-start')).not.toBeDisabled();
   });
 
   it('lists the configured studies and shows the network preview', () => {

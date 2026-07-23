@@ -915,6 +915,13 @@ export interface PlayerSessionsResponse {
     player: string;
     /** Distinct sessions this player already recorded in the shared base. */
     session_count: number;
+    /**
+     * The concrete distinct session names (sorted, case-insensitive). The
+     * config screen suggests the first free `session <n>` index over these
+     * and blocks a name that already exists (a count-plus-one heuristic
+     * re-suggests a taken name when the recorded indices have gaps).
+     */
+    session_names: string[];
 }
 
 export interface LogGameSolutionResponse {

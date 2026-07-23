@@ -68,7 +68,9 @@ frontend/
     │   ├── useLeverInteraction.ts  # Game-Mode beginner-assistance wiring:
     │   │                           # registers the gameBridge lever handler —
     │   │                           # single-click locate+inspect (VL resolve +
-    │   │                           # SLD open), double-click simulate
+    │   │                           # SLD open), double-click simulate (branch
+    │   │                           # disco/reco + injection default-delta +
+    │   │                           # coupling maneuver)
     │   ├── usePanZoom.ts           # ViewBox state, zoom-to-element
     │   ├── useSldOverlay.ts        # Single-Line-Diagram overlay
     │   ├── useSldTopologyEdit.ts    # Interactive SLD edit (switches +
@@ -552,7 +554,9 @@ exactly as before.
 
 - **`gameBridge.ts`** is the decoupling singleton (mirrors
   `interactionLogger`): `App` registers a study loader and publishes its
-  physical snapshot `{ baselineMaxRho, chosenActions }`; `GameShell` /
+  physical snapshot `{ baselineMaxRho, chosenActions, simulatedActionIds }`
+  (`simulatedActionIds` = every materialised action id, so the hints panel
+  can mark a lever "simulated"); `GameShell` /
   `useGameSession` drive study loads, read results, and enforce the
   ≤ 3-action cap — so **`App.tsx` keeps only three `isGameMode()`-guarded
   touch points** (`loadGameStudy`, the publish effect, and the
@@ -579,11 +583,20 @@ exactly as before.
   inspects it (fills the Inspect field, centers the NAD — resolving an
   injection / coupling switch to its home VL via `/api/element-voltage-levels`
   — and opens that substation's SLD), **double-click** simulates the mapped
-  action (a catalogue branch disco/reco, or a coupling maneuver at the
-  resolved VL; magnitude-free injection / PST levers degrade to inspect). The
-  game side turns a lever signature into a workspace-agnostic `LeverInteraction`
-  (`buildLeverInteraction` in `solutionLog.ts`) and routes it through the
-  `gameBridge.registerLeverHandler` / `requestLeverInteraction` pair; the App
+  action (a catalogue branch disco/reco, an **injection** — redispatch /
+  load-shedding / curtailment — run with the backend's default incremental
+  delta via its dynamic-action id, or a coupling maneuver at the resolved VL;
+  only PST / raw `gen_p:` / `load_p:` levers still degrade to inspect). The
+  panel shows a per-lever **⏳ simulating… → ✓ simulated** transition and
+  **blocks a redundant re-run** — "simulated" is read from the App-published
+  `simulatedActionIds` snapshot set (so a lever also flips ✓ when its action
+  arrives through the recommender's suggestions, and a failed run self-clears),
+  with a local fallback for coupling maneuvers whose fresh id the snapshot
+  can't match. The game side turns a lever signature into a workspace-agnostic
+  `LeverInteraction` (`buildLeverInteraction` in `solutionLog.ts` — injection
+  signatures map to the dynamic-action id) and routes it through the
+  `gameBridge.registerLeverHandler` / `requestLeverInteraction` pair (awaitable,
+  so the panel can drive the simulating→simulated transition); the App
   handler lives in the `useLeverInteraction` hook (single-click deferred so a
   double-click pre-empts it), so App.tsx still never imports game internals
   beyond the bridge/solutionLog helpers.

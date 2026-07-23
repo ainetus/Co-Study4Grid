@@ -218,13 +218,44 @@ export function leverInspectTarget(lever: { signature: string; label: string }):
 }
 
 /**
+ * Injection lever prefix → the backend dynamic-action id prefix it maps to.
+ * The backend auto-creates these on the fly (`_create_dynamic_actions_if_needed`)
+ * and, when simulated with no `target_mw`, applies the DEFAULT incremental
+ * injection delta (`REDISPATCH_DEFAULT_DELTA_MW` for redispatch, the full-reduction
+ * default for shedding / curtailment). So a magnitude-free lever can be
+ * simulated straight from a double-click without the operator entering an amount.
+ * PST (`pst:`) and the raw `gen_p:` / `load_p:` levers stay magnitude-free
+ * (a tap variation / signed setpoint is needed), so they still degrade to inspect.
+ */
+const INJECTION_LEVER_ACTION_PREFIX: Record<string, string> = {
+  redispatch: 'redispatch_',
+  ls: 'load_shedding_',
+  rc: 'curtail_',
+};
+
+/**
+ * Backend dynamic-action id an injection lever maps to (or `null` for a lever
+ * that can't be simulated without a magnitude). Exported so the hints panel can
+ * tell whether a lever's action already sits in the workspace's simulated set.
+ */
+export function injectionLeverActionId(signature: string): string | null {
+  const colon = signature.indexOf(':');
+  if (colon <= 0) return null;
+  const prefix = INJECTION_LEVER_ACTION_PREFIX[signature.slice(0, colon)];
+  const body = signature.slice(colon + 1);
+  return prefix && body ? `${prefix}${body}` : null;
+}
+
+/**
  * Translate a lever hint into a workspace interaction the App handler can act
  * on without knowing lever-signature semantics:
  *   - `inspectQuery` locates the element (branch id, injection / switch name);
- *   - `simulate` is present only when the lever maps to a fully-specified
- *     action — a catalogue branch disco/reco (`action:<id>`) or a coupling
- *     maneuver (`switch:<id>=<state>`). Magnitude-free injection / PST levers
- *     carry no `simulate`, so a double-click on them degrades to inspect.
+ *   - `simulate` is present when the lever maps to a fully-specified action —
+ *     a catalogue branch disco/reco (`action:<id>`), a coupling maneuver
+ *     (`switch:<id>=<state>`), or an injection (`redispatch:` / `ls:` / `rc:`)
+ *     re-run with the default incremental delta. Magnitude-free PST / raw
+ *     `gen_p:` / `load_p:` levers carry no `simulate`, so a double-click on
+ *     them degrades to inspect.
  */
 export function buildLeverInteraction(lever: GameLeverStatWire): LeverInteraction {
   const interaction: LeverInteraction = {
@@ -240,6 +271,9 @@ export function buildLeverInteraction(lever: GameLeverStatWire): LeverInteractio
     const switchId = eq >= 0 ? body.slice(0, eq) : body;
     const targetOpen = eq >= 0 ? body.slice(eq + 1) === 'true' : true;
     interaction.simulate = { switches: { [switchId]: targetOpen } };
+  } else {
+    const actionId = injectionLeverActionId(signature);
+    if (actionId) interaction.simulate = { actionId };
   }
   return interaction;
 }

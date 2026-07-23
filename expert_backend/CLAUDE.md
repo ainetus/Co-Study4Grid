@@ -394,9 +394,12 @@ Game Mode:
   (network, contingency) context, tagged by equipment family
   (`voltage_level` / `branch` / `generation` / `load` / `other`).
   Read-only store scan; feeds the Game Mode beginner-assistance panel.
-- `GET /api/game/player-sessions` — count of distinct sessions a player
-  already recorded in the shared base (`player_session_count`); seeds the
-  default session name / index on the Game Mode config screen. Read-only.
+- `GET /api/game/player-sessions` — distinct sessions a player already
+  recorded in the shared base (`player_session_count`): `session_count` +
+  the concrete `session_names` (sorted, case-insensitive). Seeds the default
+  session name (first FREE `<player> — session <n>` index) AND lets the config
+  screen block a colliding name before Start — a count-plus-one heuristic
+  re-suggests a taken name when the recorded indices have gaps. Read-only.
 
 OS pickers & static:
 - `GET  /api/pick-path?type=file|dir` — spawns a tkinter subprocess.

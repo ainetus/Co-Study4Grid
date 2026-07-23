@@ -858,6 +858,14 @@
           "session_count": {
             "title": "Session Count",
             "type": "integer"
+          },
+          "session_names": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Session Names",
+            "type": "array"
           }
         },
         "required": [

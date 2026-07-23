@@ -464,18 +464,24 @@ def log_solution(payload: dict) -> dict:
 
 
 def player_session_count(player: str) -> dict:
-    """How many distinct sessions ``player`` has already recorded in the base.
+    """Distinct sessions ``player`` has already recorded in the shared base.
 
     Used to seed a default session name / index on the Game Mode config
-    screen (``<player> — session <n+1>``). A "session" is a distinct
-    ``session_name`` under which the player signed at least one retained
-    solution; the player handle match is case-insensitive. Read-only scan of
-    the effective base — a player who never retained anything (or an empty
-    handle) counts as zero.
+    screen AND to reject a colliding name before "Start session". A
+    "session" is a distinct ``session_name`` under which the player signed at
+    least one retained solution; the player handle match is case-insensitive.
+    Read-only scan of the effective base — a player who never retained
+    anything (or an empty handle) yields an empty set.
+
+    Returns both the count and the concrete ``session_names`` (sorted) so the
+    config screen can (a) auto-suggest the first free ``session <n>`` index
+    even when the recorded names have gaps, and (b) block a name that already
+    exists — a count-plus-one heuristic alone re-suggests a taken name when
+    the indices are non-contiguous.
     """
     name = (player or "").strip()
     if not name:
-        return {"player": "", "session_count": 0}
+        return {"player": "", "session_count": 0, "session_names": []}
     target = name.casefold()
     base = _effective_base_dir()
     sessions: set[str] = set()
@@ -491,4 +497,5 @@ def player_session_count(player: str) -> dict:
                         session_name = str(retention.get("session_name") or "").strip()
                         if session_name:
                             sessions.add(session_name)
-    return {"player": name, "session_count": len(sessions)}
+    ordered = sorted(sessions, key=str.casefold)
+    return {"player": name, "session_count": len(ordered), "session_names": ordered}

@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import { colors, space, text, radius } from '../styles/tokens';
 import {
@@ -58,12 +58,36 @@ const btn = (bg: string, fg: string): React.CSSProperties => ({
 
 let customSeq = 0;
 
+/** Lower-cased trimmed key used to compare session names case-insensitively. */
+const sessionKey = (name: string): string => name.trim().toLowerCase();
+
+/**
+ * First `<player> — session <n>` name (n ≥ 1) not already taken. Scanning the
+ * concrete names — rather than count + 1 — fills gaps and never re-suggests an
+ * existing name when the recorded indices are non-contiguous (e.g. sessions
+ * {1, 3} → suggests 2, not a colliding 3).
+ */
+function firstFreeSessionName(player: string, taken: Set<string>): string {
+  let n = 1;
+  while (taken.has(sessionKey(`${player} — session ${n}`))) n += 1;
+  return `${player} — session ${n}`;
+}
+
 export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
   const [player, setPlayer] = useState('');
   const [sessionName, setSessionName] = useState('');
   // True once the player types their own session name — stops the auto-default
-  // effect from overwriting it.
+  // effect from overwriting it. Mirrored in a ref so the debounced fetch
+  // callback reads the current value (its closure would otherwise be stale).
   const [sessionNameEdited, setSessionNameEdited] = useState(false);
+  const sessionNameEditedRef = useRef(sessionNameEdited);
+  useEffect(() => { sessionNameEditedRef.current = sessionNameEdited; }, [sessionNameEdited]);
+  // Session names this player already recorded in the shared base — the
+  // auto-suggest picks the first free index over them and Start is blocked
+  // when the entered name collides with one.
+  const [existingSessions, setExistingSessions] = useState<string[]>([]);
+  const takenSessions = useMemo(
+    () => new Set(existingSessions.map(sessionKey)), [existingSessions]);
   const [minutes, setMinutes] = useState(5);
   const [seconds, setSeconds] = useState(0);
   const [maxActions, setMaxActions] = useState(3);
@@ -86,23 +110,36 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
 
   const timerSeconds = minutes * 60 + seconds;
 
-  // Seed a default session name from the player handle + the next session
-  // index (counting the player's existing sessions in the shared base). Runs
-  // only until the player edits the name; debounced so it doesn't fire per
-  // keystroke. Falls back to "session 1" when the backend is unreachable
-  // (standalone build / offline), so the game stays playable.
+  // Fetch the player's existing session names from the shared base, then seed
+  // a default that skips every taken index (so a re-play never re-suggests a
+  // name that already exists). The fetch runs on every player change — even
+  // after the name is edited — because the names also drive the duplicate
+  // block below; only the auto-fill is gated on `sessionNameEdited`. Debounced
+  // so it doesn't fire per keystroke; falls back to "session 1" / no known
+  // sessions when the backend is unreachable (standalone build / offline).
   useEffect(() => {
-    if (sessionNameEdited) return;
     const name = player.trim();
     if (!name) {
-      setSessionName('');
+      setExistingSessions([]);
+      if (!sessionNameEditedRef.current) setSessionName('');
       return;
     }
     let cancelled = false;
     const timer = window.setTimeout(() => {
       api.getPlayerSessions(name)
-        .then((r) => { if (!cancelled) setSessionName(`${name} — session ${r.session_count + 1}`); })
-        .catch(() => { if (!cancelled) setSessionName(`${name} — session 1`); });
+        .then((r) => {
+          if (cancelled) return;
+          const names = r.session_names ?? [];
+          setExistingSessions(names);
+          if (!sessionNameEditedRef.current) {
+            setSessionName(firstFreeSessionName(name, new Set(names.map(sessionKey))));
+          }
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setExistingSessions([]);
+          if (!sessionNameEditedRef.current) setSessionName(`${name} — session 1`);
+        });
     }, 350);
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [player, sessionNameEdited]);
@@ -155,7 +192,12 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
     : studies.length > 0 &&
       studies.every((s) => s.networkPath && s.actionFilePath && s.contingencyElementId);
   const timerValid = timerSeconds >= 10;
-  const canStart = !needPlayer && studiesValid && timerValid;
+  // A session name the player already recorded blocks Start — the shared
+  // solution base keys retentions by session name, so a duplicate would
+  // merge two runs. Only meaningful once a name is entered.
+  const trimmedSession = sessionName.trim();
+  const duplicateSession = trimmedSession.length > 0 && takenSessions.has(sessionKey(trimmedSession));
+  const canStart = !needPlayer && studiesValid && timerValid && !duplicateSession;
 
   const start = () => {
     if (!canStart) return;
@@ -177,9 +219,11 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
 
   const startHint = needPlayer
     ? 'Enter your player name to start.'
-    : (!studiesValid || !timerValid)
-      ? 'Some studies need attention — open ⚙ Configure settings below to fix them.'
-      : '';
+    : duplicateSession
+      ? 'You already played a session with this name — pick another.'
+      : (!studiesValid || !timerValid)
+        ? 'Some studies need attention — open ⚙ Configure settings below to fix them.'
+        : '';
 
   return (
     <div style={{
@@ -265,10 +309,18 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
 
           <div style={{ marginTop: space[3] }}>
             <label style={labelStyle} htmlFor="game-session-name">Session name</label>
-            <input id="game-session-name" data-testid="game-session-name" style={inputStyle}
+            <input id="game-session-name" data-testid="game-session-name"
+              style={{ ...inputStyle, borderColor: duplicateSession ? colors.dangerText : colors.border }}
+              aria-invalid={duplicateSession}
               value={sessionName}
               placeholder={player.trim() ? '' : 'auto — set from your player name'}
               onChange={(e) => { setSessionName(e.target.value); setSessionNameEdited(true); }} />
+            {duplicateSession && (
+              <p data-testid="game-session-name-error"
+                style={{ color: colors.dangerText, fontSize: text.xs, margin: `${space.half} 0 0` }}>
+                You already played “{trimmedSession}” — pick another name.
+              </p>
+            )}
           </div>
 
           <label style={{

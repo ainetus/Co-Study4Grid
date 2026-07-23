@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { api } from '../api';
 import type { GameLeverStatsResponse } from '../types';
 import { gameBridge } from './gameBridge';
@@ -17,6 +17,23 @@ vi.mock('../api', () => ({
 }));
 
 const getGameLeverStats = vi.mocked(api.getGameLeverStats);
+
+/** A promise whose resolution the test controls (to hold a simulation open). */
+function deferred(): { promise: Promise<void>; resolve: () => void } {
+  let resolve!: () => void;
+  const promise = new Promise<void>((r) => { resolve = r; });
+  return { promise, resolve };
+}
+
+/** Publish an App-side snapshot with the given materialised action ids. */
+function publishSimulated(simulatedActionIds: string[]): void {
+  gameBridge.publishSnapshot({
+    contingencyElementIds: ['ctg_1'],
+    baselineMaxRho: 1.2,
+    chosenActions: [],
+    simulatedActionIds,
+  });
+}
 
 const STUDY: GameStudy = {
   id: 's1',
@@ -43,10 +60,12 @@ function stats(over: Partial<GameLeverStatsResponse> = {}): GameLeverStatsRespon
 describe('GameHintsPanel', () => {
   beforeEach(() => {
     getGameLeverStats.mockReset();
+    gameBridge.reset();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    gameBridge.reset();
   });
 
   it('lists the most-used levers with their equipment category', async () => {
@@ -93,12 +112,13 @@ describe('GameHintsPanel', () => {
       expect.objectContaining({ inspectQuery: 'VL1_COUPL', simulate: { switches: { VL1_COUPL: true } } }),
       'simulate',
     );
-    // Wait past the single-click delay — the pending inspect stays cancelled.
-    await new Promise((r) => setTimeout(r, 300));
+    // Wait past the single-click delay — the pending inspect stays cancelled
+    // (also lets the async simulate settle its status state inside act).
+    await act(async () => { await new Promise((r) => setTimeout(r, 300)); });
     expect(lever).toHaveBeenCalledTimes(1);
   });
 
-  it('single-clicks a magnitude-free injection lever to a simulate-less inspect', async () => {
+  it('single-clicks an injection lever to inspect (even though it can simulate)', async () => {
     const lever = vi.spyOn(gameBridge, 'requestLeverInteraction');
     getGameLeverStats.mockResolvedValue(stats());
     render(<GameHintsPanel study={STUDY} />);
@@ -107,8 +127,11 @@ describe('GameHintsPanel', () => {
     fireEvent.click(screen.getByText(/G1/));
     await waitFor(() => expect(lever).toHaveBeenCalled());
     const [interaction, mode] = lever.mock.calls.at(-1)!;
-    expect(interaction).toMatchObject({ inspectQuery: 'G1', category: 'generation' });
-    expect(interaction.simulate).toBeUndefined();
+    // A redispatch lever now carries a simulate spec (default incremental
+    // delta), but a single-click still only locates & inspects it.
+    expect(interaction).toMatchObject({
+      inspectQuery: 'G1', category: 'generation', simulate: { actionId: 'redispatch_G1' },
+    });
     expect(mode).toBe('inspect');
   });
 
@@ -127,6 +150,84 @@ describe('GameHintsPanel', () => {
       expect.objectContaining({ inspectQuery: 'LINE_A', simulate: { actionId: 'disco_LINE_A' } }),
       'simulate',
     );
+    await act(async () => { await Promise.resolve(); }); // settle the async status update
+  });
+
+  it('double-clicks a redispatch lever to simulate it (default incremental delta)', async () => {
+    const lever = vi.spyOn(gameBridge, 'requestLeverInteraction');
+    getGameLeverStats.mockResolvedValue(stats());
+    render(<GameHintsPanel study={STUDY} />);
+    await screen.findByText(/G1/);
+
+    const target = screen.getByText(/G1/);
+    fireEvent.click(target);
+    fireEvent.doubleClick(target);
+
+    // The lever maps to the backend dynamic-action id; simulated with no MW so
+    // the backend applies its default incremental injection delta.
+    expect(lever).toHaveBeenCalledWith(
+      expect.objectContaining({ inspectQuery: 'G1', simulate: { actionId: 'redispatch_G1' } }),
+      'simulate',
+    );
+    await waitFor(() => expect(lever).toHaveBeenCalled());
+  });
+
+  it('shows a simulating → simulated transition on a lever double-click', async () => {
+    const d = deferred();
+    const lever = vi.spyOn(gameBridge, 'requestLeverInteraction').mockReturnValue(d.promise);
+    getGameLeverStats.mockResolvedValue(stats());
+    render(<GameHintsPanel study={STUDY} />);
+    await screen.findByText(/disco_LINE_A/);
+
+    fireEvent.doubleClick(screen.getByText(/disco_LINE_A/));
+    expect(lever).toHaveBeenCalledWith(
+      expect.objectContaining({ simulate: { actionId: 'disco_LINE_A' } }), 'simulate');
+    const status = await screen.findByTestId('game-lever-status-action:disco_LINE_A');
+    expect(status).toHaveTextContent(/simulating/);
+
+    // Resolve the run and let App publish the materialised action id.
+    await act(async () => { d.resolve(); await d.promise; publishSimulated(['disco_LINE_A']); });
+    await waitFor(() => expect(
+      screen.getByTestId('game-lever-status-action:disco_LINE_A')).toHaveTextContent(/simulated/));
+  });
+
+  it('marks a lever simulated when its action arrives through the suggestions', async () => {
+    getGameLeverStats.mockResolvedValue(stats());
+    render(<GameHintsPanel study={STUDY} />);
+    await screen.findByText(/disco_LINE_A/);
+    // No double-click here — the recommender simulated it and App published it.
+    act(() => publishSimulated(['disco_LINE_A']));
+    await waitFor(() => expect(
+      screen.getByTestId('game-lever-status-action:disco_LINE_A')).toHaveTextContent(/simulated/));
+  });
+
+  it('blocks a second simulation once a lever is already simulated', async () => {
+    const lever = vi.spyOn(gameBridge, 'requestLeverInteraction');
+    getGameLeverStats.mockResolvedValue(stats());
+    render(<GameHintsPanel study={STUDY} />);
+    await screen.findByText(/disco_LINE_A/);
+    act(() => publishSimulated(['disco_LINE_A']));
+    await waitFor(() => expect(
+      screen.getByTestId('game-lever-status-action:disco_LINE_A')).toHaveTextContent(/simulated/));
+
+    fireEvent.doubleClick(screen.getByText(/disco_LINE_A/));
+    expect(lever).not.toHaveBeenCalled();
+  });
+
+  it('ignores a second double-click while a simulation is still in flight', async () => {
+    const d = deferred();
+    const lever = vi.spyOn(gameBridge, 'requestLeverInteraction').mockReturnValue(d.promise);
+    getGameLeverStats.mockResolvedValue(stats());
+    render(<GameHintsPanel study={STUDY} />);
+    await screen.findByText(/disco_LINE_A/);
+
+    const target = screen.getByText(/disco_LINE_A/);
+    fireEvent.doubleClick(target);
+    await screen.findByTestId('game-lever-status-action:disco_LINE_A');
+    fireEvent.doubleClick(target); // still simulating → ignored
+    expect(lever).toHaveBeenCalledTimes(1);
+
+    await act(async () => { d.resolve(); await d.promise; });
   });
 
   it('collapses to a pill and reopens', async () => {
