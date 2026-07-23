@@ -869,13 +869,40 @@ export interface LogGameSolutionRequest {
     actions: GameSolutionActionWire[];
 }
 
+/** Equipment family a Game-Mode lever acts on. */
+export type LeverCategory = 'voltage_level' | 'branch' | 'generation' | 'load' | 'other';
+
 export interface GameLeverStatWire {
     signature: string;
     label: string;
-    category: 'voltage_level' | 'branch' | 'generation' | 'load' | 'other';
+    category: LeverCategory;
     count: number;
     share: number;
     sample_description?: string | null;
+}
+
+/**
+ * How a Game-Mode lever hint should drive the workspace when clicked. The
+ * game layer computes this from a lever signature (see
+ * `game/solutionLog.ts#buildLeverInteraction`) so the App handler stays
+ * oblivious to lever-signature semantics: it just inspects / simulates.
+ */
+export interface LeverInteraction {
+    /** Element id/name to show in the Inspect field and center the NAD on. */
+    inspectQuery: string;
+    /** Equipment family — drives whether inspect also opens the substation SLD. */
+    category: LeverCategory;
+    /**
+     * Fully-specified action to run on a double-click, when the lever maps to
+     * one. Absent for magnitude-free injection / PST levers, which fall back to
+     * inspect (the operator sets the amount in the SLD themselves).
+     */
+    simulate?: {
+        /** Catalogue action id (branch disconnection / reconnection). */
+        actionId?: string;
+        /** Coupling maneuver: switch id → target open-state. */
+        switches?: Record<string, boolean>;
+    };
 }
 
 export interface GameLeverStatsResponse {

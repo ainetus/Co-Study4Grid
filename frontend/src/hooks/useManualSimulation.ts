@@ -57,10 +57,83 @@ export interface ManualSimulationState {
     handleSimulateUnsimulatedAction: (actionId: string) => Promise<void>;
     /** Simulate the staged SLD breaker/injection edit as one manual action. */
     handleSimulateSldEdit: () => Promise<void>;
+    /**
+     * Simulate a coupling maneuver straight from a Game-Mode lever hint —
+     * a fully-specified switch toggle at a resolved voltage level, streamed
+     * into one manual-action card (no SLD staging step).
+     */
+    handleSimulateLever: (spec: { voltageLevelId: string; switches: Record<string, boolean> }) => Promise<void>;
+}
+
+type SimMetrics = Awaited<ReturnType<typeof api.simulateManualAction>>;
+type SimStreamRequest = Parameters<typeof api.simulateAndVariantDiagramStream>[0];
+
+/** Build the enriched ActionDetail card payload from a metrics event. */
+function detailFromMetrics(m: SimMetrics): ActionDetail {
+    return {
+        description_unitaire: m.description_unitaire,
+        rho_before: m.rho_before,
+        rho_after: m.rho_after,
+        max_rho: m.max_rho,
+        max_rho_line: m.max_rho_line,
+        is_rho_reduction: m.is_rho_reduction,
+        is_islanded: m.is_islanded,
+        n_components: m.n_components,
+        disconnected_mw: m.disconnected_mw,
+        non_convergence: m.non_convergence,
+        lines_overloaded_after: m.lines_overloaded_after,
+        half_open_overloads: m.half_open_overloads,
+        // Carry the topology so the SLD/NAD highlight marks EVERY affected
+        // feeder (e.g. a redispatch AND a load shedding at the same VL).
+        action_topology: m.action_topology,
+        load_shedding_details: m.load_shedding_details,
+        curtailment_details: m.curtailment_details,
+        redispatch_details: m.redispatch_details,
+        pst_details: m.pst_details,
+    };
 }
 
 export function useManualSimulation(params: ManualSimulationParams): ManualSimulationState {
     const { diagrams, selectedContingency, result, voltageLevels, wrappedManualActionAdded, setError } = params;
+
+    // Shared "simulate → prime diagram → register card" pipeline used by the
+    // overview-pin and coupling-lever flows. Consumes the NDJSON stream once
+    // (metrics + diagram events), primes the action diagram under the backend-
+    // canonical id, and registers the card. Throws on a stream/metrics error so
+    // callers surface it through `setError`; returns the registered id +
+    // metrics on success. (handleSimulateSldEdit keeps its own copy — it has
+    // extra staging-reset + SLD-retarget concerns around the same core.)
+    const streamSimulateToCard = useCallback(
+        async (req: SimStreamRequest, origin: string): Promise<{ registeredId: string; metrics: SimMetrics }> => {
+            const response = await api.simulateAndVariantDiagramStream(req);
+            let metrics: SimMetrics | null = null;
+            let streamErr: string | null = null;
+            for await (const raw of parseNdjsonStream(response)) {
+                const event = raw as Record<string, unknown>;
+                if (event.type === 'metrics') {
+                    const { type: _t, ...rest } = event;
+                    void _t;
+                    metrics = rest as SimMetrics;
+                } else if (event.type === 'diagram') {
+                    const { type: _t, ...rest } = event;
+                    void _t;
+                    // Register under the id the backend actually stored (it
+                    // canonicalises combined "+" ids) — from the metrics event
+                    // that always precedes the diagram — not the request id.
+                    const registeredId = metrics?.action_id ?? req.action_id;
+                    diagrams.primeActionDiagram(registeredId, rest as unknown as DiagramData & { svg: string }, voltageLevels.length);
+                } else if (event.type === 'error') {
+                    streamErr = (event.message as string) || 'stream error';
+                }
+            }
+            if (streamErr) throw new Error(streamErr);
+            if (!metrics) throw new Error('Stream ended without metrics event');
+            const registeredId = metrics.action_id || req.action_id;
+            wrappedManualActionAdded(registeredId, detailFromMetrics(metrics), metrics.lines_overloaded || [], origin);
+            return { registeredId, metrics };
+        },
+        [diagrams, voltageLevels.length, wrappedManualActionAdded],
+    );
 
     const handleSimulateUnsimulatedAction = useCallback(
         async (actionId: string) => {
@@ -69,64 +142,54 @@ export function useManualSimulation(params: ManualSimulationParams): ManualSimul
                 return;
             }
             try {
-                const response = await api.simulateAndVariantDiagramStream({
+                // An unsimulated pin is a scored-but-not-yet-materialised action
+                // from the recommender's score table — the operator only triggered
+                // its simulation, so its provenance is the model that scored it,
+                // NOT "user".
+                await streamSimulateToCard({
                     action_id: actionId,
                     disconnected_elements: selectedContingency,
                     action_content: null,
                     lines_overloaded: result?.lines_overloaded ?? null,
                     target_mw: null,
                     target_tap: null,
-                });
-                let metrics: Awaited<ReturnType<typeof api.simulateManualAction>> | null = null;
-                let streamErr: string | null = null;
-                for await (const raw of parseNdjsonStream(response)) {
-                    const event = raw as Record<string, unknown>;
-                    if (event.type === 'metrics') {
-                        const { type: _t, ...rest } = event;
-                        void _t;
-                        metrics = rest as Awaited<ReturnType<typeof api.simulateManualAction>>;
-                    } else if (event.type === 'diagram') {
-                        const { type: _t, ...rest } = event;
-                        void _t;
-                        diagrams.primeActionDiagram(actionId, rest as unknown as DiagramData & { svg: string }, voltageLevels.length);
-                    } else if (event.type === 'error') {
-                        streamErr = (event.message as string) || 'stream error';
-                    }
-                }
-                if (streamErr) throw new Error(streamErr);
-                if (!metrics) throw new Error('Stream ended without metrics event');
-                const detail: ActionDetail = {
-                    description_unitaire: metrics.description_unitaire,
-                    rho_before: metrics.rho_before,
-                    rho_after: metrics.rho_after,
-                    max_rho: metrics.max_rho,
-                    max_rho_line: metrics.max_rho_line,
-                    is_rho_reduction: metrics.is_rho_reduction,
-                    is_islanded: metrics.is_islanded,
-                    n_components: metrics.n_components,
-                    disconnected_mw: metrics.disconnected_mw,
-                    non_convergence: metrics.non_convergence,
-                    lines_overloaded_after: metrics.lines_overloaded_after,
-                    half_open_overloads: metrics.half_open_overloads,
-                    action_topology: metrics.action_topology,
-                    load_shedding_details: metrics.load_shedding_details,
-                    curtailment_details: metrics.curtailment_details,
-                    redispatch_details: metrics.redispatch_details,
-                    pst_details: metrics.pst_details,
-                };
-                // An unsimulated pin is a scored-but-not-yet-materialised
-                // action from the recommender's score table — the operator
-                // only triggered its simulation, so its provenance is the
-                // model that scored it, NOT "user".
-                wrappedManualActionAdded(
-                    actionId, detail, metrics.lines_overloaded || [], result?.active_model || 'expert',
-                );
+                }, result?.active_model || 'expert');
             } catch (e: unknown) {
                 console.error('Unsimulated pin simulation failed:', e);
                 setError(apiErrorMessage(e, 'Simulation failed'));
             }
         },
-        [selectedContingency, result?.lines_overloaded, result?.active_model, diagrams, voltageLevels.length, wrappedManualActionAdded, setError],
+        [selectedContingency, result?.lines_overloaded, result?.active_model, streamSimulateToCard, setError],
+    );
+
+    const handleSimulateLever = useCallback(
+        async (spec: { voltageLevelId: string; switches: Record<string, boolean> }) => {
+            const { voltageLevelId, switches } = spec;
+            if (Object.keys(switches).length === 0) return;
+            if (selectedContingency.length === 0) {
+                setError('Select a contingency first.');
+                return;
+            }
+            const actionId = `user_topo_${voltageLevelId}_${Date.now()}`;
+            interactionLogger.record('sld_topology_simulated', {
+                voltage_level_id: voltageLevelId, switches,
+            });
+            try {
+                await streamSimulateToCard({
+                    action_id: actionId,
+                    disconnected_elements: selectedContingency,
+                    action_content: { switches },
+                    lines_overloaded: result?.lines_overloaded ?? null,
+                    target_mw: null,
+                    target_tap: null,
+                    voltage_level_id: voltageLevelId,
+                }, 'user');
+            } catch (e: unknown) {
+                console.error('Lever maneuver simulation failed:', e);
+                setError(apiErrorMessage(e, 'Simulation failed'));
+            }
+        },
+        [selectedContingency, result?.lines_overloaded, streamSimulateToCard, setError],
     );
 
     // Interactive SLD topology edit (useSldTopologyEdit). The baseline is
@@ -336,5 +399,6 @@ export function useManualSimulation(params: ManualSimulationParams): ManualSimul
         sldPreviewLoading,
         handleSimulateUnsimulatedAction,
         handleSimulateSldEdit,
+        handleSimulateLever,
     };
 }

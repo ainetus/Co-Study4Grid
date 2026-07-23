@@ -60,9 +60,15 @@ frontend/
     │   ├── useActionDiagramCache.ts # D4 sub-hook of useDiagrams — prime-then-
     │   │                           # paint action-variant NAD cache (cleared on
     │   │                           # contingency change)
-    │   ├── useManualSimulation.ts  # D4 — the two operator "simulate now" flows
-    │   │                           # (pin double-click + interactive SLD edit) +
-    │   │                           # the shared SLD-edit state, extracted from App
+    │   ├── useManualSimulation.ts  # D4 — the operator "simulate now" flows
+    │   │                           # (pin double-click + interactive SLD edit +
+    │   │                           # handleSimulateLever for a coupling lever
+    │   │                           # hint) sharing one streamSimulateToCard
+    │   │                           # helper, plus the shared SLD-edit state
+    │   ├── useLeverInteraction.ts  # Game-Mode beginner-assistance wiring:
+    │   │                           # registers the gameBridge lever handler —
+    │   │                           # single-click locate+inspect (VL resolve +
+    │   │                           # SLD open), double-click simulate
     │   ├── usePanZoom.ts           # ViewBox state, zoom-to-element
     │   ├── useSldOverlay.ts        # Single-Line-Diagram overlay
     │   ├── useSldTopologyEdit.ts    # Interactive SLD edit (switches +
@@ -569,11 +575,18 @@ exactly as before.
   most used by all players on the current contingency
   (`GET /api/game/lever-stats`), tagged voltage level / branch /
   generation / load. Best-effort like the solution log — no data or no
-  backend hides the panel. Clicking a lever pre-fills the Inspect field
-  (auto-zoom) with its element (`leverInspectTarget`) through the
-  `gameBridge.registerInspector` / `requestInspect` pair — App registers
-  `handleInspectQueryChange` in one `isGameMode()`-guarded effect and
-  never imports game internals beyond the bridge/solutionLog helpers.
+  backend hides the panel. A lever is actionable: **single-click** locates &
+  inspects it (fills the Inspect field, centers the NAD — resolving an
+  injection / coupling switch to its home VL via `/api/element-voltage-levels`
+  — and opens that substation's SLD), **double-click** simulates the mapped
+  action (a catalogue branch disco/reco, or a coupling maneuver at the
+  resolved VL; magnitude-free injection / PST levers degrade to inspect). The
+  game side turns a lever signature into a workspace-agnostic `LeverInteraction`
+  (`buildLeverInteraction` in `solutionLog.ts`) and routes it through the
+  `gameBridge.registerLeverHandler` / `requestLeverInteraction` pair; the App
+  handler lives in the `useLeverInteraction` hook (single-click deferred so a
+  double-click pre-empts it), so App.tsx still never imports game internals
+  beyond the bridge/solutionLog helpers.
 - **`presets.ts`** lists curated **solvable** fr225_400 contingencies; keep
   them winnable (the `scripts/game_mode/e2e_game_session.py` backend replay
   verifies `can_proceed=True`).

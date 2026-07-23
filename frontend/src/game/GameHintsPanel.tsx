@@ -5,14 +5,18 @@
 // SPDX-License-Identifier: MPL-2.0
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import { colors, space, text, radius } from '../styles/tokens';
 import type { GameLeverStatWire } from '../types';
 import { gameBridge } from './gameBridge';
 import { GAME_HUD_HEIGHT } from './GameHud';
-import { leverInspectTarget } from './solutionLog';
+import { buildLeverInteraction } from './solutionLog';
 import type { GameStudy } from './types';
+
+/** Single-click is deferred this long so a double-click can pre-empt it.
+ *  Mirrors the VL-disk interactions' `VL_SINGLE_CLICK_DELAY_MS`. */
+const LEVER_SINGLE_CLICK_DELAY_MS = 250;
 
 interface GameHintsPanelProps {
   study: GameStudy;
@@ -46,6 +50,30 @@ export default function GameHintsPanel({ study }: GameHintsPanelProps) {
   const [levers, setLevers] = useState<GameLeverStatWire[]>([]);
   const [total, setTotal] = useState(0);
   const [open, setOpen] = useState(true);
+
+  // A single-click locates + inspects the lever; a double-click simulates it.
+  // The single-click action is deferred so a double-click can pre-empt it —
+  // otherwise the first click of a double-click would fire an inspect too.
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (clickTimerRef.current !== null) clearTimeout(clickTimerRef.current);
+  }, []);
+
+  const handleLeverClick = useCallback((lever: GameLeverStatWire) => {
+    if (clickTimerRef.current !== null) clearTimeout(clickTimerRef.current);
+    clickTimerRef.current = setTimeout(() => {
+      clickTimerRef.current = null;
+      gameBridge.requestLeverInteraction(buildLeverInteraction(lever), 'inspect');
+    }, LEVER_SINGLE_CLICK_DELAY_MS);
+  }, []);
+
+  const handleLeverDoubleClick = useCallback((lever: GameLeverStatWire) => {
+    if (clickTimerRef.current !== null) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+    gameBridge.requestLeverInteraction(buildLeverInteraction(lever), 'simulate');
+  }, []);
 
   // No synchronous state reset here: GameShell keys the panel by study id,
   // so each study mounts a fresh panel with empty initial state.
@@ -117,8 +145,9 @@ export default function GameHintsPanel({ study }: GameHintsPanelProps) {
         {levers.map((lever) => (
           <li key={lever.signature} style={{ marginBottom: space.half }}>
             <button
-              onClick={() => gameBridge.requestInspect(leverInspectTarget(lever))}
-              title={`${lever.sample_description ?? lever.label} — click to locate it in the Inspect field`}
+              onClick={() => handleLeverClick(lever)}
+              onDoubleClick={() => handleLeverDoubleClick(lever)}
+              title={`${lever.sample_description ?? lever.label} — click to locate & inspect, double-click to simulate`}
               style={{
                 border: 'none', background: 'transparent', padding: 0,
                 cursor: 'pointer', fontWeight: 600, fontSize: text.sm,
@@ -136,7 +165,7 @@ export default function GameHintsPanel({ study }: GameHintsPanelProps) {
       </ol>
       <p style={{ margin: `${space[1]} 0 0`, fontSize: text.xs, color: colors.textTertiary }}>
         From {total} retained solution{total === 1 ? '' : 's'} by all players on this
-        contingency. Click a lever to pre-fill the Inspect field and locate it.
+        contingency. Click a lever to locate & inspect it; double-click to simulate it.
       </p>
     </div>
   );

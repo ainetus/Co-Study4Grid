@@ -118,6 +118,13 @@ export const api = {
         );
         return response.data;
     },
+    getElementVoltageLevels: async (elementId: string): Promise<{ voltage_level_ids: string[] }> => {
+        const response = await axios.get<{ voltage_level_ids: string[] }>(
+            `${API_BASE_URL}/api/element-voltage-levels`,
+            { params: { element_id: elementId } }
+        );
+        return response.data;
+    },
     getNetworkDiagram: async (): Promise<DiagramData & { svg: string }> => {
         const res = await fetch(`${API_BASE_URL}/api/network-diagram?format=text`);
         if (!res.ok) {

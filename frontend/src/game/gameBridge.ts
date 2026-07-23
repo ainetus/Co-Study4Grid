@@ -5,7 +5,11 @@
 // SPDX-License-Identifier: MPL-2.0
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
+import type { LeverInteraction } from '../types';
 import type { ChosenActionRecord, GameStudy } from './types';
+
+/** How a lever hint was activated: single-click inspects, double-click simulates. */
+export type LeverInteractionMode = 'inspect' | 'simulate';
 
 // ---------------------------------------------------------------------------
 // gameBridge — decoupling layer between the Game Mode shell and the App.
@@ -37,13 +41,13 @@ const EMPTY_SNAPSHOT: GameStudySnapshot = {
 
 type SnapshotListener = (s: GameStudySnapshot) => void;
 type StudyLoader = (study: GameStudy) => Promise<void>;
-type InspectHandler = (query: string) => void;
+type LeverInteractionHandler = (interaction: LeverInteraction, mode: LeverInteractionMode) => void;
 
 class GameBridge {
   private snapshot: GameStudySnapshot = EMPTY_SNAPSHOT;
   private listeners = new Set<SnapshotListener>();
   private loader: StudyLoader | null = null;
-  private inspector: InspectHandler | null = null;
+  private leverHandler: LeverInteractionHandler | null = null;
   private maxActions = 3;
 
   /**
@@ -67,11 +71,12 @@ class GameBridge {
   }
 
   /**
-   * App registers its Inspect-field setter so game UI (the hints panel)
-   * can pre-fill it — same auto-zoom path as typing in the box.
+   * App registers the handler that drives the workspace from a lever hint
+   * (the beginner-assistance panel): single-click locates the element (and
+   * opens the substation SLD), double-click simulates the mapped action.
    */
-  registerInspector(inspector: InspectHandler): void {
-    this.inspector = inspector;
+  registerLeverHandler(handler: LeverInteractionHandler): void {
+    this.leverHandler = handler;
   }
 
   /** App publishes the current physical snapshot; shell listeners fire. */
@@ -117,9 +122,9 @@ class GameBridge {
     return this.loader(study);
   }
 
-  /** Shell asks App to pre-fill the Inspect field. No-op before App mounts. */
-  requestInspect(query: string): void {
-    this.inspector?.(query);
+  /** Game UI asks App to inspect or simulate a lever. No-op before App mounts. */
+  requestLeverInteraction(interaction: LeverInteraction, mode: LeverInteractionMode): void {
+    this.leverHandler?.(interaction, mode);
   }
 
   getSnapshot(): GameStudySnapshot {

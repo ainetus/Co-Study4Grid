@@ -9,12 +9,13 @@ import type { ActionDetail, AnalysisResult, LogGameSolutionResponse } from '../t
 import {
   buildActionLevers,
   buildChosenActionRecord,
+  buildLeverInteraction,
   buildSolutionLogRequest,
   leverInspectTarget,
   sessionNoveltyBonus,
   toStudyFeedback,
 } from './solutionLog';
-import type { GameSessionConfig, GameStudy, GameStudyResult } from './types';
+import type { GameLeverStatWire, GameSessionConfig, GameStudy, GameStudyResult } from './types';
 
 function detail(over: Partial<ActionDetail> = {}): ActionDetail {
   return {
@@ -275,6 +276,74 @@ describe('toStudyFeedback / sessionNoveltyBonus', () => {
     expect(leverInspectTarget({ signature: 'redispatch:G1', label: 'G1' })).toBe('G1');
     expect(leverInspectTarget({ signature: 'switch:VL1_COUPL=true', label: 'VL1_COUPL' }))
       .toBe('VL1_COUPL');
+  });
+
+  describe('buildLeverInteraction', () => {
+    const lever = (over: Partial<GameLeverStatWire>): GameLeverStatWire => ({
+      signature: 'action:disco_LINE_A', label: 'disco_LINE_A', category: 'branch',
+      count: 1, share: 1, ...over,
+    });
+
+    it('maps a catalogue branch lever to an inspectable branch + simulatable action id', () => {
+      const i = buildLeverInteraction(lever({ signature: 'action:disco_LINE_A', label: 'disco_LINE_A' }));
+      expect(i.inspectQuery).toBe('LINE_A');       // branch id, for centering
+      expect(i.category).toBe('branch');
+      expect(i.simulate).toEqual({ actionId: 'disco_LINE_A' }); // full id, for simulating
+    });
+
+    it('maps a switch/coupling lever to its VL-openable id + a switch maneuver', () => {
+      const i = buildLeverInteraction(lever({
+        signature: 'switch:VL1_COUPL=true', label: 'VL1_COUPL', category: 'voltage_level',
+      }));
+      expect(i.inspectQuery).toBe('VL1_COUPL');
+      expect(i.category).toBe('voltage_level');
+      expect(i.simulate).toEqual({ switches: { VL1_COUPL: true } });
+    });
+
+    it('parses the target open-state of a switch lever (false closes it)', () => {
+      const i = buildLeverInteraction(lever({
+        signature: 'switch:SW_9=false', label: 'SW_9', category: 'voltage_level',
+      }));
+      expect(i.simulate).toEqual({ switches: { SW_9: false } });
+    });
+
+    it('leaves magnitude-free injection levers without a simulate spec', () => {
+      const redispatch = buildLeverInteraction(lever({
+        signature: 'redispatch:G1', label: 'G1', category: 'generation',
+      }));
+      expect(redispatch.inspectQuery).toBe('G1');
+      expect(redispatch.simulate).toBeUndefined();
+
+      const shedding = buildLeverInteraction(lever({
+        signature: 'ls:LOAD_9', label: 'LOAD_9', category: 'load',
+      }));
+      expect(shedding.simulate).toBeUndefined();
+    });
+
+    it('keeps a non-branch catalogue action id verbatim (no disco/reco strip)', () => {
+      const i = buildLeverInteraction(lever({
+        signature: 'action:open_coupler_VL_X', label: 'open_coupler_VL_X', category: 'voltage_level',
+      }));
+      // Not a disco_/reco_ id → the id passes through for both inspect + simulate.
+      expect(i.inspectQuery).toBe('open_coupler_VL_X');
+      expect(i.simulate).toEqual({ actionId: 'open_coupler_VL_X' });
+    });
+
+    it('leaves PST and other levers without a simulate spec (magnitude-free / opaque)', () => {
+      expect(buildLeverInteraction(lever({
+        signature: 'pst:PST_1', label: 'PST_1', category: 'branch',
+      })).simulate).toBeUndefined();
+      expect(buildLeverInteraction(lever({
+        signature: 'load_p:LOAD_2', label: 'LOAD_2', category: 'load',
+      })).simulate).toBeUndefined();
+    });
+
+    it('defaults a switch lever with no explicit target-state to open', () => {
+      const i = buildLeverInteraction(lever({
+        signature: 'switch:SW_7', label: 'SW_7', category: 'voltage_level',
+      }));
+      expect(i.simulate).toEqual({ switches: { SW_7: true } });
+    });
   });
 
   it('sums the per-study bonus points on top of the Codabench score', () => {

@@ -30,6 +30,7 @@ import { useTiedTabsSync, type PZInstance } from './hooks/useTiedTabsSync';
 import { useContingencyFetch } from './hooks/useContingencyFetch';
 import { useDiagramHighlights } from './hooks/useDiagramHighlights';
 import { useManualSimulation } from './hooks/useManualSimulation';
+import { useLeverInteraction } from './hooks/useLeverInteraction';
 import { interactionLogger } from './utils/interactionLogger';
 import { gameBridge } from './game/gameBridge';
 import { buildChosenActionRecord } from './game/solutionLog';
@@ -587,6 +588,7 @@ function App() {
     sldPreviewLoading,
     handleSimulateUnsimulatedAction,
     handleSimulateSldEdit,
+    handleSimulateLever,
   } = useManualSimulation({
     diagrams,
     selectedContingency,
@@ -1287,13 +1289,6 @@ function App() {
     diagrams.setInspectQuery(q);
   }, [diagrams]);
 
-  // Game Mode: the hints panel pre-fills the Inspect field through the
-  // same handler the search box uses (auto-zoom included).
-  useEffect(() => {
-    if (!gameBridge.isGameMode()) return;
-    gameBridge.registerInspector(handleInspectQueryChange);
-  }, [handleInspectQueryChange]);
-
   const handleToggleVoltageLevelNames = useCallback((show: boolean) => {
     interactionLogger.record('vl_names_toggled', { show });
     setShowVoltageLevelNames(show);
@@ -1316,6 +1311,12 @@ function App() {
     // "Action '' not found in last analysis result".
     handleVlDoubleClick(selectedActionId || '', vlName);
   }, [handleVlDoubleClick, selectedActionId]);
+
+  // Game Mode beginner assistance: single-click a lever hint to locate +
+  // inspect it (opening the substation SLD), double-click to simulate it.
+  useLeverInteraction({
+    diagrams, handleSimulateUnsimulatedAction, handleSimulateLever, handleVlOpen,
+  });
 
   // Clicking a (relabelled) feeder name on the SLD jumps to the far-end VL's
   // SLD, keeping the current sub-tab so the same contingency / overload stays
