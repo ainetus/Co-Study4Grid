@@ -3,7 +3,6 @@
  "period_title": "January — Monday evening",
  "monitoring_factor": 0.95,
  "threshold_pct": 95.0,
- "remove_ceiling_pct": 120.0,
  "scenarios": [
   {
    "id": "s_5384e039_0d0b4d",

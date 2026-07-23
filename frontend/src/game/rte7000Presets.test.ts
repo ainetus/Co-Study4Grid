@@ -31,12 +31,12 @@ describe('RTE7000 France THT scenario data', () => {
     for (const t of RTE7000_TIERS) expect(t.label).toBeTruthy();
   });
 
-  it('matches the graded database snapshot (647 = 457 easy / 80 medium / 110 hard)', () => {
+  it('matches the graded database snapshot (655 = 457 easy / 80 medium / 118 hard)', () => {
     expect(RTE7000_EASY.length).toBe(457);
     expect(RTE7000_MEDIUM.length).toBe(80);
-    expect(RTE7000_HARD.length).toBe(110);
+    expect(RTE7000_HARD.length).toBe(118);
     const total = RTE7000_EASY.length + RTE7000_MEDIUM.length + RTE7000_HARD.length;
-    expect(total).toBe(647);
+    expect(total).toBe(655);
   });
 
   it('every study is playable (network + actions + layout + contingency)', () => {

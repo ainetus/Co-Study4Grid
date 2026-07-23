@@ -3,7 +3,6 @@
  "period_title": "January — Monday evening",
  "monitoring_factor": 0.95,
  "threshold_pct": 95.0,
- "remove_ceiling_pct": 120.0,
  "scenarios": [
   {
    "id": "s_e4e81e29_6d341c",
@@ -5643,6 +5642,43 @@
      "id": "disco_CHAL7L61SIERE",
      "family": "line_disconnection"
     }
+   }
+  },
+  {
+   "id": "s_e4e81e29_08e87d",
+   "gridId": "grid_e4e81e29",
+   "difficulty": "hard",
+   "title": "January — Monday evening",
+   "label": "January — Monday evening — I.NAPL61OTTMA",
+   "networkPath": "data/rte7000_tht/grids/grid_e4e81e29/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_e4e81e29/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_e4e81e29/grid_layout.json",
+   "contingencyElementId": "I.NAPL61OTTMA",
+   "contingencyLabel": "I.NAPL61OTTMA",
+   "baselineMaxLoadingPct": 131.2,
+   "nOverloadedLines": 4,
+   "overloadedLines": [
+    "CHAL7L61FESSE",
+    "CHAL7L61SIERE",
+    "KEMBSL61OTTMA",
+    "KEMBSL61SIERE"
+   ],
+   "nActionsDiscovered": 4,
+   "bestAchievableLoadingPct": 130.9,
+   "solution": {
+    "kind": "none",
+    "best_nonisl_max_rho": 1.309,
+    "best_unitary": {
+     "max_rho": 0.288,
+     "islanded": true,
+     "reduces": true,
+     "n_over_after": 0,
+     "converged": true,
+     "resolves": false,
+     "id": "open_coupler_FESSEP6",
+     "family": "open_coupling"
+    },
+    "best_pair": null
    }
   },
   {

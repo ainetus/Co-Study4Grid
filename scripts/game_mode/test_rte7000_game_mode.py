@@ -120,7 +120,7 @@ def test_frontend_json_matches_the_graded_database():
     for d in DIFFICULTIES:
         assert len(fe[d]) == len(db_by_diff[d]), f"{d} count drift DB vs frontend JSON"
         assert {s["id"] for s in fe[d]} == {s["id"] for s in db_by_diff[d]}
-    assert sum(len(fe[d]) for d in DIFFICULTIES) == db["n_scenarios"] == 647
+    assert sum(len(fe[d]) for d in DIFFICULTIES) == db["n_scenarios"] == 655
 
 
 def test_scenarios_reference_existing_grid_assets():

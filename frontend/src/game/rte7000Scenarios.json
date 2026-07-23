@@ -6231,6 +6231,17 @@
    "description": "November — Monday evening. Loss of DAMBRL72GATI5 drives a worst-case 108.6% line loading. Bring every monitored line back under the 95% monitoring limit."
   },
   {
+   "id": "s_5fc376c7_6b287c",
+   "label": "November — Monday evening — DARSEL61RASSU",
+   "networkPath": "data/rte7000_tht/grids/grid_5fc376c7/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5fc376c7/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5fc376c7/grid_layout.json",
+   "contingencyElementId": "DARSEL61RASSU",
+   "contingencyLabel": "DARSEL61RASSU",
+   "baselineMaxLoadingPct": 127.5,
+   "description": "November — Monday evening. Loss of DARSEL61RASSU drives a worst-case 127.5% line loading. Bring every monitored line back under the 95% monitoring limit."
+  },
+  {
    "id": "s_5fc376c7_313e74",
    "label": "November — Monday evening — DONZAL71GOLF5",
    "networkPath": "data/rte7000_tht/grids/grid_5fc376c7/network.xiidm",
@@ -6240,6 +6251,17 @@
    "contingencyLabel": "DONZAL71GOLF5",
    "baselineMaxLoadingPct": 120.0,
    "description": "November — Monday evening. Loss of DONZAL71GOLF5 drives a worst-case 120.0% line loading. Bring every monitored line back under the 95% monitoring limit."
+  },
+  {
+   "id": "s_5fc376c7_9598b8",
+   "label": "November — Monday evening — FEUILL61SSCHA",
+   "networkPath": "data/rte7000_tht/grids/grid_5fc376c7/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5fc376c7/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5fc376c7/grid_layout.json",
+   "contingencyElementId": "FEUILL61SSCHA",
+   "contingencyLabel": "FEUILL61SSCHA",
+   "baselineMaxLoadingPct": 159.2,
+   "description": "November — Monday evening. Loss of FEUILL61SSCHA drives a worst-case 159.2% line loading. Bring every monitored line back under the 95% monitoring limit."
   },
   {
    "id": "s_5fc376c7_0cb001",
@@ -6284,6 +6306,39 @@
    "contingencyLabel": "LAVERL61PONTE",
    "baselineMaxLoadingPct": 124.4,
    "description": "November — Monday evening. Loss of LAVERL61PONTE drives a worst-case 124.4% line loading. Bring every monitored line back under the 95% monitoring limit."
+  },
+  {
+   "id": "s_5fc376c7_0563a4",
+   "label": "November — Monday evening — LAVERL61SELF3",
+   "networkPath": "data/rte7000_tht/grids/grid_5fc376c7/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5fc376c7/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5fc376c7/grid_layout.json",
+   "contingencyElementId": "LAVERL61SELF3",
+   "contingencyLabel": "LAVERL61SELF3",
+   "baselineMaxLoadingPct": 164.3,
+   "description": "November — Monday evening. Loss of LAVERL61SELF3 drives a worst-case 164.3% line loading. Bring every monitored line back under the 95% monitoring limit."
+  },
+  {
+   "id": "s_5fc376c7_14bf53",
+   "label": "November — Monday evening — LAVERL61SEPTE",
+   "networkPath": "data/rte7000_tht/grids/grid_5fc376c7/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5fc376c7/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5fc376c7/grid_layout.json",
+   "contingencyElementId": "LAVERL61SEPTE",
+   "contingencyLabel": "LAVERL61SEPTE",
+   "baselineMaxLoadingPct": 164.3,
+   "description": "November — Monday evening. Loss of LAVERL61SEPTE drives a worst-case 164.3% line loading. Bring every monitored line back under the 95% monitoring limit."
+  },
+  {
+   "id": "s_5fc376c7_4e6e75",
+   "label": "November — Monday evening — LAVERL62SELF3",
+   "networkPath": "data/rte7000_tht/grids/grid_5fc376c7/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5fc376c7/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5fc376c7/grid_layout.json",
+   "contingencyElementId": "LAVERL62SELF3",
+   "contingencyLabel": "LAVERL62SELF3",
+   "baselineMaxLoadingPct": 164.3,
+   "description": "November — Monday evening. Loss of LAVERL62SELF3 drives a worst-case 164.3% line loading. Bring every monitored line back under the 95% monitoring limit."
   },
   {
    "id": "s_5fc376c7_91f681",
@@ -6363,6 +6418,17 @@
    "description": "November — Monday evening. Loss of REVIGL71VIGY drives a worst-case 136.8% line loading. Bring every monitored line back under the 95% monitoring limit."
   },
   {
+   "id": "s_5fc376c7_f87211",
+   "label": "November — Monday evening — ROGNAL61SSCHA",
+   "networkPath": "data/rte7000_tht/grids/grid_5fc376c7/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5fc376c7/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5fc376c7/grid_layout.json",
+   "contingencyElementId": "ROGNAL61SSCHA",
+   "contingencyLabel": "ROGNAL61SSCHA",
+   "baselineMaxLoadingPct": 169.5,
+   "description": "November — Monday evening. Loss of ROGNAL61SSCHA drives a worst-case 169.5% line loading. Bring every monitored line back under the 95% monitoring limit."
+  },
+  {
    "id": "s_5fc376c7_c1d62c",
    "label": "November — Monday evening — RQROUL61S.AIR",
    "networkPath": "data/rte7000_tht/grids/grid_5fc376c7/network.xiidm",
@@ -6438,6 +6504,17 @@
    "contingencyLabel": "LAVERL61P.BOU",
    "baselineMaxLoadingPct": 109.7,
    "description": "March — Monday morning. Loss of LAVERL61P.BOU drives a worst-case 109.7% line loading. Bring every monitored line back under the 95% monitoring limit."
+  },
+  {
+   "id": "s_437818d6_769a3f",
+   "label": "March — Monday morning — LAVERL61PONTE",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_437818d6/grid_layout.json",
+   "contingencyElementId": "LAVERL61PONTE",
+   "contingencyLabel": "LAVERL61PONTE",
+   "baselineMaxLoadingPct": 125.1,
+   "description": "March — Monday morning. Loss of LAVERL61PONTE drives a worst-case 125.1% line loading. Bring every monitored line back under the 95% monitoring limit."
   },
   {
    "id": "s_437818d6_682401",
@@ -6878,6 +6955,17 @@
    "contingencyLabel": "GROSNL71SSV.O",
    "baselineMaxLoadingPct": 98.8,
    "description": "January — Monday evening. Loss of GROSNL71SSV.O drives a worst-case 98.8% line loading. Bring every monitored line back under the 95% monitoring limit."
+  },
+  {
+   "id": "s_e4e81e29_08e87d",
+   "label": "January — Monday evening — I.NAPL61OTTMA",
+   "networkPath": "data/rte7000_tht/grids/grid_e4e81e29/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_e4e81e29/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_e4e81e29/grid_layout.json",
+   "contingencyElementId": "I.NAPL61OTTMA",
+   "contingencyLabel": "I.NAPL61OTTMA",
+   "baselineMaxLoadingPct": 131.2,
+   "description": "January — Monday evening. Loss of I.NAPL61OTTMA drives a worst-case 131.2% line loading. Bring every monitored line back under the 95% monitoring limit."
   },
   {
    "id": "s_e4e81e29_0d4e25",

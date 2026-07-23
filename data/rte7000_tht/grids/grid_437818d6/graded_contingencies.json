@@ -3,7 +3,6 @@
  "period_title": "March — Monday morning",
  "monitoring_factor": 0.95,
  "threshold_pct": 95.0,
- "remove_ceiling_pct": 120.0,
  "scenarios": [
   {
    "id": "s_437818d6_a71150",
@@ -1765,6 +1764,51 @@
      "rank": 3,
      "id": "open_coupler_DARSEP6+disco_REALTL63SEPTE",
      "est_max_rho": 0.978
+    }
+   }
+  },
+  {
+   "id": "s_437818d6_769a3f",
+   "gridId": "grid_437818d6",
+   "difficulty": "hard",
+   "title": "March — Monday morning",
+   "label": "March — Monday morning — LAVERL61PONTE",
+   "networkPath": "data/rte7000_tht/grids/grid_437818d6/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_437818d6/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_437818d6/grid_layout.json",
+   "contingencyElementId": "LAVERL61PONTE",
+   "contingencyLabel": "LAVERL61PONTE",
+   "baselineMaxLoadingPct": 125.1,
+   "nOverloadedLines": 2,
+   "overloadedLines": [
+    "PONTEL61REALT",
+    "PONTEL62REALT"
+   ],
+   "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 120.0,
+   "solution": {
+    "kind": "none",
+    "best_nonisl_max_rho": 1.2,
+    "best_unitary": {
+     "max_rho": 1.226,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 2,
+     "converged": true,
+     "resolves": false,
+     "id": "open_coupler_SEPTEP6",
+     "family": "open_coupling"
+    },
+    "best_pair": {
+     "max_rho": 1.2,
+     "islanded": false,
+     "reduces": true,
+     "n_over_after": 2,
+     "converged": true,
+     "resolves": false,
+     "rank": 1,
+     "id": "open_coupler_SEPTEP6+disco_DURANL61REALT",
+     "est_max_rho": 1.201
     }
    }
   },

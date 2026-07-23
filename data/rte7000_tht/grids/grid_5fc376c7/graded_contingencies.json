@@ -3,7 +3,6 @@
  "period_title": "November — Monday evening",
  "monitoring_factor": 0.95,
  "threshold_pct": 95.0,
- "remove_ceiling_pct": 120.0,
  "scenarios": [
   {
    "id": "s_5fc376c7_721c95",
@@ -3731,6 +3730,56 @@
    }
   },
   {
+   "id": "s_5fc376c7_6b287c",
+   "gridId": "grid_5fc376c7",
+   "difficulty": "hard",
+   "title": "November — Monday evening",
+   "label": "November — Monday evening — DARSEL61RASSU",
+   "networkPath": "data/rte7000_tht/grids/grid_5fc376c7/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5fc376c7/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5fc376c7/grid_layout.json",
+   "contingencyElementId": "DARSEL61RASSU",
+   "contingencyLabel": "DARSEL61RASSU",
+   "baselineMaxLoadingPct": 127.5,
+   "nOverloadedLines": 7,
+   "overloadedLines": [
+    "FEUILL61SSCHA",
+    "LAVERL61SELF3",
+    "LAVERL61SEPTE",
+    "LAVERL62SELF3",
+    "ROGNAL61SSCHA",
+    "P.ORGY761",
+    "TRI.PY76A"
+   ],
+   "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 125.3,
+   "solution": {
+    "kind": "none",
+    "best_nonisl_max_rho": 1.253,
+    "best_unitary": {
+     "max_rho": 1.263,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 7,
+     "converged": true,
+     "resolves": false,
+     "id": "load_shedding_ROGNAY632",
+     "family": "load_shedding"
+    },
+    "best_pair": {
+     "max_rho": 1.253,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 7,
+     "converged": true,
+     "resolves": false,
+     "rank": 1,
+     "id": "load_shedding_ROGNAY632+redispatch_SSCHA6GROUPE2",
+     "est_max_rho": 1.253
+    }
+   }
+  },
+  {
    "id": "s_5fc376c7_0f4fa2",
    "gridId": "grid_5fc376c7",
    "difficulty": "easy",
@@ -4192,6 +4241,55 @@
      "est_max_rho": 0.943
     },
     "solving_pair_rank": 3
+   }
+  },
+  {
+   "id": "s_5fc376c7_9598b8",
+   "gridId": "grid_5fc376c7",
+   "difficulty": "hard",
+   "title": "November — Monday evening",
+   "label": "November — Monday evening — FEUILL61SSCHA",
+   "networkPath": "data/rte7000_tht/grids/grid_5fc376c7/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5fc376c7/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5fc376c7/grid_layout.json",
+   "contingencyElementId": "FEUILL61SSCHA",
+   "contingencyLabel": "FEUILL61SSCHA",
+   "baselineMaxLoadingPct": 159.2,
+   "nOverloadedLines": 6,
+   "overloadedLines": [
+    "DARSEL61RASSU",
+    "LAVERL61SELF3",
+    "LAVERL61SEPTE",
+    "LAVERL62SELF3",
+    "RASSUL61S.AIR",
+    "RQROUL61S.AIR"
+   ],
+   "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 144.2,
+   "solution": {
+    "kind": "none",
+    "best_nonisl_max_rho": 1.442,
+    "best_unitary": {
+     "max_rho": 1.456,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 4,
+     "converged": true,
+     "resolves": false,
+     "id": "open_coupler_RQROUP6",
+     "family": "open_coupling"
+    },
+    "best_pair": {
+     "max_rho": 1.442,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 4,
+     "converged": true,
+     "resolves": false,
+     "rank": 5,
+     "id": "open_coupler_RQROUP6+open_coupler_ROGNAP6",
+     "est_max_rho": 1.453
+    }
    }
   },
   {
@@ -5746,6 +5844,153 @@
      "rank": 1,
      "id": "open_coupler_SEPTEP6+load_shedding_RASSUY631",
      "est_max_rho": 1.191
+    }
+   }
+  },
+  {
+   "id": "s_5fc376c7_0563a4",
+   "gridId": "grid_5fc376c7",
+   "difficulty": "hard",
+   "title": "November — Monday evening",
+   "label": "November — Monday evening — LAVERL61SELF3",
+   "networkPath": "data/rte7000_tht/grids/grid_5fc376c7/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5fc376c7/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5fc376c7/grid_layout.json",
+   "contingencyElementId": "LAVERL61SELF3",
+   "contingencyLabel": "LAVERL61SELF3",
+   "baselineMaxLoadingPct": 164.3,
+   "nOverloadedLines": 6,
+   "overloadedLines": [
+    "DARSEL61RASSU",
+    "FEUILL61SSCHA",
+    "P.ORGL61RQROU",
+    "RASSUL61S.AIR",
+    "ROGNAL61SSCHA",
+    "RQROUL61S.AIR"
+   ],
+   "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 151.7,
+   "solution": {
+    "kind": "none",
+    "best_nonisl_max_rho": 1.517,
+    "best_unitary": {
+     "max_rho": 1.554,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 6,
+     "converged": true,
+     "resolves": false,
+     "id": "load_shedding_RASSUY631",
+     "family": "load_shedding"
+    },
+    "best_pair": {
+     "max_rho": 1.517,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 6,
+     "converged": true,
+     "resolves": false,
+     "rank": 1,
+     "id": "disco_DARSEL62FEUIL+load_shedding_RASSUY631",
+     "est_max_rho": 1.517
+    }
+   }
+  },
+  {
+   "id": "s_5fc376c7_14bf53",
+   "gridId": "grid_5fc376c7",
+   "difficulty": "hard",
+   "title": "November — Monday evening",
+   "label": "November — Monday evening — LAVERL61SEPTE",
+   "networkPath": "data/rte7000_tht/grids/grid_5fc376c7/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5fc376c7/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5fc376c7/grid_layout.json",
+   "contingencyElementId": "LAVERL61SEPTE",
+   "contingencyLabel": "LAVERL61SEPTE",
+   "baselineMaxLoadingPct": 164.3,
+   "nOverloadedLines": 6,
+   "overloadedLines": [
+    "DARSEL61RASSU",
+    "FEUILL61SSCHA",
+    "P.ORGL61RQROU",
+    "RASSUL61S.AIR",
+    "ROGNAL61SSCHA",
+    "RQROUL61S.AIR"
+   ],
+   "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 151.7,
+   "solution": {
+    "kind": "none",
+    "best_nonisl_max_rho": 1.517,
+    "best_unitary": {
+     "max_rho": 1.554,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 6,
+     "converged": true,
+     "resolves": false,
+     "id": "load_shedding_RASSUY631",
+     "family": "load_shedding"
+    },
+    "best_pair": {
+     "max_rho": 1.517,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 6,
+     "converged": true,
+     "resolves": false,
+     "rank": 1,
+     "id": "disco_DARSEL62FEUIL+load_shedding_RASSUY631",
+     "est_max_rho": 1.517
+    }
+   }
+  },
+  {
+   "id": "s_5fc376c7_4e6e75",
+   "gridId": "grid_5fc376c7",
+   "difficulty": "hard",
+   "title": "November — Monday evening",
+   "label": "November — Monday evening — LAVERL62SELF3",
+   "networkPath": "data/rte7000_tht/grids/grid_5fc376c7/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5fc376c7/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5fc376c7/grid_layout.json",
+   "contingencyElementId": "LAVERL62SELF3",
+   "contingencyLabel": "LAVERL62SELF3",
+   "baselineMaxLoadingPct": 164.3,
+   "nOverloadedLines": 6,
+   "overloadedLines": [
+    "DARSEL61RASSU",
+    "FEUILL61SSCHA",
+    "P.ORGL61RQROU",
+    "RASSUL61S.AIR",
+    "ROGNAL61SSCHA",
+    "RQROUL61S.AIR"
+   ],
+   "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 151.7,
+   "solution": {
+    "kind": "none",
+    "best_nonisl_max_rho": 1.517,
+    "best_unitary": {
+     "max_rho": 1.554,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 6,
+     "converged": true,
+     "resolves": false,
+     "id": "load_shedding_RASSUY631",
+     "family": "load_shedding"
+    },
+    "best_pair": {
+     "max_rho": 1.517,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 6,
+     "converged": true,
+     "resolves": false,
+     "rank": 1,
+     "id": "disco_DARSEL62FEUIL+load_shedding_RASSUY631",
+     "est_max_rho": 1.517
     }
    }
   },
@@ -7555,6 +7800,55 @@
      "resolves": true,
      "id": "disco_DARSEL61RASSU",
      "family": "line_disconnection"
+    }
+   }
+  },
+  {
+   "id": "s_5fc376c7_f87211",
+   "gridId": "grid_5fc376c7",
+   "difficulty": "hard",
+   "title": "November — Monday evening",
+   "label": "November — Monday evening — ROGNAL61SSCHA",
+   "networkPath": "data/rte7000_tht/grids/grid_5fc376c7/network.xiidm",
+   "actionFilePath": "data/rte7000_tht/grids/grid_5fc376c7/actions.json",
+   "layoutPath": "data/rte7000_tht/grids/grid_5fc376c7/grid_layout.json",
+   "contingencyElementId": "ROGNAL61SSCHA",
+   "contingencyLabel": "ROGNAL61SSCHA",
+   "baselineMaxLoadingPct": 169.5,
+   "nOverloadedLines": 6,
+   "overloadedLines": [
+    "DARSEL61RASSU",
+    "LAVERL61SELF3",
+    "LAVERL61SEPTE",
+    "LAVERL62SELF3",
+    "RASSUL61S.AIR",
+    "RQROUL61S.AIR"
+   ],
+   "nActionsDiscovered": 15,
+   "bestAchievableLoadingPct": 153.1,
+   "solution": {
+    "kind": "none",
+    "best_nonisl_max_rho": 1.531,
+    "best_unitary": {
+     "max_rho": 1.552,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 4,
+     "converged": true,
+     "resolves": false,
+     "id": "open_coupler_RQROUP6",
+     "family": "open_coupling"
+    },
+    "best_pair": {
+     "max_rho": 1.531,
+     "islanded": false,
+     "reduces": false,
+     "n_over_after": 4,
+     "converged": true,
+     "resolves": false,
+     "rank": 3,
+     "id": "open_coupler_RQROUP6+open_coupler_ROGNAP6",
+     "est_max_rho": 1.548
     }
    }
   },
