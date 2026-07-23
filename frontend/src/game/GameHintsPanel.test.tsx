@@ -98,6 +98,37 @@ describe('GameHintsPanel', () => {
     expect(lever).toHaveBeenCalledTimes(1);
   });
 
+  it('single-clicks a magnitude-free injection lever to a simulate-less inspect', async () => {
+    const lever = vi.spyOn(gameBridge, 'requestLeverInteraction');
+    getGameLeverStats.mockResolvedValue(stats());
+    render(<GameHintsPanel study={STUDY} />);
+    await screen.findByText(/G1/);
+
+    fireEvent.click(screen.getByText(/G1/));
+    await waitFor(() => expect(lever).toHaveBeenCalled());
+    const [interaction, mode] = lever.mock.calls.at(-1)!;
+    expect(interaction).toMatchObject({ inspectQuery: 'G1', category: 'generation' });
+    expect(interaction.simulate).toBeUndefined();
+    expect(mode).toBe('inspect');
+  });
+
+  it('double-clicks a catalogue branch lever to a simulate-by-action-id', async () => {
+    const lever = vi.spyOn(gameBridge, 'requestLeverInteraction');
+    getGameLeverStats.mockResolvedValue(stats());
+    render(<GameHintsPanel study={STUDY} />);
+    await screen.findByText(/disco_LINE_A/);
+
+    const target = screen.getByText(/disco_LINE_A/);
+    fireEvent.click(target);
+    fireEvent.doubleClick(target);
+
+    expect(lever).toHaveBeenCalledTimes(1);
+    expect(lever).toHaveBeenCalledWith(
+      expect.objectContaining({ inspectQuery: 'LINE_A', simulate: { actionId: 'disco_LINE_A' } }),
+      'simulate',
+    );
+  });
+
   it('collapses to a pill and reopens', async () => {
     getGameLeverStats.mockResolvedValue(stats());
     render(<GameHintsPanel study={STUDY} />);

@@ -159,6 +159,21 @@ describe('useManualSimulation', () => {
                 'user_topo_VL1_1', expect.objectContaining({ max_rho: 0.8 }), [], 'user',
             );
         });
+
+        it('surfaces a stream error event via setError and registers no card', async () => {
+            const setError = vi.fn();
+            const wrappedManualActionAdded = vi.fn();
+            mockSimStream.mockResolvedValue(ndjson([{ type: 'error', message: 'islanded' }]));
+            const { result } = renderHook(() =>
+                useManualSimulation(makeParams({ setError, wrappedManualActionAdded })));
+
+            await act(async () => {
+                await result.current.handleSimulateLever({ voltageLevelId: 'VL1', switches: { SW_A: true } });
+            });
+
+            expect(setError).toHaveBeenCalledWith('islanded');
+            expect(wrappedManualActionAdded).not.toHaveBeenCalled();
+        });
     });
 
     describe('handleSimulateSldEdit', () => {

@@ -319,6 +319,31 @@ describe('toStudyFeedback / sessionNoveltyBonus', () => {
       }));
       expect(shedding.simulate).toBeUndefined();
     });
+
+    it('keeps a non-branch catalogue action id verbatim (no disco/reco strip)', () => {
+      const i = buildLeverInteraction(lever({
+        signature: 'action:open_coupler_VL_X', label: 'open_coupler_VL_X', category: 'voltage_level',
+      }));
+      // Not a disco_/reco_ id → the id passes through for both inspect + simulate.
+      expect(i.inspectQuery).toBe('open_coupler_VL_X');
+      expect(i.simulate).toEqual({ actionId: 'open_coupler_VL_X' });
+    });
+
+    it('leaves PST and other levers without a simulate spec (magnitude-free / opaque)', () => {
+      expect(buildLeverInteraction(lever({
+        signature: 'pst:PST_1', label: 'PST_1', category: 'branch',
+      })).simulate).toBeUndefined();
+      expect(buildLeverInteraction(lever({
+        signature: 'load_p:LOAD_2', label: 'LOAD_2', category: 'load',
+      })).simulate).toBeUndefined();
+    });
+
+    it('defaults a switch lever with no explicit target-state to open', () => {
+      const i = buildLeverInteraction(lever({
+        signature: 'switch:SW_7', label: 'SW_7', category: 'voltage_level',
+      }));
+      expect(i.simulate).toEqual({ switches: { SW_7: true } });
+    });
   });
 
   it('sums the per-study bonus points on top of the Codabench score', () => {

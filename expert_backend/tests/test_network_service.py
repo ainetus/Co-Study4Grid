@@ -378,3 +378,33 @@ class TestGetElementVoltageLevels:
         """The default mock network has no get_switches DataFrame; resolution
         must fall through to [] rather than raise."""
         assert mock_network_service.get_element_voltage_levels("SOME_SWITCH") == []
+
+    def test_switch_with_blank_voltage_level_returns_empty(self):
+        service = self._service_with_injections_and_switches()
+        service.network.get_switches.return_value = pd.DataFrame(
+            {"voltage_level_id": [""]}, index=["SW_BLANK"])
+        assert service.get_element_voltage_levels("SW_BLANK") == []
+
+    def test_switch_with_non_string_voltage_level_returns_empty(self):
+        service = self._service_with_injections_and_switches()
+        service.network.get_switches.return_value = pd.DataFrame(
+            {"voltage_level_id": [float("nan")]}, index=["SW_NAN"])
+        assert service.get_element_voltage_levels("SW_NAN") == []
+
+    def test_get_switches_error_is_tolerated(self):
+        """A network backend that raises on get_switches must not 500 the
+        resolution — the switch probe swallows it and falls through to []."""
+        service = self._service_with_injections_and_switches()
+        service.network.get_switches.side_effect = RuntimeError("switch query failed")
+        assert service.get_element_voltage_levels("MYSTERY") == []
+
+    def test_switches_without_voltage_level_column_returns_empty(self):
+        service = self._service_with_injections_and_switches()
+        service.network.get_switches.return_value = pd.DataFrame(
+            {"kind": ["BREAKER"]}, index=["SW_NOCOL"])
+        assert service.get_element_voltage_levels("SW_NOCOL") == []
+
+    def test_branch_resolution_precedes_injection_and_switch_lookup(self, mock_network_service):
+        """A line id resolves to its two VLs even though generators / loads /
+        switches are now probed too — branch precedence is preserved."""
+        assert mock_network_service.get_element_voltage_levels("LINE_A") == ["VL1", "VL2"]
