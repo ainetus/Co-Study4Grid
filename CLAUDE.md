@@ -337,7 +337,7 @@ guards the reductions documented in
 | POST | `/api/compute-superposition` | Compute combined effect of two actions (superposition theorem) |
 | POST | `/api/game/log-solution` | Capitalise a Game Mode retained proposition into the shared solution base; returns the novelty verdict (+bonus points) and per-action usage frequencies |
 | GET  | `/api/game/lever-stats` | Most-used unitary levers of a (network, contingency) context in the shared solution base — the Game Mode beginner-assistance hints (top-N, tagged voltage_level / branch / generation / load) |
-| GET  | `/api/game/player-sessions` | Count of distinct sessions a player already recorded in the shared base — seeds the default session name / index on the Game Mode config screen |
+| GET  | `/api/game/player-sessions` | Distinct sessions a player already recorded in the shared base — `session_count` + the concrete `session_names` (sorted). Seeds the default session name / index on the Game Mode config screen (first free index) and blocks a colliding name before Start |
 | POST | `/api/save-session` | Save session folder with JSON snapshot + PDF copy |
 | GET  | `/api/list-sessions` | List available session folders in a directory |
 | POST | `/api/load-session` | Load session JSON and restore PDFs |

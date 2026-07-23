@@ -102,3 +102,8 @@ class PlayerSessionsResponse(BaseModel):
     # Distinct sessions this player already recorded in the shared base;
     # seeds the default session name (`<player> — session <count+1>`).
     session_count: int
+    # The concrete distinct session names (sorted, case-insensitive). The
+    # config screen suggests the first free `session <n>` index over these
+    # and blocks a name that already exists — a count-plus-one heuristic
+    # re-suggests a taken name when the recorded indices have gaps.
+    session_names: list[str] = []

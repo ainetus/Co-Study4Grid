@@ -7,6 +7,31 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Game Mode — unique session names + lever-simulation feedback
+
+- **Duplicate session names are blocked.** `GET /api/game/player-sessions` now
+  returns the concrete `session_names` (sorted) alongside `session_count`. The
+  config screen auto-suggests the first *free* `<player> — session <n>` index
+  over the recorded names (so a re-play never re-suggests an existing name —
+  the old count-plus-one heuristic collided when the indices had gaps), and a
+  name that already exists **disables ▶ Start** with an inline warning (the
+  shared base keys retentions by session name, so a duplicate would merge two
+  runs).
+- **Beginner-assistance lever hints show simulation feedback.** Double-clicking
+  a most-used lever now shows a per-row **⏳ simulating… → ✓ simulated**
+  transition and **blocks a redundant re-run** — "simulated" is read from a new
+  `simulatedActionIds` set on the game-bridge snapshot, so a lever also flips ✓
+  when its action arrives through the recommender's suggestions, and a failed
+  run self-clears. `gameBridge.requestLeverInteraction` is now awaitable so the
+  panel can drive the transition.
+- **Injection levers simulate with the default incremental delta.** Redispatch
+  / load-shedding / curtailment levers (`redispatch:` / `ls:` / `rc:`) map to
+  the backend dynamic-action id and simulate with no `target_mw`, so
+  `_create_dynamic_actions_if_needed` applies the default incremental injection
+  delta — a double-click runs them straight away instead of degrading to
+  inspect. Only PST / raw `gen_p:` / `load_p:` levers still degrade (a tap /
+  signed setpoint is required).
+
 ### Dependencies — lift the pypowsybl upper bound
 
 - **`pypowsybl` is no longer capped below 1.15** (`pyproject.toml`). The earlier

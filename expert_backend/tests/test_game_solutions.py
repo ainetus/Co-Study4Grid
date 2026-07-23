@@ -330,16 +330,29 @@ def test_player_session_count_counts_distinct_sessions(store_dir):
     game_solutions.log_solution(payload(player="bob", session_name="s9"))
 
     assert game_solutions.player_session_count("alice") == {
-        "player": "alice", "session_count": 2}
+        "player": "alice", "session_count": 2, "session_names": ["s1", "s2"]}
     # Handle match is case-insensitive.
     assert game_solutions.player_session_count("ALICE")["session_count"] == 2
-    assert game_solutions.player_session_count("bob")["session_count"] == 1
-    assert game_solutions.player_session_count("carol")["session_count"] == 0
+    assert game_solutions.player_session_count("bob") == {
+        "player": "bob", "session_count": 1, "session_names": ["s9"]}
+    assert game_solutions.player_session_count("carol") == {
+        "player": "carol", "session_count": 0, "session_names": []}
+
+
+def test_player_session_names_are_returned_sorted(store_dir):
+    # Record out of natural order — the response is sorted case-insensitively
+    # so the config screen can pick the first free index / detect a collision.
+    for name in ("amarot — session 3", "amarot — session 1", "amarot — session 2"):
+        game_solutions.log_solution(payload(player="amarot", session_name=name))
+    result = game_solutions.player_session_count("amarot")
+    assert result["session_count"] == 3
+    assert result["session_names"] == [
+        "amarot — session 1", "amarot — session 2", "amarot — session 3"]
 
 
 def test_player_session_count_empty_handle(store_dir):
     assert game_solutions.player_session_count("  ") == {
-        "player": "", "session_count": 0}
+        "player": "", "session_count": 0, "session_names": []}
 
 
 # ---------------------------------------------------------------------------
@@ -458,7 +471,8 @@ def test_player_sessions_endpoint(store_dir, client):
         player="alice", session_name="s2", contingency_id="c2"))
     resp = client.get("/api/game/player-sessions", params={"player": "alice"})
     assert resp.status_code == 200
-    assert resp.json() == {"player": "alice", "session_count": 2}
+    assert resp.json() == {
+        "player": "alice", "session_count": 2, "session_names": ["s1", "s2"]}
 
     empty = client.get("/api/game/player-sessions", params={"player": ""})
-    assert empty.json() == {"player": "", "session_count": 0}
+    assert empty.json() == {"player": "", "session_count": 0, "session_names": []}

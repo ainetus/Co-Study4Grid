@@ -1199,6 +1199,10 @@ function App() {
       contingencyElementIds: selectedContingency,
       baselineMaxRho,
       chosenActions,
+      // Every action that has a materialised result — recommender-suggested,
+      // manually simulated, or lever-driven. The hints panel marks these
+      // levers "simulated" and blocks a redundant re-run.
+      simulatedActionIds: result ? Object.keys(result.actions) : [],
     });
   }, [result, selectedActionIds, selectedContingency, n1Diagram]);
 

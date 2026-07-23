@@ -31,17 +31,28 @@ export interface GameStudySnapshot {
   baselineMaxRho: number | null;
   /** Remedial actions the player has starred, with their resulting loading. */
   chosenActions: ChosenActionRecord[];
+  /**
+   * Ids of every action already simulated (materialised with a result) in the
+   * workspace — recommender-suggested, manually simulated, or lever-driven.
+   * The beginner-assistance panel reads it to mark a lever "simulated" (even
+   * when the action surfaced through the recommender's suggestions) and to
+   * block a redundant second simulation of the same lever.
+   */
+  simulatedActionIds: string[];
 }
 
 const EMPTY_SNAPSHOT: GameStudySnapshot = {
   contingencyElementIds: [],
   baselineMaxRho: null,
   chosenActions: [],
+  simulatedActionIds: [],
 };
 
 type SnapshotListener = (s: GameStudySnapshot) => void;
 type StudyLoader = (study: GameStudy) => Promise<void>;
-type LeverInteractionHandler = (interaction: LeverInteraction, mode: LeverInteractionMode) => void;
+type LeverInteractionHandler = (
+  interaction: LeverInteraction, mode: LeverInteractionMode,
+) => void | Promise<void>;
 
 class GameBridge {
   private snapshot: GameStudySnapshot = EMPTY_SNAPSHOT;
@@ -122,9 +133,12 @@ class GameBridge {
     return this.loader(study);
   }
 
-  /** Game UI asks App to inspect or simulate a lever. No-op before App mounts. */
-  requestLeverInteraction(interaction: LeverInteraction, mode: LeverInteractionMode): void {
-    this.leverHandler?.(interaction, mode);
+  /** Game UI asks App to inspect or simulate a lever. Resolves when the
+   *  handler settles so the caller (the hints panel) can show a
+   *  simulating → simulated transition; resolves immediately before App
+   *  mounts (no handler registered yet). */
+  requestLeverInteraction(interaction: LeverInteraction, mode: LeverInteractionMode): Promise<void> {
+    return Promise.resolve(this.leverHandler?.(interaction, mode));
   }
 
   getSnapshot(): GameStudySnapshot {

@@ -209,12 +209,18 @@ covers the per-commit solution log: payload shape, skip-when-empty, async
 feedback merge into the derived session log, novelty toast, fail-soft on a
 rejected POST). `solutionLog.test.ts` covers the lever/signature computation
 (MW-agnostic injection levers, manual-maneuver decomposition, catalogue
-fallback) + wire payload/feedback mapping + bonus summation;
+fallback) + the `buildLeverInteraction` mapping (injection levers →
+dynamic-action id) + wire payload/feedback mapping + bonus summation;
 `GameResults.test.tsx` covers the novelty-bonus / usage-frequency rendering;
+`GameConfigScreen.test.tsx` covers the landing (incl. the first-free session
+index over the recorded `session_names`, and the duplicate-name Start block);
 `GameHintsPanel.test.tsx` covers the beginner-assistance lever hints
-(category tags, collapse/reopen, hidden on empty base / failed fetch).
+(category tags, collapse/reopen, hidden on empty base / failed fetch, the
+simulating→simulated feedback, the re-run block, cross-marking from the
+`simulatedActionIds` snapshot, and the injection-lever default-delta simulate).
 The backend twin is `expert_backend/tests/test_game_solutions.py` (store,
-novelty, dedup, frequencies, lever stats + categories, endpoints). The real-backend replay lives in
+novelty, dedup, frequencies, lever stats + categories, player session names,
+endpoints). The real-backend replay lives in
 `scripts/game_mode/e2e_game_session.py` (not part of the Vitest suite; needs
 pypowsybl + `expert_op4grid_recommender`).
 

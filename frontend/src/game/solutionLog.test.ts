@@ -307,17 +307,24 @@ describe('toStudyFeedback / sessionNoveltyBonus', () => {
       expect(i.simulate).toEqual({ switches: { SW_9: false } });
     });
 
-    it('leaves magnitude-free injection levers without a simulate spec', () => {
+    it('maps redispatch / shedding / curtailment levers to their dynamic-action id', () => {
+      // These simulate with the backend's DEFAULT incremental injection delta
+      // (no MW carried), so a double-click runs them without an amount prompt.
       const redispatch = buildLeverInteraction(lever({
         signature: 'redispatch:G1', label: 'G1', category: 'generation',
       }));
       expect(redispatch.inspectQuery).toBe('G1');
-      expect(redispatch.simulate).toBeUndefined();
+      expect(redispatch.simulate).toEqual({ actionId: 'redispatch_G1' });
 
       const shedding = buildLeverInteraction(lever({
         signature: 'ls:LOAD_9', label: 'LOAD_9', category: 'load',
       }));
-      expect(shedding.simulate).toBeUndefined();
+      expect(shedding.simulate).toEqual({ actionId: 'load_shedding_LOAD_9' });
+
+      const curtail = buildLeverInteraction(lever({
+        signature: 'rc:WIND_3', label: 'WIND_3', category: 'generation',
+      }));
+      expect(curtail.simulate).toEqual({ actionId: 'curtail_WIND_3' });
     });
 
     it('keeps a non-branch catalogue action id verbatim (no disco/reco strip)', () => {
