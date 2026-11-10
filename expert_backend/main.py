@@ -7,7 +7,7 @@
 
 import gzip
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, Literal
 import json as json_module
 import logging
 import os
@@ -556,7 +556,7 @@ def get_voltage_level_substations() -> dict:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/api/pick-path")
-def pick_path(type: str = Query("file", enum=["file", "dir"])) -> dict:
+def pick_path(type: Literal["file", "dir"] = Query("file")) -> dict:
     _reject_when_locked_down()
     try:
         if platform.system() == "Darwin":
