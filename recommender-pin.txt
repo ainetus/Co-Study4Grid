@@ -6,4 +6,4 @@
 # bump of this line — not an implicit every-build resolve.
 #
 # Bump procedure: update this line, run the backend suite, review, commit.
-expert_op4grid_recommender==0.3.3.post1
+expert_op4grid_recommender==0.3.3.post2
