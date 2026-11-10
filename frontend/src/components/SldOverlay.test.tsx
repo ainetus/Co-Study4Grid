@@ -1395,6 +1395,27 @@ describe('SldOverlay', () => {
             expect(onNavigateToVl).toHaveBeenCalledWith('VL_MARSIL');
         });
 
+        it('navigates from a feeder whose far-end VL is unnamed (label null)', () => {
+            const overlay: VlOverlay = {
+                ...buildRelabelOverlay({
+                    CHOLEL41HERBI: { name: null, other_vl: 'CHOLEP4', label: null },
+                }),
+                svg:
+                    '<svg xmlns="http://www.w3.org/2000/svg">'
+                    + '<g class="sld-extern-cell"><g class="sld-top-feeder" id="idCHOLEL41HERBI_95_TWO">'
+                    + '<text class="sld-label" id="idCHOLEL41HERBI_95_TWO_95_N_95_LABEL">CHOLE1</text>'
+                    + '</g></g></svg>',
+            };
+            const onNavigateToVl = vi.fn();
+            const { container } = render(
+                <SldOverlay {...defaultProps} vlOverlay={overlay} onNavigateToVl={onNavigateToVl} />,
+            );
+            const lbl = container.querySelector<SVGTextElement>('#idCHOLEL41HERBI_95_TWO_95_N_95_LABEL')!;
+            expect(lbl.textContent).toBe('CHOLE1');
+            lbl.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            expect(onNavigateToVl).toHaveBeenCalledWith('CHOLEP4');
+        });
+
         it('leaves the id untouched when the label is null', () => {
             const overlay = buildRelabelOverlay({
                 'relation_8423569-225': { name: null, other_vl: null, label: null },

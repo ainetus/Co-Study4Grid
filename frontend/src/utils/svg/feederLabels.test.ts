@@ -143,6 +143,49 @@ describe('applyFeederRelabels', () => {
         }, '<svg/>');
         expect(container.querySelector('#t')!.getAttribute('data-feeder-nav')).toBeNull();
     });
+
+    // RTE Matpower grids: VLs carry no friendly name (label null) and
+    // pypowsybl's feeder label ("CHOLE1") is not the branch id, so the label is
+    // found through the feeder group's escaped id and tagged for nav only.
+    const unnamedSvg =
+        '<svg><g class="sld-top-feeder" id="idCHOLEL41HERBI_95_TWO">'
+        + '<text class="sld-label" id="idCHOLEL41HERBI_95_TWO_95_N_95_LABEL">CHOLE1  </text>'
+        + '</g></svg>';
+    const unnamed = { CHOLEL41HERBI: { name: null, other_vl: 'CHOLEP4', label: null } };
+
+    it('tags navigation without relabelling when the far-end VL is unnamed', () => {
+        const container = mount(unnamedSvg);
+        applyFeederRelabels(container, unnamed, '<svg/>');
+        const t = container.querySelector('text')!;
+        expect(t.getAttribute('data-feeder-nav')).toBe('CHOLEP4');
+        expect(t.classList.contains('sld-feeder-navigable')).toBe(true);
+        expect(t.textContent).toBe('CHOLE1  ');
+        expect(t.hasAttribute('data-feeder-relabel')).toBe(false);
+    });
+
+    it('drops a nav-only tag on restore, keeping the text', () => {
+        const container = mount(unnamedSvg);
+        applyFeederRelabels(container, unnamed, '<svg/>');
+        applyFeederRelabels(container, {}, '<svg/>');
+        const t = container.querySelector('text')!;
+        expect(t.getAttribute('data-feeder-nav')).toBeNull();
+        expect(t.classList.contains('sld-feeder-navigable')).toBe(false);
+        expect(t.textContent).toBe('CHOLE1  ');
+    });
+
+    it('locates the label by escaped group id when relabelling too', () => {
+        const container = mount(
+            '<svg><g id="idL_46_1_32_A_95_ONE"><text id="idL_46_1_32_A_95_ONE_95_N_95_LABEL">X1</text></g>'
+            + '<g id="idL_46_1_32_AB_95_ONE"><text id="other_95_LABEL">X2</text></g></svg>',
+        );
+        applyFeederRelabels(container, {
+            'L.1 A': { name: null, other_vl: 'VL_A', label: 'ALPHA' },
+        }, '<svg/>');
+        const [t1, t2] = Array.from(container.querySelectorAll('text'));
+        expect(t1.textContent).toBe('ALPHA');
+        expect(t1.getAttribute('data-feeder-nav')).toBe('VL_A');
+        expect(t2.textContent).toBe('X2');
+    });
 });
 
 describe('applyFeederLabelWrap', () => {

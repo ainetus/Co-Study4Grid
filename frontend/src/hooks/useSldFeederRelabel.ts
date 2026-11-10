@@ -9,6 +9,10 @@ import { useLayoutEffect, useRef, type RefObject } from 'react';
 import type { FeederLabel, SldTab } from '../types';
 import { applyFeederRelabels, applyFeederLabelWrap } from '../utils/svg/feederLabels';
 
+/** Marks left by ``applyFeederRelabels`` — a nav-only feeder (unnamed far-end
+ *  VL) carries ``data-feeder-nav`` without ``data-feeder-relabel``. */
+const RELABEL_MARKS = '[data-feeder-relabel], [data-feeder-nav]';
+
 /**
  * Relabel SLD branch feeders with the far-end VL name (Issue 1) AND wrap every
  * remaining long feeder NAME (generators / loads / unmatched branches) so the
@@ -29,16 +33,16 @@ export function useSldFeederRelabel(
         const container = bodyRef.current;
         if (!container) return;
         const entries = feederLabels
-            ? Object.entries(feederLabels).filter(([, info]) => !!info && !!info.label)
+            ? Object.entries(feederLabels).filter(([, info]) => !!info && (!!info.label || !!info.other_vl))
             : [];
         const sig = JSON.stringify({
             svgLen: activeSvg?.length ?? 0,
             tab,
             action: actionId,
             preview,
-            labels: entries.map(([eid, info]) => `${eid}=${info.label}`).sort(),
+            labels: entries.map(([eid, info]) => `${eid}=${info.label}>${info.other_vl}`).sort(),
         });
-        const relabelPresent = container.querySelector('[data-feeder-relabel]') !== null;
+        const relabelPresent = container.querySelector(RELABEL_MARKS) !== null;
         const wrapPresent = container.querySelector('[data-feeder-wrap]') !== null;
         // Re-run when the inputs changed, or when a reconciliation dropped the
         // marks we last produced (the DOM diverged from our recorded state).
@@ -50,7 +54,7 @@ export function useSldFeederRelabel(
         applyFeederLabelWrap(container, activeSvg);
         stateRef.current = {
             sig,
-            relabel: container.querySelector('[data-feeder-relabel]') !== null,
+            relabel: container.querySelector(RELABEL_MARKS) !== null,
             wrap: container.querySelector('[data-feeder-wrap]') !== null,
         };
     });
