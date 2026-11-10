@@ -52,9 +52,14 @@ operator reads *where the line goes*, e.g. `MARSILLON 225kV`).
 
 ## 1b. Navigate to a branch's other extremity by clicking its feeder name
 
-Each relabelled feeder is tagged with `data-feeder-nav` = the far-end VL id
-(the `other_vl` field) and the `sld-feeder-navigable` class (dotted underline
-+ pointer cursor). `hooks/useSldFeederNav.ts` installs one delegated
+Each branch feeder with a known far-end VL is tagged with `data-feeder-nav` =
+the far-end VL id (the `other_vl` field) and the `sld-feeder-navigable` class
+(dotted underline + pointer cursor) — **whether or not it is relabelled**. On
+grids whose VLs carry no friendly name (the RTE Matpower grids: `label` is
+`null`) the feeder keeps pypowsybl's own label, which is not the branch id
+either (`CHOLE1` for `CHOLEL41HERBI`), so the label `<text>` is located through
+the feeder group's escaped SVG id (`id<eid>_95_<ONE|TWO|THREE>`, pypowsybl's
+`IdUtil.escapeId`) when the text-content match fails. `hooks/useSldFeederNav.ts` installs one delegated
 capture-phase click listener on the overlay body: a (non-pan) click on a
 feeder name hands `other_vl` to `onNavigateToVl`, which re-opens the SLD for
 that VL keeping the current sub-tab (`App.handleSldNavigateToVl` →

@@ -141,6 +141,13 @@ function setFeederText(textEl: SVGTextElement, label: string): void {
  * neighbours, and tag each with ``data-feeder-nav`` (the far-end VL id) so a
  * click can navigate to that VL's SLD.
  *
+ * Navigation does NOT depend on relabelling: on grids whose voltage levels
+ * carry no friendly name (e.g. the RTE Matpower grids — ``label`` is ``null``)
+ * the feeder keeps pypowsybl's own label but is still tagged whenever its
+ * ``other_vl`` is known. pypowsybl's label there is not the branch id either
+ * (``CHOLE1`` for ``CHOLEL41HERBI``), so the label is located through the
+ * feeder group's escaped SVG id when the text match fails.
+ *
  * Idempotent: the original text is stashed in ``data-feeder-orig`` so a tab /
  * VL / preview switch restores cleanly, and highlight clones (which carry a
  * copy of the label but are removed on the next render) are skipped.
@@ -150,8 +157,8 @@ export function applyFeederRelabels(
     feederLabels: Record<string, FeederLabel> | undefined,
     activeSvg: string | null,
 ): void {
-    // Restore any previous relabel first, then re-apply against the current SVG.
-    container.querySelectorAll('[data-feeder-relabel]').forEach(el => {
+    // Restore any previous relabel / nav tag first, then re-apply against the current SVG.
+    container.querySelectorAll('[data-feeder-relabel], [data-feeder-nav]').forEach(el => {
         const orig = el.getAttribute('data-feeder-orig');
         if (orig !== null) el.textContent = orig;  // replacing textContent drops any wrap <tspan>s
         el.removeAttribute('data-feeder-relabel');
@@ -160,28 +167,54 @@ export function applyFeederRelabels(
         el.classList.remove('sld-feeder-navigable');
     });
     const entries = feederLabels
-        ? Object.entries(feederLabels).filter(([, info]) => !!info && !!info.label)
+        ? Object.entries(feederLabels).filter(([, info]) => !!info && (!!info.label || !!info.other_vl))
         : [];
     if (entries.length === 0 || !activeSvg) return;
 
     const texts = Array.from(container.querySelectorAll<SVGTextElement>('text'))
         .filter(t => !t.closest('.sld-highlight-clone'));
+    const claimed = new Set<SVGTextElement>();
     for (const [eid, info] of entries) {
-        const label = info.label as string;
-        const variants = new Set([eid, eid.replace(/\./g, '_'), eid.replace(/_/g, '.')]);
-        const textEl = texts.find(t =>
-            !t.hasAttribute('data-feeder-relabel')
-            && variants.has((t.textContent ?? '').trim()),
-        );
+        const textEl = findFeederText(texts, claimed, eid);
         if (!textEl) continue;
-        textEl.setAttribute('data-feeder-orig', textEl.textContent ?? '');
-        textEl.setAttribute('data-feeder-relabel', '1');
-        setFeederText(textEl, label);
+        claimed.add(textEl);
+        if (info.label) {
+            textEl.setAttribute('data-feeder-orig', textEl.textContent ?? '');
+            textEl.setAttribute('data-feeder-relabel', '1');
+            setFeederText(textEl, info.label);
+        }
         if (info.other_vl) {
             textEl.setAttribute('data-feeder-nav', info.other_vl);
             textEl.classList.add('sld-feeder-navigable');
         }
     }
+}
+
+/** pypowsybl's SVG id escaping (``IdUtil.escapeId``): every non-alphanumeric
+ *  char becomes ``_<charCode>_`` and the id is prefixed with ``id``. */
+function escapeSldId(id: string): string {
+    return 'id' + id.replace(/[^A-Za-z0-9]/g, c => `_${c.charCodeAt(0)}_`);
+}
+
+/**
+ * The feeder-name ``<text>`` of branch ``eid``: the text whose content is the
+ * raw id (pypowsybl's default label), else the label inside the feeder group
+ * ``id<eid>_95_<ONE|TWO|THREE>`` (side suffix of the branch terminal).
+ */
+function findFeederText(
+    texts: SVGTextElement[],
+    claimed: Set<SVGTextElement>,
+    eid: string,
+): SVGTextElement | undefined {
+    const variants = new Set([eid, eid.replace(/\./g, '_'), eid.replace(/_/g, '.')]);
+    const byText = texts.find(t => !claimed.has(t) && variants.has((t.textContent ?? '').trim()));
+    if (byText) return byText;
+    const groupIdRe = new RegExp(`^${escapeSldId(eid)}_95_(ONE|TWO|THREE)$`);
+    return texts.find(t =>
+        !claimed.has(t)
+        && groupIdRe.test(t.parentElement?.id ?? '')
+        && /_LABEL$/.test(t.id),
+    );
 }
 
 /** Feeder cells whose name label sits at the diagram extremity. */
