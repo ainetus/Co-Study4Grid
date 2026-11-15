@@ -258,6 +258,23 @@ class TestGetOverloadedLines:
         assert rhos == [2.0]
 
 
+class TestGetNStateLoading:
+    def test_n_current_over_permanent_limit_parallel_to_the_ids(self):
+        net = _mock_network(limits_df=_limits({"L1": 200.0, "L2": 100.0}))
+        loading = overloads.get_n_state_loading(net, ["L2", "L1"], {"L1": 150.0, "L2": 80.0})
+        assert loading == [0.8, 0.75]
+
+    def test_none_where_the_current_or_the_limit_is_unknown(self):
+        net = _mock_network(limits_df=_limits({"L1": 200.0}))
+        assert overloads.get_n_state_loading(net, ["L1", "L2", "L3"], {"L1": 100.0, "L2": 50.0}) == [0.5, None, None]
+
+    def test_all_none_without_n_state_currents(self):
+        # No N diagram yet: nothing to compare with, and no limit query.
+        net = _mock_network()
+        assert overloads.get_n_state_loading(net, ["L1", "L2"], None) == [None, None]
+        net.get_operational_limits.assert_not_called()
+
+
 # ----------------------------------------------------------------------
 # flows
 # ----------------------------------------------------------------------

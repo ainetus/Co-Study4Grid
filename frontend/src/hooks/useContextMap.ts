@@ -31,6 +31,9 @@ export interface ContextMapState {
     unavailableReason: string | null;
     /** The contingency and its overloads, resolved on the map. */
     highlights: ContextMapHighlight[];
+    /** Share of a line's limit from which it counts as overloaded (the
+     *  study's monitoring factor) — named in the overloads' hover card. */
+    monitoringFactor?: number;
 }
 
 /** Early read while /api/config runs: retry cadence and budget (~60 s). */
@@ -44,6 +47,7 @@ interface UseContextMapArgs {
     result: AnalysisResult | null;
     n1Diagram: DiagramData | null;
     selectedOverloads: Set<string>;
+    monitoringFactor?: number;
 }
 
 /**
@@ -53,14 +57,17 @@ interface UseContextMapArgs {
  */
 const overloadsWithRho = (
     result: AnalysisResult | null, n1Diagram: DiagramData | null, selected: Set<string>,
-): { id: string; rho?: number }[] => {
+): { id: string; rho?: number; rhoBefore?: number }[] => {
     const rho = new Map<string, number>();
+    const rhoBefore = new Map<string, number>();
     (n1Diagram?.lines_overloaded ?? []).forEach((id, i) => {
         const value = n1Diagram?.lines_overloaded_rho?.[i];
         if (value !== undefined) rho.set(id, value);
+        const before = n1Diagram?.lines_overloaded_rho_before?.[i];
+        if (before !== undefined && before !== null) rhoBefore.set(id, before);
     });
     return computeN1OverloadHighlights(result?.lines_overloaded, n1Diagram?.lines_overloaded, selected)
-        .map(id => ({ id, rho: rho.get(id) }));
+        .map(id => ({ id, rho: rho.get(id), rhoBefore: rhoBefore.get(id) }));
 };
 
 /** The sidebar notice telling why a study has no Context tab. */
@@ -91,7 +98,7 @@ export const contextUnavailableNotice = (reason: string, onDismiss: () => void):
  * and cached per study: re-highlighting a known element is free.
  */
 export function useContextMap({
-    studyGeneration, selectedContingency, result, n1Diagram, selectedOverloads,
+    studyGeneration, selectedContingency, result, n1Diagram, selectedOverloads, monitoringFactor,
 }: UseContextMapArgs): ContextMapState {
     const [payload, setPayload] = useState<ContextMapPayload | null>(null);
     const [loading, setLoading] = useState(false);
@@ -202,12 +209,12 @@ export function useContextMap({
             const element = geometry[id];
             if (element) out.push({ element, role: 'contingency' });
         }
-        for (const { id, rho } of overloads) {
+        for (const { id, rho, rhoBefore } of overloads) {
             const element = geometry[id];
-            if (element && !selectedContingency.includes(id)) out.push({ element, role: 'overload', rho });
+            if (element && !selectedContingency.includes(id)) out.push({ element, role: 'overload', rho, rhoBefore });
         }
         return out;
     }, [selectedContingency, overloads, geometry]);
 
-    return { data, loading, error, available, unavailableReason, highlights };
+    return { data, loading, error, available, unavailableReason, highlights, monitoringFactor };
 }

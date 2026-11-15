@@ -121,8 +121,12 @@ interface Style {
     /** Stroke width: CSS px when `nonScaling`, else root user units. */
     width: number;
     nonScaling: boolean;
-    /** A line halo whose width follows the zoom (`--nad-halo-w`, App.css). */
-    zoomWidth: boolean;
+    /**
+     * A line halo whose width follows the zoom (`--nad-halo-w`, App.css): its
+     * width as a multiple of that var — the contingency halo is wider than
+     * the others. 0 for every other stroke.
+     */
+    zoomWidth: number;
     /** Dash pattern, same units as `width`. */
     dash: number[];
 }
@@ -217,6 +221,13 @@ const geometryOf = (el: Element, m: Mat): Geometry | null => {
 // width to `--nad-halo-w`, which usePanZoom recomputes from the zoom.
 const HALO_GROUPS = '.nad-overloaded, .nad-action-target, .nad-contingency-highlight';
 const HALO_SHAPES = new Set(['path', 'line', 'polyline', 'rect', 'polygon']);
+/** App.css's fallback for `--nad-halo-w` while usePanZoom has not set it. */
+const HALO_DEFAULT_PX = 24;
+
+const haloVarPx = (cs: CSSStyleDeclaration): number => {
+    const v = parseFloat(cs.getPropertyValue('--nad-halo-w'));
+    return Number.isFinite(v) && v > 0 ? v : HALO_DEFAULT_PX;
+};
 
 const resolveStyle = (el: Element, parent: Element | null, scale: number): Style | null => {
     const view = el.ownerDocument.defaultView;
@@ -231,6 +242,7 @@ const resolveStyle = (el: Element, parent: Element | null, scale: number): Style
     const fill = cs.fill && cs.fill !== 'none' ? cs.fill : null;
     if (!stroke && !fill) return null;
     const k = nonScaling ? 1 : scale;
+    const halo = !!stroke && nonScaling && HALO_SHAPES.has(el.tagName.toLowerCase()) && !!parent?.closest(HALO_GROUPS);
     return {
         fill,
         fillAlpha: opacity * parseFloat(cs.fillOpacity || '1'),
@@ -238,7 +250,7 @@ const resolveStyle = (el: Element, parent: Element | null, scale: number): Style
         strokeAlpha: opacity * parseFloat(cs.strokeOpacity || '1'),
         width: stroke ? w * k : 0,
         nonScaling,
-        zoomWidth: !!stroke && nonScaling && HALO_SHAPES.has(el.tagName.toLowerCase()) && !!parent?.closest(HALO_GROUPS),
+        zoomWidth: halo ? w / haloVarPx(cs) : 0,
         dash: stroke ? parseDash(cs.strokeDasharray).map(v => v * k) : [],
     };
 };
@@ -412,7 +424,7 @@ export const buildCanvasProxy = (
                 const k = it.nonScaling ? widthMul / scale : 1;
                 c.globalAlpha = it.strokeAlpha;
                 c.strokeStyle = it.stroke;
-                c.lineWidth = (it.zoomWidth && haloPx != null ? haloPx : it.width) * k;
+                c.lineWidth = (it.zoomWidth && haloPx != null ? haloPx * it.zoomWidth : it.width) * k;
                 c.setLineDash(it.dash.length ? it.dash.map(d => d * k) : []);
                 c.stroke(it.path);
             }

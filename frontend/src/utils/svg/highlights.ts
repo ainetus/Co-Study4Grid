@@ -429,7 +429,10 @@ export const applyContingencyHighlight = (
                 console.warn('Failed to get CTM for contingency highlight:', e);
             }
 
-            backgroundLayer.appendChild(clone);
+            // Beneath every other halo, whatever order they were applied in:
+            // it is the widest, so an overload on a twin circuit keeps
+            // showing on top of it (see App.css).
+            backgroundLayer.insertBefore(clone, backgroundLayer.firstChild);
         } else {
             el.classList.add('nad-contingency-highlight');
         }

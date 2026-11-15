@@ -250,6 +250,11 @@ describe('UX consistency — overload-halo width is zoom-adaptive (smooth, no ti
         expect(css).toMatch(
             /\.nad-overloaded path[^{]*{[^}]*stroke-width:\s*var\(--nad-halo-w,\s*24px\)[^}]*vector-effect:\s*non-scaling-stroke/s,
         );
+        // The contingency halo — beneath the others — is wider, so an overload
+        // on its twin circuit leaves a band of it visible instead of hiding it.
+        expect(css).toMatch(
+            /\.nad-contingency-highlight path[^{]*{[^}]*stroke-width:\s*calc\(var\(--nad-halo-w,\s*24px\)\s*\*\s*1\.\d+\)/s,
+        );
         // No fixed per-tier width snap survives (neither the old thin 24px cap
         // nor a fat 120px override) — width is the var, continuously.
         expect(css).not.toMatch(

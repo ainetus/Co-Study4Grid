@@ -73,6 +73,21 @@ describe('SidebarSummary', () => {
         expect(onOverloadClick).toHaveBeenCalledWith('', 'LINE_X', 'contingency');
     });
 
+    it('tells each overload\'s loading before → after the contingency on hovering its percentage', () => {
+        render(
+            <SidebarSummary
+                {...baseProps}
+                n1LinesOverloaded={['LINE_X', 'LINE_Y']}
+                n1LinesOverloadedRho={[1.21, 0.97]}
+                n1LinesOverloadedRhoBefore={[0.87, null]}
+            />,
+        );
+        expect(screen.getByTestId('sidebar-summary-overload-rho-LINE_X'))
+            .toHaveAttribute('title', 'LINE_X: 87.0% before the contingency → 121.0% after');
+        // N loading unknown: the percentage alone, no tooltip.
+        expect(screen.getByTestId('sidebar-summary-overload-rho-LINE_Y')).not.toHaveAttribute('title');
+    });
+
     it('renders the ActionFilterRings when hasActions + filters + onChange are all wired', () => {
         render(
             <SidebarSummary

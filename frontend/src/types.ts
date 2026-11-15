@@ -260,6 +260,9 @@ export interface DiagramData {
     originalViewBox?: ViewBox | null;
     lines_overloaded?: string[];
     lines_overloaded_rho?: number[];
+    /** N-1 diagrams: each overload's loading in N (before the contingency),
+     *  parallel to `lines_overloaded`; null where unknown. */
+    lines_overloaded_rho_before?: (number | null)[];
 }
 
 export interface FlowDelta {
@@ -340,6 +343,7 @@ export interface DiagramPatch {
     };
     lines_overloaded?: string[];
     lines_overloaded_rho?: number[];
+    lines_overloaded_rho_before?: (number | null)[];
     flow_deltas?: Record<string, FlowDelta>;
     reactive_flow_deltas?: Record<string, FlowDelta>;
     asset_deltas?: Record<string, AssetDelta>;
@@ -497,6 +501,8 @@ export interface ContextMapHighlight {
     role: 'contingency' | 'overload';
     /** Loading (ρ, 1 = 100 %) when known. */
     rho?: number;
+    /** Overloads: the loading before the contingency (N state), when known. */
+    rhoBefore?: number;
 }
 
 /** POST /api/context-map/elements — where a studied element sits. */

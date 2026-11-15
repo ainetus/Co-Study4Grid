@@ -138,16 +138,19 @@ describe('useContextMap', () => {
         mockApi.getContextMap.mockResolvedValue(map(1));
         const n1Diagram = {
             svg: '', metadata: null, lines_overloaded: ['OVL_A', 'OVL_B'], lines_overloaded_rho: [1.08, 1.02],
+            lines_overloaded_rho_before: [0.81, null],
         } as DiagramData;
         const { result } = renderHook(() => useContextMap(args({
             studyGeneration: 1, selectedContingency: ['CONT'], n1Diagram,
-            selectedOverloads: new Set(['OVL_A']),
+            selectedOverloads: new Set(['OVL_A']), monitoringFactor: 0.95,
         })));
         await waitFor(() => expect(result.current.highlights).toHaveLength(2));
-        expect(result.current.highlights.map(h => [h.element.id, h.role, h.rho])).toEqual([
-            ['CONT', 'contingency', undefined],
-            ['OVL_A', 'overload', 1.08],
+        // Loading after the contingency, and before it (N) when the diagram knows it.
+        expect(result.current.highlights.map(h => [h.element.id, h.role, h.rho, h.rhoBefore])).toEqual([
+            ['CONT', 'contingency', undefined, undefined],
+            ['OVL_A', 'overload', 1.08, 0.81],
         ]);
+        expect(result.current.monitoringFactor).toBe(0.95);
         expect(mockApi.getContextMapElements).toHaveBeenCalledWith(['CONT', 'OVL_A']);
     });
 

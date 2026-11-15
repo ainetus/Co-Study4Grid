@@ -15,7 +15,13 @@ the map shows **~2.7 s** after *Load Study*, while the N-state NAD lands at
 Once a contingency is set and its overloads identified, the map draws them in
 Co-Study's halo colours — **yellow** (`--signal-contingency`) for the
 contingency, **orange** (`--signal-overload`) for the overloads — so both read
-the same way as on the N-1 diagram.
+the same way as on the N-1 diagram. A contingency and an overload on twin
+circuits (the same two substations) would cover each other: such lines are
+drawn side by side, leaving and rejoining their shared substations
+(`separateCoincident` in `contextMapGeometry.ts`), the contingency in the
+middle and on top. On the N-1 diagram the contingency halo is the widest and
+lies beneath the others, so an overload halo on its twin leaves a yellow band
+visible.
 
 ## Prerequisite — when the tab appears
 
@@ -51,7 +57,12 @@ When the operator commits a contingency and the study has a Context tab
    the map since);
 2. once the N-1 computation names the overloads, they appear in orange with
    their **loading after the contingency written beside each line** (an orange
-   pill, e.g. *112 %*), and the map frames them with the contingency;
+   pill, e.g. *112 %*, placed clear of its line). Hovering the pill names the
+   line and gives its loading before → after the contingency, and the
+   threshold it is judged against (the monitoring factor: a line counts as
+   overloaded from 95 % of its limit by default); the sidebar's percentages
+   tell the same before → after on hover. The map frames them with the
+   contingency;
 3. the **N-1 tab glows** (a pulsing orange halo, `.tab-attention` in
    `App.css`; static under `prefers-reduced-motion`) to invite the next step,
    until the operator opens it (`useDiagrams.n1Attention`).
@@ -243,7 +254,10 @@ When fewer than two zones can be placed on the ground, there is no map at all
 
 Overloads come from the same source and selection filter as the N-1 tab's
 orange halos (`computeN1OverloadHighlights`); their loading (ρ) comes from
-`n1Diagram.lines_overloaded_rho`.
+`n1Diagram.lines_overloaded_rho`, and their loading before the contingency
+from `n1Diagram.lines_overloaded_rho_before` (the N currents cached with the
+N diagram over the permanent limits, `overloads.get_n_state_loading`; `null`
+where unknown).
 
 ## Files
 

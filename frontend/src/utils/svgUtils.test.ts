@@ -1367,6 +1367,18 @@ describe('Highlight Layering', () => {
             // Bottom → top: contingency, then overload.
             expect(contingencyIdx).toBeLessThan(overloadIdx);
         });
+
+        it('a contingency re-applied after the overloads still lies beneath them', () => {
+            // The contingency halo is the widest (App.css): on top it would
+            // bury an overload on its twin circuit, whatever the call order.
+            const container = buildNAD();
+            applyOverloadedHighlights(container, metaIndex, ['OVL_LINE']);
+            applyContingencyHighlight(container, metaIndex, 'CONT_LINE');
+
+            const children = Array.from(container.querySelector('#nad-background-layer')!.children);
+            expect(children[0].classList.contains('nad-contingency-highlight')).toBe(true);
+            expect(children.some(c => c.classList.contains('nad-overloaded'))).toBe(true);
+        });
     });
 });
 

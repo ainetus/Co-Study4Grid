@@ -1084,6 +1084,7 @@ function App() {
   // Context tab: the situation map, fetched on every study load.
   const contextMap = useContextMap({
     studyGeneration: settings.studyGeneration, selectedContingency, result, n1Diagram, selectedOverloads,
+    monitoringFactor: settings.monitoringFactor,
   });
   // The study answered it has no situation map: its Context tab is gone.
   const noContextMap = !!(contextMap.unavailableReason || contextMap.error);
@@ -1609,6 +1610,7 @@ function App() {
           nameMap={nameMap}
           n1LinesOverloaded={n1Diagram?.lines_overloaded}
           n1LinesOverloadedRho={n1Diagram?.lines_overloaded_rho}
+          n1LinesOverloadedRhoBefore={n1Diagram?.lines_overloaded_rho_before}
           nLinesOverloaded={nDiagram?.lines_overloaded}
           nLinesOverloadedRho={nDiagram?.lines_overloaded_rho}
           selectedOverloads={selectedOverloads}

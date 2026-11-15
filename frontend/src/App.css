@@ -315,6 +315,15 @@ circle.nad-highlight {
     vector-effect: non-scaling-stroke !important;
 }
 
+/* The contingency halo is the widest and lies beneath the others
+   (`applyContingencyHighlight` inserts it first in the background layer):
+   where an overload runs alongside it — the twin circuit of a double line,
+   drawn a few pixels away — a yellow band stays visible around the orange
+   halo instead of one hiding the other. */
+.nad-contingency-highlight path, .nad-contingency-highlight line, .nad-contingency-highlight polyline, .nad-contingency-highlight rect, .nad-contingency-highlight polygon {
+    stroke-width: calc(var(--nad-halo-w, 24px) * 1.7) !important;
+}
+
 /* For nodes (circles and rects), add a screen-space stroke to create a glowing
    background halo that doesn't shrink into invisibility on large grids. */
 .nad-action-target circle,
