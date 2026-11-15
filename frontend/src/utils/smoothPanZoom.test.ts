@@ -35,6 +35,11 @@ describe('smoothPanZoom preference singleton', () => {
         expect(isSmoothPanZoomEnabled()).toBe(true);
         expect(localStorage.getItem('cs4g-smooth-pan-zoom')).toBe('bitmap');
 
+        setSmoothPanZoomMode('canvas');
+        expect(getSmoothPanZoomMode()).toBe('canvas');
+        expect(isSmoothPanZoomEnabled()).toBe(true);
+        expect(localStorage.getItem('cs4g-smooth-pan-zoom')).toBe('canvas');
+
         setSmoothPanZoomMode('off');
         expect(getSmoothPanZoomMode()).toBe('off');
         expect(isSmoothPanZoomEnabled()).toBe(false);

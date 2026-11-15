@@ -14,6 +14,7 @@ import {
     composeSnapshotMarkup,
     rasterizeMarkupToCanvas,
 } from '../utils/svg/bitmapSnapshot';
+import { createCanvasProxyController } from '../utils/svg/canvasProxy';
 
 /**
  * Custom Hook for SVG Pan/Zoom via viewBox manipulation.
@@ -109,10 +110,53 @@ const cursorToUserSpace = (
     return { x: vb.x + ((clientX - rect.left) - offX) / a, y: vb.y + ((clientY - rect.top) - offY) / a };
 };
 
+/** Wheel debounce before a gesture settles (labels / flows repaint). */
+const WHEEL_SETTLE_MS = 150;
+/**
+ * Pause that settles a canvas-path gesture, wheel or drag. The settle bakes
+ * the live SVG — one full relayout, then a re-raster that holds up every
+ * commit (up to ~1 s at region zoom on the European grid) — so notch-by-notch
+ * zooming and successive drags stay on the cheap canvas until the operator
+ * pauses.
+ */
+const CANVAS_SETTLE_MS = 400;
+/** Zoom per mouse-wheel notch, and the wheel delta (px) that counts as one notch. */
+const WHEEL_ZOOM_STEP = 1.1;
+const WHEEL_NOTCH_PX = 100;
+/** Deltas at least this large come from a notched wheel (one notch minimum). */
+const WHEEL_NOTCH_MIN_PX = 40;
+
+/**
+ * viewBox scale factor for one wheel event (> 1 zooms out). Honours the delta
+ * MAGNITUDE: behind a busy main thread Chrome coalesces queued wheel events
+ * and sums their deltas, and counting such an event as a single notch lost
+ * most of a fast spin. A notched-wheel event (|Δ| ≥ 40 px — 53 to 120 px
+ * depending on OS) counts as at least one notch, so per-notch zoom is
+ * unchanged; small trackpad deltas zoom proportionally instead of 10 % each.
+ */
+export const wheelZoomFactor = (deltaY: number, deltaMode: number, pageHeight: number): number => {
+    const px = deltaMode === 1 ? deltaY * 33 : deltaMode === 2 ? deltaY * pageHeight : deltaY;
+    const mag = Math.abs(px);
+    if (!(mag > 0)) return 1;
+    const notches = Math.min(10, mag >= WHEEL_NOTCH_MIN_PX ? Math.max(1, mag / WHEEL_NOTCH_PX) : mag / WHEEL_NOTCH_PX);
+    return Math.pow(WHEEL_ZOOM_STEP, Math.sign(px) * notches);
+};
+
+export interface PanZoomOptions {
+    /**
+     * Allow the `'canvas'` gesture proxy on this surface (default true). The
+     * proxy draws the network only, so surfaces that overlay other content on
+     * the diagram during a gesture (the Action-overview pins) opt out and use
+     * the default path instead.
+     */
+    gestureProxy?: boolean;
+}
+
 export const usePanZoom = (
     svgRef: RefObject<HTMLDivElement | null>,
     initialViewBox: ViewBox | null | undefined,
     active: boolean,
+    options: PanZoomOptions = {},
 ) => {
     // React state: "settled" viewBox for downstream consumers
     const [viewBox, setViewBox] = useState<ViewBox | null>(null);
@@ -166,6 +210,18 @@ export const usePanZoom = (
     // cheap header re-compose + an off-thread decode instead of the 250ms
     // main-thread serialize that froze the pan start.
     const snapshotSerializedRef = useRef<string | null>(null);
+    // Canvas gesture proxy (`'canvas'` mode, utils/svg/canvasProxy.ts): a light
+    // stand-in of the network drawn on a canvas during the gesture, so the live
+    // SVG is only rewritten once, on settle.
+    const proxyAllowedRef = useRef(options.gestureProxy !== false);
+    proxyAllowedRef.current = options.gestureProxy !== false;
+    const [canvasProxy] = useState(() => createCanvasProxyController({
+        getLiveSvg: () => svgElRef.current,
+        getContainer: () => svgRef.current,
+        getExtent: () => originalVbRef.current,
+        haloWidth: (vb) => (originalVbRef.current ? computeHaloWidthPx(vb, originalVbRef.current) : null),
+    }));
+    const canvasModeActive = () => proxyAllowedRef.current && getSmoothPanZoomMode() === 'canvas';
 
 
     // Toggle interaction class on container to disable pointer-events on SVG children
@@ -239,6 +295,7 @@ export const usePanZoom = (
     // tab-switch lifecycle effects can cancel an in-flight bitmap gesture too.
     // No-op in the default / GPU paths (no canvas, SVG never hidden).
     const teardownBitmap = useCallback(() => {
+        canvasProxy.hide();
         bitmapTokenRef.current++; // invalidate any in-flight async raster
         const canvas = bitmapCanvasRef.current;
         if (canvas) {
@@ -250,7 +307,7 @@ export const usePanZoom = (
         bitmapReadyRef.current = false;
         const svg = svgElRef.current;
         if (svg?.style && svg.style.visibility === 'hidden') svg.style.visibility = '';
-    }, []);
+    }, [canvasProxy]);
 
     // Pre-warm the serialisation cache (bitmap mode only) so the NEXT gesture's
     // snapshot skips the heavy serialize. Runs on idle — off any gesture.
@@ -321,6 +378,7 @@ export const usePanZoom = (
             currentHaloWRef.current = null; // re-apply --nad-halo-w for the new diagram
             interactingRef.current = false; // a new diagram cancels any pending bake
             teardownBitmap(); // drop any in-flight bitmap overlay for the old diagram
+            canvasProxy.dispose(); // its geometry belongs to the old diagram
             invalidateSnapshotCache(); // the SVG content changed — re-warm later
             viewBoxRef.current = initialViewBox;
             applyViewBox(initialViewBox);
@@ -337,6 +395,8 @@ export const usePanZoom = (
         interactingRef.current = false;
         teardownBitmap();
         invalidateSnapshotCache();
+        // Only the visible tab holds a canvas proxy (canvas + overview cache).
+        if (!active) canvasProxy.dispose();
         if (!active || !viewBoxRef.current) return;
         applyViewBox(viewBoxRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -351,9 +411,29 @@ export const usePanZoom = (
         const svg = svgElRef.current;
         if (!svg || typeof MutationObserver === 'undefined') return;
         scheduleSnapshotPrewarm();
-        const obs = new MutationObserver(() => invalidateSnapshotCache());
-        obs.observe(svg, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-        return () => obs.disconnect();
+        if (active && canvasModeActive()) canvasProxy.prewarm();
+        // Inline `style` too: the voltage filter hides elements that way. The
+        // root's own attributes are written by the gesture modes, not content.
+        const obs = new MutationObserver((records) => {
+            if (!records.some(r => r.type === 'childList' || r.target !== svg)) return;
+            invalidateSnapshotCache();
+            if (active && canvasModeActive()) canvasProxy.invalidate();
+        });
+        obs.observe(svg, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+        // The proxy bakes theme colours (diagram surface, highlight tokens).
+        const themeObs = new MutationObserver(() => {
+            if (active && canvasModeActive()) canvasProxy.invalidate();
+        });
+        themeObs.observe(svg.ownerDocument.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        // Its overview cache is baked for the panel size (sidebar toggle,
+        // detached window resize): re-bake on idle.
+        const container = svgRef.current;
+        const RO = svg.ownerDocument.defaultView?.ResizeObserver;
+        const resizeObs = container && RO ? new RO(() => {
+            if (active && canvasModeActive()) canvasProxy.prewarm();
+        }) : null;
+        if (container) resizeObs?.observe(container);
+        return () => { obs.disconnect(); themeObs.disconnect(); resizeObs?.disconnect(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [active, initialViewBox]);
 
@@ -487,6 +567,40 @@ export const usePanZoom = (
             setTimeout(build, 0);
         };
 
+        // --- Canvas gesture proxy (`'canvas'` mode) ---
+        // Show the stand-in over the live SVG; the live viewBox stays at
+        // `baseVb` until the settle bake. False when no proxy can be drawn,
+        // and the gesture then falls back to the default path.
+        const beginCanvasInteraction = (): boolean => {
+            if (interactingRef.current) return true;
+            const svg = svgElRef.current;
+            const vb = viewBoxRef.current;
+            if (!svg || !vb || !canvasProxy.begin()) return false;
+            const rect = svg.getBoundingClientRect();
+            baseVbRef.current = { ...vb };
+            baseSizeRef.current = { w: svg.clientWidth || rect.width, h: svg.clientHeight || rect.height };
+            interactingRef.current = true;
+            return true;
+        };
+        const applyCanvasFrame = (vb: ViewBox) => {
+            viewBoxRef.current = vb;
+            if (interactingRef.current) canvasProxy.frame(vb);
+            else applyViewBox(vb);
+        };
+
+        // Resolve the mode for a gesture that is starting: the canvas proxy
+        // must be allowed on this surface and drawable, else use the default.
+        const startGesture = () => {
+            if (interactingRef.current) return;
+            let mode = getSmoothPanZoomMode();
+            if (mode === 'canvas' && !(proxyAllowedRef.current && beginCanvasInteraction())) mode = 'off';
+            modeRef.current = mode;
+            smoothRef.current = mode !== 'off';
+            if (mode !== 'canvas') setInteracting(true);
+            if (mode === 'gpu') beginInteraction();
+            else if (mode === 'bitmap') beginBitmapInteraction();
+        };
+
         // Per-frame: keep viewBoxRef in lockstep (the wheel/drag math + the
         // settle bake all read it), then transform the canvas if it's mounted,
         // else fall back to a viewBox write (pre-raster frames).
@@ -508,7 +622,17 @@ export const usePanZoom = (
         const endInteraction = () => {
             if (interactingRef.current) {
                 interactingRef.current = false;
-                if (bitmapCanvasRef.current) {
+                if (modeRef.current === 'canvas') {
+                    // One bake of the live SVG, behind the still-visible proxy,
+                    // which is dropped once that repaint has landed. Skipped
+                    // when the view did not move: it is a full relayout.
+                    const vb = viewBoxRef.current;
+                    const base = baseVbRef.current;
+                    if (vb && !(base && vb.x === base.x && vb.y === base.y && vb.w === base.w && vb.h === base.h)) {
+                        applyViewBox(vb);
+                    }
+                    canvasProxy.settle();
+                } else if (bitmapCanvasRef.current) {
                     // BITMAP settle. Bake the target viewBox onto the STILL-HIDDEN
                     // live SVG first (it repaints behind the bitmap), then keep the
                     // bitmap on top for ~2 frames before revealing the SVG + dropping
@@ -550,22 +674,28 @@ export const usePanZoom = (
             commitViewBox();
         };
 
+        // Debounced end of a wheel gesture, or of a canvas-path drag. A press
+        // in progress owns the gesture: its mouseup settles it.
+        const settleGesture = () => {
+            wheelTimerId.current = null;
+            if (isDragging.current) return;
+            if (smoothRef.current) endInteraction();
+            else commitViewBox();
+            setInteracting(false);
+        };
+
         const handleWheel = (e: WheelEvent) => {
             if (!activeRef.current || !viewBoxRef.current) return;
             e.preventDefault();
 
             // Accumulate scale factor (multiplicative) and record latest cursor
-            const scaleFactor = e.deltaY > 0 ? 1.1 : 0.9;
-            pendingWheelScale.current *= scaleFactor;
+            const view = el.ownerDocument.defaultView ?? window;
+            pendingWheelScale.current *= wheelZoomFactor(e.deltaY, e.deltaMode, view.innerHeight);
             pendingWheelCursor.current = { x: e.clientX, y: e.clientY };
 
             // Mark as interacting. Snapshot the pan/zoom mode for the whole
             // gesture and, when smooth, capture the transform base / snapshot.
-            modeRef.current = getSmoothPanZoomMode();
-            smoothRef.current = modeRef.current !== 'off';
-            setInteracting(true);
-            if (modeRef.current === 'gpu') beginInteraction();
-            else if (modeRef.current === 'bitmap') beginBitmapInteraction();
+            startGesture();
 
             // Schedule rAF if not already queued
             if (!wheelRafId.current) {
@@ -584,7 +714,7 @@ export const usePanZoom = (
 
                     const cursor = pendingWheelCursor.current;
                     let svgP: { x: number; y: number };
-                    if (modeRef.current === 'bitmap') {
+                    if (modeRef.current === 'bitmap' || modeRef.current === 'canvas') {
                         // Live SVG is hidden at its base viewBox, so getScreenCTM
                         // is stale — derive the cursor's user point analytically.
                         svgP = cursorToUserSpace(svg, baseSizeRef.current, vb, cursor.x, cursor.y);
@@ -603,7 +733,9 @@ export const usePanZoom = (
                         h: vb.h * accumulatedScale,
                     };
 
-                    if (modeRef.current === 'bitmap') {
+                    if (modeRef.current === 'canvas') {
+                        applyCanvasFrame(newVb);
+                    } else if (modeRef.current === 'bitmap') {
                         applyBitmapFrame(newVb);
                     } else if (modeRef.current === 'gpu') {
                         applyInteractionFrame(newVb);
@@ -616,17 +748,30 @@ export const usePanZoom = (
 
             // Debounced commit: sync to React after scrolling stops
             if (wheelTimerId.current) clearTimeout(wheelTimerId.current);
-            wheelTimerId.current = setTimeout(() => {
-                if (smoothRef.current) endInteraction();
-                else commitViewBox();
-                setInteracting(false);
-            }, 150);
+            wheelTimerId.current = setTimeout(settleGesture, modeRef.current === 'canvas' ? CANVAS_SETTLE_MS : WHEEL_SETTLE_MS);
         };
+
+        // Canvas path: the press waits for the pointer to travel before the
+        // gesture starts, so a plain click (VL select, SLD) draws nothing.
+        let deferredStart = false;
+        let dragPointerId: number | null = null;
+        const handlePointerDown = (e: PointerEvent) => { dragPointerId = e.pointerId; };
 
         // rAF-throttled drag: at most one DOM update per display frame
         const handleMouseMove = (e: MouseEvent) => {
             if (!activeRef.current || !viewBoxRef.current || !isDragging.current) return;
             e.preventDefault();
+            if (deferredStart) {
+                if (e.clientX === startPoint.current.x && e.clientY === startPoint.current.y) return;
+                deferredStart = false;
+                startGesture();
+                // The proxy is click-through: capture the pointer, or every
+                // move hit-tests the live SVG underneath (20–40 ms each at
+                // region zoom on the European grid).
+                if (modeRef.current === 'canvas' && dragPointerId !== null && typeof el.setPointerCapture === 'function') {
+                    try { el.setPointerCapture(dragPointerId); } catch { /* pointer already released */ }
+                }
+            }
 
             startPoint.current.pendingX = e.clientX;
             startPoint.current.pendingY = e.clientY;
@@ -635,38 +780,48 @@ export const usePanZoom = (
 
             rafId.current = requestAnimationFrame(() => {
                 rafId.current = null;
-                const sp = startPoint.current;
-                const dx = sp.pendingX - sp.x;
-                const dy = sp.pendingY - sp.y;
-                sp.x = sp.pendingX;
-                sp.y = sp.pendingY;
-
-                const svg = svgElRef.current;
-                if (!svg) return;
-                // In smooth mode the SVG carries a CSS transform, so use the
-                // transform-independent layout width (clientWidth) for the
-                // user-per-pixel scale. The default path keeps the original
-                // getBoundingClientRect().width for byte-identical behaviour.
-                const screenW = smoothRef.current
-                    ? (svg.clientWidth || svg.getBoundingClientRect().width)
-                    : svg.getBoundingClientRect().width;
-                const vb = viewBoxRef.current!;
-                const scale = vb.w / screenW;
-
-                const newVb: ViewBox = {
-                    ...vb,
-                    x: vb.x - dx * scale,
-                    y: vb.y - dy * scale,
-                };
-                if (modeRef.current === 'bitmap') {
-                    applyBitmapFrame(newVb);
-                } else if (modeRef.current === 'gpu') {
-                    applyInteractionFrame(newVb);
-                } else {
-                    viewBoxRef.current = newVb;
-                    applyViewBox(newVb);
-                }
+                applyDragDelta();
             });
+        };
+
+        // Apply the cursor travel since the last applied frame.
+        const applyDragDelta = () => {
+            const sp = startPoint.current;
+            const dx = sp.pendingX - sp.x;
+            const dy = sp.pendingY - sp.y;
+            sp.x = sp.pendingX;
+            sp.y = sp.pendingY;
+
+            const svg = svgElRef.current;
+            const vb = viewBoxRef.current;
+            if (!svg || !vb || (dx === 0 && dy === 0)) return;
+            // In smooth mode the SVG carries a CSS transform, so use the
+            // transform-independent layout size (clientWidth/Height).
+            const rect = svg.getBoundingClientRect();
+            const screenW = smoothRef.current ? (svg.clientWidth || rect.width) : rect.width;
+            const screenH = smoothRef.current ? (svg.clientHeight || rect.height) : rect.height;
+            if (!(screenW > 0)) return; // not laid out: no px → user-unit mapping
+            // pypowsybl's preserveAspectRatio="xMidYMid meet" letterboxes one
+            // axis: one screen px is max(w/W, h/H) user units. vb.w / W alone
+            // made the map slide slower than the cursor whenever the panel is
+            // wider than the diagram.
+            const scale = screenH > 0 ? Math.max(vb.w / screenW, vb.h / screenH) : vb.w / screenW;
+
+            const newVb: ViewBox = {
+                ...vb,
+                x: vb.x - dx * scale,
+                y: vb.y - dy * scale,
+            };
+            if (modeRef.current === 'canvas') {
+                applyCanvasFrame(newVb);
+            } else if (modeRef.current === 'bitmap') {
+                applyBitmapFrame(newVb);
+            } else if (modeRef.current === 'gpu') {
+                applyInteractionFrame(newVb);
+            } else {
+                viewBoxRef.current = newVb;
+                applyViewBox(newVb);
+            }
         };
 
         // Track the window where mousemove/mouseup are currently bound for
@@ -676,14 +831,27 @@ export const usePanZoom = (
 
         const handleMouseUp = () => {
             isDragging.current = false;
+            deferredStart = false;
+            dragPointerId = null;
             if (rafId.current) {
                 cancelAnimationFrame(rafId.current);
                 rafId.current = null;
+                // The last coalesced mousemove often arrives in the same task
+                // as the mouseup when frames are slow: apply its travel rather
+                // than dropping the end of the drag.
+                applyDragDelta();
             }
             if (activeDragWindow) {
                 activeDragWindow.removeEventListener('mousemove', handleMouseMove);
                 activeDragWindow.removeEventListener('mouseup', handleMouseUp);
                 activeDragWindow = null;
+            }
+            if (interactingRef.current && modeRef.current === 'canvas') {
+                // Settle when the operator pauses, as for the wheel: a drag
+                // that follows continues on the proxy, with no bake between.
+                if (wheelTimerId.current) clearTimeout(wheelTimerId.current);
+                wheelTimerId.current = setTimeout(settleGesture, CANVAS_SETTLE_MS);
+                return;
             }
             // Bake the smooth-mode transform back to viewBox (and commit);
             // the default path just commits to React state on drag end.
@@ -696,11 +864,14 @@ export const usePanZoom = (
             if (!activeRef.current || !viewBoxRef.current) return;
             isDragging.current = true;
             startPoint.current = { x: e.clientX, y: e.clientY, pendingX: e.clientX, pendingY: e.clientY };
-            modeRef.current = getSmoothPanZoomMode();
-            smoothRef.current = modeRef.current !== 'off';
-            setInteracting(true);
-            if (modeRef.current === 'gpu') beginInteraction();
-            else if (modeRef.current === 'bitmap') beginBitmapInteraction();
+            // A pending settle (wheel debounce, canvas drag pause) now belongs
+            // to this press.
+            if (wheelTimerId.current) {
+                clearTimeout(wheelTimerId.current);
+                wheelTimerId.current = null;
+            }
+            deferredStart = proxyAllowedRef.current && getSmoothPanZoomMode() === 'canvas';
+            if (!deferredStart) startGesture();
 
             // Resolve the element's CURRENT owner window per-drag rather
             // than capturing it at effect-bind time. This is critical for
@@ -716,10 +887,12 @@ export const usePanZoom = (
         };
 
         el.addEventListener('wheel', handleWheel, { passive: false });
+        el.addEventListener('pointerdown', handlePointerDown);
         el.addEventListener('mousedown', handleMouseDown);
 
         return () => {
             el.removeEventListener('wheel', handleWheel);
+            el.removeEventListener('pointerdown', handlePointerDown);
             el.removeEventListener('mousedown', handleMouseDown);
             // Clean up any in-flight drag listeners.
             if (activeDragWindow) {
@@ -759,6 +932,11 @@ export const usePanZoom = (
             applyViewBox(vb);
             return;
         }
+        if (interactingRef.current && modeRef.current === 'canvas') {
+            // A programmatic jump (zoom buttons, Inspect, tied tabs) ends the gesture.
+            interactingRef.current = false;
+            canvasProxy.hide();
+        }
         viewBoxRef.current = vb;
         applyViewBox(vb);
         setViewBox(prev => {
@@ -769,7 +947,7 @@ export const usePanZoom = (
             }
             return vb;
         });
-    }, [applyViewBox]);
+    }, [applyViewBox, canvasProxy]);
 
     return useMemo(() => ({ viewBox, setViewBox: setViewBoxPublic }), [viewBox, setViewBoxPublic]);
 };

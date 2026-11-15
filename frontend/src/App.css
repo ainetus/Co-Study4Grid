@@ -19,6 +19,12 @@ This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface t
     /* CSS containment: tells the browser this subtree's layout/paint is
        independent of the rest of the page, reducing work during viewBox changes */
     contain: layout style paint;
+    /* A drag pans the diagram. Without this, every drag also runs the text
+       selection over the flow values / VL labels (~230 ms over a 1 s pan on
+       the European grid), and dragging across an existing selection starts a
+       native drag-and-drop that swallows the rest of the pan gesture. */
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 /* ===== Dark-mode diagram legibility =====

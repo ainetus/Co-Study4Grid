@@ -21,23 +21,30 @@ import { interactionLogger } from './interactionLogger';
  *  - 'bitmap' : rasterise the NAD to a <canvas> ONCE at gesture start and
  *             transform that bitmap during the gesture (compositor-only, no
  *             vector re-raster), baking back to the live SVG on settle.
- *             Benchmarked at 120 fps / 0 dropped frames on the 5247-VL grid
- *             (~6× the GPU path) and composites cheaply even in software — at
- *             the cost of a one-shot raster of a multi-MB SVG at gesture start.
+ *             Fast on an M4 Pro, but Chrome cannot createImageBitmap() an SVG
+ *             blob, so the snapshot decodes on the main thread (0.4–3 s per
+ *             gesture on an Intel laptop) and the gesture runs on the slow
+ *             path meanwhile.
+ *  - 'canvas' : draw a light stand-in of the network (grouped Path2D per
+ *             style and grid cell, utils/svg/canvasProxy.ts) on a canvas over
+ *             the live SVG during the gesture and rewrite the live viewBox
+ *             once, when the operator pauses. 30–60 fps on the full European
+ *             grid, with or without a GPU, every gesture complete
+ *             (docs/performance/large-grid-interaction-audit-2026-11.md §8).
  *
  * Modelled as a tiny singleton (like interactionLogger / gameBridge / useTheme)
  * rather than threaded through props, because four independent usePanZoom
  * instances (N / N-1 / Action / overview) read it imperatively at gesture
  * start, and only the Settings selector writes it. localStorage-persisted.
  */
-export type PanZoomMode = 'off' | 'gpu' | 'bitmap';
+export type PanZoomMode = 'off' | 'gpu' | 'bitmap' | 'canvas';
 
 const STORAGE_KEY = 'cs4g-smooth-pan-zoom';
 
 const readInitial = (): PanZoomMode => {
     try {
         const v = localStorage.getItem(STORAGE_KEY);
-        if (v === 'gpu' || v === 'bitmap' || v === 'off') return v;
+        if (v === 'gpu' || v === 'bitmap' || v === 'canvas' || v === 'off') return v;
         if (v === '1') return 'gpu'; // migrate the legacy boolean storage
         return 'off';
     } catch {

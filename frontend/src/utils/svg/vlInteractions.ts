@@ -6,6 +6,7 @@
 
 import type { MetadataIndex, NodeMeta } from '../../types';
 import { colors } from '../../styles/tokens';
+import { GESTURE_PROXY_ATTR } from './canvasProxy';
 
 /**
  * Interactive voltage-level disk behaviours for the NAD diagram:
@@ -38,7 +39,9 @@ import { colors } from '../../styles/tokens';
  *     direct hit-test misses a VL, i.e. on an occluding edge or empty space.
  *   - Pan/zoom gestures add `.svg-interacting`, which sets
  *     `pointer-events: none` on every SVG child, so none of these
- *     handlers resolve a node mid-gesture — fluidity is untouched.
+ *     handlers resolve a node mid-gesture — fluidity is untouched. In the
+ *     'canvas' pan/zoom mode the drag captures the pointer instead, and the
+ *     container carries `data-gesture-proxy` while the proxy covers it.
  *
  * The handlers do NOT call `preventDefault`/`stopPropagation` on
  * `mousedown`, so usePanZoom's panning still starts normally on a drag.
@@ -176,7 +179,14 @@ export const attachVlInteractions = (
         if (tooltip) tooltip.style.display = 'none';
     };
 
+    // While usePanZoom's canvas proxy covers the diagram ('canvas' mode), the
+    // live SVG underneath still sits at the gesture's start viewBox: what it
+    // hit-tests is not what the operator sees, so hover and presses are
+    // ignored until the gesture settles.
+    const proxyUp = () => container.hasAttribute(GESTURE_PROXY_ATTR);
+
     const onOver = (evt: MouseEvent) => {
+        if (proxyUp()) return;
         // The name is already drawn when labels are visible — only surface the
         // tooltip when the static labels are hidden. Gating the (slightly more
         // expensive) `elementsFromPoint` fallback on that keeps hover cheap.
@@ -201,7 +211,8 @@ export const attachVlInteractions = (
     //
     // The VL node is captured on `mousedown`, NOT on `click`. usePanZoom
     // adds `.svg-interacting` (→ `pointer-events: none` on every SVG child)
-    // the instant a drag starts, so by the time `mouseup` fires the disk is
+    // the instant a drag starts — or, in 'canvas' mode, captures the pointer
+    // on the container — so by the time `mouseup` fires the disk is
     // transparent and the browser retargets the resulting `click` to the
     // container (the common ancestor of the disk-mousedown and the
     // container-mouseup). Resolving from `click.target` would therefore
@@ -217,6 +228,11 @@ export const attachVlInteractions = (
     const onDown = (evt: MouseEvent) => {
         downX = evt.clientX;
         downY = evt.clientY;
+        if (proxyUp()) {
+            downVl = null;
+            downViaText = false;
+            return;
+        }
         const res = resolveDeep(evt.target, evt.clientX, evt.clientY);
         downVl = res ? res.node : null;
         downViaText = res ? res.viaText : false;

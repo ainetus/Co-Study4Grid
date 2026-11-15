@@ -1,8 +1,10 @@
 # Large-network interaction audit — full European grid (2026-11)
 
-**Status:** audit + measured prototypes. No product change ships with this
-document; the prototypes live in
+**Status:** audit + measured prototypes, in
 [`benchmarks/interaction_paint/audit_prototype.patch`](../../benchmarks/interaction_paint/audit_prototype.patch).
+**Follow-up (2026-11-15):** the canvas gesture proxy (A1) and the gesture
+fixes B1–B3 / B5 ship as the opt-in `'canvas'` pan/zoom mode — production
+measurements, and the compositing pitfalls the prototype did not hit, in §8.
 **Grid:** `pypsa_eur_eur220_225_380_400` — 5,247 voltage levels, 7,853
 branches. N-state NAD after `processSvg`: **9.9 MB, 98,960 DOM nodes**.
 **Question:** how fluid are zoom-in / zoom-out and navigation across the
@@ -613,6 +615,10 @@ Each needs a unit test in `usePanZoom.test.tsx` (fake rAF / coalesced wheel
 deltas / a letterboxed container) — they are exactly the cases the suite
 does not cover today.
 
+**Status (§8):** B1, B2, B3 and B5 shipped, with those tests; they apply to
+every mode. B4 is open — the canvas path's 400 ms settle makes it moot
+there, the default path still needs it.
+
 ### Tier 1 — quick wins on the current rendering path (≈ 1 day)
 
 | # | Fix | Effect measured (§4.1) |
@@ -622,6 +628,12 @@ does not cover today.
 | Q3 | Read CTM / bounding rect **before** toggling `.svg-interacting` (`handleWheel`, `beginInteraction`, `beginBitmapInteraction`) | no forced synchronous restyle inside input handlers |
 | Q4 | Tier rules that match this pypowsybl's label DOM (`foreignObject.nad-text-nodes`, `.nad-text-edges`) at the overview tier | 5,247 unreadable HTML labels no longer laid out / painted at full extent; cheaper overview settles, tab switches and first display |
 | Q5 | Correct the bitmap-mode docs/comments (decode is on the main thread in Chrome) and stop advertising it as the "big bet" | — |
+
+**Status (§8):** Q5 done (`bitmapSnapshot.ts`, `smoothPanZoom.ts`, the
+Settings description and the frontend `CLAUDE.md` no longer claim an
+off-thread decode). Q1–Q4 open: they make the default path and every
+settle cheaper — including the one bake the canvas mode still does when a
+gesture ends.
 
 Tier 0 + Tier 1 together are what §4.1 measures. Every gesture completes,
 pans get ~2.5–3× and zooms ~2× more frames and the time to first feedback
@@ -637,6 +649,11 @@ still re-lays out the whole SVG (RC1).
 | A3 | Longer settle debounce on the proxy path (400 ms) so notch-by-notch zooming stays on the proxy; animated fly-to for Inspect / Unzoom on the proxy, one bake at the end | context kept at continental scale, no extra settles |
 | A4 | Keep inactive SVG tabs laid out but unrendered (`content-visibility: hidden`) instead of `display: none` | return to the N tab 350 → 150 ms (§4.4); re-measure memory and frame cost with N-1 + Action loaded first |
 | A5 | Move the canvas drawing to a Worker (`OffscreenCanvas`) if VDI sessions need more | gesture frames off the main thread entirely |
+
+**Status (§8):** A1 shipped as the opt-in `'canvas'` mode, with A3's 400 ms
+wheel settle; the animated fly-to for Inspect / Unzoom is not done (those
+jumps still bake directly). The default stays `'off'` until the numbers are
+confirmed on operator machines. A2, A4 and A5 open.
 
 Implementation notes for A1: build the proxy on idle and on the existing
 MutationObserver (highlight changes); rebuild on theme change and container
@@ -696,3 +713,121 @@ sends `deltaY = ±100` per notch; physical devices differ (per-notch deltas
 vary by OS and mouse, trackpads send many small deltas), so a production B2
 should normalise against the notch size actually observed rather than a
 hard-coded 100.
+
+---
+
+## 8. Follow-up — the production `'canvas'` mode (2026-11-15)
+
+The prototype's `canvas` mode was rebuilt as production code: a `'canvas'`
+value of the existing **Pan/zoom rendering** setting (opt-in, default still
+`'off'`), `utils/svg/canvasProxy.ts` for the proxy, the gesture fixes B1–B3 /
+B5 in `usePanZoom` for every mode, no experiment flags. None of the Tier 1
+CSS quick wins (Q1–Q4) nor B4 are in it — the prototype was measured with
+them on; here they would only matter at gesture boundaries.
+
+### Three more things the European grid taught
+
+Measured on region-zoom pans (`pan_region`), where the first production build
+stalled — p90 683 ms, 2 visual updates / s — while the prototype run of §4.2
+had reached 20 fps:
+
+1. **Never toggle the canvas's `display`.** Adding and removing its composited
+   layer invalidated the root layer that holds the live SVG; ~15 GPU raster
+   tasks (~2.9 s at region zoom on the Iris Xe) started with the gesture and
+   blocked every commit (`LayerTreeHost::WaitForCommitCompletion` 2.35 s on
+   the main thread).
+2. **Never restyle it at all.** With the canvas kept in the DOM, every style
+   change still costs a full layerization of the page
+   (`PaintArtifactCompositor::Update`, 50–90 ms at region zoom), whatever the
+   property: opacity flips (`will-change: opacity` or not, to and from 0 or
+   not), translating it off-screen (which also re-rastered the SVG layer), and
+   `pointer-events` flips, which also repaint the whole diagram (+40–60 ms).
+   Only *content* changes are free. So the canvas is mounted once —
+   composited (`will-change: transform`), click-through (`pointer-events:
+   none`) — shown by drawing an opaque frame and hidden by clearing it.
+3. **A click-through canvas needs pointer capture.** Without it, every drag
+   mousemove hit-tests the live SVG underneath: 20–40 ms each at region zoom
+   (41 hit tests, 772 ms for a 30-move drag; 9 hit tests, 186 ms with
+   capture). Wheel targets are latched by Chrome, so wheel bursts don't pay
+   it. The same hit tests make plain hovering over the map cost ~20–40 ms per
+   mousemove in every mode — a lever of its own (fewer hit-testable nodes).
+
+And one about settles: writing the live viewBox makes Chrome re-raster the
+visible SVG tiles (~1 s at region zoom here), and no later commit can land
+before that raster is done — a gesture starting in that window waits for it.
+The canvas path therefore settles **400 ms after the last input, wheel or
+drag**, so a navigation made of successive drags (`navigate_region`) stays on
+the proxy. While the proxy covers the diagram the container carries
+`data-gesture-proxy`: the live SVG underneath is still at the gesture's start
+viewBox, so `vlInteractions` ignores hover and presses until the settle. A
+drag only starts the proxy once the pointer travels, so a plain click (VL
+select, SLD) draws nothing.
+
+Last, rebuilds: the proxy is rebuilt after highlight / delta / filter changes,
+a ~0.1 s task on this grid. Run on the next idle period, it landed in the
+frame that showed the change (+30–130 ms on an Inspect jump), so it now waits
+for 600 ms without changes.
+
+### Results
+
+Production builds, full European grid, same harness and machine as §2
+(median of 2 repetitions; cells are *first feedback · fps · done*, jumps are
+input → painted). "Default" is the `'off'` mode; on this branch it carries the
+gesture fixes B1–B3 / B5. The *main* columns are the §2 baseline runs (the
+audited tree, whose pan / zoom code is `main`'s); wheel
+"done" now targets the symmetric 1.1-per-notch zoom (the main columns used
+0.9, the old zoom-in step). Raw files: `audit_results/final_gpu_off.json`,
+`final2_gpu_canvas.json`, `final2_sw_canvas.json`.
+
+| Scenario | main · default | this PR · default | this PR · canvas | main · default (SW) | this PR · canvas (SW) |
+|---|---|---|---|---|---|
+| Zoom-in burst (16 notches) | 430 ms · 4.5 fps · 0.53 | 464 ms · 4.2 fps · 0.99 | 52 ms · 42.0 fps · 1.00 | 458 ms · 5.3 fps · 0.56 | 46 ms · 54.8 fps · 1.00 |
+| Zoom-out burst (20 notches) | 484 ms · 5.0 fps · 0.55 | 556 ms · 4.4 fps · 1.00 | 56 ms · 53.1 fps · 1.00 | 440 ms · 6.8 fps · 0.55 | 58 ms · 55.8 fps · 1.00 |
+| Smooth zoom-in (trackpad-like) | 424 ms · 4.6 fps · 0.54 | 572 ms · 4.3 fps · 0.99 | 43 ms · 41.8 fps · 1.00 | 444 ms · 4.3 fps · 0.54 | 44 ms · 57.8 fps · 1.00 |
+| Notch-by-notch zoom (300 ms apart) | 396 ms · 3.4 fps · 1.00 | 452 ms · 3.7 fps · 0.99 | 44 ms · 56.5 fps · 1.00 | 419 ms · 4.4 fps · 0.92 | 62 ms · 56.5 fps · 1.00 |
+| Pan at full extent | 389 ms · 3.9 fps · 0.69 | 414 ms · 5.4 fps · 1.00 | 24 ms · 60.0 fps · 1.00 | 394 ms · 3.8 fps · 0.70 | 43 ms · 60.0 fps · 1.00 |
+| Pan at region zoom (~35 %) | 531 ms · 2.5 fps · 0.69 | 734 ms · 3.8 fps · 1.00 | 93 ms · 30.2 fps · 1.00 | 516 ms · 2.5 fps · 0.69 | 123 ms · 40.3 fps · 1.00 |
+| Pan at detail zoom (~12 %) | 555 ms · 2.4 fps · 0.73 | 524 ms · 5.0 fps · 1.00 | 106 ms · 51.4 fps · 1.00 | 596 ms · 2.1 fps · 0.74 | 124 ms · 53.3 fps · 1.00 |
+| Navigate across Europe (4 drags) | 556 ms · 0.9 fps · 0.47 | 505 ms · 2.2 fps · 1.00 | 97 ms · 49.2 fps · 1.00 | 566 ms · 0.9 fps · 0.38 | 101 ms · 49.6 fps · 1.00 |
+| Unzoom button | 336 ms | 392 ms | 374 ms | 345 ms | 416 ms |
+| Inspect → zoom to element | 376 ms | 472 ms | 547 ms | 438 ms | 524 ms |
+
+The canvas mode makes every gesture fluid on this grid, with or without a
+GPU: zooms at 42–57 fps (55–58 in software raster), pans at full extent at
+60 fps, a multi-drag navigation at ~49 fps and region-zoom pans — the
+heaviest frames, with the most paths in view — at 30 fps on the Iris Xe and
+40 in software. Every gesture lands where the hand stops. First feedback is
+24–62 ms for zooms and full-extent pans; drags at region / detail zoom take
+~95–125 ms to their first *moved* frame, the cost of hit-testing the live SVG
+at the press and the first move (see "What is left"). The default path keeps
+its frame rate — each frame still restyles and re-lays out the whole SVG —
+but now completes every gesture (done 0.47–0.74 → 0.99–1.00).
+
+Jumps (Unzoom, Inspect) bake the live SVG directly in every mode, so their
+columns only track machine load, which drifted between the §2 runs and these
+(310–590 ms across sessions). Measured back to back under the same conditions
+(median of 3, `audit_results/jumps_*.json`), Unzoom / Inspect take 316 /
+496 ms on `main`, 342 / 468 ms on this branch's default path and 344 /
+440 ms in canvas mode — the same within noise.
+
+### What is left
+
+- The settle itself: one relayout + repaint + layerization of the live SVG
+  (≈ 0.25–0.3 s of main thread at region zoom) and its ~1 s re-raster. Q1–Q4
+  and Tier 3 (S1, S2) shrink both; until then a gesture started within ~1 s of
+  a settle can still wait for it.
+- Hover hit-testing on the live SVG (above): 20–40 ms per mousemove at region
+  zoom. The same cost sits at the start of every drag: the press, the first
+  move and Blink's drag-selection check each hit-test the live SVG before the
+  capture takes effect, hence ~95–125 ms to the first *moved* frame at
+  region / detail zoom against 24–43 ms at full extent. Capturing on
+  `pointerdown` would save one of them but retargets every click inside the
+  diagram container — harmless for `vlInteractions` (it resolves the VL on
+  `mousedown`), a trap for anything clickable added there later.
+- B2 uses a fixed 100 px notch (at least one notch from 40 px): on a device
+  with smaller notches, coalesced events still under-count. Learning the notch
+  size from the first events would close it.
+- Inspect and Unzoom still jump by baking the live SVG directly (A3's fly-to
+  on the proxy is not done).
+- Default: `'off'` until the mode has been tried on operator machines; then
+  switch it to `'canvas'` and retire `bitmap` / `gpu` (A2).

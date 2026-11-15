@@ -7,6 +7,36 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Frontend — large-grid pan/zoom: canvas gesture proxy + gesture fixes
+
+- **New opt-in pan/zoom mode "Smooth — Canvas proxy (large grids)"**
+  (Settings → Configurations → *Pan/zoom rendering*; the default stays
+  `Default`). During a pan or zoom a light canvas copy of the network
+  (`utils/svg/canvasProxy.ts`: grouped `Path2D` per style and grid cell,
+  computed colours, overview cache) is drawn over the diagram, and the live
+  SVG's viewBox is written once, when the operator pauses (400 ms after the
+  last wheel notch or drag). On the full European grid (98,960-node NAD, Intel
+  laptop): 42–60 fps on every zoom and full-extent pan (was 3–5), ~49 fps across
+  a multi-drag navigation and 30 fps on region-zoom pans (was 1–3), first
+  feedback 24–62 ms on zooms and full-extent pans (was 390–560 ms), and every
+  gesture lands where the hand stops — the same or better without a GPU
+  (software raster: 40–60 fps). Flow values and labels reappear at the pause; the Action overview keeps the previous path (its pins
+  are not drawn by the proxy). The canvas never changes style once mounted
+  (any style change re-layerizes the whole diagram), drags capture the
+  pointer, a plain click draws nothing, and VL hover / clicks are ignored
+  while the proxy covers the diagram (`data-gesture-proxy`).
+- **Gesture fixes on every mode**: a drag's last movement is applied on
+  release (fast drags stopped short); wheel zoom follows the wheel delta
+  (coalesced events lost up to half of a fast zoom; trackpads zoomed 10 % per
+  tiny event) and zooms in and out by the same 1.1 per notch; the drag speed
+  honours the letterboxed aspect ratio (the map slid ~20 % slower than the
+  cursor); the diagram panel is no longer text-selectable; a press takes over
+  a pending wheel settle instead of being baked mid-drag.
+- **Audit**: `docs/performance/large-grid-interaction-audit-2026-11.md` and its
+  CDP harness (`benchmarks/interaction_paint/audit_*`, real input events, LoAF,
+  traces). The bitmap mode's docs and comments no longer claim an off-thread
+  decode: Chrome decodes its SVG snapshot on the main thread.
+
 ### Context tab — the Carte-Front situation map, first on screen
 
 - **New leftmost "Context" tab**, opened after every study load: the

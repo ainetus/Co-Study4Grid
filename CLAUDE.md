@@ -153,7 +153,8 @@ Co-Study4Grid/
 │                                  # svgBoost, fitRect, deltaVisuals, actionPinData,
 │                                  # actionPinRender, highlights, vlInteractions (VL-disk
 │                                  # hover name / click-to-inspect / dbl-click SLD),
-│                                  # overflowPinPayload
+│                                  # overflowPinPayload, canvasProxy (pan/zoom
+│                                  # gesture proxy — 'canvas' mode)
 │                                  # + overflowOverlayRender + pinGlyph (PR #116 —
 │                                  # iframe-overlay pin pipeline)
 ├── standalone_interface_legacy.html  # DECOMMISSIONED 2026-04-20 — hand-maintained
@@ -445,7 +446,11 @@ NAD/SLD payloads:
 - **Pan/zoom**: the `usePanZoom` hook writes the SVG `viewBox`
   directly (rAF-batched, cached CTM) — no pan/zoom library — in both
   the React dev build and the auto-generated standalone (they share
-  the same source tree).
+  the same source tree). On large grids the opt-in `'canvas'` mode
+  (`utils/svg/canvasProxy.ts`) draws a light canvas copy of the network
+  during the gesture and writes the viewBox once, when the operator
+  pauses — see `frontend/CLAUDE.md` and
+  `docs/performance/large-grid-interaction-audit-2026-11.md`.
 
 ## Dependencies
 

@@ -300,7 +300,10 @@ function completeness(events, st) {
   if (!v0 || !v1) return null;
   const wheels = events.filter(e => e.params.type === 'mouseWheel');
   if (wheels.length) {
-    const want = wheels.reduce((acc, e) => acc * (e.params.deltaY > 0 ? 1.1 : 0.9), 1);
+    // One notch zooms by 1.1 either way (usePanZoom's wheelZoomFactor). Builds
+    // before 2026-11-15 zoomed in by 0.9 per notch: a complete zoom-in burst
+    // reads 1.105 there, and the audit's §2–§4 figures used 0.9 as the target.
+    const want = wheels.reduce((acc, e) => acc * (e.params.deltaY > 0 ? 1.1 : 1 / 1.1), 1);
     return +(Math.log(v1[2] / v0[2]) / Math.log(want)).toFixed(2);
   }
   let dx = 0, dy = 0, prev = null, down = false;

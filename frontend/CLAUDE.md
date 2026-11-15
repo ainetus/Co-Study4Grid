@@ -216,6 +216,8 @@ frontend/
         │   ├── highlights.ts          # - highlights: contingency / overload halos
         │   ├── edgeInfoDeclutter.ts   # - flow-value de-collision (slide along edge;
         │   │                          #   load-time pass invoked by svgBoost §6)
+        │   ├── canvasProxy.ts         # - canvas gesture proxy: grouped Path2D copy
+        │   │                          #   of the NAD drawn during 'canvas' pan/zoom
         │   └── feederLabels.ts        # - SLD feeder relabel + friendly-name↔IIDM-id
         │                              #   overload bridge (see useSldFeederRelabel +
         │                              #   docs/features/sld-diagram-feeder-labels.md)
@@ -499,26 +501,93 @@ re-evaluated on each settle. Guarded by the
 `uxConsistency.test.tsx`.
 
 Pan/zoom fluidity on large grids has an always-on lever plus a
-3-mode opt-in `utils/smoothPanZoom.ts` singleton (`'off' | 'gpu' |
-'bitmap'`, read by `usePanZoom` at gesture start; **Pan/zoom rendering**
-selector in Settings → Configurations, default `'off'`). See
-`docs/performance/history/interaction-paint-culling.md` and
-`benchmarks/interaction_paint/`:
+4-mode opt-in `utils/smoothPanZoom.ts` singleton (`'off' | 'gpu' |
+'bitmap' | 'canvas'`, read by `usePanZoom` at gesture start; **Pan/zoom
+rendering** selector in Settings → Configurations, default `'off'`). The
+reference measurements are the November 2026 audit on the full European
+grid, `docs/performance/large-grid-interaction-audit-2026-11.md` (real
+input events on an Intel laptop; the June study,
+`docs/performance/history/interaction-paint-culling.md`, used synthetic
+events on an M4 Pro). Harness: `benchmarks/interaction_paint/AUDIT_HARNESS.md`.
+
+Gesture input handling, shared by every mode:
+- **A drag's last delta is applied on `mouseup`** (`applyDragDelta`) —
+  only cancelling the pending rAF dropped the end of every fast drag.
+- **Wheel zoom follows the delta magnitude** (`wheelZoomFactor`): 10 % per
+  100 px (`deltaMode` lines / pages converted), at least one step for a
+  notched wheel (≥ 40 px), proportional for trackpads, at most 10 steps per
+  event. Chrome coalesces the wheel events queued behind a busy main thread
+  and sums their deltas, so a fixed step per event lost up to half of a
+  fast zoom.
+- **Drag scale honours the `xMidYMid meet` letterbox**
+  (`max(vb.w / W, vb.h / H)` user units per px): the map stays under the
+  cursor whatever the panel's aspect ratio.
+- **`user-select: none` on `.svg-container`**: a drag no longer runs the
+  text-selection machinery or starts a drag-and-drop of a selection.
+
+Modes:
 - **`'off'` (default) — interaction paint culling.** While a gesture is
   active (`usePanZoom` adds `.svg-interacting`), `App.css` hides the
   expensive `<foreignObject>` VL labels + `.nad-edge-infos` so each
-  viewBox-repaint frame is cheaper. GPU-independent; safe everywhere.
+  viewBox-repaint frame is cheaper. GPU-independent; safe everywhere, but
+  every frame still restyles and re-lays out the whole SVG: 2–5 fps on the
+  European grid (98,960 nodes).
 - **`'gpu'`** — replaces the per-frame viewBox rewrite with a
   compositor-only CSS transform on the live `<svg>`, baking back on
   settle. Only ~1.2–1.5× over the default though: Chrome RE-RASTERS the
   ~100k-node vector layer on every transform.
+- **`'canvas'`** (`utils/svg/canvasProxy.ts`) — the gesture never touches
+  the live SVG. `buildCanvasProxy` reads the live NAD once, on idle, into
+  grouped `Path2D`s: one per resolved style (computed fill / stroke / width
+  / dash) × 8×8 grid cell, in DOM paint order, `vector-effect:
+  non-scaling-stroke` emulated by dividing the line width by the scale, the
+  overload / action / contingency halos drawn at the width
+  `computeHaloWidthPx` gives the live `--nad-halo-w` for the frame's zoom,
+  plus an overview cache bitmap (2× the panel, ≤ 8 MP) blitted when zoomed
+  out. During a gesture `usePanZoom` only redraws that canvas, stacked over
+  the SVG — no `.svg-interacting` toggle, no viewBox write. The gesture
+  settles 400 ms after the last input, wheel or drag (`CANVAS_SETTLE_MS`), so
+  notch-by-notch zooming and successive drags stay on the proxy: it then
+  writes the live viewBox ONCE (skipped if the view did not move) and clears
+  the canvas two frames later, so the SVG repaint never shows. A drag only
+  starts the proxy once the pointer travels (a plain click — VL select, SLD
+  — draws nothing), and a new press takes over a pending settle.
+  - **The canvas never changes style once mounted**: composited
+    (`will-change: transform`), click-through (`pointer-events: none`),
+    shown by drawing an opaque frame and hidden by clearing to transparent.
+    On the European grid any style change on it re-layerizes the whole
+    diagram (50–90 ms at region zoom; a `pointer-events` flip also
+    repaints it), and toggling `display` re-rasterised the layer holding
+    the live SVG (~3 s). Being click-through, a drag **captures the
+    pointer** once it moves, or every mousemove would hit-test the live
+    SVG (20–40 ms each); wheel targets are latched by Chrome.
+  - While it covers the diagram the container carries
+    **`data-gesture-proxy`** (`GESTURE_PROXY_ATTR`): the live SVG
+    underneath is still at the gesture's start viewBox, so `vlInteractions`
+    ignores hover and presses until the settle. No CSS reads the attribute,
+    so setting it restyles nothing.
+  - Rebuilt on idle once the live SVG has been quiet for 600 ms after a
+    MutationObserver hit (highlights, deltas, voltage filter) or a theme
+    change — the ~0.1 s build otherwise lands in the frame that shows the
+    change (+30–130 ms on an Inspect jump); the canvas size and overview
+    cache follow the panel on idle (ResizeObserver), never mid-gesture; a
+    generation token drops builds queued before a dispose (tab hidden,
+    diagram replaced). Owner-window rAF / idle callbacks, so detached
+    windows work.
+  - Flow values, labels and the overview's pins are not drawn — they come
+    back with the settle — so `ActionOverviewDiagram` opts out
+    (`usePanZoom(..., { gestureProxy: false })`): its pins and dimming are
+    the point of that view.
 - **`'bitmap'`** (`utils/svg/bitmapSnapshot.ts`) — rasterise the NAD to a
   dpr-scaled `<canvas>` ONCE at gesture start and transform that bitmap
   (compositor-only, no vector re-raster), baking back to the live SVG on
-  settle. **~3× the fps of off/gpu** in the real app (50 ms → 16.7 ms/frame
-  on the 5247-VL grid) and composites cheaply even in software, at the
-  cost of a one-shot raster when the gesture begins. Prerequisites baked
-  in: strip `<foreignObject>` (canvas taint), inline the App.css
+  settle. ~3× the fps of off/gpu on an M4 Pro (50 ms → 16.7 ms/frame on the
+  5247-VL grid), but it does not engage in time on the Intel laptop of the
+  November audit: Chrome rejects `createImageBitmap()` for an SVG blob, so
+  the snapshot decodes through `new Image()` ON THE MAIN THREAD (0.4–3 s
+  per gesture on the European grid) and the gesture runs on the viewBox
+  fallback meanwhile — prefer `'canvas'` on large grids. Prerequisites
+  baked in: strip `<foreignObject>` (canvas taint), inline the App.css
   halo/delta rules + theme tokens + base non-scaling-stroke into the
   clone (so N-1/Action halos/deltas survive the isolated raster), set the
   current `data-zoom-tier` AND re-declare the live `--nad-halo-w` on the
@@ -526,7 +595,7 @@ selector in Settings → Configurations, default `'off'`). See
   otherwise snap to its 24px fallback), and an analytic cursor→user mapping for
   the wheel zoom (the live SVG is `visibility:hidden`, so `getScreenCTM` is
   stale). A generation token discards a slow async raster from a settled
-  gesture. OFF by default — it's the experimental "big bet".
+  gesture.
   - **Responsive start.** Serialising the 9 MB SVG costs ~250 ms — far too
     much to run in the `mousedown` handler (it froze the pan start). So the
     viewBox-INDEPENDENT serialisation is **cached** (`serializeStrippedSvg`),
@@ -534,11 +603,10 @@ selector in Settings → Configurations, default `'off'`). See
     MutationObserver** on the live SVG (highlight/delta class + childList
     changes — viewBox writes are NOT observed, so per-frame pans don't churn
     it). Each gesture only re-composes the cheap `<svg>` header + `<style>`
-    (`composeSnapshotMarkup`) and decodes **off the main thread**
-    (`createImageBitmap`). If the cache is still cold at gesture start, the
-    gesture stays on the responsive viewBox fallback and the bitmap engages
-    from the next gesture — the start is never blocked. mousedown→first-frame
-    ≈ 128 ms (same as the default path).
+    (`composeSnapshotMarkup`) before the decode. If the cache is still cold
+    at gesture start, the gesture stays on the responsive viewBox fallback
+    and the bitmap engages from the next gesture — the start is never
+    blocked by the serialisation.
   - **No ghost on settle.** The target viewBox is baked onto the still-hidden
     live SVG and the bitmap is kept on top for ~2 frames before the swap, so
     the SVG layer's stale base-zoom paint never flashes during its repaint.

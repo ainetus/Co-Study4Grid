@@ -36,7 +36,17 @@ python3 audit_summarize.py off.json off_sw.json css.json
 `--hw gpu` launches headless Chrome with `--use-angle=gl --enable-gpu
 --ignore-gpu-blocklist` (hardware raster + GPU compositing; check the `gpu`
 field of the result file), `--hw sw` adds `--disable-gpu`. `--mode` sets the
-`cs4g-smooth-pan-zoom` preference (`off` / `gpu` / `bitmap`). The JS
-experiment flags (`halo-bg`, `drag-flush`, `settle-confirm`, `ctm-first`,
-`wheel-delta`, `drag-meet`, `settle400`) and the `proxy` mode only exist in a
-build with `audit_prototype.patch` applied.
+`cs4g-smooth-pan-zoom` preference (`off` / `gpu` / `bitmap` / `canvas`;
+`canvas` is the production gesture proxy since 2026-11-15, see the audit's
+§8). The JS experiment flags (`halo-bg`, `drag-flush`, `settle-confirm`,
+`ctm-first`, `wheel-delta`, `drag-meet`, `settle400`) and the `proxy` mode
+only exist in a build with `audit_prototype.patch` applied (on the commit the
+audit was written against).
+
+A canvas-mode "visual update" is a proxy frame: each one starts with a
+background `fillRect` on `canvas.nad-canvas-proxy`, which the instrumentation
+counts. Since a drag only starts the proxy once the pointer travels, "first
+frame" is the first *moved* frame on that path, and "catch-up" includes the
+deliberate 400 ms settle pause before the live SVG is baked. Wheel "done" assumes the symmetric
+1.1-per-notch zoom shipped with that change; the audit's §2–§4 tables were
+computed against the old 0.9-per-notch zoom-in.
