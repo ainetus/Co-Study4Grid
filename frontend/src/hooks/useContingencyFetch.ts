@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { api } from '../api';
 import { cloneBaseSvg, applyPatchToClone } from '../utils/svgPatch';
 import { processSvg } from '../utils/svgUtils';
@@ -24,6 +24,12 @@ interface UseContingencyFetchArgs {
   setSelectedContingency: (v: string[]) => void;
   setConfirmDialog: (v: ConfirmDialogState) => void;
   setError: (v: string) => void;
+  /**
+   * The study has a Context tab: a new contingency opens there first —
+   * itself and its overloads, with their loading, on the situation map —
+   * and the N-1 tab glows once its diagram is ready.
+   */
+  contextFirst?: boolean;
 }
 
 const sameElements = (a: string[], b: string[]): boolean => {
@@ -66,8 +72,12 @@ export function useContingencyFetch({
   setSelectedContingency,
   setConfirmDialog,
   setError,
+  contextFirst = false,
 }: UseContingencyFetchArgs): void {
   const { n1Diagram, n1Loading, nDiagram } = diagrams;
+  // Read when a contingency is committed — not a reason to refetch.
+  const contextFirstRef = useRef(contextFirst);
+  useEffect(() => { contextFirstRef.current = contextFirst; }, [contextFirst]);
 
   useEffect(() => {
     if (selectedContingency.length === 0) {
@@ -114,13 +124,16 @@ export function useContingencyFetch({
 
     const fetchContingency = async () => {
       diagrams.setN1Loading(true);
-      // On user-initiated contingency change, switch to the contingency
-      // tab so the fetched diagram is visible. On session restore, leave
+      // On user-initiated contingency change, switch to the Context tab
+      // when the study has one (the contingency and its overloads on the
+      // situation map; the N-1 tab glows once ready), else to the N-1 tab
+      // so the fetched diagram is visible. On session restore, leave
       // the active tab alone so the user lands on whichever tab the
       // VisualizationPanel default (Action / Overflow) resolves to given
       // the restored state.
       if (!isRestoring) {
-        diagrams.setActiveTab('contingency');
+        diagrams.setActiveTab(contextFirstRef.current ? 'context' : 'contingency');
+        diagrams.setN1Pending(contextFirstRef.current);
       }
 
       // Fast path — svgPatch DOM-recycling. Clone the N-state SVG and

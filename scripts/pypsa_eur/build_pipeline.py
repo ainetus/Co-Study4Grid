@@ -13,6 +13,9 @@ The master pipeline chains the six domain-specific scripts in this folder:
   4. add_detailed_topology.py    — double-busbar + coupling breakers + actions.json
   5. generate_n1_overloads.py    — final N-1 overload report (JSON)
   6. separate_voltage_levels.py  — nudge collocated 225/400 kV VL disks apart
+  7. match_power_plants.py       — type the synthetic generators by the real
+                                 plants around them (power_plants.json, beside
+                                 the network; runs only with --plants)
 
 Each step is invoked as a subprocess so the existing CLIs stay the single
 source of truth. Steps can be skipped selectively with ``--steps`` /
@@ -39,6 +42,10 @@ Usage
 
     # Only run selected steps
     python scripts/pypsa_eur/build_pipeline.py --steps 3,4,5
+
+    # Match powerplantmatching's plants onto an existing bundle (step 7 only)
+    python scripts/pypsa_eur/build_pipeline.py --country "" --voltages 220,225,380,400 \
+        --steps 7 --plants /path/to/powerplants.csv
 """
 from __future__ import annotations
 
@@ -67,6 +74,7 @@ STEP_NAMES = {
     4: "add_detailed_topology",
     5: "generate_n1_overloads",
     6: "separate_voltage_levels",
+    7: "match_power_plants",
 }
 
 # Bundle files a provenance manifest checksums when present. These are the
@@ -76,6 +84,7 @@ PROVENANCE_OUTPUTS = (
     "grid_layout.json",
     "actions.json",
     "bus_id_mapping.json",
+    "power_plants.json",
 )
 
 
@@ -157,6 +166,7 @@ def main() -> None:
             "  4  add_detailed_topology  (double-busbar + coupler actions)\n"
             "  5  generate_n1_overloads  (final overload report)\n"
             "  6  separate_voltage_levels (nudge collocated VL disks apart)\n"
+            "  7  match_power_plants     (type generators by real plants; needs --plants)\n"
             "\n"
             "A provenance.json manifest (git commit + params + output checksums)\n"
             "is written into the bundle after the selected steps run.\n"
@@ -201,15 +211,25 @@ def main() -> None:
         "--min-branches", type=int, default=4,
         help="Minimum branches per VL for double-busbar split in step 4 (default: 4).",
     )
+    parser.add_argument(
+        "--plants", type=str, default=None,
+        help=(
+            "powerplantmatching powerplants.csv (https://github.com/PyPSA/powerplantmatching, "
+            "CC BY 4.0). When given, step 7 matches its plants onto the generators."
+        ),
+    )
     args = parser.parse_args()
 
     # ── Resolve step selection ───────────────────────────────────────────
+    # Step 7 needs an external database: part of a full / --from-step run
+    # only when --plants is given.
+    matching = [7] if args.plants else []
     if args.steps:
         steps = [int(s) for s in args.steps.split(",")]
     elif args.from_step:
-        steps = list(range(args.from_step, 7))
+        steps = list(range(args.from_step, 7)) + [s for s in matching if s >= args.from_step]
     else:
-        steps = [1, 2, 3, 4, 5, 6]
+        steps = [1, 2, 3, 4, 5, 6] + matching
 
     if args.skip_osm and 1 in steps:
         steps = [s for s in steps if s != 1]
@@ -217,6 +237,8 @@ def main() -> None:
     for s in steps:
         if s not in STEP_NAMES:
             parser.error(f"Unknown step {s}. Valid: {list(STEP_NAMES.keys())}")
+    if 7 in steps and not args.plants:
+        parser.error("Step 7 (match_power_plants) needs --plants <powerplants.csv>.")
 
     # ── Resolve output directory ─────────────────────────────────────────
     voltages = args.voltages
@@ -317,6 +339,17 @@ def main() -> None:
         ]
         run_step("Step 6 — separate_voltage_levels", cmd)
 
+    # ── Step 7: type the generators by the real plants around them ──────
+    # Writes power_plants.json BESIDE the network — the network itself (and so
+    # flows, limits, N-1 list, actions) is untouched. Read by the Context tab.
+    if 7 in steps:
+        cmd = [
+            py, str(SCRIPT_DIR / "match_power_plants.py"),
+            "--network", str(out_dir),
+            "--plants", args.plants,
+        ]
+        run_step("Step 7 — match_power_plants", cmd)
+
     # ── Provenance manifest ─────────────────────────────────────────────
     # Always written (even for a partial --steps run) so the bundle records the
     # code + inputs that produced its current contents.
@@ -327,6 +360,7 @@ def main() -> None:
             "voltages": voltages,
             "n1_peak_pct": args.n1_peak_pct,
             "min_branches": args.min_branches,
+            "plants": args.plants,
         },
         steps=steps,
     )

@@ -17,6 +17,11 @@ expert_backend/
 ├── __init__.py
 ├── main.py                    # FastAPI app: endpoints, CORS, gzip helpers,
 │                              # config-file persistence, NDJSON streaming
+├── context_map_api.py         # Context tab routes (GET /api/context-map,
+│                              # POST /api/context-map/elements), registered via
+│                              # install_context_map_routes(app). No network lock:
+│                              # served from the snapshot taken at /api/config.
+│                              # See docs/features/context-tab.md
 ├── game_api.py                # Game Mode routes (log-solution / lever-stats),
 │                              # registered via install_game_routes(app) —
 │                              # split out of main.py for the size ceiling
@@ -104,6 +109,35 @@ expert_backend/
 │   │                              # moved to the React-side ActionFilterRings
 │   │                              # strip and travel via `cs4g:filters`.
 │   │                              # React Action Overview tab.
+│   ├── context_map/               # Context tab — the Carte-Front situation map,
+│   │                              # PORTED (no Carte-Front dependency):
+│   │   ├── snapshot.py            # - capture_snapshot: pypowsybl tables read once
+│   │   │                          #   at /api/config (regionCvg / genreCvg are
+│   │   │                          #   property columns), before the NAD prefetch
+│   │   ├── aggregate.py           # - mesh (RTE regions, else countries), production
+│   │   │                          #   by type, consumption, inter-zone transfers
+│   │   ├── nuclear.py             # - nuclear units layer (plants at real coords,
+│   │   │                          #   RTE site → plant, level P / maxP)
+│   │   ├── plants.py              # - power_plants.json beside an untyped network
+│   │   │                          #   (PyPSA-EUR; scripts/pypsa_eur/
+│   │   │                          #   match_power_plants.py): types each zone's
+│   │   │                          #   untyped MW by its matched fleet's typical
+│   │   │                          #   output (capacity × load factor)
+│   │   ├── situation.py           # - situation.json beside a PyPSA-EUR network
+│   │   │                          #   rebuilt on a real hour (scripts/pypsa_eur/
+│   │   │                          #   build_situation.py): the hour, its dispatch
+│   │   │                          #   and the sources the map credits
+│   │   ├── georef.py              # - VL lon/lat: substationPosition, else layout
+│   │   │                          #   (op4grid-plan calibration / Mercator fit)
+│   │   ├── geography.py           # - ported constants (region pivots, badges),
+│   │   │                          #   basemap, projection
+│   │   ├── builder.py             # - payload assembly + element geometry
+│   │   ├── service.py             # - context_map_service singleton (capture /
+│   │   │                          #   lazy build / capture_id / elements)
+│   │   └── resources/europe_countries.geojson  # Natural Earth outlines
+│   ├── gzip_response.py           # Per-endpoint gzip helpers (moved out of
+│   │                              # main.py for the size ceiling; re-imported there
+│   │                              # as _maybe_gzip_json / _maybe_gzip_svg_text)
 │   ├── game_solutions.py          # Game Mode solution capitalisation store —
 │   │                              # shared per-(network, contingency) JSON base
 │   │                              # (novelty/bonus + usage frequencies) behind
@@ -289,6 +323,15 @@ follow-ups in
      `_cached_env_context` — saves ~4-8 s per
      `/api/run-analysis-step1` call.
 
+- **Context-tab snapshot**: between `network_service.load_network()` and
+  `recommender_service.update_config()`, `/api/config` calls
+  `context_map_service.capture(network, layout_path, network_path)` (after a
+  `context_map_service.reset()` alongside `recommender_service.reset()`). It
+  never raises; the map itself is built lazily by the first
+  `GET /api/context-map`, which may arrive while `update_config` is still
+  running (the frontend polls early and tells studies apart by `capture_id`).
+  See `docs/features/context-tab.md`.
+
 - **Re-load** (any subsequent `/api/config`): `recommender_service.reset()`
   is called BEFORE the new network is loaded. `reset()` MUST clear
   every per-study cache on the service. The full list (also
@@ -446,7 +489,8 @@ early-PDF guarantee. This was the root cause behind the global
 
 ## Per-endpoint gzip
 
-Two helpers in `main.py`:
+Two helpers in `services/gzip_response.py`, imported by `main.py` under
+their historical names:
 - `_maybe_gzip_json(payload, request)` — wraps any JSON-serialisable
   payload, gzips when ≥ 10 KB and the client signals
   `Accept-Encoding: gzip`.
@@ -455,7 +499,8 @@ Two helpers in `main.py`:
   client-side `JSON.parse` on the multi-MB SVG string.
 
 Both set `Vary: Accept-Encoding`. Threshold and compression level are
-tunable via the `_GZIP_MIN_BYTES` / `_GZIP_LEVEL` constants in `main.py`.
+tunable via the `GZIP_MIN_BYTES` / `GZIP_LEVEL` constants in
+`services/gzip_response.py`.
 
 ## NumPy → JSON sanitization
 

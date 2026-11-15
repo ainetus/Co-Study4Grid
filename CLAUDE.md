@@ -18,7 +18,8 @@ Co-Study4Grid/
 ├── pytest.ini                 # Pytest config (testpaths = expert_backend/tests)
 ├── expert_backend/            # Python FastAPI backend
 │   ├── CLAUDE.md              # Backend-scoped guide (singletons, mixins, lifecycle)
-│   ├── main.py                # FastAPI app: endpoints, CORS, gzip helpers, NDJSON streaming
+│   ├── main.py                # FastAPI app: endpoints, CORS, NDJSON streaming
+│   ├── context_map_api.py     # Context tab routes (/api/context-map[/elements])
 │   ├── test_backend.py        # Ad-hoc integration script (not part of pytest)
 │   ├── recommenders/          # Pluggable recommendation-model registry: registry.py,
 │   │   │                      # random_basic / random_overflow canonical examples,
@@ -41,6 +42,19 @@ Co-Study4Grid/
 │   │   ├── simulation_helpers.py  # Stateless helpers extracted from simulation_mixin (PR #104)
 │   │   ├── overflow_overlay.py    # Pin / filter overlay injector for the interactive
 │   │   │                          # HTML overflow viewer (PR #116, 0.7.0)
+│   │   ├── context_map/           # Context tab — the Carte-Front situation map,
+│   │   │                          # ported: snapshot (captured at /api/config),
+│   │   │                          # aggregate (RTE-region mesh via regionCvg, else
+│   │   │                          # countries; mix / consumption / transfers),
+│   │   │                          # nuclear (units layer, as Carte-Front),
+│   │   │                          # plants (power_plants.json — real plants
+│   │   │                          # matched onto untyped PyPSA generators),
+│   │   │                          # situation (situation.json — the real hour
+│   │   │                          # a rebuilt PyPSA network reproduces),
+│   │   │                          # georef (substationPosition, else layout),
+│   │   │                          # geography + Natural Earth basemap, builder,
+│   │   │                          # service. See docs/features/context-tab.md
+│   │   ├── gzip_response.py       # Per-endpoint gzip helpers (_maybe_gzip_*)
 │   │   ├── game_solutions.py      # Game Mode shared solution base (per-context
 │   │   │                          # JSON records, novelty/bonus + usage
 │   │   │                          # frequencies; root via COSTUDY4GRID_DATA_DIR)
@@ -81,8 +95,12 @@ Co-Study4Grid/
 │       │                          # toggles, postMessage bridge, pin overlay payload) /
 │       │                          # useSldTopologyEdit (interactive SLD switch-edit →
 │       │                          # manual action, 0.8.0) / useTheme (light/dark theme
-│       │                          # toggle + persistence, 0.8.0)
-│       ├── components/            # Header, ActionFeed, ActionCard, ActionCardPopover,
+│       │                          # toggle + persistence, 0.8.0) / useContextMap
+│       │                          # (Context tab: situation map read while /api/config
+│       │                          # still runs + contingency/overload highlights)
+│       ├── components/            # ContextMapView + ContextMapLayers (Context tab —
+│       │                          # leftmost, the Carte-Front situation map in SVG),
+│       │                          # Header, ActionFeed, ActionCard, ActionCardPopover,
 │       │                          # ActionSearchDropdown (editable Δ MW column
 │       │                          # for redispatch in score table),
 │       │                          # ActionTypeFilterChips,
@@ -201,6 +219,7 @@ Co-Study4Grid/
 | `docs/features/interaction-logging.md` | Replay-ready event log contract |
 | `docs/features/sld-topology-edit.md` | Interactive SLD topology edit → manual action card |
 | `docs/features/sld-diagram-feeder-labels.md` | SLD feeders relabelled by far-end VL name (+ parallel index), overload-halo friendly-name↔IIDM-id bridge, and the charging-current annotation explaining the "after" loading of a line opened at one end |
+| `docs/features/context-tab.md` | Context tab (leftmost): the Carte-Front situation map ported in — region mesh (`regionCvg`) else countries, mix pies / consumption rings / transfers / neighbour badges, contingency + overload highlights, snapshot at `/api/config` + early read, layout georeferencing |
 | `docs/features/vl-disk-interactions.md` | Interactive VL disks on the NAD (hover name / click → Inspect / double-click → SLD) + delegation performance contract |
 | `docs/features/game-mode-codabench.md` | Timed, scored Game Mode (`?game=1`) + Codabench benchmark bundle |
 | `deploy/huggingface/` | HuggingFace Docker Space deployment (Space README + `SETUP.md`) |
@@ -335,6 +354,8 @@ guards the reductions documented in
 | POST | `/api/simulate-manual-action` | Simulate a specific action against a contingency. Accepts an optional `voltage_level_id` field used to auto-name switch-only user actions (interactive SLD-edit feature). |
 | POST | `/api/simulate-and-variant-diagram` | NDJSON stream: `{type:"metrics"}` then `{type:"diagram"}` so sidebar updates ahead of the SVG |
 | POST | `/api/compute-superposition` | Compute combined effect of two actions (superposition theorem) |
+| GET  | `/api/context-map` | Context tab situation map: zones (RTE regions via `regionCvg`, else countries) with production mix / consumption, inter-zone transfers, neighbour exchanges, European basemap — projected, built from the snapshot taken at `/api/config` (no network lock; served while the NAD is still generating; `capture_id` tells studies apart) |
+| POST | `/api/context-map/elements` | Map position (voltage-level points, else zone points) of the elements the Context tab highlights — the contingency and its overloads |
 | POST | `/api/game/log-solution` | Capitalise a Game Mode retained proposition into the shared solution base; returns the novelty verdict (+bonus points) and per-action usage frequencies |
 | GET  | `/api/game/lever-stats` | Most-used unitary levers of a (network, contingency) context in the shared solution base — the Game Mode beginner-assistance hints (top-N, tagged voltage_level / branch / generation / load) |
 | GET  | `/api/game/player-sessions` | Distinct sessions a player already recorded in the shared base — `session_count` + the concrete `session_names` (sorted). Seeds the default session name / index on the Game Mode config screen (first free index) and blocks a colliding name before Start |
@@ -384,6 +405,8 @@ guards the reductions documented in
 
 ### Data Flow
 1. User sets network path + action file path -> `POST /api/config` loads the network
+   (and snapshots it for the Context tab, whose map `GET /api/context-map` serves
+   before `/api/config` even answers — the first thing the operator sees)
 2. Frontend fetches disconnectable branches -> `GET /api/branches`
 3. User selects a contingency branch -> N-1 diagram fetched with overload highlighting
 4. User runs analysis (two-step flow):
@@ -456,7 +479,7 @@ NAD/SLD payloads:
 - **Binary assets via Git LFS + transparent network decompression (0.8.0)**: `.gitattributes` tracks `*.zip` / `*.png` / `*.jpg` via Git LFS (the HuggingFace Space git endpoint rejects non-LFS binaries); the large France 225/400 kV grid ships as `network.xiidm.zip` and `network_service._resolve_network_file` / `_extract_network_zip` decompress it transparently on load.
 - **CI pipelines**: GitHub Actions only (`.github/workflows/`: `code-quality.yml`, `parity.yml`, `test.yml`, `canary.yml`, `deploy-huggingface.yml`) run the code-quality gate, ruff, the pytest + Vitest suites, the data-pipeline + scorer-parity slice, and the parity scripts. CircleCI was removed (QW23 — GitHub Actions is a strict superset). The backend test + the `Dockerfile` install `expert_op4grid_recommender` from **`recommender-pin.txt`** — one pinned, exact version (QW8) so an upstream release can't silently break a PR or a rebuild; the weekly `canary.yml` floats to the latest release and flags regressions, so upgrades are a deliberate bump of that file.
 - Root `.gitignore` excludes `__pycache__/`, `*.pyc`, `*.pyo`; `frontend/.gitignore` handles frontend build artifacts
-- Integration helpers and parity scripts live under `scripts/`. They are NOT part of the pytest suite — invoke them directly. The PyPSA-EUR pipeline scripts under `scripts/pypsa_eur/` DO carry pytest coverage (`test_build_pipeline.py`, `test_calibrate_thermal_limits.py`, `test_generate_n1_overloads.py`, `test_regenerate_grid_layout.py`).
+- Integration helpers and parity scripts live under `scripts/`. They are NOT part of the pytest suite — invoke them directly. The PyPSA-EUR pipeline scripts under `scripts/pypsa_eur/` DO carry pytest coverage (`test_build_pipeline.py`, `test_calibrate_thermal_limits.py`, `test_generate_n1_overloads.py`, `test_regenerate_grid_layout.py`, `test_match_power_plants.py`). `match_power_plants.py` (pipeline step 7, `--plants`) writes `power_plants.json` beside a bundle's network — powerplantmatching plants (CC BY 4.0) matched onto its synthetic untyped generators, read by the Context tab; the network itself is untouched.
 - `overrides.txt` contains pinned versions for transitive Python dependencies that need to be forced to specific versions
 - **Frontend unit tests** use Vitest + React Testing Library. Isolated component tests live as `*.test.tsx` files next to their component. Run with `cd frontend && npm run test`. No backend mocking is needed for component tests since they only use mocked props.
 - The two-step analysis flow (step1: detect overloads, step2: resolve) is the primary user workflow; the single-step `/api/run-analysis` is a legacy alternative

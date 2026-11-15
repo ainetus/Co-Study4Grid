@@ -47,6 +47,8 @@ export type DetachedTabsMap = Partial<Record<TabId, DetachedTabEntry>>;
 const DEFAULT_POPUP_FEATURES = 'popup=yes,width=1100,height=800,resizable=yes,scrollbars=yes';
 
 const TAB_TITLES: Record<TabId, string> = {
+    // Not offered for detaching (no detach button), titled for completeness.
+    'context': 'Context',
     'n': 'Network (N)',
     'contingency': 'Contingency (N-1)',
     'action': 'Remedial Action',

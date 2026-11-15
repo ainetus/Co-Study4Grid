@@ -17,6 +17,8 @@ import InspectSearchField from './InspectSearchField';
 import { filterInspectables } from '../utils/inspectables';
 import DetachedPlaceholder from './DetachedPlaceholder';
 import ActionFilterRings from './ActionFilterRings';
+import ContextMapView from './ContextMapView';
+import type { ContextMapState } from '../hooks/useContextMap';
 import type { DetachedTabsMap } from '../hooks/useDetachedTabs';
 import type { PZInstance } from '../hooks/useTiedTabsSync';
 import { useOverflowIframe } from '../hooks/useOverflowIframe';
@@ -128,6 +130,10 @@ export interface ActionOverviewControls {
 
 interface VisualizationPanelProps {
     activeTab: TabId;
+    /** Context tab (Carte-Front situation map) — absent in isolated tests; no tab when unavailable. */
+    contextMap?: ContextMapState;
+    /** The N-1 diagram is ready but not yet seen (the contingency opened on Context): its tab glows. */
+    n1Attention?: boolean;
     configLoading: boolean;
     onTabChange: (tab: TabId) => void;
     nDiagram: DiagramData | null;
@@ -204,11 +210,13 @@ interface VisualizationPanelProps {
 
 const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     activeTab,
+    contextMap,
     configLoading,
     onTabChange,
     nDiagram,
     n1Diagram,
     n1Loading,
+    n1Attention = false,
     actionDiagram,
     actionDiagramLoading,
     selectedActionId,
@@ -663,7 +671,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
 
     return (
         <>
-            {/* Tab bar — all 4 tabs always visible; unavailable ones show placeholder.
+            {/* Tab bar — all 5 tabs always visible; unavailable ones show placeholder.
                 Each tab exposes a small detach/reattach button so the user can move
                 its content into a secondary browser window and back. When the
                 sidebar is collapsed, the action-filter rings move into the same
@@ -683,6 +691,9 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                 )}
                 {(
                     [
+                        // Leftmost: the situation map, served from the snapshot
+                        // taken at load — it shows up well before the N NAD.
+                        { id: 'context' as TabId, label: 'Context' as React.ReactNode, available: !!contextMap?.data, accentColor: colors.accent, dimColor: colors.textSecondary, placeholder: 'Load a study to see its situation map.' },
                         { id: 'n' as TabId, label: 'Network (N)' as React.ReactNode, available: !!nDiagram?.svg, accentColor: colors.brand, dimColor: colors.textSecondary, placeholder: 'Configure a network path in Settings to load the base-case diagram.' },
                         { id: 'contingency' as TabId, label: contingencyTabLabel as React.ReactNode, available: !!n1Diagram?.svg, accentColor: colors.danger, dimColor: colors.textSecondary, placeholder: 'Trigger a contingency from the dropdown to view the post-contingency state.' },
                         // When no card is selected, the Remedial Action tab hosts the
@@ -787,9 +798,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         },
                         { id: 'overflow' as TabId, label: 'Overflow Analysis' as React.ReactNode, available: !!result?.pdf_url, accentColor: colors.success, dimColor: colors.textSecondary, placeholder: 'Run \u201cAnalyze & Suggest\u201d to see the overflow graph.' },
                     ] as const
-                ).map(tab => {
+                ).filter(tab => tab.id !== 'context' || (!!contextMap && contextMap.available !== false)).map(tab => {
                     const isActive = activeTab === tab.id;
                     const isDetached = !!detachedTabs[tab.id];
+                    const glow = tab.id === 'contingency' && n1Attention && !isDetached;
                     return (
                         <div
                             key={tab.id}
@@ -803,6 +815,8 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                             <button
                                 data-testid={`tab-button-${tab.id}`}
                                 data-tab-active={isActive ? 'true' : 'false'}
+                                data-attention={glow ? 'true' : undefined}
+                                className={glow ? 'tab-attention' : undefined}
                                 onClick={() => {
                                     if (isDetached) {
                                         focusDetachedTabCb(tab.id);
@@ -810,7 +824,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                                         onTabChange(tab.id);
                                     }
                                 }}
-                                title={isDetached ? 'Tab is open in a separate window — click to focus it' : (tab.available ? undefined : tab.placeholder)}
+                                title={isDetached ? 'Tab is open in a separate window — click to focus it' : glow ? 'The N-1 diagram is ready — open it' : (tab.available ? undefined : tab.placeholder)}
                                 style={{
                                     flex: 1, borderRadius: 0, border: 'none', padding: '8px 6px',
                                     cursor: 'pointer',
@@ -837,7 +851,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                             >
                                 {tab.label}{isDetached ? ' \u21D7' : ''}
                             </button>
-                            {tab.available && (
+                            {tab.available && tab.id !== 'context' && (
                                 <button
                                     data-testid={`tab-detach-${tab.id}`}
                                     onClick={(e) => {
@@ -1079,6 +1093,20 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                     </div>
                 </DetachableTabHost>
                 {activeTab === 'overflow' && detachedTabs['overflow'] && renderDetachedPlaceholder('overflow', 'Overflow Analysis', colors.success)}
+
+                {/* Context Container — the situation map (not detachable). */}
+                {contextMap && (
+                    <div
+                        data-testid="context-tab-container"
+                        style={{
+                            width: '100%', height: '100%', position: 'absolute', top: 0, left: 0,
+                            zIndex: activeTab === 'context' ? 10 : -1,
+                            display: activeTab === 'context' ? 'block' : 'none',
+                        }}
+                    >
+                        <ContextMapView state={contextMap} />
+                    </div>
+                )}
 
                 {/* Inactive, non-detached SVG tabs use `display: none` (not
                     `visibility: hidden`) so their tens-of-thousands-of-node

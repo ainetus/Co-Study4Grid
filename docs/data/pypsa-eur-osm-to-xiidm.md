@@ -457,7 +457,47 @@ One generator and one load per bus with a **geographic dispatch** pattern:
 
 - All 192 generators have `voltage_regulator_on = True` for AC convergence
 
+These generators are **synthetic and untyped** (`energySource` OTHER): the OSM
+prebuilt network is grid-only — no plants, no carriers.
 
+### Generation types — matched power plants (pipeline step 7)
+
+`scripts/pypsa_eur/match_power_plants.py` (`build_pipeline.py --plants <csv>`,
+step 7) types those generators **without touching the network**. It matches the
+plants of **powerplantmatching** (`powerplants.csv`,
+https://github.com/PyPSA/powerplantmatching — the database PyPSA-Eur itself
+uses; data **CC BY 4.0**, Gotzens et al. 2019, doi:10.1016/j.esr.2018.11.004)
+onto the bundle's buses and writes `power_plants.json` beside the network:
+
+- each operating plant (≥ 1 MW, not retired before / commissioned after the
+  network's `caseDate` year, or `--year`) goes to the **nearest bus of its own
+  country**, within 60 km — offshore wind farms, far out at sea, within
+  250 km of their coast; among buses co-located within 1 km, the highest
+  voltage wins;
+- per generator `G_<bus>`: installed capacity by fuel type (`capacity_mw`;
+  hydro split into `Run-Of-River` / `Reservoir` / `Pumped Storage`, wind into
+  `Wind Onshore` / `Wind Offshore` — the types real-time production data tell
+  apart), the thermal plants' capacity-weighted **efficiency** (the
+  database's figure, else one estimated from the technology and the
+  commissioning year — the merit order of an optimal dispatch) and, for
+  nuclear, the plant's site (name without unit number, units'
+  capacity-weighted centre, its units and their capacity).
+
+Network, flows, limits, N-1 list and actions are unchanged — the matching
+only labels the existing dispatch. The Context tab
+(`docs/features/context-tab.md`) types each zone's production by the typical
+output of its matched fleet. On `pypsa_eur_eur220_225_380_400` (year 2025):
+53 884 / 54 898 plants matched (95 % of their MW) onto 3 437 / 5 247
+generators; 38 nuclear plants, 97 units.
+
+```bash
+curl -L -o /tmp/powerplants.csv https://raw.githubusercontent.com/PyPSA/powerplantmatching/master/powerplants.csv
+python scripts/pypsa_eur/build_pipeline.py --country "" --voltages 220,225,380,400 \
+    --output data/pypsa_eur_eur220_225_380_400 --steps 7 --plants /tmp/powerplants.csv
+```
+
+The step reads the OSM `buses.csv` (`data/pypsa_eur_osm/`, as step 2) for the
+buses' exact coordinates, and `bus_id_mapping.json` from the bundle.
 
 ### Line Impedances (Step 6)
 

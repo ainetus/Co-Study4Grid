@@ -87,6 +87,38 @@ const createDefaultProps = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe('VisualizationPanel', () => {
+    it('puts the Context tab first, not detachable, hosting the situation map', () => {
+        const contextMap = { data: null, loading: true, error: null, available: null, unavailableReason: null, highlights: [] };
+        render(<VisualizationPanel {...createDefaultProps({ activeTab: 'context', contextMap })} />);
+        const tabs = screen.getAllByTestId(/^tab-button-/).map(b => b.getAttribute('data-testid'));
+        expect(tabs[0]).toBe('tab-button-context');
+        expect(screen.queryByTestId('tab-detach-context')).toBeNull();
+        expect(screen.getByTestId('context-tab-container')).toBeVisible();
+        expect(screen.getByTestId('context-map-placeholder')).toHaveTextContent('Loading the situation map');
+    });
+
+    it('shows no Context tab for a network without a situation map', () => {
+        const contextMap = {
+            data: null, loading: false, error: null, available: false,
+            unavailableReason: 'its substations carry no country', highlights: [],
+        };
+        render(<VisualizationPanel {...createDefaultProps({ contextMap })} />);
+        expect(screen.queryByTestId('tab-button-context')).toBeNull();
+        expect(screen.getAllByTestId(/^tab-button-/)[0]).toHaveAttribute('data-testid', 'tab-button-n');
+    });
+
+    it('makes the N-1 tab glow while its ready diagram waits for a visit', () => {
+        const n1Diagram = { svg: '<svg/>', metadata: null } as DiagramData;
+        const { rerender } = render(<VisualizationPanel {...createDefaultProps({ n1Diagram, n1Attention: true })} />);
+        const tab = screen.getByTestId('tab-button-contingency');
+        expect(tab).toHaveAttribute('data-attention', 'true');
+        expect(tab).toHaveClass('tab-attention');
+        expect(tab).toHaveAttribute('title', 'The N-1 diagram is ready — open it');
+        rerender(<VisualizationPanel {...createDefaultProps({ n1Diagram, n1Attention: false })} />);
+        expect(screen.getByTestId('tab-button-contingency')).not.toHaveAttribute('data-attention');
+        expect(screen.getByTestId('tab-button-n')).not.toHaveClass('tab-attention');
+    });
+
     it('renders the Network (N) tab', () => {
         render(<VisualizationPanel {...createDefaultProps()} />);
         expect(screen.getByText('Network (N)')).toBeInTheDocument();

@@ -19,11 +19,13 @@ vi.mock('./components/VisualizationPanel', () => {
   interface MockProps {
     nDiagram: Record<string, unknown> | null;
     n1Diagram: Record<string, unknown> | null;
+    n1Attention?: boolean;
     activeTab: string;
     configLoading: boolean;
     layoutPath: string;
     networkPath: string;
     onOpenSettings: (tab: string) => void;
+    onTabChange: (tab: string) => void;
   }
   const MockVisualizationPanel = (props: MockProps) => {
     const { nDiagram, n1Diagram, activeTab, configLoading, layoutPath, networkPath, onOpenSettings } = props;
@@ -36,7 +38,9 @@ vi.mock('./components/VisualizationPanel', () => {
         data-testid="visualization-panel"
         data-n1-diagram-present={!!n1Diagram}
         data-active-tab={activeTab}
+        data-n1-attention={props.n1Attention ? 'true' : 'false'}
       >
+        <button data-testid="mock-open-n1" onClick={() => props.onTabChange('contingency')}>N-1</button>
         {!hasAnyDiagram && !configLoading && showPathWarning && (
           <div>
             <div>Configuration Paths</div>
@@ -123,6 +127,9 @@ const mockApi = vi.hoisted(() => ({
   getVoltageLevels: vi.fn().mockResolvedValue({ voltage_levels: ['VL1', 'VL2'], name_map: {} }),
   getNominalVoltages: vi.fn().mockResolvedValue({ mapping: {}, unique_kv: [63, 225] }),
   getVoltageLevelSubstations: vi.fn().mockResolvedValue({ mapping: {} }),
+  // Context tab (useContextMap): no situation map in these tests.
+  getContextMap: vi.fn().mockResolvedValue(null),
+  getContextMapElements: vi.fn().mockResolvedValue([]),
   getNetworkDiagram: vi.fn().mockResolvedValue({ svg: '<svg></svg>', metadata: null }),
   getContingencyDiagram: vi.fn().mockResolvedValue({ svg: '<svg></svg>', metadata: null, lines_overloaded: [] }),
   pickPath: vi.fn(),
@@ -401,6 +408,8 @@ describe('Overload Clearing Logic', () => {
     mockApi.getVoltageLevels.mockResolvedValue({ voltage_levels: ['VL1', 'VL2'], name_map: {} });
     mockApi.getNominalVoltages.mockResolvedValue({ mapping: {}, unique_kv: [63, 225] });
     mockApi.getVoltageLevelSubstations.mockResolvedValue({ mapping: {} });
+    mockApi.getContextMap.mockResolvedValue(null);
+    mockApi.getContextMapElements.mockResolvedValue([]);
     mockApi.getNetworkDiagram.mockResolvedValue({ svg: '<svg></svg>', metadata: null });
     mockApi.getContingencyDiagram.mockResolvedValue({ svg: '<svg></svg>', metadata: null, lines_overloaded: [] });
     mockApi.runAnalysisStep1.mockResolvedValue({ can_proceed: true, lines_overloaded: ['LINE_OL1'] });
@@ -597,6 +606,8 @@ describe('N-1 overload state is populated before action analysis', () => {
     mockApi.getVoltageLevels.mockResolvedValue({ voltage_levels: ['VL1', 'VL2'], name_map: {} });
     mockApi.getNominalVoltages.mockResolvedValue({ mapping: {}, unique_kv: [63, 225] });
     mockApi.getVoltageLevelSubstations.mockResolvedValue({ mapping: {} });
+    mockApi.getContextMap.mockResolvedValue(null);
+    mockApi.getContextMapElements.mockResolvedValue([]);
     mockApi.getNetworkDiagram.mockResolvedValue({ svg: '<svg></svg>', metadata: null });
     mockApi.getContingencyDiagram.mockResolvedValue({ svg: '<svg></svg>', metadata: null, lines_overloaded: [] });
     localStorage.clear();
@@ -776,5 +787,47 @@ describe('N-1 overload state is populated before action analysis', () => {
       expect(banner.textContent).not.toMatch(/LINE_OL_A/);
       expect(banner.textContent).not.toMatch(/LINE_OL_B/);
     });
+  });
+});
+
+describe('A contingency opens on the Context tab when the study has one', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    vi.unstubAllGlobals();
+  });
+  afterEach(() => {
+    mockApi.getContextMap.mockResolvedValue(null);
+  });
+
+  it('shows the contingency on the situation map, then makes the N-1 tab glow until visited', async () => {
+    mockApi.getContextMap.mockResolvedValue({ available: true, capture_id: 1 });
+    await renderAndLoadStudy();
+    const panel = screen.getByTestId('visualization-panel');
+    await waitFor(() => expect(panel).toHaveAttribute('data-active-tab', 'context'));
+
+    await selectBranch('BRANCH_A');
+    // The N-1 diagram is ready: the operator stays on the map, the N-1 tab glows.
+    await waitFor(() => expect(panel).toHaveAttribute('data-n1-diagram-present', 'true'));
+    await waitFor(() => expect(panel).toHaveAttribute('data-n1-attention', 'true'));
+    expect(panel).toHaveAttribute('data-active-tab', 'context');
+
+    // Visiting the N-1 tab is what the glow asked for: it stops, for good.
+    await act(async () => { fireEvent.click(screen.getByTestId('mock-open-n1')); });
+    expect(panel).toHaveAttribute('data-active-tab', 'contingency');
+    expect(panel).toHaveAttribute('data-n1-attention', 'false');
+  });
+
+  it('goes straight to the N-1 tab when the network has no situation map', async () => {
+    mockApi.getContextMap.mockResolvedValue({
+      available: false, capture_id: 1, unavailable_reason: 'its substations carry no country',
+    });
+    await renderAndLoadStudy();
+    const panel = screen.getByTestId('visualization-panel');
+    // No Context tab: the study opens on the N network instead.
+    await waitFor(() => expect(panel).toHaveAttribute('data-active-tab', 'n'));
+    await selectBranch('BRANCH_A');
+    await waitFor(() => expect(panel).toHaveAttribute('data-active-tab', 'contingency'));
+    expect(panel).toHaveAttribute('data-n1-attention', 'false');
   });
 });

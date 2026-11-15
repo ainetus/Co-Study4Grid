@@ -19,6 +19,9 @@ const mockApi = vi.hoisted(() => ({
   getVoltageLevels: vi.fn().mockResolvedValue({ voltage_levels: ['VL1'], name_map: {} }),
   getNominalVoltages: vi.fn().mockResolvedValue({ mapping: {}, unique_kv: [63, 225] }),
   getVoltageLevelSubstations: vi.fn().mockResolvedValue({ mapping: {} }),
+  // Context tab (useContextMap): no situation map in these tests.
+  getContextMap: vi.fn().mockResolvedValue(null),
+  getContextMapElements: vi.fn().mockResolvedValue([]),
   getNetworkDiagram: vi.fn().mockResolvedValue({ svg: '<svg></svg>', metadata: null }),
   getUserConfig: vi.fn().mockResolvedValue({ network_path: '/path', action_file_path: '/path' }),
   getConfigFilePath: vi.fn().mockResolvedValue('/config'),

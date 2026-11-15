@@ -354,7 +354,162 @@ export interface DiagramPatch {
     };
 }
 
-export type TabId = 'n' | 'contingency' | 'action' | 'overflow';
+export type TabId = 'context' | 'n' | 'contingency' | 'action' | 'overflow';
+
+// ===== Context tab (Carte-Front situation map) =====
+// Payload of GET /api/context-map — see expert_backend/services/context_map.
+// Every position is already projected into the drawing frame (SVG user
+// space, y downward); `bounds` is the [x, y, w, h] the map opens on.
+
+/** Generation types, in pie order (Carte-Front `FILIERE_COLORS`). */
+export type ContextFiliere =
+    | 'nuclear' | 'gas' | 'coal' | 'oil' | 'hydro' | 'wind' | 'solar'
+    | 'biomass' | 'storage' | 'other';
+
+export interface ContextMapZone {
+    id: string;
+    label: string;
+    /** `region` (inside home), `neighbor` (badge around it) or `country`. */
+    kind: 'region' | 'neighbor' | 'country';
+    country: string;
+    production: Partial<Record<ContextFiliere, number>>;
+    production_total: number;
+    consumption: number;
+    /** Net export over the drawn transfers (MW, + = exports). */
+    net_export: number;
+    label_side: 'below' | 'above' | 'left' | 'right';
+    placed: boolean;
+    x?: number;
+    y?: number;
+    /** Neighbour badge position, when Carte-Front anchors that country. */
+    badge?: [number, number];
+}
+
+export interface ContextMapFlow {
+    from: string;
+    to: string;
+    mw: number;
+    circuits: number;
+    kind: 'inter_zone' | 'border';
+    /** Arc curvature (matplotlib `arc3` rad). */
+    rad: number;
+    label: [number, number];
+    /** Border flows only, from the home country's point of view. */
+    direction?: 'import' | 'export';
+}
+
+export interface ContextMapCountry {
+    iso: string;
+    name: string;
+    /** Country with zones in the network (drawn in the light home fill). */
+    active: boolean;
+    rings: [number, number][][];
+}
+
+/** A nuclear unit (Carte-Front's nuclear layer): one dot on its plant's ring. */
+export interface ContextMapNuclearUnit {
+    id: string;
+    /** Display name (a matched plant's unit, e.g. "Gravelines 3"); else the id is shown. */
+    name?: string | null;
+    /** Id of its plant in `plants`. */
+    plant: string;
+    x: number;
+    y: number;
+    running: boolean;
+    /** Output (MW, 0 when stopped) and its share of `pmax`, 0–1. */
+    p: number;
+    pmax: number | null;
+    level: number;
+}
+
+export interface ContextMapNuclearPlant {
+    id: string;
+    name: string;
+    x: number;
+    y: number;
+    /** Outline radius, in the frame's units. */
+    r: number;
+    units: number;
+    running: number;
+    production: number;
+    capacity: number;
+    /**
+     * Matched from a plant database onto an untyped network
+     * (`plant_source`): real units and capacity, output ESTIMATED as its
+     * share of its zone's production.
+     */
+    matched?: boolean;
+}
+
+export interface ContextMapData {
+    /** A network that meets the map's prerequisite (see `ContextMapUnavailable`). */
+    available?: true;
+    mesh: 'region' | 'country';
+    home: string | null;
+    frame: 'geo';
+    bounds: [number, number, number, number];
+    georef: 'substation_position' | 'op4grid_plan' | 'layout' | null;
+    flows_available: boolean;
+    case_date?: string | null;
+    /** Stamp of the network capture this map was built from. */
+    capture_id?: number;
+    basemap: ContextMapCountry[];
+    country_labels: { text: string; x: number; y: number }[];
+    zones: ContextMapZone[];
+    flows: ContextMapFlow[];
+    nuclear?: { plants: ContextMapNuclearPlant[]; units: ContextMapNuclearUnit[] };
+    /**
+     * The plant database the network's untyped generators were typed from
+     * (`power_plants.json` beside the network) — credited on the map.
+     */
+    plant_source?: { name: string; url: string; licence: string } | null;
+    /**
+     * The real hour a rebuilt PyPSA-EUR situation reproduces
+     * (`situation.json` beside the network): its dispatch — the observed
+     * one, or a PyPSA optimal dispatch — and the data it was built from.
+     */
+    situation?: {
+        at_utc: string;
+        dispatch: 'observed' | 'opf' | string;
+        sources: { name: string; url: string; licence: string }[];
+    } | null;
+    totals: { production: number; consumption: number; net_export: number | null };
+}
+
+/**
+ * GET /api/context-map for a network without a situation map: it must place
+ * at least two zones on the ground — substations tagged with their country
+ * (a grid spanning countries) or, in France, with their RTE region
+ * (`regionCvg`). The frontend then shows no Context tab.
+ */
+export interface ContextMapUnavailable {
+    available: false;
+    /** The prerequisite the network misses, in words. */
+    unavailable_reason: string;
+    mesh?: 'region' | 'country';
+    case_date?: string | null;
+    capture_id?: number;
+}
+
+/** A studied element drawn on the Context map, with its role in the study. */
+export interface ContextMapHighlight {
+    element: ContextMapElement;
+    role: 'contingency' | 'overload';
+    /** Loading (ρ, 1 = 100 %) when known. */
+    rho?: number;
+}
+
+/** POST /api/context-map/elements — where a studied element sits. */
+export interface ContextMapElement {
+    id: string;
+    name: string;
+    kind: 'branch' | 'injection';
+    zones: (string | null)[];
+    /** Voltage-level positions; null when the map is not georeferenced. */
+    points: [number, number][] | null;
+    /** Positions of the zones it touches (fallback drawing). */
+    zone_points: ([number, number] | null)[];
+}
 
 export interface SettingsBackup {
     networkPath?: string;

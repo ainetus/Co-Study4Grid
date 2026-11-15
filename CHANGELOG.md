@@ -7,6 +7,70 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Context tab — the Carte-Front situation map, first on screen
+
+- **New leftmost "Context" tab**, opened after every study load: the
+  Carte-Front situation map (without the congestion fronts) **ported** into
+  Co-Study4Grid — no dependency on Carte-Front. Production-mix pies (area ∝ MW)
+  with consumption rings, inter-zone transfer arrows, neighbour export/import
+  badges, on a Natural Earth European basemap, in Carte-Front's palette and
+  point sizing.
+- **Mesh**: RTE regions when the network tags its French substations with
+  `regionCvg` (a *PtFige*), else countries (a European PyPSA-EUR grid).
+- **Fast**: snapshot taken at `/api/config` before the NAD prefetch, map built
+  without the network lock, and read by the frontend *while* `/api/config` still
+  runs (`capture_id` tells studies apart). On the 7 000-node French grid the map
+  shows at ~2.7 s, the N NAD at ~16 s.
+- **Situation card top-left** with the national production **mix bar** (shares
+  written on it); **nuclear units** as in Carte-Front — one dot per unit around
+  its plant's real coordinates, filled by P / Pmax, hollow when stopped,
+  hideable from the legend.
+- **Contingency (yellow) and overloads (orange, with ρ)** drawn on the map in
+  Co-Study's halo colours, with an attention ring and *Zoom to contingency*.
+  Voltage levels are located from the `substationPosition` extension, else the
+  layout — Carte-Front's calibration of the RTE op4grid plan (~30 km), or a
+  Mercator fit (~1 km on PyPSA grids).
+- **A contingency opens on the Context tab first** when the study has one: the
+  contingency framed on the map, then its overloads with their **loading after
+  the contingency written beside each line**; once the N-1 diagram is ready the
+  **N-1 tab glows** (pulsing orange halo, static under reduced motion) until the
+  operator opens it. Without a Context tab the N-1 tab opens, as before.
+- **Prerequisite**: the tab appears only for a network that places at least two
+  zones on the map — substations tagged with their country (a grid spanning
+  countries) or, in France, with their RTE region (`regionCvg`). Otherwise
+  `GET /api/context-map` answers `available: false` with the reason, the tab is
+  hidden and a sidebar notice says why (single-zone and country-less grids:
+  `fr225_400`, the France EHV Matpower cases, the small test grid).
+- New endpoints `GET /api/context-map`, `POST /api/context-map/elements`
+  (OpenAPI snapshot regenerated). `main.py`'s gzip helpers moved to
+  `services/gzip_response.py` (module-size ceiling). See
+  `docs/features/context-tab.md`.
+- **Real power plants on the pan-European game grid**: its synthetic,
+  untyped generators are now typed by the plants of powerplantmatching
+  (CC BY 4.0) matched to each substation — new pipeline step
+  `scripts/pypsa_eur/match_power_plants.py` (`build_pipeline.py` step 7,
+  `--plants`), writing `power_plants.json` BESIDE the network: network, flows,
+  limits, N-1 list and Game Mode studies are unchanged. Every substation of that
+  grid produces the same ~16 MW, so the map types each zone's production by its
+  matched fleet's typical output (capacity × load factor): France 72 % nuclear,
+  Europe 25 %. The 38 matched nuclear plants are drawn unit by unit (97 units) on
+  their real sites at their real capacity, their estimated outputs adding up to
+  the pie; the source is credited on the situation card.
+- Every transfer is labelled on a dense (country) map, halfway along its
+  visible arrow; reconstructed RTE7000 genres (FUEL, CCG, STEP, AUTRE) and
+  Fessenheim recognised; no net-export line on a grid without neighbours; a
+  network without generation types says so instead of a one-colour bar.
+
+- **Typed networks read as they are**: the map also types production from a
+  generator's `carrier` tag (powerplantmatching fuel names), groups nuclear
+  units by their `plant` tag on the plant's site (`plant_lon` / `plant_lat`),
+  keeps FICTITIOUS loads tagged `neighbour` — exchanges with countries the grid
+  leaves out — out of consumption and draws them towards named neighbour
+  badges, and credits the hour and data of a `situation.json` beside the
+  network. Plant matching splits hydro (run-of-river / reservoir / pumped
+  storage) and wind (onshore / offshore), records thermal efficiencies and lets
+  offshore farms land up to 250 km away.
+
 ### Game Mode — Matpower dataset re-graded after `expert_op4grid_recommender@0.3.3.post1`
 
 - **Bumped `expert_op4grid_recommender` `0.3.0.post1` → `0.3.3.post1`** (hotfix

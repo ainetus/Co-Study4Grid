@@ -162,6 +162,13 @@ The `RecommenderService.reset()` method clears, in order:
    process. See
    [docs/architecture/shared-network-concurrency.md](../architecture/shared-network-concurrency.md).
 
+The Context tab's `context_map_service` lives outside `RecommenderService`:
+`/api/config` resets it next to `recommender_service.reset()` and re-captures
+the freshly loaded network right after `load_network()` (new `capture_id`), so
+its cached map never outlives a study. On the frontend, `resetAllState()` lands
+on the `context` tab; the map itself is cleared by `useContextMap` when the
+next `api.updateConfig` starts (see [context-tab.md](context-tab.md)).
+
 Adding a new per-study cache? It MUST be listed in
 `RecommenderService.reset()` (see
 `expert_backend/services/recommender_service.py:99`) and, if it holds
