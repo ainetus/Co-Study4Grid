@@ -413,18 +413,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
                     data-testid="pan-zoom-mode-select"
                     style={{ padding: '4px 8px', border: `1px solid ${colors.border}`, borderRadius: '4px', cursor: 'pointer' }}
                   >
-                    <option value="off">Default (repaint + culling)</option>
+                    <option value="canvas">Canvas proxy (default)</option>
+                    <option value="off">Classic — repaint + culling</option>
                     <option value="gpu">Smooth — GPU transform</option>
                     <option value="bitmap">Smooth — Bitmap snapshot</option>
-                    <option value="canvas">Smooth — Canvas proxy (large grids)</option>
                   </select>
                 </div>
                 <div style={{ fontSize: '0.75rem', color: colors.textTertiary, fontStyle: 'italic' }}>
-                  How the diagram renders <i>during</i> a pan/zoom gesture (opt-in, default OFF; applies on the next gesture).
-                  {' '}<b>Default</b> repaints the vector each frame — safe everywhere.
+                  How the diagram renders <i>during</i> a pan/zoom gesture (applies on the next gesture).
+                  {' '}<b>Canvas proxy</b> (default) draws a light copy of the network while you pan/zoom and updates the diagram once you pause — fluid on large grids, with or without a GPU; flow values and labels reappear at that pause, and clicks on the map wait for it.
+                  {' '}<b>Classic</b> repaints the vector diagram on every frame, hiding labels and flow values meanwhile — always in sync, but slow on large grids.
                   {' '}<b>GPU transform</b> composites the live SVG — smoother on hardware-accelerated browsers, can stutter on software / remote-desktop / VDI.
                   {' '}<b>Bitmap snapshot</b> rasterises the diagram once at gesture start and transforms that bitmap; the snapshot decodes on the main thread, so the gesture start can lag on large grids.
-                  {' '}<b>Canvas proxy</b> draws a light copy of the network while you pan/zoom and updates the diagram once you pause — the most fluid option on large grids, with or without a GPU; flow values and labels reappear at that pause.
                 </div>
               </div>
             </div>

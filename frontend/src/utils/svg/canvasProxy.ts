@@ -514,8 +514,7 @@ export const GESTURE_PROXY_ATTR = 'data-gesture-proxy';
  * Quiet time before rebuilding after the live diagram changed. Highlight and
  * filter changes come in bursts (Inspect typing, a contingency repainting its
  * deltas) and the rebuild is a ~0.1 s task on the European grid: run right
- * away, it landed in the frame that shows the change (+30–130 ms on an
- * Inspect jump).
+ * away, it competed with the frames that show the change (an Inspect jump).
  */
 const REBUILD_DEBOUNCE_MS = 600;
 
@@ -552,6 +551,8 @@ export const createCanvasProxyController = ({ getLiveSvg, getContainer, getExten
     let token = 0;
     let idleScheduled = false;
     let rebuildTimer: ReturnType<typeof setTimeout> | null = null;
+    // A build that threw is not retried for the same diagram until it changes.
+    let failedFor: SVGSVGElement | null = null;
     // Bumped by dispose() so an idle build scheduled before it is dropped.
     let generation = 0;
 
@@ -575,8 +576,17 @@ export const createCanvasProxyController = ({ getLiveSvg, getContainer, getExten
         // Never swap the canvas in the middle of a gesture: a stale proxy is
         // still a faithful stand-in until the gesture ends.
         if (reusable && (!stale || showing)) return proxy;
+        // No Path2D / 2D canvas (jsdom, exotic embeds): no proxy, and the
+        // gesture takes the classic path. Same if the build fails.
+        if (typeof Path2D !== 'function' || failedFor === live) return null;
+        let next: CanvasProxy;
+        try {
+            next = buildCanvasProxy(live, container, getExtent(), { haloWidth });
+        } catch {
+            failedFor = live;
+            return null;
+        }
         proxy?.canvas.remove();
-        const next = buildCanvasProxy(live, container, getExtent(), { haloWidth });
         const c = next.canvas;
         c.style.position = 'absolute';
         c.style.left = '0';
@@ -634,6 +644,7 @@ export const createCanvasProxyController = ({ getLiveSvg, getContainer, getExten
         },
         invalidate: () => {
             stale = true;
+            failedFor = null;
             if (rebuildTimer !== null) clearTimeout(rebuildTimer);
             rebuildTimer = setTimeout(() => {
                 rebuildTimer = null;
@@ -645,6 +656,7 @@ export const createCanvasProxyController = ({ getLiveSvg, getContainer, getExten
             token++;
             generation++;
             idleScheduled = false;
+            failedFor = null;
             if (rebuildTimer !== null) clearTimeout(rebuildTimer);
             rebuildTimer = null;
             showing = false;

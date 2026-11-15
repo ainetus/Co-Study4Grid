@@ -3,8 +3,11 @@
 **Status:** audit + measured prototypes, in
 [`benchmarks/interaction_paint/audit_prototype.patch`](../../benchmarks/interaction_paint/audit_prototype.patch).
 **Follow-up (2026-11-15):** the canvas gesture proxy (A1) and the gesture
-fixes B1–B3 / B5 ship as the opt-in `'canvas'` pan/zoom mode — production
-measurements, and the compositing pitfalls the prototype did not hit, in §8.
+fixes B1–B3 / B5 ship as the `'canvas'` pan/zoom mode — the default since an
+operator trial on this grid. Production measurements, and the compositing
+pitfalls the prototype did not hit, in §8; the mechanism's reference (design,
+time budget, decision log, next levers) is
+[`canvas-gesture-proxy.md`](canvas-gesture-proxy.md).
 **Grid:** `pypsa_eur_eur220_225_380_400` — 5,247 voltage levels, 7,853
 branches. N-state NAD after `processSvg`: **9.9 MB, 98,960 DOM nodes**.
 **Question:** how fluid are zoom-in / zoom-out and navigation across the
@@ -650,10 +653,10 @@ still re-lays out the whole SVG (RC1).
 | A4 | Keep inactive SVG tabs laid out but unrendered (`content-visibility: hidden`) instead of `display: none` | return to the N tab 350 → 150 ms (§4.4); re-measure memory and frame cost with N-1 + Action loaded first |
 | A5 | Move the canvas drawing to a Worker (`OffscreenCanvas`) if VDI sessions need more | gesture frames off the main thread entirely |
 
-**Status (§8):** A1 shipped as the opt-in `'canvas'` mode, with A3's 400 ms
-wheel settle; the animated fly-to for Inspect / Unzoom is not done (those
-jumps still bake directly). The default stays `'off'` until the numbers are
-confirmed on operator machines. A2, A4 and A5 open.
+**Status (§8):** A1 shipped as the `'canvas'` mode — the default since
+2026-11-15 — with A3's 400 ms settle, extended to drags; the animated fly-to
+for Inspect / Unzoom is not done (those jumps still bake directly). A2, A4 and
+A5 open.
 
 Implementation notes for A1: build the proxy on idle and on the existing
 MutationObserver (highlight changes); rebuild on theme change and container
@@ -719,8 +722,8 @@ hard-coded 100.
 ## 8. Follow-up — the production `'canvas'` mode (2026-11-15)
 
 The prototype's `canvas` mode was rebuilt as production code: a `'canvas'`
-value of the existing **Pan/zoom rendering** setting (opt-in, default still
-`'off'`), `utils/svg/canvasProxy.ts` for the proxy, the gesture fixes B1–B3 /
+value of the existing **Pan/zoom rendering** setting — the default after an
+operator trial —, `utils/svg/canvasProxy.ts` for the proxy, the gesture fixes B1–B3 /
 B5 in `usePanZoom` for every mode, no experiment flags. None of the Tier 1
 CSS quick wins (Q1–Q4) nor B4 are in it — the prototype was measured with
 them on; here they would only matter at gesture boundaries.
@@ -748,9 +751,11 @@ had reached 20 fps:
 3. **A click-through canvas needs pointer capture.** Without it, every drag
    mousemove hit-tests the live SVG underneath: 20–40 ms each at region zoom
    (41 hit tests, 772 ms for a 30-move drag; 9 hit tests, 186 ms with
-   capture). Wheel targets are latched by Chrome, so wheel bursts don't pay
-   it. The same hit tests make plain hovering over the map cost ~20–40 ms per
-   mousemove in every mode — a lever of its own (fewer hit-testable nodes).
+   capture). Wheel events mostly reuse their target within a burst, yet a
+   12-notch burst still pays ~4 expensive hit tests (125–154 ms; none with a
+   hit-testable canvas, which would need a restyle per gesture). The same hit
+   tests make plain hovering over the map cost ~20–40 ms per mousemove in
+   every mode — a lever of its own (fewer hit-testable nodes).
 
 And one about settles: writing the live viewBox makes Chrome re-raster the
 visible SVG tiles (~1 s at region zoom here), and no later commit can land
@@ -764,9 +769,9 @@ drag only starts the proxy once the pointer travels, so a plain click (VL
 select, SLD) draws nothing.
 
 Last, rebuilds: the proxy is rebuilt after highlight / delta / filter changes,
-a ~0.1 s task on this grid. Run on the next idle period, it landed in the
-frame that showed the change (+30–130 ms on an Inspect jump), so it now waits
-for 600 ms without changes.
+a ~0.1 s task on this grid. Run on the next idle period, it competed with the
+frames that showed the change (an 82–87 ms idle callback among an Inspect
+jump's long frames), so it now waits for 600 ms without changes.
 
 ### Results
 
@@ -829,5 +834,8 @@ columns only track machine load, which drifted between the §2 runs and these
   size from the first events would close it.
 - Inspect and Unzoom still jump by baking the live SVG directly (A3's fly-to
   on the proxy is not done).
-- Default: `'off'` until the mode has been tried on operator machines; then
-  switch it to `'canvas'` and retire `bitmap` / `gpu` (A2).
+- The default switched to `'canvas'` after an operator trial on this grid
+  (2026-11-15); retire `bitmap` / `gpu` (A2) once it has run on operator
+  machines for a while.
+- Next steps, with the measurements and probes to check them:
+  [`canvas-gesture-proxy.md`](canvas-gesture-proxy.md) §7–8.

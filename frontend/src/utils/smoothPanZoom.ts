@@ -9,11 +9,20 @@ import { useSyncExternalStore } from 'react';
 import { interactionLogger } from './interactionLogger';
 
 /**
- * Pan/zoom rendering mode preference — an OPT-IN, off-by-default setting that
- * changes how usePanZoom renders a gesture on large grids:
+ * Pan/zoom rendering mode preference — how usePanZoom renders a gesture:
  *
- *  - 'off'    (default, safe everywhere): per-frame viewBox rewrite + the
- *             interaction-time paint culling in App.css. GPU-independent.
+ *  - 'canvas' (default): draw a light stand-in of the network (grouped Path2D
+ *             per style and grid cell, utils/svg/canvasProxy.ts) on a canvas
+ *             over the live SVG during the gesture and rewrite the live
+ *             viewBox once, when the operator pauses. 30–60 fps on the full
+ *             European grid, with or without a GPU, every gesture complete
+ *             (docs/performance/canvas-gesture-proxy.md). Falls back to 'off'
+ *             where no proxy can be drawn (no Path2D / 2D canvas) and on
+ *             surfaces that opt out (the Action overview).
+ *  - 'off'    ("Classic", safe everywhere): per-frame viewBox rewrite + the
+ *             interaction-time paint culling in App.css. GPU-independent, but
+ *             every frame restyles and re-lays out the whole SVG (2–5 fps on
+ *             the European grid).
  *  - 'gpu'    : compositor-only CSS transform on the live <svg> during the
  *             gesture, baking back to viewBox on settle. Smoother on GPU, but
  *             Chrome still re-rasters the huge vector layer each frame, so the
@@ -25,12 +34,9 @@ import { interactionLogger } from './interactionLogger';
  *             blob, so the snapshot decodes on the main thread (0.4–3 s per
  *             gesture on an Intel laptop) and the gesture runs on the slow
  *             path meanwhile.
- *  - 'canvas' : draw a light stand-in of the network (grouped Path2D per
- *             style and grid cell, utils/svg/canvasProxy.ts) on a canvas over
- *             the live SVG during the gesture and rewrite the live viewBox
- *             once, when the operator pauses. 30–60 fps on the full European
- *             grid, with or without a GPU, every gesture complete
- *             (docs/performance/large-grid-interaction-audit-2026-11.md §8).
+ *
+ * An explicit choice is kept (stored 'off' stays classic); only operators who
+ * never picked a mode get the default.
  *
  * Modelled as a tiny singleton (like interactionLogger / gameBridge / useTheme)
  * rather than threaded through props, because four independent usePanZoom
@@ -41,15 +47,18 @@ export type PanZoomMode = 'off' | 'gpu' | 'bitmap' | 'canvas';
 
 const STORAGE_KEY = 'cs4g-smooth-pan-zoom';
 
+/** Mode until the operator picks one in Settings. */
+export const DEFAULT_PAN_ZOOM_MODE: PanZoomMode = 'canvas';
+
 const readInitial = (): PanZoomMode => {
     try {
         const v = localStorage.getItem(STORAGE_KEY);
         if (v === 'gpu' || v === 'bitmap' || v === 'canvas' || v === 'off') return v;
         if (v === '1') return 'gpu'; // migrate the legacy boolean storage
-        return 'off';
+        return DEFAULT_PAN_ZOOM_MODE;
     } catch {
-        // localStorage unavailable (private mode, SSR-like envs) — default off.
-        return 'off';
+        // localStorage unavailable (private mode, SSR-like envs).
+        return DEFAULT_PAN_ZOOM_MODE;
     }
 };
 
@@ -91,6 +100,6 @@ export const useSmoothPanZoom = (): {
     enabled: boolean;
     setEnabled: (b: boolean) => void;
 } => {
-    const value = useSyncExternalStore(subscribe, getSmoothPanZoomMode, () => 'off' as PanZoomMode);
+    const value = useSyncExternalStore(subscribe, getSmoothPanZoomMode, () => DEFAULT_PAN_ZOOM_MODE);
     return { mode: value, setMode: setSmoothPanZoomMode, enabled: value !== 'off', setEnabled: setSmoothPanZoomEnabled };
 };

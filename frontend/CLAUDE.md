@@ -500,15 +500,19 @@ re-evaluated on each settle. Guarded by the
 `nad_overload_halo_zoom_adaptive` Layer-4 invariant +
 `uxConsistency.test.tsx`.
 
-Pan/zoom fluidity on large grids has an always-on lever plus a
-4-mode opt-in `utils/smoothPanZoom.ts` singleton (`'off' | 'gpu' |
-'bitmap' | 'canvas'`, read by `usePanZoom` at gesture start; **Pan/zoom
-rendering** selector in Settings → Configurations, default `'off'`). The
-reference measurements are the November 2026 audit on the full European
-grid, `docs/performance/large-grid-interaction-audit-2026-11.md` (real
-input events on an Intel laptop; the June study,
+Pan/zoom rendering is a 4-mode `utils/smoothPanZoom.ts` singleton
+(`'canvas' | 'off' | 'gpu' | 'bitmap'`, read by `usePanZoom` at gesture
+start; **Pan/zoom rendering** selector in Settings → Configurations).
+**The default is `'canvas'`** since 2026-11-15 (`DEFAULT_PAN_ZOOM_MODE`); an
+explicit stored choice — including `'off'`, shown as "Classic" — is kept.
+Reference for the canvas mode (design, time budget, decision log, next
+levers): `docs/performance/canvas-gesture-proxy.md`. Background
+measurements: the November 2026 audit on the full European grid,
+`docs/performance/large-grid-interaction-audit-2026-11.md` (real input
+events on an Intel laptop; the June study,
 `docs/performance/history/interaction-paint-culling.md`, used synthetic
-events on an M4 Pro). Harness: `benchmarks/interaction_paint/AUDIT_HARNESS.md`.
+events on an M4 Pro). Harness and probes:
+`benchmarks/interaction_paint/AUDIT_HARNESS.md`.
 
 Gesture input handling, shared by every mode:
 - **A drag's last delta is applied on `mouseup`** (`applyDragDelta`) —
@@ -524,20 +528,13 @@ Gesture input handling, shared by every mode:
   cursor whatever the panel's aspect ratio.
 - **`user-select: none` on `.svg-container`**: a drag no longer runs the
   text-selection machinery or starts a drag-and-drop of a selection.
+- **A press takes over a pending wheel settle** (and the debounced settle
+  never fires while a button is down), so a drag right after a wheel zoom is
+  not baked / un-culled mid-drag.
 
 Modes:
-- **`'off'` (default) — interaction paint culling.** While a gesture is
-  active (`usePanZoom` adds `.svg-interacting`), `App.css` hides the
-  expensive `<foreignObject>` VL labels + `.nad-edge-infos` so each
-  viewBox-repaint frame is cheaper. GPU-independent; safe everywhere, but
-  every frame still restyles and re-lays out the whole SVG: 2–5 fps on the
-  European grid (98,960 nodes).
-- **`'gpu'`** — replaces the per-frame viewBox rewrite with a
-  compositor-only CSS transform on the live `<svg>`, baking back on
-  settle. Only ~1.2–1.5× over the default though: Chrome RE-RASTERS the
-  ~100k-node vector layer on every transform.
-- **`'canvas'`** (`utils/svg/canvasProxy.ts`) — the gesture never touches
-  the live SVG. `buildCanvasProxy` reads the live NAD once, on idle, into
+- **`'canvas'` (default)** (`utils/svg/canvasProxy.ts`) — the gesture never
+  touches the live SVG. `buildCanvasProxy` reads the live NAD once, on idle, into
   grouped `Path2D`s: one per resolved style (computed fill / stroke / width
   / dash) × 8×8 grid cell, in DOM paint order, `vector-effect:
   non-scaling-stroke` emulated by dividing the line width by the scale, the
@@ -560,7 +557,9 @@ Modes:
     repaints it), and toggling `display` re-rasterised the layer holding
     the live SVG (~3 s). Being click-through, a drag **captures the
     pointer** once it moves, or every mousemove would hit-test the live
-    SVG (20–40 ms each); wheel targets are latched by Chrome.
+    SVG (20–40 ms each). Wheel events mostly reuse their target within a
+    burst, yet a 12-notch burst still pays ~4 expensive hit tests (~150 ms)
+    — a lever, with hover and drag starts (reference doc §7).
   - While it covers the diagram the container carries
     **`data-gesture-proxy`** (`GESTURE_PROXY_ATTR`): the live SVG
     underneath is still at the gesture's start viewBox, so `vlInteractions`
@@ -568,8 +567,8 @@ Modes:
     so setting it restyles nothing.
   - Rebuilt on idle once the live SVG has been quiet for 600 ms after a
     MutationObserver hit (highlights, deltas, voltage filter) or a theme
-    change — the ~0.1 s build otherwise lands in the frame that shows the
-    change (+30–130 ms on an Inspect jump); the canvas size and overview
+    change — run at once, the ~0.1 s build competed with the frames that
+    show the change (seen on Inspect jumps); the canvas size and overview
     cache follow the panel on idle (ResizeObserver), never mid-gesture; a
     generation token drops builds queued before a dispose (tab hidden,
     diagram replaced). Owner-window rAF / idle callbacks, so detached
@@ -578,6 +577,20 @@ Modes:
     back with the settle — so `ActionOverviewDiagram` opts out
     (`usePanZoom(..., { gestureProxy: false })`): its pins and dimming are
     the point of that view.
+  - Falls back to the classic path for a gesture when no proxy can be drawn:
+    no `Path2D` / 2D context (jsdom — `usePanZoom.test.tsx` pins `'off'` for
+    the classic cases), or a build that throws (not retried until the diagram
+    changes).
+- **`'off'` ("Classic") — interaction paint culling.** While a gesture is
+  active (`usePanZoom` adds `.svg-interacting`), `App.css` hides the
+  expensive `<foreignObject>` VL labels + `.nad-edge-infos` so each
+  viewBox-repaint frame is cheaper. GPU-independent; safe everywhere, but
+  every frame still restyles and re-lays out the whole SVG: 2–5 fps on the
+  European grid (98,960 nodes).
+- **`'gpu'`** — replaces the per-frame viewBox rewrite with a
+  compositor-only CSS transform on the live `<svg>`, baking back on
+  settle. Only ~1.2–1.5× over the default though: Chrome RE-RASTERS the
+  ~100k-node vector layer on every transform.
 - **`'bitmap'`** (`utils/svg/bitmapSnapshot.ts`) — rasterise the NAD to a
   dpr-scaled `<canvas>` ONCE at gesture start and transform that bitmap
   (compositor-only, no vector re-raster), baking back to the live SVG on

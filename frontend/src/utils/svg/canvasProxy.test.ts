@@ -388,6 +388,31 @@ describe('createCanvasProxyController', () => {
         expect(ctl.begin()).toBe(false);
     });
 
+    it('returns false without Path2D (jsdom), so the gesture takes the classic path', () => {
+        vi.stubGlobal('Path2D', undefined);
+        const { container, svg } = buildDiagram();
+        const ctl = createCanvasProxyController({
+            getLiveSvg: () => svg, getContainer: () => container, getExtent: () => null,
+        });
+        expect(ctl.begin()).toBe(false);
+        expect(container.querySelector('canvas')).toBeNull();
+    });
+
+    it('does not retry a build that threw until the diagram changes', () => {
+        const { container, svg } = buildDiagram();
+        const cs = vi.spyOn(window, 'getComputedStyle').mockImplementation(() => { throw new Error('boom'); });
+        const ctl = createCanvasProxyController({
+            getLiveSvg: () => svg, getContainer: () => container, getExtent: () => null,
+        });
+        expect(ctl.begin()).toBe(false);
+        const calls = cs.mock.calls.length;
+        expect(ctl.begin()).toBe(false);
+        expect(cs.mock.calls.length).toBe(calls); // no second full build
+        cs.mockImplementation((el: Element) => fakeComputedStyle(el) as CSSStyleDeclaration);
+        ctl.invalidate();
+        expect(ctl.begin()).toBe(true);
+    });
+
     it('returns false when the browser gives no 2D context', () => {
         vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => null);
         const { container, svg } = buildDiagram();

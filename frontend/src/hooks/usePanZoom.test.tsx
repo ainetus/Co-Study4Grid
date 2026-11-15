@@ -29,6 +29,10 @@ function createMockSvgContainer(viewBox?: string) {
 describe('usePanZoom', () => {
     const initialVB: ViewBox = { x: 0, y: 0, w: 1000, h: 800 };
 
+    // The canvas proxy is the default mode; most cases here pin the classic
+    // path (per-frame viewBox writes), and the canvas mode has its own block.
+    beforeEach(() => { setSmoothPanZoomMode('off'); });
+
     beforeEach(() => {
         vi.clearAllMocks();
     });
