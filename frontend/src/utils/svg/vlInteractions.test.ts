@@ -357,6 +357,92 @@ describe('attachVlInteractions', () => {
         expect(onSelect).not.toHaveBeenCalled();
     });
 
+    // The paint-stack fallback hit-tests the whole diagram (~33 ms on the
+    // European grid): a press only pays it once it turns out to be a click.
+    describe('the paint-stack fallback waits for the click', () => {
+        const withEdge = () => {
+            const { container, disk } = makeContainer();
+            const edge = document.createElementNS(SVG_NS, 'path');
+            edge.id = 'edge-1';
+            container.querySelector('svg')!.appendChild(edge);
+            const stack = vi.fn((): Element[] => [edge, disk]);
+            const orig = document.elementsFromPoint;
+            document.elementsFromPoint = stack as unknown as typeof document.elementsFromPoint;
+            cleanups.push(() => { document.elementsFromPoint = orig; });
+            return { container, disk, edge, stack };
+        };
+
+        it('never runs for a press that travels (a pan)', () => {
+            const { container, edge, stack } = withEdge();
+            const onSelect = vi.fn();
+            cleanups.push(attachVlInteractions(container, makeMetaIndex(), { onSelect }));
+            edge.dispatchEvent(mouse('mousedown', 10, 10));
+            expect(stack).not.toHaveBeenCalled();
+            container.dispatchEvent(mouse('click', 80, 80)); // retargeted, ~99 px away
+            vi.advanceTimersByTime(VL_SINGLE_CLICK_DELAY_MS);
+            expect(stack).not.toHaveBeenCalled();
+            expect(onSelect).not.toHaveBeenCalled();
+        });
+
+        it('runs once, on the click, at the press point', () => {
+            const { container, edge, stack } = withEdge();
+            const onSelect = vi.fn();
+            cleanups.push(attachVlInteractions(container, makeMetaIndex(), { onSelect }));
+            edge.dispatchEvent(mouse('mousedown', 12, 7));
+            expect(stack).not.toHaveBeenCalled();
+            container.dispatchEvent(mouse('click', 13, 8));
+            expect(stack).toHaveBeenCalledTimes(1);
+            expect(stack).toHaveBeenCalledWith(12, 7);
+            vi.advanceTimersByTime(VL_SINGLE_CLICK_DELAY_MS);
+            expect(onSelect).toHaveBeenCalledWith('VL_400');
+        });
+
+        it('serves a double-click once per press: the SLD opens, no select', () => {
+            const { container, edge, stack } = withEdge();
+            const onSelect = vi.fn();
+            const onOpenSld = vi.fn();
+            cleanups.push(attachVlInteractions(container, makeMetaIndex(), { onSelect, onOpenSld }));
+            edge.dispatchEvent(mouse('mousedown'));
+            container.dispatchEvent(mouse('click'));
+            edge.dispatchEvent(mouse('mousedown'));
+            container.dispatchEvent(mouse('click'));
+            container.dispatchEvent(mouse('dblclick'));
+            vi.advanceTimersByTime(VL_SINGLE_CLICK_DELAY_MS);
+            expect(stack).toHaveBeenCalledTimes(2);
+            expect(onOpenSld).toHaveBeenCalledWith('VL_400');
+            expect(onSelect).not.toHaveBeenCalled();
+        });
+
+        it('still finds the disk when the press made the diagram transparent (classic path)', () => {
+            const { container, edge, stack } = withEdge();
+            // usePanZoom's own mousedown handler may run first: the classic
+            // path sets `.svg-interacting` (pointer-events: none) on the press
+            // and drops it on mouseup, before the click.
+            container.addEventListener('mousedown', () => container.classList.add('svg-interacting'));
+            container.addEventListener('mouseup', () => container.classList.remove('svg-interacting'));
+            const hitTestable = stack.getMockImplementation()!;
+            stack.mockImplementation(() => (container.classList.contains('svg-interacting') ? [] : hitTestable()));
+            const onSelect = vi.fn();
+            cleanups.push(attachVlInteractions(container, makeMetaIndex(), { onSelect }));
+            edge.dispatchEvent(mouse('mousedown'));
+            container.dispatchEvent(mouse('mouseup'));
+            container.dispatchEvent(mouse('click'));
+            vi.advanceTimersByTime(VL_SINGLE_CLICK_DELAY_MS);
+            expect(onSelect).toHaveBeenCalledWith('VL_400');
+        });
+
+        it('is never owed for a press on the disk itself', () => {
+            const { container, disk, stack } = withEdge();
+            const onSelect = vi.fn();
+            cleanups.push(attachVlInteractions(container, makeMetaIndex(), { onSelect }));
+            disk.dispatchEvent(mouse('mousedown'));
+            disk.dispatchEvent(mouse('click'));
+            vi.advanceTimersByTime(VL_SINGLE_CLICK_DELAY_MS);
+            expect(stack).not.toHaveBeenCalled();
+            expect(onSelect).toHaveBeenCalledWith('VL_400');
+        });
+    });
+
     it('does not throw when the optional handlers are omitted', () => {
         const { container, disk } = makeContainer();
         cleanups.push(attachVlInteractions(container, makeMetaIndex(), {}));

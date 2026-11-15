@@ -36,7 +36,10 @@ import { GESTURE_PROXY_ATTR } from './canvasProxy';
  *     `mouseover` and the cursor affordance is a static CSS rule
  *     (`.svg-container .nad-vl-nodes` / `.nad-label-box { cursor: pointer }`
  *     in App.css). The `elementsFromPoint` fallback fires only when the
- *     direct hit-test misses a VL, i.e. on an occluding edge or empty space.
+ *     direct hit-test misses a VL, i.e. on an occluding edge or empty space,
+ *     and for a press only once it turns out to be a click: it hit-tests the
+ *     whole diagram (~33 ms on the 99k-node European NAD), and most presses
+ *     off a disk start a pan.
  *   - Pan/zoom gestures add `.svg-interacting`, which sets
  *     `pointer-events: none` on every SVG child, so none of these
  *     handlers resolve a node mid-gesture — fluidity is untouched. In the
@@ -116,13 +119,7 @@ export const attachVlInteractions = (
     // disk: the direct hit-test then lands on the edge, so we walk the whole
     // paint stack at (clientX, clientY) and take the first element that resolves
     // to a VL. Only runs when the direct hit misses — never per frame.
-    const resolveDeep = (
-        target: EventTarget | null,
-        clientX: number,
-        clientY: number,
-    ): Resolved | null => {
-        const direct = resolveDirect(target);
-        if (direct) return direct;
+    const resolveAt = (clientX: number, clientY: number): Resolved | null => {
         if (typeof document.elementsFromPoint !== 'function') return null;
         for (const el of document.elementsFromPoint(clientX, clientY)) {
             if (el === container || !container.contains(el)) continue;
@@ -131,6 +128,11 @@ export const attachVlInteractions = (
         }
         return null;
     };
+    const resolveDeep = (
+        target: EventTarget | null,
+        clientX: number,
+        clientY: number,
+    ): Resolved | null => resolveDirect(target) ?? resolveAt(clientX, clientY);
 
     const tooltipText = (node: NodeMeta): string => {
         const id = node.equipmentId;
@@ -216,42 +218,52 @@ export const attachVlInteractions = (
     // transparent and the browser retargets the resulting `click` to the
     // container (the common ancestor of the disk-mousedown and the
     // container-mouseup). Resolving from `click.target` would therefore
-    // always miss. The mousedown hit-test still lands on the real disk
-    // (the class is only set *by* that handler, after the target is fixed),
-    // so that is where we read the node.
+    // always miss. The mousedown target is fixed by the browser's hit-test
+    // before any handler runs, so that is where we read the node.
+    //
+    // Only the direct resolve (a walk up from that target) runs on
+    // `mousedown`. The paint-stack fallback, for a press off a disk — on an
+    // edge drawn over it, or on empty space, where pans start — waits until
+    // the press is a click: it is a hit test of the whole diagram, and a
+    // press that travels is a pan, which never needs it. Nothing has moved
+    // under the press point by then: a click does not start a 'canvas'
+    // gesture, and the classic path drops `.svg-interacting` on `mouseup`,
+    // before the `click`. (Run on `mousedown`, the fallback found nothing
+    // whenever usePanZoom's own `mousedown` handler had already set the
+    // class — their order depends on which effect bound last.)
     let downX = 0;
     let downY = 0;
-    let downVl: NodeMeta | null = null;
-    let downViaText = false;
+    // The press's VL: resolved, null (none / ignored), or `undefined` while
+    // the paint-stack fallback is still owed (run once, by the first of
+    // `click` / `dblclick` that needs it).
+    let pressed: Resolved | null | undefined = null;
     let clickTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const pressedVl = (): Resolved | null => {
+        if (pressed === undefined) pressed = resolveAt(downX, downY);
+        return pressed;
+    };
 
     const onDown = (evt: MouseEvent) => {
         downX = evt.clientX;
         downY = evt.clientY;
-        if (proxyUp()) {
-            downVl = null;
-            downViaText = false;
-            return;
-        }
-        const res = resolveDeep(evt.target, evt.clientX, evt.clientY);
-        downVl = res ? res.node : null;
-        downViaText = res ? res.viaText : false;
+        pressed = proxyUp() ? null : resolveDirect(evt.target) ?? undefined;
     };
 
     const onClick = (evt: MouseEvent) => {
         // A pan (pointer travelled) is not a selection.
         if (Math.hypot(evt.clientX - downX, evt.clientY - downY) > DRAG_THRESHOLD_PX) return;
-        const node = downVl;
-        if (!node) return;
+        const res = pressedVl();
+        if (!res) return;
         // Clicking the VL NAME BOX opens its SLD directly — no double-click
         // window to guard (the box carries no competing single-click action).
-        if (downViaText) {
-            onOpenSld?.(node.equipmentId);
+        if (res.viaText) {
+            onOpenSld?.(res.node.equipmentId);
             return;
         }
         // Second click of a double-click — let `dblclick` take over.
         if (clickTimer !== null) return;
-        const vlId = node.equipmentId;
+        const vlId = res.node.equipmentId;
         clickTimer = setTimeout(() => {
             clickTimer = null;
             onSelect?.(vlId);
@@ -263,9 +275,9 @@ export const attachVlInteractions = (
             clearTimeout(clickTimer);
             clickTimer = null;
         }
-        const node = downVl;
-        if (!node) return;
-        onOpenSld?.(node.equipmentId);
+        const res = pressedVl();
+        if (!res) return;
+        onOpenSld?.(res.node.equipmentId);
     };
 
     container.addEventListener('mouseover', onOver);

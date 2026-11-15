@@ -38,6 +38,14 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   honours the letterboxed aspect ratio (the map slid ~20 % slower than the
   cursor); the diagram panel is no longer text-selectable; a press takes over
   a pending wheel settle instead of being baked mid-drag.
+- **Drags start sooner**: a press no longer hit-tests the whole diagram to
+  find the voltage level under it — the paint-stack fallback for a disk
+  under an edge (`vlInteractions`, ~33 ms on the European grid) waits until
+  the press turns out to be a click. Region / detail-zoom drags show their
+  first frame 40–60 ms sooner (interleaved against the previous build). The
+  fallback also finds an occluded disk again on the Classic path, where it
+  missed whenever the pan/zoom press handler had already made the diagram
+  transparent.
 - **Docs and tooling**: `docs/performance/canvas-gesture-proxy.md` (design,
   time budget, decision log with the measurements behind each rule, tunables,
   next levers), the audit `docs/performance/large-grid-interaction-audit-2026-11.md`

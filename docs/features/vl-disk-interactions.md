@@ -23,9 +23,12 @@ when the direct hit-test lands on something that is not a VL (an occluding
 edge, or empty space), they fall back to `document.elementsFromPoint` and
 take the **first VL disk / name box in the paint stack** under the cursor.
 So the disk is interactive across its whole area regardless of what is
-painted over it. The fallback only runs on discrete pointer events
-(`mousedown` / hover-while-labels-hidden), never per frame, so the
-performance contract below is unchanged.
+painted over it. The fallback only runs on discrete pointer events — a
+click / double-click (resolved once per press), hover while the labels are
+hidden — never per frame, so the performance contract below is unchanged.
+It is a hit test of the whole diagram (~33 ms on the 99k-node European
+NAD), so a press does not run it: a press off a disk usually starts a pan,
+and a pan never needs it (see *The click-vs-pan subtlety*).
 
 ### The name box is resolved through the metadata
 
@@ -99,11 +102,24 @@ therefore always miss — this is exactly the bug where hover worked but
 clicks did nothing.
 
 The fix: **capture the VL on `mousedown`**, whose hit-test still lands on
-the live disk (the cull class is only set *by* that handler, after the
-target is already fixed), and use the captured node in the click /
-double-click handlers. A press is told apart from a pan by pointer travel
-(`DRAG_THRESHOLD_PX`), and the single-click action is deferred
-`VL_SINGLE_CLICK_DELAY_MS` (250 ms) so a double-click pre-empts it.
+the live disk (the browser fixes the event target before any handler runs,
+so the cull class set by usePanZoom's handler does not change it), and use
+the captured node in the click / double-click handlers. A press is told
+apart from a pan by pointer travel (`DRAG_THRESHOLD_PX`), and the
+single-click action is deferred `VL_SINGLE_CLICK_DELAY_MS` (250 ms) so a
+double-click pre-empts it.
+
+Only the cheap part — climbing from the `mousedown` target — runs on the
+press. The paint-stack fallback (a press on an edge drawn over the disk, or
+on empty space) is owed until the press turns out to be a click, and then
+runs once at the press point, shared by the `click` and a following
+`dblclick`. Nothing has moved under that point by then: a click does not
+start a 'canvas' gesture, and the classic path drops `.svg-interacting` on
+`mouseup`, before the `click`. Run on the press, the fallback cost every pan
+that started off a disk ~33 ms before its first frame on the European grid,
+and found nothing whenever usePanZoom's own `mousedown` handler had already
+set the cull class — the two handlers' order depends on which effect bound
+last.
 
 ## Tests
 
@@ -114,7 +130,10 @@ double-click handlers. A press is told apart from a pan by pointer travel
   gating on `nad-hide-vl-labels`, `displayName` fallback, same-group
   mouseout, single-tooltip reuse, nested-child resolution, multi-VL
   disambiguation, teardown (listeners + tooltip + pending timer), and the
-  no-op guards.
+  no-op guards; the paint-stack fallback: never run for a pan, run once on
+  the click at the press point, shared by a double-click, still finding the
+  disk when the press made the diagram transparent (classic path), never
+  owed for a press on the disk itself.
 - **`frontend/src/App.stateManagement.test.tsx`** (`Voltage-level disk
   interaction wiring`) — captures the handlers App passes to
   `attachVlInteractions` and invokes them, asserting `onSelect` flows into
