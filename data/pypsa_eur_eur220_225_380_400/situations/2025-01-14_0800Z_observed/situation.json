@@ -1,0 +1,1031 @@
+{
+ "schema": "costudy4grid-situation/1",
+ "at_utc": "2025-01-14T08:00Z",
+ "dispatch": "observed",
+ "sources": [
+  {
+   "name": "Energy-Charts (Fraunhofer ISE)",
+   "url": "https://www.energy-charts.info",
+   "licence": "CC BY 4.0",
+   "attribution": "energy-charts.info"
+  },
+  {
+   "name": "powerplantmatching",
+   "licence": "CC BY 4.0",
+   "url": "https://github.com/PyPSA/powerplantmatching"
+  }
+ ],
+ "missing_countries": {
+  "AL": "not covered by the API",
+  "UA": "no data for this hour"
+ },
+ "loadflow": {
+  "status": "CONVERGED",
+  "iterations": [
+   {
+    "iteration": 0,
+    "status": "CONVERGED",
+    "slack_mw": 6074.1
+   },
+   {
+    "iteration": 1,
+    "status": "CONVERGED",
+    "slack_mw": -151.8
+   },
+   {
+    "iteration": 2,
+    "status": "CONVERGED",
+    "slack_mw": 3.0
+   }
+  ],
+  "losses_mw": 5208.9
+ },
+ "totals": {
+  "load_mw": 386545.1,
+  "production_mw": 386477.9,
+  "external_export_mw": -5280.0,
+  "generators": 11672,
+  "external_injections": 22
+ },
+ "countries": {
+  "AL": {
+   "source": "fallback",
+   "load_observed_mw": 1782.3,
+   "load_balanced_mw": 1782.3,
+   "load_model_mw": 1755.4,
+   "production_observed_mw": {
+    "HYD": 1178.2,
+    "ROR": 486.6,
+    "SOL": 120.1,
+    "WON": 97.5
+   },
+   "production_model_mw": {
+    "HYD": 1178.2,
+    "ROR": 486.6,
+    "SOL": 120.1,
+    "WON": 97.5
+   },
+   "net_export_observed_mw": null,
+   "net_export_model_mw": 121.4
+  },
+  "AT": {
+   "source": "observed",
+   "load_observed_mw": 9988.4,
+   "load_balanced_mw": 9933.3,
+   "load_model_mw": 9783.4,
+   "production_observed_mw": {
+    "BIO": 272.0,
+    "GAS": 2897.5,
+    "HYD": 506.1,
+    "OTH": 22.1,
+    "PSP": 1883.0,
+    "ROR": 2466.6,
+    "SOL": 715.0,
+    "WON": 71.0,
+    "WST": 100.0
+   },
+   "production_model_mw": {
+    "BIO": 272.0,
+    "GAS": 2897.5,
+    "HYD": 506.1,
+    "OTH": 22.1,
+    "PSP": 1883.0,
+    "ROR": 2466.6,
+    "SOL": 715.0,
+    "WON": 71.0,
+    "WST": 100.0
+   },
+   "net_export_observed_mw": -1000.0,
+   "net_export_model_mw": -940.7
+  },
+  "BA": {
+   "source": "observed",
+   "load_observed_mw": 1745.9,
+   "load_balanced_mw": 1676.9,
+   "load_model_mw": 1651.6,
+   "production_observed_mw": {
+    "HYD": 573.8,
+    "LIG": 1298.5,
+    "ROR": 105.6,
+    "SOL": 29.5,
+    "WON": 69.1
+   },
+   "production_model_mw": {
+    "HYD": 573.8,
+    "LIG": 1298.5,
+    "ROR": 105.6,
+    "SOL": 29.5,
+    "WON": 69.1
+   },
+   "net_export_observed_mw": 400.0,
+   "net_export_model_mw": 415.1
+  },
+  "BE": {
+   "source": "observed",
+   "load_observed_mw": 12916.4,
+   "load_balanced_mw": 13005.3,
+   "load_model_mw": 12809.1,
+   "production_observed_mw": {
+    "BIO": 244.0,
+    "GAS": 5216.4,
+    "NUC": 3956.4,
+    "OIL": 97.7,
+    "OTH": 7.6,
+    "PSP": 567.6,
+    "ROR": 76.8,
+    "SOL": 532.6,
+    "WOF": 623.1,
+    "WON": 591.8,
+    "WST": 191.3
+   },
+   "production_model_mw": {
+    "BIO": 244.0,
+    "GAS": 5216.4,
+    "NUC": 3956.4,
+    "OIL": 97.7,
+    "OTH": 7.6,
+    "PSP": 567.6,
+    "ROR": 76.8,
+    "SOL": 532.6,
+    "WOF": 623.1,
+    "WON": 591.8,
+    "WST": 191.3
+   },
+   "net_export_observed_mw": -900.0,
+   "net_export_model_mw": -763.3
+  },
+  "BG": {
+   "source": "observed",
+   "load_observed_mw": 6848.7,
+   "load_balanced_mw": 6252.7,
+   "load_model_mw": 6158.3,
+   "production_observed_mw": {
+    "BIO": 14.2,
+    "COA": 53.2,
+    "GAS": 314.0,
+    "HYD": 212.1,
+    "LIG": 2344.5,
+    "NUC": 1975.8,
+    "ROR": 79.8,
+    "SOL": 485.5,
+    "WON": 371.2,
+    "WST": 2.4
+   },
+   "production_model_mw": {
+    "BIO": 14.2,
+    "COA": 53.2,
+    "GAS": 314.0,
+    "HYD": 212.1,
+    "LIG": 2344.5,
+    "NUC": 1975.8,
+    "ROR": 79.8,
+    "SOL": 485.5,
+    "WON": 371.2,
+    "WST": 2.4
+   },
+   "net_export_observed_mw": -400.0,
+   "net_export_model_mw": -351.1
+  },
+  "CH": {
+   "source": "observed",
+   "load_observed_mw": 10432.7,
+   "load_balanced_mw": 10448.6,
+   "load_model_mw": 10290.9,
+   "production_observed_mw": {
+    "HYD": 4823.2,
+    "NUC": 2961.4,
+    "OTH": 453.7,
+    "PSP": 1275.5,
+    "ROR": 1747.2,
+    "SOL": 334.8,
+    "WON": 52.8
+   },
+   "production_model_mw": {
+    "HYD": 4823.2,
+    "NUC": 2961.4,
+    "OTH": 453.7,
+    "PSP": 1275.5,
+    "ROR": 1747.2,
+    "SOL": 334.8,
+    "WON": 52.8
+   },
+   "net_export_observed_mw": 1200.0,
+   "net_export_model_mw": 1312.4
+  },
+  "CZ": {
+   "source": "observed",
+   "load_observed_mw": 10261.1,
+   "load_balanced_mw": 9989.6,
+   "load_model_mw": 9838.9,
+   "production_observed_mw": {
+    "BIO": 332.0,
+    "COA": 383.4,
+    "GAS": 360.9,
+    "HYD": 162.5,
+    "LIG": 4672.9,
+    "NUC": 3519.9,
+    "OIL": 2.3,
+    "OTH": 64.8,
+    "PSP": 112.5,
+    "ROR": 173.2,
+    "SOL": 298.8,
+    "WON": 83.0,
+    "WST": 23.4
+   },
+   "production_model_mw": {
+    "BIO": 332.0,
+    "COA": 383.4,
+    "GAS": 360.9,
+    "HYD": 162.5,
+    "LIG": 4672.9,
+    "NUC": 3519.9,
+    "OTH": 64.8,
+    "PSP": 112.5,
+    "ROR": 173.2,
+    "SOL": 298.8,
+    "WON": 83.0,
+    "WST": 23.4
+   },
+   "net_export_observed_mw": 200.0,
+   "net_export_model_mw": 261.8
+  },
+  "DE": {
+   "source": "observed",
+   "load_observed_mw": 79983.6,
+   "load_balanced_mw": 80056.7,
+   "load_model_mw": 78848.7,
+   "production_observed_mw": {
+    "BIO": 5230.7,
+    "COA": 6044.7,
+    "GAS": 21428.8,
+    "HYD": 384.3,
+    "LIG": 10179.7,
+    "OIL": 1522.8,
+    "OTH": 1320.2,
+    "PSP": 2424.8,
+    "ROR": 2041.3,
+    "SOL": 8592.4,
+    "WOF": 6510.1,
+    "WON": 17447.5,
+    "WST": 1029.4
+   },
+   "production_model_mw": {
+    "BIO": 5230.7,
+    "COA": 6044.8,
+    "GAS": 21428.9,
+    "HYD": 384.3,
+    "LIG": 10179.8,
+    "OIL": 1522.8,
+    "OTH": 1320.2,
+    "PSP": 2424.8,
+    "ROR": 2041.3,
+    "SOL": 8592.6,
+    "WOF": 6510.1,
+    "WON": 17447.7,
+    "WST": 1029.4
+   },
+   "net_export_observed_mw": 4100.0,
+   "net_export_model_mw": 4153.4
+  },
+  "DK": {
+   "source": "observed",
+   "load_observed_mw": 3556.4,
+   "load_balanced_mw": 3556.4,
+   "load_model_mw": 3502.8,
+   "production_observed_mw": {
+    "BIO": 354.8,
+    "COA": 134.6,
+    "GAS": 93.8,
+    "OIL": 23.7,
+    "SOL": 9.4,
+    "WOF": 1394.3,
+    "WON": 1639.6,
+    "WST": 52.6
+   },
+   "production_model_mw": {
+    "BIO": 354.8,
+    "COA": 134.6,
+    "GAS": 93.8,
+    "OIL": 23.7,
+    "SOL": 9.4,
+    "WOF": 1394.3,
+    "WON": 1639.6,
+    "WST": 52.6
+   },
+   "net_export_observed_mw": -100.0,
+   "net_export_model_mw": 160.6
+  },
+  "ES": {
+   "source": "observed",
+   "load_observed_mw": 36394.0,
+   "load_balanced_mw": 36048.0,
+   "load_model_mw": 35504.0,
+   "production_observed_mw": {
+    "BIO": 445.0,
+    "COA": 875.0,
+    "GAS": 11374.0,
+    "HYD": 4276.0,
+    "NUC": 7118.0,
+    "OIL": 24.0,
+    "OTH": 9.0,
+    "PSP": 1932.0,
+    "ROR": 1310.0,
+    "SOL": 3200.0,
+    "WON": 5384.0,
+    "WST": 201.0
+   },
+   "production_model_mw": {
+    "BIO": 445.0,
+    "COA": 875.0,
+    "GAS": 11374.1,
+    "HYD": 4276.0,
+    "NUC": 7118.0,
+    "OIL": 24.0,
+    "OTH": 9.0,
+    "PSP": 1932.0,
+    "ROR": 1310.0,
+    "SOL": 3200.1,
+    "WON": 5384.1,
+    "WST": 201.0
+   },
+   "net_export_observed_mw": 100.0,
+   "net_export_model_mw": 427.5
+  },
+  "FR": {
+   "source": "observed",
+   "load_observed_mw": 86572.9,
+   "load_balanced_mw": 86410.2,
+   "load_model_mw": 85106.3,
+   "production_observed_mw": {
+    "BIO": 497.3,
+    "COA": 585.8,
+    "GAS": 7230.6,
+    "HYD": 5042.6,
+    "NUC": 52759.7,
+    "OIL": 1376.6,
+    "PSP": 4214.2,
+    "ROR": 7099.0,
+    "SOL": 1292.5,
+    "WOF": 89.7,
+    "WON": 2239.8,
+    "WST": 282.4
+   },
+   "production_model_mw": {
+    "BIO": 497.3,
+    "COA": 585.8,
+    "GAS": 7230.6,
+    "HYD": 5042.6,
+    "NUC": 52759.9,
+    "OIL": 1376.6,
+    "PSP": 4214.2,
+    "ROR": 7099.0,
+    "SOL": 1292.6,
+    "WOF": 89.7,
+    "WON": 2239.9,
+    "WST": 282.4
+   },
+   "net_export_observed_mw": -3700.0,
+   "net_export_model_mw": -3607.3
+  },
+  "GR": {
+   "source": "observed",
+   "load_observed_mw": 7898.0,
+   "load_balanced_mw": 7639.0,
+   "load_model_mw": 7523.7,
+   "production_observed_mw": {
+    "GAS": 4181.0,
+    "HYD": 353.0,
+    "LIG": 881.0,
+    "PSP": 1.0,
+    "SOL": 441.0,
+    "WON": 2482.0
+   },
+   "production_model_mw": {
+    "GAS": 4181.0,
+    "HYD": 353.0,
+    "LIG": 881.0,
+    "PSP": 1.0,
+    "SOL": 441.0,
+    "WON": 2482.0
+   },
+   "net_export_observed_mw": 700.0,
+   "net_export_model_mw": 788.4
+  },
+  "HR": {
+   "source": "observed",
+   "load_observed_mw": 2798.8,
+   "load_balanced_mw": 2766.5,
+   "load_model_mw": 2724.8,
+   "production_observed_mw": {
+    "BIO": 67.2,
+    "GAS": 521.0,
+    "HYD": 658.3,
+    "PSP": 225.2,
+    "ROR": 163.1,
+    "SOL": 71.8,
+    "WON": 751.9,
+    "WST": 8.0
+   },
+   "production_model_mw": {
+    "BIO": 67.2,
+    "GAS": 521.0,
+    "HYD": 658.3,
+    "PSP": 225.2,
+    "ROR": 163.1,
+    "SOL": 71.8,
+    "WON": 751.9,
+    "WST": 8.0
+   },
+   "net_export_observed_mw": -300.0,
+   "net_export_model_mw": -279.6
+  },
+  "HU": {
+   "source": "observed",
+   "load_observed_mw": 6062.8,
+   "load_balanced_mw": 6026.0,
+   "load_model_mw": 5935.1,
+   "production_observed_mw": {
+    "BIO": 177.9,
+    "COA": 38.6,
+    "GAS": 1410.7,
+    "HYD": 14.3,
+    "LIG": 186.2,
+    "NUC": 1944.5,
+    "OTH": 55.7,
+    "ROR": 11.7,
+    "SOL": 1766.8,
+    "WST": 19.4
+   },
+   "production_model_mw": {
+    "BIO": 177.9,
+    "COA": 38.6,
+    "GAS": 1410.7,
+    "HYD": 14.3,
+    "LIG": 186.2,
+    "NUC": 1944.5,
+    "OTH": 55.7,
+    "ROR": 11.7,
+    "SOL": 1766.8,
+    "WST": 19.4
+   },
+   "net_export_observed_mw": -400.0,
+   "net_export_model_mw": -369.8
+  },
+  "IT": {
+   "source": "observed",
+   "load_observed_mw": 45471.0,
+   "load_balanced_mw": 43116.0,
+   "load_model_mw": 42465.4,
+   "production_observed_mw": {
+    "BIO": 519.0,
+    "COA": 852.0,
+    "GAS": 20848.0,
+    "HYD": 1048.0,
+    "OIL": 9.0,
+    "OTH": 1874.0,
+    "PSP": 1141.0,
+    "ROR": 2768.0,
+    "SOL": 2573.0,
+    "WOF": 16.0,
+    "WON": 5864.0,
+    "WST": 4.0
+   },
+   "production_model_mw": {
+    "BIO": 519.0,
+    "COA": 852.0,
+    "GAS": 20848.1,
+    "HYD": 1048.0,
+    "OIL": 9.0,
+    "OTH": 1874.0,
+    "PSP": 1141.0,
+    "ROR": 2768.0,
+    "SOL": 2573.0,
+    "WOF": 16.0,
+    "WON": 5864.0,
+    "WST": 4.0
+   },
+   "net_export_observed_mw": -5600.0,
+   "net_export_model_mw": -6187.3
+  },
+  "LT": {
+   "source": "boundary",
+   "load_observed_mw": 0.0,
+   "load_balanced_mw": 0.0,
+   "load_model_mw": 0.0,
+   "production_observed_mw": {},
+   "production_model_mw": {},
+   "net_export_observed_mw": -600.0,
+   "net_export_model_mw": -0.0
+  },
+  "LU": {
+   "source": "observed",
+   "load_observed_mw": 760.9,
+   "load_balanced_mw": 692.5,
+   "load_model_mw": 682.1,
+   "production_observed_mw": {
+    "BIO": 9.4,
+    "GAS": 18.3,
+    "HYD": 9.4,
+    "ROR": 9.7,
+    "SOL": 24.1,
+    "WON": 8.8,
+    "WST": 12.8
+   },
+   "production_model_mw": {
+    "BIO": 9.4,
+    "GAS": 18.3,
+    "HYD": 9.4,
+    "ROR": 9.7,
+    "SOL": 24.1,
+    "WON": 8.8,
+    "WST": 12.8
+   },
+   "net_export_observed_mw": -600.0,
+   "net_export_model_mw": -595.5
+  },
+  "MD": {
+   "source": "observed",
+   "load_observed_mw": 806.0,
+   "load_balanced_mw": 778.0,
+   "load_model_mw": 766.3,
+   "production_observed_mw": {
+    "BIO": 1.0,
+    "GAS": 331.0,
+    "ROR": 31.0,
+    "SOL": 14.0,
+    "WON": 1.0
+   },
+   "production_model_mw": {
+    "BIO": 1.0,
+    "GAS": 331.0,
+    "ROR": 31.0,
+    "SOL": 14.0,
+    "WON": 1.0
+   },
+   "net_export_observed_mw": -400.0,
+   "net_export_model_mw": -389.5
+  },
+  "ME": {
+   "source": "observed",
+   "load_observed_mw": 442.4,
+   "load_balanced_mw": 442.4,
+   "load_model_mw": 435.7,
+   "production_observed_mw": {
+    "HYD": 201.1,
+    "LIG": 198.2,
+    "WON": 102.6
+   },
+   "production_model_mw": {
+    "HYD": 201.1,
+    "LIG": 198.2,
+    "WON": 102.6
+   },
+   "net_export_observed_mw": -100.0,
+   "net_export_model_mw": 64.9
+  },
+  "MK": {
+   "source": "observed",
+   "load_observed_mw": 1118.1,
+   "load_balanced_mw": 1162.1,
+   "load_model_mw": 1144.6,
+   "production_observed_mw": {
+    "GAS": 211.3,
+    "HYD": 261.8,
+    "LIG": 270.7,
+    "WON": 18.3
+   },
+   "production_model_mw": {
+    "GAS": 211.3,
+    "HYD": 261.8,
+    "LIG": 270.7,
+    "WON": 18.3
+   },
+   "net_export_observed_mw": -400.0,
+   "net_export_model_mw": -386.1
+  },
+  "NL": {
+   "source": "observed",
+   "load_observed_mw": 18389.6,
+   "load_balanced_mw": 16920.4,
+   "load_model_mw": 16665.1,
+   "production_observed_mw": {
+    "BIO": 15.1,
+    "COA": 3702.4,
+    "GAS": 4352.4,
+    "NUC": 486.5,
+    "OTH": 3938.4,
+    "SOL": 11.8,
+    "WOF": 2367.2,
+    "WON": 1340.1,
+    "WST": 306.5
+   },
+   "production_model_mw": {
+    "BIO": 15.1,
+    "COA": 3702.4,
+    "GAS": 4352.4,
+    "NUC": 486.5,
+    "OTH": 3938.4,
+    "SOL": 11.9,
+    "WOF": 2367.2,
+    "WON": 1340.1,
+    "WST": 306.5
+   },
+   "net_export_observed_mw": -400.0,
+   "net_export_model_mw": -288.3
+  },
+  "PL": {
+   "source": "observed",
+   "load_observed_mw": 24509.5,
+   "load_balanced_mw": 24602.3,
+   "load_model_mw": 24231.1,
+   "production_observed_mw": {
+    "BIO": 396.3,
+    "COA": 9223.9,
+    "GAS": 3185.1,
+    "HYD": 71.1,
+    "LIG": 5352.9,
+    "OIL": 206.9,
+    "OTH": 717.9,
+    "PSP": -3.9,
+    "ROR": 88.0,
+    "SOL": 1079.2,
+    "WON": 5784.9
+   },
+   "production_model_mw": {
+    "BIO": 396.3,
+    "COA": 9223.9,
+    "GAS": 3185.1,
+    "HYD": 71.1,
+    "LIG": 5352.9,
+    "OIL": 206.9,
+    "OTH": 717.9,
+    "PSP": -3.9,
+    "ROR": 88.0,
+    "SOL": 1079.2,
+    "WON": 5784.9
+   },
+   "net_export_observed_mw": 1500.0,
+   "net_export_model_mw": 1429.9
+  },
+  "PT": {
+   "source": "observed",
+   "load_observed_mw": 7535.7,
+   "load_balanced_mw": 7306.1,
+   "load_model_mw": 7195.9,
+   "production_observed_mw": {
+    "BIO": 342.7,
+    "GAS": 1216.6,
+    "HYD": 406.1,
+    "OTH": 29.1,
+    "PSP": 1101.5,
+    "ROR": 2178.3,
+    "SOL": 368.8,
+    "WOF": 1.7,
+    "WON": 3361.3
+   },
+   "production_model_mw": {
+    "BIO": 342.7,
+    "GAS": 1216.6,
+    "HYD": 406.1,
+    "OTH": 29.1,
+    "PSP": 1101.5,
+    "ROR": 2178.3,
+    "SOL": 368.8,
+    "WOF": 1.7,
+    "WON": 3361.3
+   },
+   "net_export_observed_mw": 1700.0,
+   "net_export_model_mw": 1777.1
+  },
+  "RO": {
+   "source": "observed",
+   "load_observed_mw": 7927.2,
+   "load_balanced_mw": 7671.1,
+   "load_model_mw": 7555.3,
+   "production_observed_mw": {
+    "BIO": 47.2,
+    "COA": 76.0,
+    "GAS": 1607.0,
+    "HYD": 259.0,
+    "LIG": 976.2,
+    "NUC": 1219.0,
+    "ROR": 1198.0,
+    "SOL": 408.5,
+    "WON": 280.2
+   },
+   "production_model_mw": {
+    "BIO": 47.2,
+    "COA": 76.0,
+    "GAS": 1607.0,
+    "HYD": 259.0,
+    "LIG": 976.2,
+    "NUC": 1219.0,
+    "ROR": 1198.0,
+    "SOL": 408.5,
+    "WON": 280.2
+   },
+   "net_export_observed_mw": -1600.0,
+   "net_export_model_mw": -1530.0
+  },
+  "RS": {
+   "source": "observed",
+   "load_observed_mw": 5404.0,
+   "load_balanced_mw": 5056.0,
+   "load_model_mw": 4979.7,
+   "production_observed_mw": {
+    "BIO": 30.0,
+    "GAS": 343.0,
+    "HYD": 220.0,
+    "LIG": 2965.0,
+    "OTH": 27.0,
+    "PSP": 485.0,
+    "ROR": 1486.0
+   },
+   "production_model_mw": {
+    "BIO": 30.0,
+    "GAS": 343.0,
+    "HYD": 220.0,
+    "LIG": 2965.0,
+    "OTH": 27.0,
+    "PSP": 485.0,
+    "ROR": 1486.0
+   },
+   "net_export_observed_mw": 500.0,
+   "net_export_model_mw": 553.4
+  },
+  "SI": {
+   "source": "observed",
+   "load_observed_mw": 1969.7,
+   "load_balanced_mw": 2018.8,
+   "load_model_mw": 1988.3,
+   "production_observed_mw": {
+    "BIO": 8.7,
+    "GAS": 156.7,
+    "LIG": 268.9,
+    "NUC": 701.4,
+    "ROR": 617.0,
+    "SOL": 58.0,
+    "WON": 1.9,
+    "WST": 6.1
+   },
+   "production_model_mw": {
+    "BIO": 8.7,
+    "GAS": 156.7,
+    "LIG": 268.9,
+    "NUC": 701.4,
+    "ROR": 617.0,
+    "SOL": 58.0,
+    "WON": 1.9,
+    "WST": 6.1
+   },
+   "net_export_observed_mw": -200.0,
+   "net_export_model_mw": -194.4
+  },
+  "SK": {
+   "source": "observed",
+   "load_observed_mw": 4005.0,
+   "load_balanced_mw": 3947.9,
+   "load_model_mw": 3888.3,
+   "production_observed_mw": {
+    "BIO": 129.8,
+    "GAS": 583.1,
+    "HYD": 47.3,
+    "LIG": 26.7,
+    "NUC": 2464.8,
+    "OIL": 43.4,
+    "OTH": 152.5,
+    "PSP": 23.8,
+    "ROR": 450.1,
+    "SOL": 126.4
+   },
+   "production_model_mw": {
+    "BIO": 129.8,
+    "GAS": 583.1,
+    "HYD": 47.3,
+    "LIG": 26.7,
+    "NUC": 2464.8,
+    "OIL": 43.4,
+    "OTH": 152.5,
+    "PSP": 23.8,
+    "ROR": 450.1,
+    "SOL": 126.4
+   },
+   "net_export_observed_mw": 100.0,
+   "net_export_model_mw": 98.3
+  },
+  "UA": {
+   "source": "fallback",
+   "load_observed_mw": 1957.6,
+   "load_balanced_mw": 1957.6,
+   "load_model_mw": 1928.1,
+   "production_observed_mw": {
+    "NUC": 1469.7,
+    "SOL": 70.2,
+    "WON": 17.8
+   },
+   "production_model_mw": {
+    "NUC": 1469.7,
+    "SOL": 70.2,
+    "WON": 17.8
+   },
+   "net_export_observed_mw": null,
+   "net_export_model_mw": -476.0
+  },
+  "XK": {
+   "source": "observed",
+   "load_observed_mw": 1262.0,
+   "load_balanced_mw": 1204.6,
+   "load_model_mw": 1186.4,
+   "production_observed_mw": {
+    "LIG": 704.6
+   },
+   "production_model_mw": {
+    "LIG": 704.6
+   },
+   "net_export_observed_mw": -500.0,
+   "net_export_model_mw": -485.4
+  }
+ },
+ "external": [
+  {
+   "id": "X_ME_relation_13844905-380",
+   "bus": "VL_relation_13844905-380",
+   "country": "IT",
+   "neighbour": "ME",
+   "export_mw": -200.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_SE_relation_18085709-400",
+   "bus": "VL_relation_18085709-400",
+   "country": "PL",
+   "neighbour": "SE",
+   "export_mw": -400.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_GB_virtual_relation_19874522_0-400",
+   "bus": "VL_virtual_relation_19874522_0-400",
+   "country": "FR",
+   "neighbour": "GB",
+   "export_mw": -475.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_GB_virtual_way_1411883330_1-400",
+   "bus": "VL_virtual_way_1411883330_1-400",
+   "country": "BE",
+   "neighbour": "GB",
+   "export_mw": -200.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_UA_virtual_way_1416181378_1-400",
+   "bus": "VL_virtual_way_1416181378_1-400",
+   "country": "MD",
+   "neighbour": "UA",
+   "export_mw": -200.0,
+   "kind": "border"
+  },
+  {
+   "id": "X_TR_virtual_way_484167693_1-400",
+   "bus": "VL_virtual_way_484167693_1-400",
+   "country": "BG",
+   "neighbour": "TR",
+   "export_mw": -200.0,
+   "kind": "border"
+  },
+  {
+   "id": "X_GR_way_103386958-380",
+   "bus": "VL_way_103386958-380",
+   "country": "IT",
+   "neighbour": "GR",
+   "export_mw": 400.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_GB_way_1101832649-400",
+   "bus": "VL_way_1101832649-400",
+   "country": "DK",
+   "neighbour": "GB",
+   "export_mw": 700.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_GB_way_1271288345-400",
+   "bus": "VL_way_1271288345-400",
+   "country": "FR",
+   "neighbour": "GB",
+   "export_mw": -950.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_NO_way_1271587272-400",
+   "bus": "VL_way_1271587272-400",
+   "country": "DK",
+   "neighbour": "NO",
+   "export_mw": -300.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_NL_way_1284726676-400",
+   "bus": "VL_way_1284726676-400",
+   "country": "DK",
+   "neighbour": "NL",
+   "export_mw": 700.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_IT_way_140248148-400",
+   "bus": "VL_way_140248148-400",
+   "country": "GR",
+   "neighbour": "IT",
+   "export_mw": -400.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_DE_way_23141556-380",
+   "bus": "VL_way_23141556-380",
+   "country": "BE",
+   "neighbour": "DE",
+   "export_mw": -900.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_BE_way_26593929-380",
+   "bus": "VL_way_26593929-380",
+   "country": "DE",
+   "neighbour": "BE",
+   "export_mw": 900.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_NO_way_525964629-380",
+   "bus": "VL_way_525964629-380",
+   "country": "DE",
+   "neighbour": "NO",
+   "export_mw": -1000.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_MT_way_57380344-220",
+   "bus": "VL_way_57380344-220",
+   "country": "IT",
+   "neighbour": "MT",
+   "export_mw": 100.0,
+   "kind": "border"
+  },
+  {
+   "id": "X_IT_way_665827369-400",
+   "bus": "VL_way_665827369-400",
+   "country": "ME",
+   "neighbour": "IT",
+   "export_mw": 200.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_SE_way_74893659-380",
+   "bus": "VL_way_74893659-380",
+   "country": "DE",
+   "neighbour": "SE",
+   "export_mw": -600.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_GB_way_85895367-400",
+   "bus": "VL_way_85895367-400",
+   "country": "FR",
+   "neighbour": "GB",
+   "export_mw": -475.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_DK_way_942640207-380",
+   "bus": "VL_way_942640207-380",
+   "country": "NL",
+   "neighbour": "DK",
+   "export_mw": -700.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_NO_way_942640207-380",
+   "bus": "VL_way_942640207-380",
+   "country": "NL",
+   "neighbour": "NO",
+   "export_mw": -600.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_SE_way_98216482-400",
+   "bus": "VL_way_98216482-400",
+   "country": "DK",
+   "neighbour": "SE",
+   "export_mw": -680.0,
+   "kind": "hvdc"
+  }
+ ],
+ "limits": {
+  "base": "osm",
+  "lines": 7173
+ }
+}

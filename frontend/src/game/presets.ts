@@ -11,14 +11,15 @@ import type { GameStudy } from './types';
 // Built-in study presets, grouped into two difficulty tiers:
 //
 //  - **Medium** (default): the pan-European `pypsa_eur_eur220_225_380_400`
-//    grid — the three reference studies documented in the README's
-//    "European-Wide Studies in Practice" section. Moderate loadings
-//    (100–106 %), so they are clearable with a couple of actions.
+//    grid rebuilt on real 2025 hours (`situations/`, see
+//    docs/data/pypsa-eur-osm-to-xiidm.md) — one study per situation.
+//    Moderate loadings (101–109 %), so they are clearable with a couple of
+//    actions.
 //  - **High**: the French `pypsa_eur_fr225_400` grid — worst-case ~130 %
 //    loadings that demand sharper remediation.
 //
 // Each contingency element id is a real disconnectable branch verified to
-// produce an overload (sourced from each grid's
+// produce an overload (sourced from its network's
 // `n1_overload_contingencies.json`). Paths are repo-root-relative, matching
 // how the backend resolves `network_path` / `action_file_path`.
 // ---------------------------------------------------------------------------
@@ -52,33 +53,50 @@ function makeStudy(
   };
 }
 
-// --- Medium: European grid (the three README reference studies) ------------
-const EUR_PATHS: GridPaths = {
-  networkPath: 'data/pypsa_eur_eur220_225_380_400/network.xiidm',
-  actionFilePath: 'data/pypsa_eur_eur220_225_380_400/actions.json',
-  layoutPath: 'data/pypsa_eur_eur220_225_380_400/grid_layout.json',
-};
+// --- Medium: European grid on real 2025 hours --------------------------------
+const EUR_BUNDLE = 'data/pypsa_eur_eur220_225_380_400';
+
+/** One real-hour rebuild of the bundle: its own network, the bundle's actions and layout. */
+function eurSituation(situation: string): GridPaths {
+  return {
+    networkPath: `${EUR_BUNDLE}/situations/${situation}/network.xiidm`,
+    actionFilePath: `${EUR_BUNDLE}/actions.json`,
+    layoutPath: `${EUR_BUNDLE}/grid_layout.json`,
+  };
+}
+
+const JAN_OBSERVED = eurSituation('2025-01-14_0800Z_observed');
+const JAN_OPF = eurSituation('2025-01-14_0800Z_opf');
+const JUL_OBSERVED = eurSituation('2025-07-01_1100Z_observed');
+const JUL_OPF = eurSituation('2025-07-01_1100Z_opf');
 
 /**
- * The three studies from the README's "European-Wide Studies in Practice"
- * (https://github.com/marota/Co-Study4Grid#european-wide-studies-in-practice),
- * each a real N-1 overload on the pan-European grid.
+ * One study per real hour — 14 January 2025 9:00 (France's consumption peak)
+ * and 1 July 2025 13:00 (heatwave midday), each with its observed and its
+ * PyPSA optimal dispatch. Every one is remediable by the expert model
+ * (`can_proceed=True`, a top action clears it) — verified end-to-end by
+ * `scripts/game_mode/e2e_game_session.py --grid custom`.
  */
 const EUR_STUDIES: GameStudy[] = [
   makeStudy(
-    EUR_PATHS, 'eu-pyrenees', 'relation_8423570-225', 'LANNEL61PRAGN',
-    'Pyrenees (France / Spain) 225 kV', 106.1,
-    'Loss of LANNEL61PRAGN pushes the parallel MARSIL61PRAGN line to 106 % toward the Spanish border. Bring it back under 100 %.',
+    JAN_OBSERVED, 'eu-jan-observed', 'relation_6630114-225', 'Carrières – Terrier n°2',
+    'France 225 kV, 14 Jan 9:00 (observed)', 101.1,
+    "France's 2025 consumption peak, as dispatched: losing Carrières – Terrier n°2 loads its twin n°1 to 101 %. Bring it back under 100 %.",
   ),
   makeStudy(
-    EUR_PATHS, 'eu-italy', 'relation_13164355-380', 'Santa Sofia — Montecorvino',
-    'Campania (Italy) 380 kV', 100.1,
-    'Tripping the Santa Sofia line lifts the Brusciano-Nola corridor to 100.1 % (over a 95 % monitoring factor). A light overload to clear.',
+    JAN_OPF, 'eu-jan-opf', 'relation_13676255-400', 'Divača – Redipuglia',
+    'Slovenia / Italy 400 kV, 14 Jan 9:00 (optimal dispatch)', 104.4,
+    'Same hour, PyPSA optimal dispatch: losing Divača – Redipuglia loads the neighbouring Padriciano – Divača line to 104 %.',
   ),
   makeStudy(
-    EUR_PATHS, 'eu-spain', 'way_170479605-400', 'Hinojosa 400 kV double line',
-    'Spain (Hinojosa) 400 kV', 102.2,
-    'One of the two parallel 400 kV branches near Subestación de Hinojosa trips; the other climbs to 102 %. Re-balance the corridor.',
+    JUL_OBSERVED, 'eu-jul-observed', 'relation_5674507-400', 'Les Attaques – Warande',
+    'Calais – Dunkirk 400 kV, 1 Jul 13:00 (observed)', 109.0,
+    'Heatwave midday, as dispatched: losing Les Attaques – Warande pushes Mandarins – Warande to 109 %. Few of the suggested actions clear it.',
+  ),
+  makeStudy(
+    JUL_OPF, 'eu-jul-opf', 'relation_1637163-380', 'Diele – Meeden (zwart)',
+    'Germany / Netherlands 380 kV, 1 Jul 13:00 (optimal dispatch)', 102.1,
+    'Same hour, PyPSA optimal dispatch: one of the two Diele – Meeden circuits trips and the other climbs to 102 %. Re-balance the border.',
   ),
 ];
 
@@ -120,8 +138,8 @@ export const DIFFICULTY_TIERS: DifficultyTier[] = [
   {
     id: 'medium',
     label: 'Medium — European grid',
-    blurb: 'Pan-European 220 / 225 / 380 / 400 kV — the three README reference studies (100–106 % overloads).',
-    ...EUR_PATHS,
+    blurb: 'Pan-European 220 / 225 / 380 / 400 kV on real 2025 hours — 14 January 9:00 and 1 July 13:00, observed and optimal dispatch (101–109 % overloads).',
+    ...JAN_OBSERVED,
     studies: EUR_STUDIES,
   },
   {

@@ -178,28 +178,30 @@ reads it at capture and types the situation's production:
   France produces 17 GW in all (Europe 75 GW), well under a real day;
 - the situation card credits the database (powerplantmatching, CC BY 4.0).
 
-## Typed networks (a real hour rebuilt on a grid)
+## Real hours rebuilt on the PyPSA grid
 
-A network that carries its own plants — one generator per (bus, fuel) with
-real outputs, e.g. a PyPSA-EUR grid rebuilt on an observed hour — needs no
-estimate: the map reads it as it is.
+`scripts/pypsa_eur/build_situation.py` rebuilds the European bundle on a real
+hour (`situations/<hour>_<dispatch>/`, see
+`docs/data/pypsa-eur-osm-to-xiidm.md`): real loads, one generator per (bus,
+fuel) for the matched plants, an observed or a PyPSA optimal dispatch. Such a
+network needs no estimate — the map reads it as it is:
 
 - **types** from each generator's `carrier` property (powerplantmatching's
   fuel names, `CARRIER_FILIERE`), between `genreCvg` and `energySource`:
   lignite is coal, run-of-river hydro, onshore wind wind…;
 - **nuclear units** at their real output, grouped by their `plant` property
   and drawn on its real site (`plant_lon` / `plant_lat`) — no *Estimated
-  output*;
+  output* (France at 9:00 on 14 January 2025: Gravelines 4.6 of 5.7 GW);
 - **exchanges with countries the grid leaves out** (Great Britain, Norway,
   Sweden, Turkey…) — FICTITIOUS loads tagged `neighbour` — are not
   consumption: they become transfers towards a **neighbour badge** named
   after its country (placed at its label point); an HVDC link between two
   countries of the grid (one such load at each end) counts once, from its
   exporting end;
-- a `situation.json` beside the network (`situation.py`, schema
-  `costudy4grid-situation/1`) gives the hour, its dispatch (`observed`, or a
-  PyPSA `opf`) and its data sources: the situation card says *Real hour,
-  observed dispatch* (or *optimal dispatch (PyPSA)*) and credits them.
+- `situation.json` beside the network (`situation.py`) gives the hour and its
+  dispatch; the situation card says *Real hour, observed dispatch* (or
+  *optimal dispatch (PyPSA)*) and credits Energy-Charts and powerplantmatching
+  (CC BY 4.0).
 
 ## Where the studied elements are
 
@@ -266,13 +268,13 @@ where unknown).
 | Backend | `expert_backend/services/context_map/` — `snapshot.py` (capture), `aggregate.py` (mesh + balances), `nuclear.py` (units layer), `plants.py` (`power_plants.json` matching), `situation.py` (`situation.json` of a rebuilt hour), `georef.py`, `geography.py` (ported constants, basemap, projection), `builder.py` (payload), `service.py` (singleton), `resources/europe_countries.geojson` |
 | Backend | `expert_backend/context_map_api.py` (routes), `main.py` (`/api/config` capture) |
 | Frontend | `hooks/useContextMap.ts`, `components/ContextMapView.tsx` (container, pan/zoom, cards), `components/ContextMapLayers.tsx` (SVG layers), `utils/contextMapGeometry.ts`, `utils/studyLoadSignal.ts`, `styles/tokens.ts` (`contextMapPalette`, `contextFiliereColors`) |
-| Tests | `expert_backend/tests/test_context_map.py`, `scripts/pypsa_eur/test_match_power_plants.py`, `useContextMap.test.ts`, `ContextMapView.test.tsx`, `contextMapGeometry.test.ts`, `VisualizationPanel.test.tsx` |
+| Tests | `expert_backend/tests/test_context_map.py`, `scripts/pypsa_eur/test_match_power_plants.py`, `scripts/pypsa_eur/test_build_situation.py`, `useContextMap.test.ts`, `ContextMapView.test.tsx`, `contextMapGeometry.test.ts`, `VisualizationPanel.test.tsx` |
 
 ## Game Mode grids
 
 | Grid | Map |
 |------|-----|
-| Pan-European PyPSA (`pypsa_eur_eur220_225_380_400`, "Medium") | 29-country mesh (Mercator layout fit), every transfer labelled. The network's generators are synthetic and untyped (the OSM source is grid-only); **`power_plants.json`** beside it types them by the real plants matched to each substation (see below). 38 nuclear plants (97 units) on their real sites. |
+| Pan-European PyPSA (`pypsa_eur_eur220_225_380_400`, "Medium") | 29-country mesh (Mercator layout fit), every transfer labelled. The network's generators are synthetic and untyped (the OSM source is grid-only); **`power_plants.json`** beside it types them by the real plants matched to each substation (see below). 38 nuclear plants (97 units) on their real sites. Its real-hour rebuilds (`situations/`) read as they are: real mix, units at their output, neighbour badges for GB / NO / SE / TR. |
 | France THT (`rte7000_tht`) | RTE region mesh (op4grid plan), full mix, 19 nuclear plants (Fessenheim included). No foreign substation: no net-export line. |
 | France EHV (`rte_matpower`) | No `regionCvg`: a single zone (France) — no Context tab (see *Prerequisite*). |
 

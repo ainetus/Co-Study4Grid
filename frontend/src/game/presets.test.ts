@@ -22,15 +22,22 @@ describe('game difficulty presets', () => {
     expect(DEFAULT_SESSION_STUDIES).toBe(tier.studies);
   });
 
-  it('the default session is the three README reference studies', () => {
+  it('the default session plays one study per real-hour situation', () => {
     const ids = DEFAULT_SESSION_STUDIES.map((s) => s.contingencyElementId);
-    // France/Spain Pyrenees, Italy Campania (Brusciano-Nola), Spain Hinojosa.
+    // Carrières – Terrier, Divača – Redipuglia, Les Attaques – Warande, Diele – Meeden.
     expect(ids).toEqual([
-      'relation_8423570-225',
-      'relation_13164355-380',
-      'way_170479605-400',
+      'relation_6630114-225',
+      'relation_13676255-400',
+      'relation_5674507-400',
+      'relation_1637163-380',
     ]);
-    expect(DEFAULT_SESSION_STUDIES).toHaveLength(3);
+    const situations = DEFAULT_SESSION_STUDIES.map((s) => s.networkPath.split('/situations/')[1]?.split('/')[0]);
+    expect(situations).toEqual([
+      '2025-01-14_0800Z_observed',
+      '2025-01-14_0800Z_opf',
+      '2025-07-01_1100Z_observed',
+      '2025-07-01_1100Z_opf',
+    ]);
   });
 
   it('High = the French fr225_400 grid', () => {
@@ -40,13 +47,17 @@ describe('game difficulty presets', () => {
   });
 
   it('every study carries a network, action file and contingency id', () => {
+    const bundle = (path: string) => path.split('/').slice(0, 2).join('/');
     for (const tier of DIFFICULTY_TIERS) {
       for (const s of tier.studies) {
         expect(s.networkPath).toBeTruthy();
         expect(s.actionFilePath).toBeTruthy();
         expect(s.contingencyElementId).toBeTruthy();
-        // Studies of a tier all share that tier's grid.
-        expect(s.networkPath).toBe(tier.networkPath);
+        // Studies of a tier share that tier's grid bundle — its actions and
+        // layout — each on one of the bundle's situations.
+        expect(bundle(s.networkPath)).toBe(bundle(tier.networkPath));
+        expect(s.actionFilePath).toBe(tier.actionFilePath);
+        expect(s.layoutPath).toBe(tier.layoutPath);
       }
     }
   });
@@ -69,12 +80,11 @@ describe('preset ↔ overload-data consistency', () => {
     return new Set(data.contingencies.map(c => c.tripped_line));
   };
 
-  it.each(DIFFICULTY_TIERS)('every "$id" preset contingency exists in the grid overload data', (tier) => {
-    const trippedLines = trippedLineSet(tier.networkPath);
+  it.each(DIFFICULTY_TIERS)('every "$id" preset contingency exists in its network\'s overload data', (tier) => {
     for (const study of tier.studies) {
       expect(
-        trippedLines.has(study.contingencyElementId),
-        `preset "${study.id}" contingency ${study.contingencyElementId} is not in ${tier.networkPath}'s n1_overload_contingencies.json`,
+        trippedLineSet(study.networkPath).has(study.contingencyElementId),
+        `preset "${study.id}" contingency ${study.contingencyElementId} is not in ${study.networkPath}'s n1_overload_contingencies.json`,
       ).toBe(true);
     }
   });

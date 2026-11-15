@@ -1,0 +1,1076 @@
+{
+ "schema": "costudy4grid-observed-hour/1",
+ "at_utc": "2025-01-14T08:00Z",
+ "source": {
+  "name": "Energy-Charts (Fraunhofer ISE)",
+  "url": "https://www.energy-charts.info",
+  "licence": "CC BY 4.0",
+  "attribution": "energy-charts.info"
+ },
+ "fetched_at": "2026-11-15T07:14Z",
+ "countries": {
+  "AT": {
+   "load": 9988.4,
+   "production": {
+    "hydro_pumped_storage_consumption": 0.0,
+    "hydro_run_of_river": 2466.6,
+    "biomass": 272.0,
+    "fossil_gas": 2897.5,
+    "geothermal": 0.1,
+    "hydro_water_reservoir": 506.1,
+    "hydro_pumped_storage": 1883.0,
+    "others": 22.0,
+    "waste": 100.0,
+    "wind_onshore": 71.0,
+    "solar": 715.0
+   },
+   "trading": 1188.6,
+   "flows": {
+    "CZ": 1300.0,
+    "DE": 1500.0,
+    "HU": -100.0,
+    "IT": -200.0,
+    "SI": -700.0,
+    "CH": -800.0
+   },
+   "installed": {
+    "nuclear": 0.0,
+    "hydro_run_of_river": 5900.0,
+    "biomass": 550.0,
+    "fossil_brown_coal_lignite": 0.0,
+    "fossil_coal_derived_gas": 0.0,
+    "fossil_hard_coal": 0.0,
+    "fossil_oil": 120.0,
+    "fossil_oil_shale": 0.0,
+    "fossil_peat": 0.0,
+    "fossil_gas": 4220.0,
+    "geothermal": 0.0,
+    "hydro_water_reservoir": 2530.0,
+    "hydro_pumped_storage": 3510.0,
+    "marine": 0.0,
+    "others": 860.0,
+    "other_renewables": 0.0,
+    "waste": 130.0,
+    "wind_offshore": 0.0,
+    "wind_onshore": 4040.0,
+    "solar_ac": 8250.0
+   },
+   "installed_year": 2024,
+   "intervals": 4
+  },
+  "BA": {
+   "load": 1745.9,
+   "production": {
+    "hydro_run_of_river": 105.6,
+    "fossil_brown_coal_lignite": 1298.5,
+    "hydro_water_reservoir": 573.8,
+    "hydro_pumped_storage": 0.4,
+    "wind_onshore": 69.1,
+    "solar": 29.5
+   },
+   "trading": -428.0,
+   "flows": {
+    "HR": 0.0,
+    "ME": -300.0,
+    "RS": -100.0
+   },
+   "installed": {
+    "hydro_run_of_river": 250.0,
+    "fossil_brown_coal_lignite": 1880.0,
+    "hydro_water_reservoir": 1460.0,
+    "hydro_pumped_storage": 440.0,
+    "wind_onshore": 310.0,
+    "solar_ac": 240.0
+   },
+   "installed_year": 2024,
+   "intervals": 1
+  },
+  "BE": {
+   "load": 12916.4,
+   "production": {
+    "hydro_pumped_storage_consumption": 0.0,
+    "nuclear": 3956.4,
+    "hydro_run_of_river": 76.8,
+    "biomass": 244.0,
+    "fossil_oil": 97.7,
+    "fossil_gas": 5216.4,
+    "hydro_pumped_storage": 567.6,
+    "battery": 56.1,
+    "others": 7.6,
+    "waste": 191.3,
+    "wind_offshore": 623.1,
+    "wind_onshore": 591.8,
+    "solar": 532.6
+   },
+   "trading": 858.9,
+   "flows": {
+    "FR": -1700.0,
+    "DE": 900.0,
+    "LU": -100.0,
+    "NL": 1600.0,
+    "GB": 200.0
+   },
+   "installed": {
+    "nuclear": 3930.0,
+    "hydro_run_of_river": 140.0,
+    "biomass": 730.0,
+    "fossil_oil": 590.0,
+    "fossil_gas": 8030.0,
+    "hydro_pumped_storage": 1310.0,
+    "others": 330.0,
+    "waste": 330.0,
+    "wind_offshore": 2260.0,
+    "wind_onshore": 3180.0,
+    "solar_ac": 10700.0
+   },
+   "installed_year": 2024,
+   "intervals": 1
+  },
+  "BG": {
+   "load": 6848.7,
+   "production": {
+    "nuclear": 1975.8,
+    "hydro_run_of_river": 79.8,
+    "biomass": 14.2,
+    "fossil_brown_coal_lignite": 2344.5,
+    "fossil_hard_coal": 53.2,
+    "fossil_gas": 314.0,
+    "hydro_water_reservoir": 212.1,
+    "hydro_pumped_storage": 0.0,
+    "waste": 2.4,
+    "wind_onshore": 371.2,
+    "solar": 485.5
+   },
+   "trading": 262.1,
+   "flows": {
+    "GR": 400.0,
+    "MK": 100.0,
+    "RO": -300.0,
+    "RS": 0.0,
+    "TR": 200.0
+   },
+   "installed": {
+    "nuclear": 2000.0,
+    "hydro_run_of_river": 550.0,
+    "biomass": 60.0,
+    "fossil_brown_coal_lignite": 4120.0,
+    "fossil_coal_derived_gas": 0.0,
+    "fossil_hard_coal": 340.0,
+    "fossil_oil": 0.0,
+    "fossil_oil_shale": 0.0,
+    "fossil_peat": 0.0,
+    "fossil_gas": 730.0,
+    "geothermal": 0.0,
+    "hydro_water_reservoir": 1810.0,
+    "hydro_pumped_storage": 860.0,
+    "marine": 0.0,
+    "others": 0.0,
+    "other_renewables": 0.0,
+    "waste": 10.0,
+    "wind_offshore": 0.0,
+    "wind_onshore": 720.0,
+    "solar_ac": 6100.0
+   },
+   "installed_year": 2024,
+   "intervals": 1
+  },
+  "CH": {
+   "load": 10432.7,
+   "production": {
+    "nuclear": 2961.4,
+    "hydro_run_of_river": 1747.2,
+    "hydro_water_reservoir": 4823.2,
+    "hydro_pumped_storage": 1275.5,
+    "others": 453.7,
+    "wind_onshore": 52.8,
+    "solar": 334.8
+   },
+   "trading": -1027.9,
+   "flows": {
+    "AT": 800.0,
+    "FR": -600.0,
+    "DE": 1300.0,
+    "IT": -2700.0
+   },
+   "installed": {
+    "hydro_run_of_river": 4276.0,
+    "hydro_water_reservoir": 8257.0,
+    "hydro_pumped_storage": 3517.0,
+    "hydro_pumped_storage_w_o_natural_inflow": 527.0,
+    "nuclear": 2973.0,
+    "conventional_thermal": 318.0,
+    "landfill_gas": 0.0,
+    "waste_incinerators_without_heat_extraction": 257.0,
+    "waste_incinerators_with_heat_extraction": 138.0,
+    "industry": 133.0,
+    "district_heating_plants": 212.0,
+    "small_chp": 142.0,
+    "wind_onshore": 102.0,
+    "solar_dc": 8170.0
+   },
+   "installed_year": 2024,
+   "intervals": 1
+  },
+  "CZ": {
+   "load": 10261.1,
+   "production": {
+    "hydro_pumped_storage_consumption": 0.0,
+    "nuclear": 3519.9,
+    "hydro_run_of_river": 173.2,
+    "biomass": 332.0,
+    "fossil_brown_coal_lignite": 4672.9,
+    "fossil_hard_coal": 377.4,
+    "fossil_oil": 2.3,
+    "fossil_coal_derived_gas": 6.0,
+    "fossil_gas": 360.9,
+    "hydro_water_reservoir": 162.5,
+    "hydro_pumped_storage": 112.5,
+    "others": 64.8,
+    "other_renewables": 265.4,
+    "waste": 23.4,
+    "wind_onshore": 83.0,
+    "solar": 298.8
+   },
+   "trading": -249.6,
+   "flows": {
+    "AT": -1300.0,
+    "DE": 700.0,
+    "PL": 1600.0,
+    "SK": -1200.0
+   },
+   "installed": {
+    "nuclear": 4040.0,
+    "hydro_run_of_river": 340.0,
+    "biomass": 410.0,
+    "fossil_brown_coal_lignite": 7240.0,
+    "fossil_coal_derived_gas": 380.0,
+    "fossil_hard_coal": 1200.0,
+    "fossil_oil": 0.0,
+    "fossil_gas": 1240.0,
+    "hydro_water_reservoir": 770.0,
+    "hydro_pumped_storage": 1170.0,
+    "others": 0.0,
+    "other_renewables": 460.0,
+    "waste": 100.0,
+    "wind_onshore": 370.0,
+    "solar_ac": 4420.0
+   },
+   "installed_year": 2024,
+   "intervals": 4
+  },
+  "DK": {
+   "load": 5927.4,
+   "production": {
+    "biomass": 591.4,
+    "fossil_hard_coal": 224.4,
+    "fossil_oil": 39.5,
+    "fossil_gas": 156.3,
+    "waste": 87.7,
+    "wind_offshore": 2323.9,
+    "wind_onshore": 2732.7,
+    "solar": 15.6
+   },
+   "trading": -2308.2,
+   "flows": {
+    "DE": -600.0,
+    "NL": -700.0,
+    "NO": 300.0,
+    "SE": 1800.0,
+    "GB": -700.0
+   },
+   "installed": {
+    "hydro_run_of_river": 10.0,
+    "biomass": 2220.0,
+    "fossil_hard_coal": 1600.0,
+    "fossil_oil": 700.0,
+    "fossil_gas": 1630.0,
+    "other_renewables": 140.0,
+    "waste": 380.0,
+    "wind_offshore": 2640.0,
+    "wind_onshore": 3000.0,
+    "solar_ac": 3230.0
+   },
+   "installed_year": 2024,
+   "intervals": 1
+  },
+  "ES": {
+   "load": 36394.0,
+   "production": {
+    "hydro_pumped_storage_consumption": -11.0,
+    "nuclear": 7118.0,
+    "hydro_run_of_river": 1310.0,
+    "biomass": 445.0,
+    "fossil_hard_coal": 875.0,
+    "fossil_oil": 24.0,
+    "fossil_gas": 11374.0,
+    "hydro_water_reservoir": 4276.0,
+    "hydro_pumped_storage": 1943.0,
+    "others": 9.0,
+    "other_renewables": 65.0,
+    "waste": 201.0,
+    "wind_onshore": 5384.0,
+    "solar": 3200.0
+   },
+   "trading": -28.6,
+   "flows": {
+    "FR": -1800.0,
+    "PT": 1700.0
+   },
+   "installed": {
+    "nuclear": 7120.0,
+    "hydro_run_of_river": 1150.0,
+    "biomass": 710.0,
+    "fossil_brown_coal_lignite": 0.0,
+    "fossil_coal_derived_gas": 0.0,
+    "fossil_hard_coal": 1820.0,
+    "fossil_oil": 670.0,
+    "fossil_oil_shale": 0.0,
+    "fossil_peat": 0.0,
+    "fossil_gas": 29940.0,
+    "geothermal": 0.0,
+    "hydro_water_reservoir": 15760.0,
+    "hydro_pumped_storage": 3420.0,
+    "marine": 0.0,
+    "others": 130.0,
+    "other_renewables": 620.0,
+    "waste": 550.0,
+    "wind_offshore": 0.0,
+    "wind_onshore": 30930.0,
+    "solar_ac": 29050.0
+   },
+   "installed_year": 2024,
+   "intervals": 4
+  },
+  "FR": {
+   "load": 86572.9,
+   "production": {
+    "hydro_pumped_storage_consumption": -65.1,
+    "nuclear": 52759.7,
+    "hydro_run_of_river": 7099.0,
+    "biomass": 497.3,
+    "fossil_hard_coal": 585.8,
+    "fossil_oil": 1376.6,
+    "fossil_gas": 7230.6,
+    "hydro_water_reservoir": 5042.6,
+    "hydro_pumped_storage": 4279.3,
+    "waste": 282.4,
+    "wind_offshore": 89.7,
+    "wind_onshore": 2239.8,
+    "solar": 1292.5
+   },
+   "trading": 4281.6,
+   "flows": {
+    "BE": 1700.0,
+    "DE": -200.0,
+    "IT": -2100.0,
+    "ES": 1800.0,
+    "CH": 600.0,
+    "GB": 1900.0
+   },
+   "installed": {
+    "nuclear": 62990.0,
+    "hydro_run_of_river": 11740.0,
+    "biomass": 1410.0,
+    "fossil_hard_coal": 1810.0,
+    "fossil_oil": 2980.0,
+    "fossil_gas": 12790.0,
+    "geothermal": 0.0,
+    "hydro_water_reservoir": 8790.0,
+    "hydro_pumped_storage": 5060.0,
+    "marine": 240.0,
+    "others": 1020.0,
+    "waste": 1060.0,
+    "wind_offshore": 1030.0,
+    "wind_onshore": 22910.0,
+    "solar_ac": 22860.0
+   },
+   "installed_year": 2024,
+   "intervals": 1
+  },
+  "GR": {
+   "load": 7898.0,
+   "production": {
+    "fossil_brown_coal_lignite": 881.0,
+    "fossil_gas": 4181.0,
+    "hydro_water_reservoir": 353.0,
+    "hydro_pumped_storage": 1.0,
+    "wind_onshore": 2482.0,
+    "solar": 441.0
+   },
+   "trading": -725.6,
+   "flows": {
+    "AL": -200.0,
+    "BG": -400.0,
+    "IT": 400.0,
+    "MK": -500.0,
+    "TR": -0.0
+   },
+   "installed": {
+    "hydro_run_of_river": 300.0,
+    "biomass": 150.0,
+    "fossil_brown_coal_lignite": 1800.0,
+    "fossil_oil": 0.0,
+    "fossil_gas": 6030.0,
+    "geothermal": 0.0,
+    "hydro_water_reservoir": 2400.0,
+    "hydro_pumped_storage": 700.0,
+    "other_renewables": 130.0,
+    "wind_onshore": 5220.0,
+    "solar_ac": 9000.0
+   },
+   "installed_year": 2024,
+   "intervals": 1
+  },
+  "HR": {
+   "load": 2798.8,
+   "production": {
+    "hydro_pumped_storage_consumption": -0.2,
+    "hydro_run_of_river": 163.1,
+    "biomass": 67.2,
+    "fossil_gas": 521.0,
+    "hydro_water_reservoir": 658.3,
+    "hydro_pumped_storage": 225.4,
+    "other_renewables": 30.8,
+    "waste": 8.0,
+    "wind_onshore": 751.9,
+    "solar": 71.8
+   },
+   "trading": 346.5,
+   "flows": {
+    "BA": -0.0,
+    "HU": 500.0,
+    "RS": -0.0,
+    "SI": -200.0
+   },
+   "installed": {
+    "hydro_run_of_river": 430.0,
+    "biomass": 110.0,
+    "fossil_hard_coal": 220.0,
+    "fossil_oil": 40.0,
+    "fossil_gas": 800.0,
+    "geothermal": 10.0,
+    "hydro_water_reservoir": 1450.0,
+    "hydro_pumped_storage": 280.0,
+    "other_renewables": 120.0,
+    "waste": 10.0,
+    "wind_onshore": 1240.0,
+    "solar_ac": 450.0
+   },
+   "installed_year": 2024,
+   "intervals": 4
+  },
+  "HU": {
+   "load": 6062.8,
+   "production": {
+    "nuclear": 1944.5,
+    "hydro_run_of_river": 11.7,
+    "biomass": 177.9,
+    "fossil_brown_coal_lignite": 186.2,
+    "fossil_hard_coal": 38.6,
+    "fossil_oil": 0.0,
+    "fossil_gas": 1410.7,
+    "geothermal": 0.8,
+    "hydro_water_reservoir": 14.3,
+    "others": 54.9,
+    "other_renewables": 16.6,
+    "waste": 19.4,
+    "wind_onshore": 0.2,
+    "solar": 1766.8
+   },
+   "trading": 588.3,
+   "flows": {
+    "AT": 100.0,
+    "HR": -500.0,
+    "RO": -700.0,
+    "RS": -0.0,
+    "SK": 1800.0,
+    "SI": -200.0,
+    "UA": -100.0
+   },
+   "installed": {
+    "nuclear": 1920.0,
+    "hydro_run_of_river": 30.0,
+    "biomass": 310.0,
+    "fossil_brown_coal_lignite": 790.0,
+    "fossil_hard_coal": 40.0,
+    "fossil_oil": 420.0,
+    "fossil_gas": 2980.0,
+    "geothermal": 0.0,
+    "hydro_water_reservoir": 30.0,
+    "others": 150.0,
+    "other_renewables": 70.0,
+    "waste": 50.0,
+    "wind_onshore": 330.0,
+    "solar_ac": 8280.0
+   },
+   "installed_year": 2024,
+   "intervals": 4
+  },
+  "IT": {
+   "load": 45471.0,
+   "production": {
+    "hydro_pumped_storage_consumption": 0.0,
+    "battery_consumption": 0.0,
+    "hydro_run_of_river": 2768.0,
+    "biomass": 519.0,
+    "fossil_hard_coal": 343.0,
+    "fossil_oil": 9.0,
+    "fossil_coal_derived_gas": 509.0,
+    "fossil_gas": 20848.0,
+    "hydro_water_reservoir": 1048.0,
+    "hydro_pumped_storage": 1141.0,
+    "battery": 196.0,
+    "others": 1874.0,
+    "other_renewables": 196.0,
+    "waste": 4.0,
+    "wind_offshore": 16.0,
+    "wind_onshore": 5864.0,
+    "solar": 2573.0
+   },
+   "trading": 5986.5,
+   "flows": {
+    "AT": 200.0,
+    "FR": 2100.0,
+    "GR": -400.0,
+    "MT": -100.0,
+    "ME": 200.0,
+    "SI": 900.0,
+    "CH": 2700.0
+   },
+   "installed": {
+    "hydro_run_of_river": 10320.0,
+    "biomass": 1540.0,
+    "fossil_brown_coal_lignite": 0.0,
+    "fossil_coal_derived_gas": 2080.0,
+    "fossil_hard_coal": 5230.0,
+    "fossil_oil": 1550.0,
+    "fossil_peat": 0.0,
+    "fossil_gas": 45550.0,
+    "geothermal": 870.0,
+    "hydro_water_reservoir": 4550.0,
+    "hydro_pumped_storage": 7240.0,
+    "marine": 0.0,
+    "others": 440.0,
+    "other_renewables": 0.0,
+    "waste": 670.0,
+    "wind_offshore": 30.0,
+    "wind_onshore": 12230.0,
+    "solar_ac": 8920.0
+   },
+   "installed_year": 2024,
+   "intervals": 1
+  },
+  "LT": {
+   "load": 1888.2,
+   "production": {
+    "hydro_pumped_storage_consumption": 0.0,
+    "hydro_run_of_river": 49.9,
+    "biomass": 21.7,
+    "fossil_gas": 307.0,
+    "hydro_pumped_storage": 0.0,
+    "others": 44.0,
+    "waste": 113.5,
+    "wind_onshore": 828.7,
+    "solar": 12.2
+   },
+   "trading": 469.6,
+   "flows": {
+    "BY": -100.0,
+    "LV": -0.0,
+    "PL": 0.0,
+    "RU": -0.0,
+    "SE": 700.0
+   },
+   "installed": {
+    "hydro_run_of_river": 130.0,
+    "biomass": 200.0,
+    "fossil_oil": 0.0,
+    "fossil_gas": 1500.0,
+    "hydro_pumped_storage": 900.0,
+    "others": 40.0,
+    "other_renewables": 0.0,
+    "waste": 70.0,
+    "wind_onshore": 1680.0,
+    "solar_ac": 1790.0
+   },
+   "installed_year": 2024,
+   "intervals": 1
+  },
+  "LU": {
+   "load": 760.9,
+   "production": {
+    "hydro_run_of_river": 9.7,
+    "biomass": 9.4,
+    "fossil_gas": 18.3,
+    "hydro_water_reservoir": 9.4,
+    "waste": 12.8,
+    "wind_onshore": 8.8,
+    "solar": 24.1
+   },
+   "trading": 663.7,
+   "flows": {
+    "BE": 100.0,
+    "DE": 500.0
+   },
+   "installed": {
+    "nuclear": 0.0,
+    "hydro_run_of_river": 20.0,
+    "biomass": 80.0,
+    "fossil_brown_coal_lignite": 0.0,
+    "fossil_coal_derived_gas": 0.0,
+    "fossil_hard_coal": 0.0,
+    "fossil_oil": 0.0,
+    "fossil_oil_shale": 0.0,
+    "fossil_peat": 0.0,
+    "fossil_gas": 70.0,
+    "geothermal": 0.0,
+    "hydro_water_reservoir": 10.0,
+    "hydro_pumped_storage": 0.0,
+    "marine": 0.0,
+    "others": 0.0,
+    "other_renewables": 0.0,
+    "waste": 20.0,
+    "wind_offshore": 0.0,
+    "wind_onshore": 210.0,
+    "solar_ac": 540.0
+   },
+   "installed_year": 2024,
+   "intervals": 4
+  },
+  "MD": {
+   "load": 806.0,
+   "production": {
+    "hydro_run_of_river": 31.0,
+    "biomass": 1.0,
+    "fossil_gas": 331.0,
+    "wind_onshore": 1.0,
+    "solar": 14.0
+   },
+   "trading": 508.0,
+   "flows": {
+    "RO": 200.0,
+    "UA": 200.0
+   },
+   "installed": {},
+   "installed_year": null,
+   "intervals": 1
+  },
+  "ME": {
+   "load": 442.4,
+   "production": {
+    "fossil_brown_coal_lignite": 198.2,
+    "hydro_water_reservoir": 201.1,
+    "wind_onshore": 102.6
+   },
+   "trading": -38.0,
+   "flows": {
+    "AL": 0.0,
+    "BA": 300.0,
+    "IT": -200.0,
+    "XK": -300.0,
+    "RS": 300.0
+   },
+   "installed": {
+    "hydro_run_of_river": 310.0,
+    "fossil_brown_coal_lignite": 210.0,
+    "hydro_water_reservoir": 340.0,
+    "wind_onshore": 120.0
+   },
+   "installed_year": 2024,
+   "intervals": 1
+  },
+  "MK": {
+   "load": 1118.1,
+   "production": {
+    "fossil_brown_coal_lignite": 270.7,
+    "fossil_gas": 211.3,
+    "hydro_water_reservoir": 261.8,
+    "wind_onshore": 18.3
+   },
+   "trading": 274.0,
+   "flows": {
+    "BG": -100.0,
+    "GR": 500.0,
+    "XK": -0.0,
+    "RS": -0.0
+   },
+   "installed": {
+    "biomass": 10.0,
+    "fossil_brown_coal_lignite": 820.0,
+    "fossil_oil": 210.0,
+    "fossil_gas": 250.0,
+    "hydro_water_reservoir": 640.0,
+    "wind_onshore": 120.0,
+    "solar_ac": 160.0
+   },
+   "installed_year": 2024,
+   "intervals": 1
+  },
+  "NL": {
+   "load": 18389.6,
+   "production": {
+    "nuclear": 486.5,
+    "biomass": 15.1,
+    "fossil_hard_coal": 3702.4,
+    "fossil_gas": 4352.4,
+    "others": 3938.4,
+    "waste": 306.5,
+    "wind_offshore": 2367.2,
+    "wind_onshore": 1340.1,
+    "solar": 11.8
+   },
+   "trading": 287.3,
+   "flows": {
+    "BE": -1600.0,
+    "DK": 700.0,
+    "DE": 700.0,
+    "NO": 600.0,
+    "GB": 0.0
+   },
+   "installed": {
+    "nuclear": 490.0,
+    "hydro_run_of_river": 40.0,
+    "biomass": 420.0,
+    "fossil_brown_coal_lignite": 0.0,
+    "fossil_coal_derived_gas": 0.0,
+    "fossil_hard_coal": 4010.0,
+    "fossil_oil": 0.0,
+    "fossil_oil_shale": 0.0,
+    "fossil_peat": 0.0,
+    "fossil_gas": 18410.0,
+    "geothermal": 0.0,
+    "hydro_water_reservoir": 0.0,
+    "hydro_pumped_storage": 0.0,
+    "marine": 0.0,
+    "others": 0.0,
+    "other_renewables": 0.0,
+    "waste": 780.0,
+    "wind_offshore": 4740.0,
+    "wind_onshore": 7180.0,
+    "solar_ac": 29280.0
+   },
+   "installed_year": 2024,
+   "intervals": 4
+  },
+  "PL": {
+   "load": 24509.5,
+   "production": {
+    "hydro_pumped_storage_consumption": -3.9,
+    "hydro_run_of_river": 88.0,
+    "biomass": 396.3,
+    "fossil_brown_coal_lignite": 5352.9,
+    "fossil_hard_coal": 9022.4,
+    "fossil_oil": 206.9,
+    "fossil_coal_derived_gas": 201.5,
+    "fossil_gas": 3185.1,
+    "hydro_water_reservoir": 71.1,
+    "hydro_pumped_storage": 0.0,
+    "others": 717.9,
+    "other_renewables": 64.5,
+    "wind_onshore": 5784.9,
+    "solar": 1079.2
+   },
+   "trading": -1479.0,
+   "flows": {
+    "CZ": -1600.0,
+    "DE": 900.0,
+    "LT": 0.0,
+    "SK": -1000.0,
+    "SE": 400.0,
+    "UA": -200.0
+   },
+   "installed": {
+    "hydro_run_of_river": 320.0,
+    "biomass": 640.0,
+    "fossil_brown_coal_lignite": 6950.0,
+    "fossil_coal_derived_gas": 470.0,
+    "fossil_hard_coal": 18540.0,
+    "fossil_oil": 390.0,
+    "fossil_gas": 5340.0,
+    "hydro_water_reservoir": 470.0,
+    "hydro_pumped_storage": 1520.0,
+    "others": 1740.0,
+    "wind_onshore": 10300.0,
+    "solar_ac": 17820.0
+   },
+   "installed_year": 2024,
+   "intervals": 4
+  },
+  "PT": {
+   "load": 7535.7,
+   "production": {
+    "hydro_pumped_storage_consumption": -2.7,
+    "hydro_run_of_river": 2178.3,
+    "biomass": 342.7,
+    "fossil_gas": 1216.6,
+    "hydro_water_reservoir": 406.1,
+    "hydro_pumped_storage": 1104.2,
+    "others": 29.1,
+    "wind_offshore": 1.7,
+    "wind_onshore": 3361.3,
+    "solar": 368.8
+   },
+   "trading": -1771.4,
+   "flows": {
+    "ES": -1700.0
+   },
+   "installed": {
+    "nuclear": 0.0,
+    "hydro_run_of_river": 2860.0,
+    "biomass": 690.0,
+    "fossil_brown_coal_lignite": 0.0,
+    "fossil_coal_derived_gas": 0.0,
+    "fossil_hard_coal": 0.0,
+    "fossil_oil": 0.0,
+    "fossil_oil_shale": 0.0,
+    "fossil_peat": 0.0,
+    "fossil_gas": 4420.0,
+    "geothermal": 0.0,
+    "hydro_water_reservoir": 1790.0,
+    "hydro_pumped_storage": 3710.0,
+    "marine": 0.0,
+    "others": 30.0,
+    "other_renewables": 0.0,
+    "waste": 0.0,
+    "wind_offshore": 20.0,
+    "wind_onshore": 5370.0,
+    "solar_ac": 2590.0
+   },
+   "installed_year": 2024,
+   "intervals": 1
+  },
+  "RO": {
+   "load": 7927.2,
+   "production": {
+    "nuclear": 1219.0,
+    "hydro_run_of_river": 1198.0,
+    "biomass": 47.2,
+    "fossil_brown_coal_lignite": 976.2,
+    "fossil_hard_coal": 76.0,
+    "fossil_gas": 1607.0,
+    "hydro_water_reservoir": 259.0,
+    "wind_onshore": 280.2,
+    "solar": 408.5
+   },
+   "trading": 1621.0,
+   "flows": {
+    "BG": 300.0,
+    "HU": 700.0,
+    "MD": -200.0,
+    "RS": 400.0,
+    "UA": 400.0
+   },
+   "installed": {
+    "nuclear": 1300.0,
+    "hydro_run_of_river": 2780.0,
+    "biomass": 120.0,
+    "fossil_brown_coal_lignite": 2030.0,
+    "fossil_hard_coal": 140.0,
+    "fossil_gas": 2180.0,
+    "hydro_water_reservoir": 3350.0,
+    "wind_onshore": 3030.0,
+    "solar_ac": 1590.0
+   },
+   "installed_year": 2024,
+   "intervals": 4
+  },
+  "RS": {
+   "load": 5404.0,
+   "production": {
+    "hydro_run_of_river": 1486.0,
+    "biomass": 30.0,
+    "fossil_brown_coal_lignite": 2965.0,
+    "fossil_gas": 343.0,
+    "hydro_water_reservoir": 220.0,
+    "hydro_pumped_storage": 485.0,
+    "others": 27.0,
+    "wind_onshore": 0.0
+   },
+   "trading": -110.0,
+   "flows": {
+    "BA": 100.0,
+    "BG": -0.0,
+    "HR": 0.0,
+    "HU": 0.0,
+    "XK": 100.0,
+    "ME": -300.0,
+    "MK": 0.0,
+    "RO": -400.0
+   },
+   "installed": {
+    "hydro_run_of_river": 2060.0,
+    "biomass": 0.0,
+    "fossil_brown_coal_lignite": 6120.0,
+    "fossil_gas": 610.0,
+    "hydro_water_reservoir": 480.0,
+    "hydro_pumped_storage": 640.0,
+    "others": 30.0,
+    "waste": 30.0,
+    "wind_onshore": 740.0,
+    "solar_ac": 70.0
+   },
+   "installed_year": 2024,
+   "intervals": 1
+  },
+  "SI": {
+   "load": 1969.7,
+   "production": {
+    "nuclear": 701.4,
+    "hydro_run_of_river": 617.0,
+    "biomass": 8.7,
+    "fossil_brown_coal_lignite": 268.9,
+    "fossil_oil": 0.0,
+    "fossil_gas": 156.7,
+    "hydro_pumped_storage": 0.1,
+    "waste": 6.1,
+    "wind_onshore": 1.9,
+    "solar": 58.0
+   },
+   "trading": 197.9,
+   "flows": {
+    "AT": 700.0,
+    "HR": 200.0,
+    "HU": 200.0,
+    "IT": -900.0
+   },
+   "installed": {
+    "nuclear": 700.0,
+    "hydro_run_of_river": 1150.0,
+    "biomass": 30.0,
+    "fossil_brown_coal_lignite": 1190.0,
+    "fossil_oil": 60.0,
+    "fossil_gas": 760.0,
+    "hydro_pumped_storage": 180.0,
+    "waste": 10.0,
+    "wind_onshore": 0.0,
+    "solar_ac": 1410.0
+   },
+   "installed_year": 2024,
+   "intervals": 1
+  },
+  "SK": {
+   "load": 4005.0,
+   "production": {
+    "hydro_pumped_storage_consumption": 0.0,
+    "nuclear": 2464.8,
+    "hydro_run_of_river": 450.1,
+    "biomass": 129.8,
+    "fossil_brown_coal_lignite": 26.7,
+    "fossil_oil": 43.4,
+    "fossil_gas": 583.1,
+    "hydro_water_reservoir": 47.3,
+    "hydro_pumped_storage": 23.8,
+    "others": 152.5,
+    "other_renewables": 48.4,
+    "wind_onshore": 0.0,
+    "solar": 126.4
+   },
+   "trading": -3.4,
+   "flows": {
+    "CZ": 1200.0,
+    "HU": -1800.0,
+    "PL": 1000.0,
+    "UA": -500.0
+   },
+   "installed": {
+    "nuclear": 2470.0,
+    "hydro_run_of_river": 1210.0,
+    "biomass": 210.0,
+    "fossil_brown_coal_lignite": 60.0,
+    "fossil_hard_coal": 0.0,
+    "fossil_oil": 260.0,
+    "fossil_gas": 1190.0,
+    "hydro_water_reservoir": 420.0,
+    "hydro_pumped_storage": 920.0,
+    "others": 320.0,
+    "other_renewables": 140.0,
+    "wind_onshore": 0.0,
+    "solar_ac": 1340.0
+   },
+   "installed_year": 2024,
+   "intervals": 1
+  },
+  "XK": {
+   "load": 1262.0,
+   "production": {
+    "fossil_brown_coal_lignite": 704.6
+   },
+   "trading": 461.8,
+   "flows": {
+    "AL": 300.0,
+    "ME": 300.0,
+    "MK": 0.0,
+    "RS": -100.0
+   },
+   "installed": {
+    "hydro_run_of_river": 30.0,
+    "fossil_brown_coal_lignite": 1290.0,
+    "hydro_water_reservoir": 40.0,
+    "wind_onshore": 140.0
+   },
+   "installed_year": 2022,
+   "intervals": 1
+  },
+  "DE": {
+   "basis": "total",
+   "load": 79983.6,
+   "production": {
+    "hydro_pumped_storage_consumption": -21.7,
+    "hydro_run_of_river": 2041.3,
+    "biomass": 5230.7,
+    "fossil_brown_coal_lignite": 10179.7,
+    "fossil_hard_coal": 5636.9,
+    "fossil_oil": 1522.8,
+    "fossil_coal_derived_gas": 407.8,
+    "fossil_gas": 21428.8,
+    "geothermal": 23.6,
+    "hydro_water_reservoir": 384.3,
+    "hydro_pumped_storage": 2446.5,
+    "others": 1296.6,
+    "waste": 1029.4,
+    "wind_offshore": 6510.1,
+    "wind_onshore": 17447.5,
+    "solar": 8592.4
+   },
+   "trading": -2566.4,
+   "flows": {
+    "AT": -1500.0,
+    "BE": -900.0,
+    "CZ": -700.0,
+    "DK": 600.0,
+    "FR": 200.0,
+    "LU": -500.0,
+    "NL": -700.0,
+    "NO": 1000.0,
+    "PL": -900.0,
+    "SE": 600.0,
+    "CH": -1300.0
+   },
+   "installed": {
+    "nuclear": 0.0,
+    "fossil_brown_coal_lignite": 15174.0,
+    "fossil_hard_coal": 15389.0,
+    "fossil_gas": 35677.0,
+    "fossil_oil": 3713.0,
+    "other_non_renewable": 2433.0,
+    "hydro": 5415.0,
+    "hydro_pumped_storage": 9902.0,
+    "battery_storage_power": 12694.0,
+    "battery_storage_capacity": 18707.0,
+    "biomass": 8935.0,
+    "wind_offshore": 9215.0,
+    "wind_onshore": 63589.0,
+    "wind_onshore_planned_eeg_2023": 69000.0,
+    "solar_dc": 100815.0,
+    "solar_ac": 92497.0,
+    "solar_planned_eeg_2023": 88000.0
+   },
+   "installed_year": 2024,
+   "intervals": 4
+  }
+ },
+ "missing": {
+  "AL": "not covered by the API",
+  "UA": "no data for this hour"
+ }
+}

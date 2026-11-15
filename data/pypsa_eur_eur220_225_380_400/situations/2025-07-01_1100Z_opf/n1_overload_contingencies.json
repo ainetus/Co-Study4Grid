@@ -1,0 +1,810 @@
+{
+  "description": "N-1 contingencies that produce >100.0% line overloads on the 2025-07-01_1100Z_opf network",
+  "network": "data/pypsa_eur_eur220_225_380_400/situations/2025-07-01_1100Z_opf/network.xiidm",
+  "total_contingencies_tested": 7173,
+  "total_non_converged": 0,
+  "total_with_overload": 33,
+  "peak_loading_pct": 130.0,
+  "threshold_pct": 100.0,
+  "loadflow_type": "AC",
+  "contingencies": [
+    {
+      "tripped_line": "merged_way_1127485812-220_3",
+      "tripped_line_name": "ПЛ «Львів-Південна - Стрий-220»",
+      "tripped_vl1": "VL_relation_10047997-220",
+      "tripped_vl1_name": "Стрий-220 220kV",
+      "tripped_vl2": "VL_virtual_way_33611519_0-220",
+      "tripped_vl2_name": "ПЛ «Львів-Південна - Стрий-220» 220kV",
+      "max_loading_pct": 130.0,
+      "most_loaded_line": "relation_5598763-220",
+      "most_loaded_line_name": "220kV Добротвір - Zamość",
+      "n_overloaded_lines": 2,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_5598763-220",
+          "line_name": "220kV Добротвір - Zamość",
+          "loading_pct": 130.0,
+          "current_a": 1697.8,
+          "limit_a": 1306.0
+        },
+        {
+          "line_id": "relation_5598759-220",
+          "line_name": "220kV Mokre - Zamość",
+          "loading_pct": 117.4,
+          "current_a": 1514.1,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_4800456-220",
+      "tripped_line_name": "relation/4800456-220",
+      "tripped_vl1": "VL_way_57736553-220",
+      "tripped_vl1_name": "Caracoli 220kV",
+      "tripped_vl2": "VL_way_338948868-220",
+      "tripped_vl2_name": "Termini Centrale gruppi 6 220kV",
+      "max_loading_pct": 130.0,
+      "most_loaded_line": "relation_4800455-220",
+      "most_loaded_line_name": "relation/4800455-220",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_4800455-220",
+          "line_name": "relation/4800455-220",
+          "loading_pct": 130.0,
+          "current_a": 1841.3,
+          "limit_a": 1416.4
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_4800455-220",
+      "tripped_line_name": "relation/4800455-220",
+      "tripped_vl1": "VL_way_57736553-220",
+      "tripped_vl1_name": "Caracoli 220kV",
+      "tripped_vl2": "VL_way_338948868-220",
+      "tripped_vl2_name": "Termini Centrale gruppi 6 220kV",
+      "max_loading_pct": 130.0,
+      "most_loaded_line": "relation_4800456-220",
+      "most_loaded_line_name": "relation/4800456-220",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_4800456-220",
+          "line_name": "relation/4800456-220",
+          "loading_pct": 130.0,
+          "current_a": 1841.3,
+          "limit_a": 1416.4
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_6897671-225",
+      "tripped_line_name": "Camporosso - Trinite Victor",
+      "tripped_vl1": "VL_way_265745327-225",
+      "tripped_vl1_name": "TRINITE-VICTOR 225kV",
+      "tripped_vl2": "VL_virtual_relation_6897671_1-225",
+      "tripped_vl2_name": "Camporosso - Trinite Victor 225kV",
+      "max_loading_pct": 130.0,
+      "most_loaded_line": "way_211506271-220",
+      "most_loaded_line_name": "Campochiesa-Vado Ligure",
+      "n_overloaded_lines": 4,
+      "overloaded_lines": [
+        {
+          "line_id": "way_211506271-220",
+          "line_name": "Campochiesa-Vado Ligure",
+          "loading_pct": 130.0,
+          "current_a": 1822.1,
+          "limit_a": 1401.6
+        },
+        {
+          "line_id": "way_211506264-220",
+          "line_name": "Campochiesa-Vado Ligure",
+          "loading_pct": 130.0,
+          "current_a": 2086.7,
+          "limit_a": 1605.2
+        },
+        {
+          "line_id": "way_117172072-220",
+          "line_name": "Campochiesa-Camporosso",
+          "loading_pct": 129.8,
+          "current_a": 1674.3,
+          "limit_a": 1290.0
+        },
+        {
+          "line_id": "way_211506265-220",
+          "line_name": "Campochiesa-Camporosso",
+          "loading_pct": 109.7,
+          "current_a": 1414.8,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_8522391-225",
+      "tripped_line_name": "BRAEKL62G.SYN",
+      "tripped_vl1": "VL_relation_13260224-225",
+      "tripped_vl1_name": "GRANDE-SYNTHE 225kV",
+      "tripped_vl2": "VL_way_818615581-225",
+      "tripped_vl2_name": "BRAEK 225kV",
+      "max_loading_pct": 130.0,
+      "most_loaded_line": "relation_8522390-225",
+      "most_loaded_line_name": "BRAEKL61G.SYN",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_8522390-225",
+          "line_name": "BRAEKL61G.SYN",
+          "loading_pct": 130.0,
+          "current_a": 1840.1,
+          "limit_a": 1415.4
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_8522390-225",
+      "tripped_line_name": "BRAEKL61G.SYN",
+      "tripped_vl1": "VL_relation_13260224-225",
+      "tripped_vl1_name": "GRANDE-SYNTHE 225kV",
+      "tripped_vl2": "VL_way_818615581-225",
+      "tripped_vl2_name": "BRAEK 225kV",
+      "max_loading_pct": 130.0,
+      "most_loaded_line": "relation_8522391-225",
+      "most_loaded_line_name": "BRAEKL62G.SYN",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_8522391-225",
+          "line_name": "BRAEKL62G.SYN",
+          "loading_pct": 130.0,
+          "current_a": 1840.1,
+          "limit_a": 1415.4
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_211506264-220",
+      "tripped_line_name": "Campochiesa-Vado Ligure",
+      "tripped_vl1": "VL_virtual_way_86112994_1-220",
+      "tripped_vl1_name": "Campochiesa-Vado Ligure 220kV",
+      "tripped_vl2": "VL_way_103653591-220",
+      "tripped_vl2_name": "Vado Stazione 220kV",
+      "max_loading_pct": 130.0,
+      "most_loaded_line": "merged_way_333332920-225_1",
+      "most_loaded_line_name": "Camporosso-Mentone",
+      "n_overloaded_lines": 4,
+      "overloaded_lines": [
+        {
+          "line_id": "merged_way_333332920-225_1",
+          "line_name": "Camporosso-Mentone",
+          "loading_pct": 130.0,
+          "current_a": 1867.0,
+          "limit_a": 1436.1
+        },
+        {
+          "line_id": "relation_6897671-225",
+          "line_name": "Camporosso - Trinite Victor",
+          "loading_pct": 130.0,
+          "current_a": 2051.2,
+          "limit_a": 1577.8
+        },
+        {
+          "line_id": "way_117882937-220",
+          "line_name": "Campochiesa-Camporosso",
+          "loading_pct": 128.1,
+          "current_a": 1652.7,
+          "limit_a": 1290.0
+        },
+        {
+          "line_id": "way_117882869-220",
+          "line_name": "Campochiesa-Camporosso",
+          "loading_pct": 107.6,
+          "current_a": 1388.4,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_503659676-380",
+      "tripped_line_name": "Rosara-Teramo",
+      "tripped_vl1": "VL_virtual_way_61940512_0-380",
+      "tripped_vl1_name": "Candia-Rosara;Rosara-Teramo 380kV",
+      "tripped_vl2": "VL_way_61626687-380",
+      "tripped_vl2_name": "Teramo 380kV",
+      "max_loading_pct": 127.1,
+      "most_loaded_line": "way_158652471-220",
+      "most_loaded_line_name": "Montorio-Villanova",
+      "n_overloaded_lines": 2,
+      "overloaded_lines": [
+        {
+          "line_id": "way_158652471-220",
+          "line_name": "Montorio-Villanova",
+          "loading_pct": 127.1,
+          "current_a": 1639.2,
+          "limit_a": 1290.0
+        },
+        {
+          "line_id": "way_402344628_c-220",
+          "line_name": "Montorio-Candia",
+          "loading_pct": 123.5,
+          "current_a": 1593.8,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_365525158-380",
+      "tripped_line_name": "way/365525158-380",
+      "tripped_vl1": "VL_way_82084013-380",
+      "tripped_vl1_name": "Ferrara Nord 380kV",
+      "tripped_vl2": "VL_way_181125039-380",
+      "tripped_vl2_name": "Enipower Ferrara 380kV",
+      "max_loading_pct": 123.5,
+      "most_loaded_line": "merged_way_168708392-220_1",
+      "most_loaded_line_name": "Bussolengo-Portale SEF",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "merged_way_168708392-220_1",
+          "line_name": "Bussolengo-Portale SEF",
+          "loading_pct": 123.5,
+          "current_a": 1593.4,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_9965193-220",
+      "tripped_line_name": "220 kV Weiwerd - Meeden oranje",
+      "tripped_vl1": "VL_way_87342758-220",
+      "tripped_vl1_name": "Meeden 220kV",
+      "tripped_vl2": "VL_way_168037483-220",
+      "tripped_vl2_name": "220 kV Weiwerd 220kV",
+      "max_loading_pct": 122.7,
+      "most_loaded_line": "relation_6681906-220",
+      "most_loaded_line_name": "220 kV Weiwerd - Meeden blauw",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_6681906-220",
+          "line_name": "220 kV Weiwerd - Meeden blauw",
+          "loading_pct": 122.7,
+          "current_a": 1582.5,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_6681906-220",
+      "tripped_line_name": "220 kV Weiwerd - Meeden blauw",
+      "tripped_vl1": "VL_way_87342758-220",
+      "tripped_vl1_name": "Meeden 220kV",
+      "tripped_vl2": "VL_way_168037483-220",
+      "tripped_vl2_name": "220 kV Weiwerd 220kV",
+      "max_loading_pct": 122.7,
+      "most_loaded_line": "relation_9965193-220",
+      "most_loaded_line_name": "220 kV Weiwerd - Meeden oranje",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_9965193-220",
+          "line_name": "220 kV Weiwerd - Meeden oranje",
+          "loading_pct": 122.7,
+          "current_a": 1582.5,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_841063416-220",
+      "tripped_line_name": "Mátrai Erőmű – Detk II / III",
+      "tripped_vl1": "VL_way_251991299-220",
+      "tripped_vl1_name": "Detk alállomás 220kV",
+      "tripped_vl2": "VL_virtual_way_1262212256_1-220",
+      "tripped_vl2_name": "virtual_way_1262212256_1-220 220kV",
+      "max_loading_pct": 122.0,
+      "most_loaded_line": "merged_way_251991300-220_2",
+      "most_loaded_line_name": "Mátrai Erőmű–Detk I",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "merged_way_251991300-220_2",
+          "line_name": "Mátrai Erőmű–Detk I",
+          "loading_pct": 122.0,
+          "current_a": 1574.2,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "merged_way_333332920-225_1",
+      "tripped_line_name": "Camporosso-Mentone",
+      "tripped_vl1": "VL_virtual_relation_6897671_1-225",
+      "tripped_vl1_name": "Camporosso - Trinite Victor 225kV",
+      "tripped_vl2": "VL_virtual_way_333332920_1-225",
+      "tripped_vl2_name": "Camporosso-Mentone 225kV",
+      "max_loading_pct": 119.4,
+      "most_loaded_line": "way_211506264-220",
+      "most_loaded_line_name": "Campochiesa-Vado Ligure",
+      "n_overloaded_lines": 3,
+      "overloaded_lines": [
+        {
+          "line_id": "way_211506264-220",
+          "line_name": "Campochiesa-Vado Ligure",
+          "loading_pct": 119.4,
+          "current_a": 1916.3,
+          "limit_a": 1605.2
+        },
+        {
+          "line_id": "way_211506271-220",
+          "line_name": "Campochiesa-Vado Ligure",
+          "loading_pct": 118.1,
+          "current_a": 1655.4,
+          "limit_a": 1401.6
+        },
+        {
+          "line_id": "way_117172072-220",
+          "line_name": "Campochiesa-Camporosso",
+          "loading_pct": 117.2,
+          "current_a": 1512.2,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_6274466-220",
+      "tripped_line_name": "relation/6274466-220",
+      "tripped_vl1": "VL_way_124220303-220",
+      "tripped_vl1_name": "Salerno Nord 220kV",
+      "tripped_vl2": "VL_virtual_relation_6274465_b_1-220",
+      "tripped_vl2_name": "virtual_relation_6274465_b_1-220 220kV",
+      "max_loading_pct": 116.8,
+      "most_loaded_line": "relation_6274465_b-220",
+      "most_loaded_line_name": "relation/6274465:b-220",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_6274465_b-220",
+          "line_name": "relation/6274465:b-220",
+          "loading_pct": 116.8,
+          "current_a": 1506.8,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_211506271-220",
+      "tripped_line_name": "Campochiesa-Vado Ligure",
+      "tripped_vl1": "VL_way_105757795-220",
+      "tripped_vl1_name": "Campochiesa 220kV",
+      "tripped_vl2": "VL_virtual_way_86112994_0-220",
+      "tripped_vl2_name": "Campochiesa-Vado Ligure 220kV",
+      "max_loading_pct": 113.5,
+      "most_loaded_line": "relation_6897671-225",
+      "most_loaded_line_name": "Camporosso - Trinite Victor",
+      "n_overloaded_lines": 3,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_6897671-225",
+          "line_name": "Camporosso - Trinite Victor",
+          "loading_pct": 113.5,
+          "current_a": 1790.7,
+          "limit_a": 1577.8
+        },
+        {
+          "line_id": "merged_way_333332920-225_1",
+          "line_name": "Camporosso-Mentone",
+          "loading_pct": 112.4,
+          "current_a": 1614.2,
+          "limit_a": 1436.1
+        },
+        {
+          "line_id": "way_117882937-220",
+          "line_name": "Campochiesa-Camporosso",
+          "loading_pct": 108.5,
+          "current_a": 1399.8,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_6274465_b-220",
+      "tripped_line_name": "relation/6274465:b-220",
+      "tripped_vl1": "VL_virtual_relation_6274465_a_1-220",
+      "tripped_vl1_name": "virtual_relation_6274465_a_1-220 220kV",
+      "tripped_vl2": "VL_virtual_relation_6274465_b_1-220",
+      "tripped_vl2_name": "virtual_relation_6274465_b_1-220 220kV",
+      "max_loading_pct": 112.5,
+      "most_loaded_line": "relation_6274466-220",
+      "most_loaded_line_name": "relation/6274466-220",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_6274466-220",
+          "line_name": "relation/6274466-220",
+          "loading_pct": 112.5,
+          "current_a": 1451.8,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_13164351-380",
+      "tripped_line_name": "relation/13164351-380",
+      "tripped_vl1": "VL_way_108020416-380",
+      "tripped_vl1_name": "Laino 380kV",
+      "tripped_vl2": "VL_way_110330925-380",
+      "tripped_vl2_name": "Altomonte Centrale 380kV",
+      "max_loading_pct": 112.4,
+      "most_loaded_line": "relation_13108145-380",
+      "most_loaded_line_name": "relation/13108145-380",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_13108145-380",
+          "line_name": "relation/13108145-380",
+          "loading_pct": 112.4,
+          "current_a": 2899.1,
+          "limit_a": 2580.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "merged_way_196642666-400_1",
+      "tripped_line_name": "merged_way/196642666-400+1",
+      "tripped_vl1": "VL_way_317499556-400",
+      "tripped_vl1_name": "Kosovo B S/S 400kV",
+      "tripped_vl2": "VL_way_1256107398-400",
+      "tripped_vl2_name": "way_1256107398-400 400kV",
+      "max_loading_pct": 111.0,
+      "most_loaded_line": "way_623828197-220",
+      "most_loaded_line_name": "way/623828197-220",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "way_623828197-220",
+          "line_name": "way/623828197-220",
+          "loading_pct": 111.0,
+          "current_a": 1431.4,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_13108145-380",
+      "tripped_line_name": "relation/13108145-380",
+      "tripped_vl1": "VL_way_109588422-380",
+      "tripped_vl1_name": "Rossano Termica 380kV",
+      "tripped_vl2": "VL_way_109756016-380",
+      "tripped_vl2_name": "Scandale 380kV",
+      "max_loading_pct": 111.0,
+      "most_loaded_line": "relation_13164351-380",
+      "most_loaded_line_name": "relation/13164351-380",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_13164351-380",
+          "line_name": "relation/13164351-380",
+          "loading_pct": 111.0,
+          "current_a": 2864.1,
+          "limit_a": 2580.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_101255904-380",
+      "tripped_line_name": "Candia-Rosara",
+      "tripped_vl1": "VL_way_36873258-380",
+      "tripped_vl1_name": "Candia 380kV",
+      "tripped_vl2": "VL_virtual_way_61940512_0-380",
+      "tripped_vl2_name": "Candia-Rosara;Rosara-Teramo 380kV",
+      "max_loading_pct": 107.1,
+      "most_loaded_line": "way_402344628_a-220",
+      "most_loaded_line_name": "Montorio-Candia",
+      "n_overloaded_lines": 2,
+      "overloaded_lines": [
+        {
+          "line_id": "way_402344628_a-220",
+          "line_name": "Montorio-Candia",
+          "loading_pct": 107.1,
+          "current_a": 1382.1,
+          "limit_a": 1290.0
+        },
+        {
+          "line_id": "way_402344628_b-220",
+          "line_name": "Montorio-Candia",
+          "loading_pct": 100.1,
+          "current_a": 1291.1,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_3710278_b-380",
+      "tripped_line_name": "relation/3710278:b-380",
+      "tripped_vl1": "VL_way_76246159-380",
+      "tripped_vl1_name": "Umspannwerk Meitingen 380kV",
+      "tripped_vl2": "VL_way_18629425-380",
+      "tripped_vl2_name": "Umspannwerk Oberbachern 380kV",
+      "max_loading_pct": 105.9,
+      "most_loaded_line": "way_41642831-220",
+      "most_loaded_line_name": "OBR-KR-SSI;Kochel - Murnau",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "way_41642831-220",
+          "line_name": "OBR-KR-SSI;Kochel - Murnau",
+          "loading_pct": 105.9,
+          "current_a": 1366.7,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_117172072-220",
+      "tripped_line_name": "Campochiesa-Camporosso",
+      "tripped_vl1": "VL_way_105757795-220",
+      "tripped_vl1_name": "Campochiesa 220kV",
+      "tripped_vl2": "VL_virtual_way_117172072_1-220",
+      "tripped_vl2_name": "Campochiesa-Camporosso 220kV",
+      "max_loading_pct": 105.3,
+      "most_loaded_line": "relation_6897671-225",
+      "most_loaded_line_name": "Camporosso - Trinite Victor",
+      "n_overloaded_lines": 2,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_6897671-225",
+          "line_name": "Camporosso - Trinite Victor",
+          "loading_pct": 105.3,
+          "current_a": 1661.7,
+          "limit_a": 1577.8
+        },
+        {
+          "line_id": "merged_way_333332920-225_1",
+          "line_name": "Camporosso-Mentone",
+          "loading_pct": 103.7,
+          "current_a": 1488.7,
+          "limit_a": 1436.1
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_617219382-220",
+      "tripped_line_name": "Aversa-Fratta",
+      "tripped_vl1": "VL_way_132701980-220",
+      "tripped_vl1_name": "Aversa 220kV",
+      "tripped_vl2": "VL_way_132702940-220",
+      "tripped_vl2_name": "Frattamaggiore 220kV",
+      "max_loading_pct": 104.1,
+      "most_loaded_line": "way_132702098-220",
+      "most_loaded_line_name": "Fratta-Santa Maria Capua Vetere",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "way_132702098-220",
+          "line_name": "Fratta-Santa Maria Capua Vetere",
+          "loading_pct": 104.1,
+          "current_a": 1342.6,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_5674501-400",
+      "tripped_line_name": "MANDAL71WARAN",
+      "tripped_vl1": "VL_way_1271288345-400",
+      "tripped_vl1_name": "MANDARINS 400kV",
+      "tripped_vl2": "VL_way_85203486-400",
+      "tripped_vl2_name": "WARANDE 400kV",
+      "max_loading_pct": 103.8,
+      "most_loaded_line": "relation_5674507-400",
+      "most_loaded_line_name": "ATTAQL72WARAN",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_5674507-400",
+          "line_name": "ATTAQL72WARAN",
+          "loading_pct": 103.8,
+          "current_a": 2677.9,
+          "limit_a": 2580.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_117882937-220",
+      "tripped_line_name": "Campochiesa-Camporosso",
+      "tripped_vl1": "VL_way_103653567-220",
+      "tripped_vl1_name": "Camporosso 220kV",
+      "tripped_vl2": "VL_virtual_way_117882921_0-220",
+      "tripped_vl2_name": "Campochiesa-Camporosso 220kV",
+      "max_loading_pct": 103.6,
+      "most_loaded_line": "way_211506264-220",
+      "most_loaded_line_name": "Campochiesa-Vado Ligure",
+      "n_overloaded_lines": 2,
+      "overloaded_lines": [
+        {
+          "line_id": "way_211506264-220",
+          "line_name": "Campochiesa-Vado Ligure",
+          "loading_pct": 103.6,
+          "current_a": 1663.1,
+          "limit_a": 1605.2
+        },
+        {
+          "line_id": "way_211506271-220",
+          "line_name": "Campochiesa-Vado Ligure",
+          "loading_pct": 100.4,
+          "current_a": 1407.3,
+          "limit_a": 1401.6
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_132702098-220",
+      "tripped_line_name": "Fratta-Santa Maria Capua Vetere",
+      "tripped_vl1": "VL_way_132701980-220",
+      "tripped_vl1_name": "Aversa 220kV",
+      "tripped_vl2": "VL_way_132702940-220",
+      "tripped_vl2_name": "Frattamaggiore 220kV",
+      "max_loading_pct": 103.5,
+      "most_loaded_line": "way_617219382-220",
+      "most_loaded_line_name": "Aversa-Fratta",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "way_617219382-220",
+          "line_name": "Aversa-Fratta",
+          "loading_pct": 103.5,
+          "current_a": 1334.7,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_1637163-380",
+      "tripped_line_name": "380 kV Diele (DE) - Meeden (NL) zwart",
+      "tripped_vl1": "VL_way_87342758-380",
+      "tripped_vl1_name": "Meeden 380kV",
+      "tripped_vl2": "VL_way_1280840212-380",
+      "tripped_vl2_name": "HGÜ BorWin2 Umspannwerk Diele 380kV",
+      "max_loading_pct": 102.1,
+      "most_loaded_line": "relation_9981859-380",
+      "most_loaded_line_name": "380 kV Diele (DE) - Meeden (NL) wit",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_9981859-380",
+          "line_name": "380 kV Diele (DE) - Meeden (NL) wit",
+          "loading_pct": 102.1,
+          "current_a": 2634.3,
+          "limit_a": 2580.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_9981859-380",
+      "tripped_line_name": "380 kV Diele (DE) - Meeden (NL) wit",
+      "tripped_vl1": "VL_way_87342758-380",
+      "tripped_vl1_name": "Meeden 380kV",
+      "tripped_vl2": "VL_way_1280840212-380",
+      "tripped_vl2_name": "HGÜ BorWin2 Umspannwerk Diele 380kV",
+      "max_loading_pct": 102.1,
+      "most_loaded_line": "relation_1637163-380",
+      "most_loaded_line_name": "380 kV Diele (DE) - Meeden (NL) zwart",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_1637163-380",
+          "line_name": "380 kV Diele (DE) - Meeden (NL) zwart",
+          "loading_pct": 102.1,
+          "current_a": 2634.3,
+          "limit_a": 2580.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_5674507-400",
+      "tripped_line_name": "ATTAQL72WARAN",
+      "tripped_vl1": "VL_way_85198005-400",
+      "tripped_vl1_name": "ATTAQUES (LES) 400kV",
+      "tripped_vl2": "VL_way_85203486-400",
+      "tripped_vl2_name": "WARANDE 400kV",
+      "max_loading_pct": 101.7,
+      "most_loaded_line": "relation_5674501-400",
+      "most_loaded_line_name": "MANDAL71WARAN",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_5674501-400",
+          "line_name": "MANDAL71WARAN",
+          "loading_pct": 101.7,
+          "current_a": 2624.0,
+          "limit_a": 2580.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "merged_way_116697004-380_2",
+      "tripped_line_name": "Mantova Centrale-Mantova",
+      "tripped_vl1": "VL_way_412909650-380",
+      "tripped_vl1_name": "Mantova 220 380kV",
+      "tripped_vl2": "VL_way_116697005-380",
+      "tripped_vl2_name": "Mantova 380kV",
+      "max_loading_pct": 101.4,
+      "most_loaded_line": "way_131292115-220",
+      "most_loaded_line_name": "Sandrà-Mantova",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "way_131292115-220",
+          "line_name": "Sandrà-Mantova",
+          "loading_pct": 101.4,
+          "current_a": 1308.1,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_13164355-380",
+      "tripped_line_name": "relation/13164355-380",
+      "tripped_vl1": "VL_way_84696559-380",
+      "tripped_vl1_name": "Santa Sofia 380kV",
+      "tripped_vl2": "VL_way_85196861-380",
+      "tripped_vl2_name": "Montecorvino 380kV",
+      "max_loading_pct": 100.7,
+      "most_loaded_line": "relation_6274465_b-220",
+      "most_loaded_line_name": "relation/6274465:b-220",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_6274465_b-220",
+          "line_name": "relation/6274465:b-220",
+          "loading_pct": 100.7,
+          "current_a": 1299.3,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_5989322_b-400",
+      "tripped_line_name": "P.ORGL71TAVEL",
+      "tripped_vl1": "VL_way_110086345-400",
+      "tripped_vl1_name": "TAVEL 400kV",
+      "tripped_vl2": "VL_way_393286774-400",
+      "tripped_vl2_name": "ISCLES (LES) 400kV",
+      "max_loading_pct": 100.7,
+      "most_loaded_line": "relation_10408156_b-225",
+      "most_loaded_line_name": "relation/10408156:b-225",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_10408156_b-225",
+          "line_name": "relation/10408156:b-225",
+          "loading_pct": 100.7,
+          "current_a": 1299.6,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_666594586-400",
+      "tripped_line_name": "KYT KARDIAS - ALBANIA",
+      "tripped_vl1": "VL_way_249066440-400",
+      "tripped_vl1_name": "Operatori i Sistemit të Transmetimit Njësia Operative Korçë 400kV",
+      "tripped_vl2": "VL_way_1256844098-400",
+      "tripped_vl2_name": "ΚΥΤ Καρδιάς 400kV",
+      "max_loading_pct": 100.5,
+      "most_loaded_line": "way_252077524-400",
+      "most_loaded_line_name": "Melitis - Bitola 400 kV Line",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "way_252077524-400",
+          "line_name": "Melitis - Bitola 400 kV Line",
+          "loading_pct": 100.5,
+          "current_a": 2592.4,
+          "limit_a": 2580.0
+        }
+      ]
+    }
+  ]
+}

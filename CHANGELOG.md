@@ -155,15 +155,43 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   Fessenheim recognised; no net-export line on a grid without neighbours; a
   network without generation types says so instead of a one-colour bar.
 
-- **Typed networks read as they are**: the map also types production from a
-  generator's `carrier` tag (powerplantmatching fuel names), groups nuclear
-  units by their `plant` tag on the plant's site (`plant_lon` / `plant_lat`),
-  keeps FICTITIOUS loads tagged `neighbour` — exchanges with countries the grid
-  leaves out — out of consumption and draws them towards named neighbour
-  badges, and credits the hour and data of a `situation.json` beside the
-  network. Plant matching splits hydro (run-of-river / reservoir / pumped
-  storage) and wind (onshore / offshore), records thermal efficiencies and lets
-  offshore farms land up to 250 km away.
+### PyPSA-EUR — the European grid rebuilt on real hours
+
+- The pan-European bundle's own situation is synthetic (75 GW of load spread
+  over 29 countries, every substation producing the same 14 MW). Two new
+  pipeline scripts rebuild it on a **real hour**, as extra networks under
+  `data/pypsa_eur_eur220_225_380_400/situations/` (the grid itself — topology,
+  names, actions — unchanged): `fetch_energy_charts.py` downloads each
+  country's load, production by type, physical cross-border flows and
+  installed capacity from the **Energy-Charts API** (Fraunhofer ISE, CC BY 4.0);
+  `build_situation.py` spreads the loads, creates one generator per (bus, fuel)
+  for the matched plants (nuclear unit by unit), dispatches them, fixes the
+  exchanges the grid leaves out (GB, the Nordics, Turkey, HVDC-only borders)
+  as fictitious loads, balances an AC load flow and restarts the line limits
+  from their OSM ratings.
+- **Two dispatches** per hour: `observed` (each country's real output of each
+  type) and `opf` — a **PyPSA** linear optimal power flow (`dispatch_opf.py`,
+  HiGHS, run in its own environment) with merit-order costs and line limits.
+  Four situations: **14 January 2025 9:00** (France's 2025 consumption peak,
+  386 GW of load) and **1 July 2025 13:00** (heatwave midday, 326 GW), each
+  observed and optimal. Every country's exchanges match the observed physical
+  flows (Germany exports 4.1 GW, France imports 3.6 GW in January).
+- The **Context tab** reads them as they are: fuel types from the generators'
+  `carrier` tag, nuclear units at their real output grouped by plant, exchanges
+  with countries outside the grid as named neighbour badges (not consumption),
+  and the hour, its dispatch and both sources credited on the situation card.
+- Plant matching splits hydro (run-of-river / reservoir / pumped storage) and
+  wind (onshore / offshore), records thermal efficiencies (the optimal
+  dispatch's merit order) and lets offshore farms land up to 250 km away.
+  `calibrate_thermal_limits.py` gains `--chunk-size` (a pan-European N-1 table
+  exceeds the GraalVM heap).
+- **Game Mode's Medium tier plays the real hours**: one study per situation
+  (Carrières – Terrier on the January peak, Divača – Redipuglia on its optimal
+  dispatch, Les Attaques – Warande at the July midday, Diele – Meeden on its
+  optimal dispatch; 101–109 % overloads) instead of the three studies on the
+  synthetic situation (still described in the README). Each is remediable by
+  the expert model, checked by `e2e_game_session.py --grid custom` (new: any
+  network, any contingencies).
 
 ### Game Mode — Matpower dataset re-graded after `expert_op4grid_recommender@0.3.3.post1`
 

@@ -499,6 +499,106 @@ python scripts/pypsa_eur/build_pipeline.py --country "" --voltages 220,225,380,4
 The step reads the OSM `buses.csv` (`data/pypsa_eur_osm/`, as step 2) for the
 buses' exact coordinates, and `bus_id_mapping.json` from the bundle.
 
+### Real-hour situations (`fetch_energy_charts.py` + `build_situation.py`)
+
+The bundle's own situation is synthetic: 75 GW of load and 85 GW of set
+points (`convert_pypsa_to_xiidm.py`, constants sized for France) spread over
+**all** its countries — the European grid carries a fifth of a real hour,
+every substation producing the same 14 MW. Two scripts rebuild a **real
+hour** on the same grid — topology, names and actions unchanged — as extra
+networks under `situations/` (the bundle's own network stays as it is):
+
+1. **`fetch_energy_charts.py`** downloads, per country, one hour from the
+   **Energy-Charts API** (Fraunhofer ISE, https://api.energy-charts.info —
+   data **CC BY 4.0**, attribution *energy-charts.info*): load and net
+   production per type (`total_power` — industrial self-supply included —
+   where published, i.e. Germany; else `public_power`), cross-border
+   physical flows (`cbpf`), installed capacity per type.
+2. **`build_situation.py`** rebuilds the network on it:
+   - **loads** — each country's load, spread over its buses with the
+     synthetic load's own key (bus connectivity). A country's figures rarely
+     close, so its load is the one its production and physical imports
+     serve (within 20 % of the reported load), which keeps every country's
+     exchanges at their observed level once the flows are solved;
+   - **plants** — one generator per (bus, fuel type) for the plants matched
+     by step 7, nuclear unit by unit (`G_<bus>_NUC<k>`, named, with
+     `plant` / `plant_lon` / `plant_lat` properties); every generator tagged
+     with its fuel (`carrier` property). The capacity the database misses is
+     added: rooftop solar spread by load over every bus, onto each bus's own
+     `G_<bus>`, which becomes its solar generator; other types scale their
+     matched plants up (≤ 3×), the rest — or all of a type no plant was
+     matched for, such as the 13.7 GW a July noon's Dutch data leave untyped
+     (*others*) — spread by load over the country's 20 % largest load buses;
+   - **dispatch** — `--dispatch observed`: each country's observed output of
+     each type, shared over its plants of that type by capacity (one level
+     per type per country). `--dispatch opf`: a **PyPSA** linear optimal
+     power flow (`dispatch_opf.py`, HiGHS — the PyPSA-Eur way) on the same
+     grid: real loads, renewables / nuclear / hydro capped at the hour's
+     observed availability in their country, thermal plants in merit order
+     (2025 fuel and CO₂ prices over each plant's efficiency), lines limited
+     to 70 % of their OSM rating, penalised load shedding / spill;
+   - **exchanges** with what the grid leaves out (Great Britain, the
+     Nordics, Turkey…) and over its HVDC-only borders (BE–DE, DK–NL, IT–GR,
+     IT–ME) — fixed injections, FICTITIOUS loads `X_<country>_<bus>` (tagged
+     `neighbour`) at the converter buses of the OSM HVDC links, from the
+     observed physical flows;
+   - an **AC load flow** (OpenLoadFlow, RTE parameters); loads trimmed so
+     the slack covers only the grid's own losses; `caseDate` = the hour;
+     every line's limit restarts from its OSM rating (√3·U·I_nom·circuits).
+   Countries the data lack keep their synthetic load scaled to the observed
+   level and produce it plus what their neighbours report importing from
+   them (Albania, Ukraine; Montenegro in July). Denmark is DK1 alone (×0.6);
+   Lithuania is its border bus, feeding the exchange Poland reports.
+3. `calibrate_thermal_limits.py --chunk-size 1000` then
+   `generate_n1_overloads.py --chunk-size 1000`, as for any bundle.
+
+```bash
+B=data/pypsa_eur_eur220_225_380_400
+python scripts/pypsa_eur/fetch_energy_charts.py --network $B/network.xiidm \
+    --at 2025-01-14T08:00Z --out $B/situations/energy_charts_2025-01-14T0800Z.json
+python scripts/pypsa_eur/build_situation.py --bundle $B \
+    --observed $B/situations/energy_charts_2025-01-14T0800Z.json \
+    --dispatch observed --osm-dir data/pypsa_eur_osm --out $B/situations/2025-01-14_0800Z_observed
+# The PyPSA dispatch runs in its own environment (PyPSA pulls pandas 3):
+python -m venv venv_opf && venv_opf/bin/pip install pypsa highspy
+python scripts/pypsa_eur/build_situation.py ... --dispatch opf --opf-python venv_opf/bin/python \
+    --out $B/situations/2025-01-14_0800Z_opf
+python scripts/pypsa_eur/calibrate_thermal_limits.py --network $B/situations/2025-01-14_0800Z_opf --chunk-size 1000
+python scripts/pypsa_eur/generate_n1_overloads.py --network $B/situations/2025-01-14_0800Z_opf --chunk-size 1000
+```
+
+Each situation folder ships `network.xiidm.zip` (2.7 MB; decompressed on
+load, and by the Docker build), `situation.json` (the hour, the dispatch, the
+sources, and per country the observed vs model load, production by type and
+net exports) and `n1_overload_contingencies.json`; the Energy-Charts hours
+they were built from sit beside them (`energy_charts_<hour>.json`). An `opf`
+build also leaves the PyPSA problem it solved in `opf_problem/` — local
+only, not shipped. The Context tab names the hour and credits both sources.
+
+| Situation | Load | Losses | N-1 overloads | Notes |
+|---|---|---|---|---|
+| 14 Jan 2025 09:00 CET, observed | 386 GW | 5.3 GW | 139 (82 limits raised) | France's 2025 peak hour: FR nuclear 52.8 GW, DE exports 4.1 GW, FR imports 3.6 GW (3.7 observed) |
+| 14 Jan 2025, PyPSA dispatch | 386 GW | 5.1 GW | 109 (33) | DE lignite + coal 29.5 GW (16.2 observed, gas dearer); FR nuclear backed down to 45 GW where its 400 kV outlets reach 70 % of their rating; 1.8 GW shed in French 225 kV pockets |
+| 1 Jul 2025 13:00 CEST, observed | 326 GW | 4.7 GW | 74 (37) | Heatwave midday: DE solar 54.6 GW, FR nuclear 37.6 GW, FR exports 3.1 GW (2.7) |
+| 1 Jul 2025, PyPSA dispatch | 329 GW | 3.0 GW | 33 (10) | FR exports 8.6 GW, GR 5.1 GW; 66 MW shed |
+
+*N-1 overloads*: contingencies, of the 7 173 tested, that leave a line above
+100 % once `calibrate_thermal_limits.py` has raised the limits in brackets
+(N-1 peak capped at 130 %). Before calibration the observed dispatches load
+some lines far beyond their OSM rating in N already (258 % in January, 286 %
+in July) — no limit constrained them, so every contingency overloads. The
+optimal dispatch respects 70 % of the ratings in DC, so its AC flows need
+fewer raises (115 % and 90 % N-state peaks) and leave fewer overloads.
+
+Limits of the method: loads follow connectivity within a country, not
+population; the observed dispatch gives all plants of one type in a country
+the same level (per-unit outputs need unit-level data the open sources do
+not give); the PyPSA dispatch follows its cost assumptions, not the hour's
+market; HVDC links on borders that also have AC lines (FR–ES, FR–IT) are
+left to the AC lines.
+
+
+
 ### Line Impedances (Step 6)
 
 

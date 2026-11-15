@@ -62,7 +62,18 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 log = logging.getLogger(__name__)
 
 
-def _run_security(xiidm_path: Path):
+#: In a chunked sweep, only the post-contingency rows loaded at least this
+#: much (of the current limit) are kept — all the overload statistics need.
+KEEP_LOADING = 0.8
+
+
+def _run_security(xiidm_path: Path, chunk_size: int = 0):
+    """N-state and post-contingency currents of every line.
+
+    ``chunk_size`` > 0 runs the contingencies in batches — a pan-European
+    grid's full table (7 000 contingencies × 7 000 lines) exceeds the
+    GraalVM heap — keeping each line's peak and the rows near or over the
+    current limits."""
     net = pp.network.load(str(xiidm_path))
     try:
         from expert_op4grid_recommender.utils.make_env_utils import (
@@ -77,32 +88,6 @@ def _run_security(xiidm_path: Path):
     lines_df = net.get_lines()
     line_ids = list(lines_df.index)
 
-    sa = pp.security.create_analysis()
-    sa.add_single_element_contingencies(line_ids)
-    sa.add_monitored_elements(branch_ids=line_ids)
-    result = sa.run_ac(net, parameters=lf_params)
-
-    br = result.branch_results
-    if "operator_strategy_id" in br.index.names:
-        br = br.droplevel("operator_strategy_id")
-
-    cont_ids = br.index.get_level_values("contingency_id")
-    branch_ids = br.index.get_level_values("branch_id")
-    i_max = br[["i1", "i2"]].abs().max(axis=1)
-
-    # N-state currents (rows where contingency_id == "")
-    n_mask = cont_ids == ""
-    i_n = pd.Series(i_max[n_mask].values, index=branch_ids[n_mask])
-
-    # Post-contingency currents (exclude self-trip rows)
-    post_mask = (cont_ids != "") & (cont_ids != branch_ids)
-    post = pd.DataFrame({
-        "contingency_id": cont_ids[post_mask],
-        "branch_id": branch_ids[post_mask],
-        "i": i_max[post_mask].values,
-    })
-    i_n1max = post.groupby("branch_id")["i"].max()
-
     # Current permanent limits from the loaded network
     ol = net.get_operational_limits().reset_index()
     cur_lim = (
@@ -111,6 +96,47 @@ def _run_security(xiidm_path: Path):
         .set_index("element_id")["value"]
     )
 
+    size = chunk_size if chunk_size > 0 else len(line_ids)
+    i_n = None
+    posts, peaks = [], []
+    for start in range(0, len(line_ids), size):
+        chunk = line_ids[start:start + size]
+        if size < len(line_ids):
+            log.info("  contingencies %d–%d of %d …", start + 1, start + len(chunk), len(line_ids))
+        sa = pp.security.create_analysis()
+        sa.add_single_element_contingencies(chunk)
+        sa.add_monitored_elements(branch_ids=line_ids)
+        result = sa.run_ac(net, parameters=lf_params)
+
+        br = result.branch_results
+        if "operator_strategy_id" in br.index.names:
+            br = br.droplevel("operator_strategy_id")
+
+        cont_ids = br.index.get_level_values("contingency_id")
+        branch_ids = br.index.get_level_values("branch_id")
+        i_max = br[["i1", "i2"]].abs().max(axis=1)
+
+        # N-state currents (rows where contingency_id == "")
+        n_mask = cont_ids == ""
+        if i_n is None:
+            i_n = pd.Series(i_max[n_mask].values, index=branch_ids[n_mask])
+
+        # Post-contingency currents (exclude self-trip rows)
+        post_mask = (cont_ids != "") & (cont_ids != branch_ids)
+        post = pd.DataFrame({
+            "contingency_id": cont_ids[post_mask],
+            "branch_id": branch_ids[post_mask],
+            "i": i_max[post_mask].values,
+        })
+        peaks.append(post.groupby("branch_id")["i"].max())
+        if size < len(line_ids):
+            lim = post["branch_id"].map(cur_lim).astype(float)
+            post = post[post["i"] >= KEEP_LOADING * lim.where(lim > 0)]
+        posts.append(post)
+        del result, br
+
+    post = pd.concat(posts, ignore_index=True)
+    i_n1max = pd.concat(peaks).groupby(level=0).max()
     return line_ids, i_n, i_n1max, cur_lim, post
 
 
@@ -186,6 +212,10 @@ def main() -> None:
                         help="Warn if <this fraction of contingencies overload (default: 0.02)")
     parser.add_argument("--dry-run", action="store_true",
                         help="Compute new limits but don't patch the file")
+    parser.add_argument("--chunk-size", type=int, default=0,
+                        help="Run the contingencies in batches of this size (0 = one batch); "
+                             "e.g. 1000 on a pan-European grid, whose full table exceeds the "
+                             "GraalVM heap")
     args = parser.parse_args()
 
     network_dir = Path(args.network)
@@ -201,7 +231,7 @@ def main() -> None:
     # ── Pass 1: measure currents on the existing network ─────────────────
     log.info("Pass 1: security analysis on input network …")
     t0 = time.time()
-    line_ids, i_n, i_n1max, cur_lim, post = _run_security(xiidm_path)
+    line_ids, i_n, i_n1max, cur_lim, post = _run_security(xiidm_path, args.chunk_size)
     log.info("  Done in %.1fs", time.time() - t0)
 
     # Current loading stats
@@ -255,7 +285,7 @@ def main() -> None:
     # ── Pass 2: verify on the updated network ────────────────────────────
     log.info("Pass 2: security analysis on calibrated network …")
     t0 = time.time()
-    line_ids2, i_n2, i_n1max2, cur_lim2, post2 = _run_security(out_path)
+    line_ids2, i_n2, i_n1max2, cur_lim2, post2 = _run_security(out_path, args.chunk_size)
     log.info("  Done in %.1fs", time.time() - t0)
 
     loading_n = (i_n2 / cur_lim2.reindex(i_n2.index)).fillna(0) * 100
