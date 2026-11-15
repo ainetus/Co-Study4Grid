@@ -7,6 +7,34 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Frontend — large-grid pan/zoom: labels and flow values stay on screen
+
+- **The canvas proxy draws the flow values and VL labels**, once they are
+  readable (≥ 4 px on screen). They stay on screen through a pan or zoom and
+  when it ends, instead of coming back with the live diagram: at reading zoom
+  on the full European grid they showed 0.75–0.8 s after the operator stopped
+  (the 400 ms pause, then a ~0.3 s bake of the whole SVG); now they are on
+  the proxy's frames throughout, and the swap to the live SVG does not show
+  (`utils/svg/canvasProxyText.ts`: flow `<text>` with its transforms, anchor,
+  baseline and white halo; label boxes at their exact position, size and line
+  box from the live layout). Gesture frames short of reading zoom cost what
+  they did (interleaved A/B, median of 3); at reading zoom, where they now
+  carry the text, ~8–9 % fewer fps (42–53 fps). The proxy frame now matches
+  the settled diagram to 0.4 % of pixels at reading zoom (was 9.3 %).
+- **No new cost before the text is readable**: the flow and label layers are
+  read in idle slices of ≤ 40 ms after the network (paused during gestures —
+  read at once they made a 410 ms task), the flow layer follows the live
+  zoom tier (hidden at the overview), the arrows and label backgrounds come
+  with their text, and hidden labels (legend toggle) are not built.
+- **Exact mapping**: the proxy maps the viewBox with the live SVG's
+  fractional box — the panel's integer height put it ~0.3 px off at the
+  edges, a 1 px jump of the text at the swap (proxy / live pixel diff at
+  reading zoom 2.2 % → 0.4 %).
+- `canvasProxy.ts` split under the module-size ceiling
+  (`canvasProxyShapes.ts`, `canvasProxyText.ts`); harness probes `reveal`
+  and `fidelity`, reading-zoom scenarios `pan_deep` / `zoom_in_deep`; the
+  reference doc gains §3.4 and rules 9–12.
+
 ### Frontend — large-grid pan/zoom: canvas gesture proxy (new default) + gesture fixes
 
 - **New default pan/zoom mode: "Canvas proxy"** (Settings → Configurations →

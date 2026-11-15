@@ -7,7 +7,9 @@ fixes B1–B3 / B5 ship as the `'canvas'` pan/zoom mode — the default since an
 operator trial on this grid. Production measurements, and the compositing
 pitfalls the prototype did not hit, in §8; the mechanism's reference (design,
 time budget, decision log, next levers) is
-[`canvas-gesture-proxy.md`](canvas-gesture-proxy.md).
+[`canvas-gesture-proxy.md`](canvas-gesture-proxy.md). Since then the proxy also
+draws the flow values and VL labels once readable, so they no longer come
+back ~0.7 s after the gesture (reference doc §3.4).
 **Grid:** `pypsa_eur_eur220_225_380_400` — 5,247 voltage levels, 7,853
 branches. N-state NAD after `processSvg`: **9.9 MB, 98,960 DOM nodes**.
 **Question:** how fluid are zoom-in / zoom-out and navigation across the

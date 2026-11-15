@@ -220,6 +220,9 @@ export const usePanZoom = (
         getContainer: () => svgRef.current,
         getExtent: () => originalVbRef.current,
         haloWidth: (vb) => (originalVbRef.current ? computeHaloWidthPx(vb, originalVbRef.current) : null),
+        // The tier the live SVG gets at `vb`: the proxy hides the layers
+        // App.css hides there (flow values at the overview tier).
+        tierOf: (vb) => (originalVbRef.current ? computeZoomTier(vb, originalVbRef.current) : 'detail'),
     }));
     const canvasModeActive = () => proxyAllowedRef.current && getSmoothPanZoomMode() === 'canvas';
 
@@ -433,7 +436,13 @@ export const usePanZoom = (
             if (active && canvasModeActive()) canvasProxy.prewarm();
         }) : null;
         if (container) resizeObs?.observe(container);
-        return () => { obs.disconnect(); themeObs.disconnect(); resizeObs?.disconnect(); };
+        // The legend's label toggle is a class on the container
+        // (`nad-hide-vl-labels`): the proxy draws the labels it shows.
+        const containerObs = new MutationObserver(() => {
+            if (active && canvasModeActive()) canvasProxy.invalidate();
+        });
+        if (container) containerObs.observe(container, { attributes: true, attributeFilter: ['class'] });
+        return () => { obs.disconnect(); themeObs.disconnect(); resizeObs?.disconnect(); containerObs.disconnect(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [active, initialViewBox]);
 

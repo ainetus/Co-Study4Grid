@@ -716,5 +716,22 @@ describe('usePanZoom', () => {
             act(() => { vi.advanceTimersByTime(1000); });
             expect(svg.getAttribute('viewBox')).toBe('10 20 300 240');
         });
+
+        it('rebuilds the proxy when the legend hides or shows the labels (a class on the container)', async () => {
+            const { container } = setup();
+            press(container, 100);
+            move(150);
+            flushFrames();
+            release();
+            act(() => { vi.advanceTimersByTime(400); });
+            flushFrames();
+            const before = container.querySelector('canvas.nad-canvas-proxy');
+            expect(before).not.toBeNull();
+            await act(async () => { container.classList.add('nad-hide-vl-labels'); });
+            act(() => { vi.advanceTimersByTime(600 + 200); }); // quiet time, then the idle build
+            const after = container.querySelector('canvas.nad-canvas-proxy');
+            expect(after).not.toBeNull();
+            expect(after).not.toBe(before);
+        });
     });
 });

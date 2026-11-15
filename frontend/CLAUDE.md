@@ -218,6 +218,8 @@ frontend/
         │   │                          #   load-time pass invoked by svgBoost §6)
         │   ├── canvasProxy.ts         # - canvas gesture proxy: grouped Path2D copy
         │   │                          #   of the NAD drawn during 'canvas' pan/zoom
+        │   ├── canvasProxyShapes.ts   #   its transforms, geometry, shape styles
+        │   ├── canvasProxyText.ts     #   its flow values + VL labels (text runs)
         │   └── feederLabels.ts        # - SLD feeder relabel + friendly-name↔IIDM-id
         │                              #   overload bridge (see useSldFeederRelabel +
         │                              #   docs/features/sld-diagram-feeder-labels.md)
@@ -577,8 +579,30 @@ Modes:
     generation token drops builds queued before a dispose (tab hidden,
     diagram replaced). Owner-window rAF / idle callbacks, so detached
     windows work.
-  - Flow values, labels and the overview's pins are not drawn — they come
-    back with the settle — so `ActionOverviewDiagram` opts out
+  - **Flow values and VL labels are drawn too, once readable**
+    (`utils/svg/canvasProxyText.ts`, `TEXT_MIN_PX` = 4 px on screen): they
+    stay on screen through the gesture and the settle instead of coming back
+    ~0.7 s after the operator stops. Flow `<text>` keeps its `translate ·
+    scale · rotate`, anchor, `dominant-baseline: middle` (x-height / 2) and
+    the white halo painted first; the HTML label boxes take their exact
+    inline `left` / `top`, their size and line boxes from the live layout,
+    and their font metrics from the proxy's own context (the engine that
+    laid them out). The flow layer follows the live tier rule (`tierOf`:
+    hidden at the overview tier, as App.css), arrows and connectors wait
+    until they are 4 px across on screen and a label's background until its
+    font is (`LOD_MIN_PX`: the arrows come with their flow values, the
+    backgrounds with their text — drawn earlier, thousands of them cost zoom
+    bursts and detail pans 9–20 % fps, on the GPU side), and the legend's
+    label toggle
+    (`nad-hide-vl-labels` on the container, observed by usePanZoom)
+    rebuilds the proxy. Those layers — two thirds of the NAD's nodes — are
+    read in idle slices of ≤ 40 ms after the network itself (`step()`),
+    paused during gestures; the overview cache re-bakes once they are in.
+    The proxy maps the viewBox with the live SVG's fractional box
+    (`getBoundingClientRect`): the panel's integer `clientHeight` put it
+    ~0.3 px off at the edges — invisible on lines, a visible 1 px jump on
+    text at the swap.
+  - The overview's pins are not drawn, so `ActionOverviewDiagram` opts out
     (`usePanZoom(..., { gestureProxy: false })`): its pins and dimming are
     the point of that view.
   - Falls back to the classic path for a gesture when no proxy can be drawn:

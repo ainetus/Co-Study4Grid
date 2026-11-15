@@ -183,6 +183,10 @@ const SCENARIOS = {
   pan_region: { setup: { pre: 10 }, gesture: () => dragEvents([at(0.3, 0.5), at(0.7, 0.55)], 1000) },
   // Drag-pan at detail zoom (~12 % width).
   pan_detail: { setup: { pre: 20 }, gesture: () => dragEvents([at(0.3, 0.5), at(0.7, 0.55)], 1000) },
+  // Drag-pan at reading zoom (~4 % width: labels and flow values ~10 px, readable).
+  pan_deep: { setup: { pre: 34 }, gesture: () => dragEvents([at(0.3, 0.5), at(0.7, 0.55)], 1000) },
+  // Zoom from detail to reading zoom: the text becomes readable mid-gesture (~10 % → ~4 %).
+  zoom_in_deep: { setup: { pre: 24 }, gesture: () => wheelEvents({ at: at(0.45, 0.55), notches: 10, dir: -1, interval: 40 }) },
   // Navigate across Europe at region zoom: 4 successive drags with short regrab pauses.
   navigate_region: { setup: { pre: 10, fx: 0.2, fy: 0.75 }, gesture: () => {
     const legs = [[at(0.8, 0.3), at(0.2, 0.7)], [at(0.8, 0.3), at(0.2, 0.7)], [at(0.7, 0.2), at(0.3, 0.8)], [at(0.8, 0.5), at(0.2, 0.5)]];

@@ -69,7 +69,21 @@ node audit_probe.mjs wheel-hits   # hit tests in a 12-notch burst: click-through
 node audit_probe.mjs rebuild      # proxy rebuild vs an Inspect jump; SVG mutations per jump
 node audit_probe.mjs detached     # a canvas-mode drag in a detached window
 node audit_probe.mjs layers       # composited layers before / during a gesture
+node audit_probe.mjs reveal       # when labels / flow values are on screen after a gesture (--trace: the bake's split)
+node audit_probe.mjs fidelity --out-dir shots   # proxy frame vs settled live SVG, pixel diff + PNGs
 ```
+
+`reveal` zooms to region / detail / reading zoom (and drags at reading
+zoom) and times, from the last input: the last proxy frame (and whether it
+drew the text), the settle (live viewBox written), the canvas clear, and the
+first frame after it — when the live SVG is on screen, since the clear's
+commit waits for the bake's re-raster. `fidelity` takes a screenshot of the
+settled diagram, then one of the proxy at the same view (press, 1 px out and
+back, screenshot, then a real move before the release: a release where the
+press was is a click, and a click on a label opens its SLD over the diagram).
+
+The `pan_deep` and `zoom_in_deep` scenarios work at reading zoom (~4 % of
+the extent: labels and flow values ~10 px), where the proxy draws text.
 
 The probes inject styles and listeners and remove them; restart the session
 for a clean state between runs. Reference outputs (2026-11-15) are in
@@ -85,6 +99,8 @@ running detached).
 | `canvas_trace_breakdowns.txt` | Trace breakdowns of steps 1–4 (the display-toggle stall, the opacity flip, will-change, the final design) |
 | `final_gpu_off.json`, `final2_gpu_canvas.json`, `final2_sw_canvas.json` | The final matrix: classic path with the gesture fixes, canvas GPU, canvas software raster |
 | `jumps_main_off.json`, `jumps_branch_off.json`, `jumps_branch_canvas.json` | Unzoom / Inspect measured back to back on `main` and on the branch (classic, canvas) |
+| `text_il_main.json`, `text_il_branch.json` | Flow values and labels on the proxy (reference doc §2, §3.4): the interleaved A/B against `main`, one result per run |
+| `text_reveal.txt`, `text_fidelity.md`, `text_on_proxy_reading_zoom.png` | The `reveal` and `fidelity` probes on both builds (and the intermediate variants), the side-by-side frames at reading zoom |
 
 ## Pitfalls
 
@@ -95,3 +111,15 @@ running detached).
   `network.xiidm.zip` is then 132 bytes. Point the config at a checkout with
   the real files, or run `git lfs pull`.
 - **Traces are 10–40 MB per gesture**: trace one scenario at a time.
+- **Interleave A/B runs when the load moves.** On a busy evening two
+  back-to-back blocks of the same build moved by 10–30 %: keep a session per
+  build (two backends, two `--port`s) and alternate them scenario by scenario
+  with `--attach 1 --keep 1 --scenarios <one> --reps 1`, flipping the order
+  every repetition.
+- **A region-zoom pan can start inside the previous bake's re-raster**
+  (~1–1.4 s on the Iris Xe under load): the harness waits 1.2 s after the
+  pre-zoom, and the interval the raster blocked counts as the gesture's first
+  frame (a 0.7–1.1 s "max frame", fps down to 15–18). It hits every build
+  alike — compare A/B runs made back to back.
+- **`pkill -f '--remote-debugging-port=…'` kills its own shell** (the pattern
+  is in its command line): use `pkill -f '[r]emote-debugging-port=9351'`.

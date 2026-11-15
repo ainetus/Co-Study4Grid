@@ -6,6 +6,16 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
 import type { ViewBox } from '../../types';
+import {
+    emptyBox, geometryOf, grow, IDENTITY, multiply, outside, parseTransform, resolveStyle, scaleOf,
+    type BBox, type Geometry, type Mat, type Style, type SubPath,
+} from './canvasProxyShapes';
+import {
+    createTextCollector, renderTextGroup,
+    type FontMetrics, type LabelFrame, type TextGroup, type TextRun, type TextStyle,
+} from './canvasProxyText';
+
+export { parseTransform } from './canvasProxyShapes';
 
 /**
  * Canvas gesture proxy for the `'canvas'` pan/zoom mode.
@@ -25,235 +35,79 @@ import type { ViewBox } from '../../types';
  * from the live diagram's computed styles, so pypowsybl's palette, the
  * App.css highlight / delta rules and the theme are honoured.
  * `vector-effect: non-scaling-stroke` is emulated by dividing the stroke
- * width by the zoom scale. Flow values and voltage-level labels are left
- * out, exactly as the default path culls them during a gesture.
+ * width by the zoom scale.
+ *
+ * The flow values (with their arrows) and the voltage-level labels are drawn
+ * too, once they are readable (`TEXT_MIN_PX`, canvasProxyText.ts): they stay
+ * on screen through the gesture and the settle instead of coming back ~0.7 s
+ * after the operator stops (the pause, then the bake of the live SVG). Those
+ * layers — two thirds of the European NAD's nodes — are read in idle slices
+ * after the network itself, so no build task blocks input for long.
  */
 
-type Mat = readonly [number, number, number, number, number, number];
-
-const IDENTITY: Mat = [1, 0, 0, 1, 0, 0];
-
-/** `m × n`: apply `n` first, then `m` (SVG nested coordinate systems). */
-const multiply = (m: Mat, n: Mat): Mat => [
-    m[0] * n[0] + m[2] * n[1],
-    m[1] * n[0] + m[3] * n[1],
-    m[0] * n[2] + m[2] * n[3],
-    m[1] * n[2] + m[3] * n[3],
-    m[0] * n[4] + m[2] * n[5] + m[4],
-    m[1] * n[4] + m[3] * n[5] + m[5],
-];
-
-const transformFunction = (name: string, a: number[]): Mat => {
-    switch (name) {
-        case 'matrix':
-            return a.length >= 6 ? [a[0], a[1], a[2], a[3], a[4], a[5]] : IDENTITY;
-        case 'translate':
-            return [1, 0, 0, 1, a[0] ?? 0, a[1] ?? 0];
-        case 'scale':
-            return [a[0] ?? 1, 0, 0, a[1] ?? a[0] ?? 1, 0, 0];
-        case 'rotate': {
-            const r = ((a[0] ?? 0) * Math.PI) / 180;
-            const cos = Math.cos(r), sin = Math.sin(r);
-            const rot: Mat = [cos, sin, -sin, cos, 0, 0];
-            if (a.length >= 3) {
-                return multiply(multiply([1, 0, 0, 1, a[1], a[2]], rot), [1, 0, 0, 1, -a[1], -a[2]]);
-            }
-            return rot;
-        }
-        case 'skewX':
-            return [1, 0, Math.tan(((a[0] ?? 0) * Math.PI) / 180), 1, 0, 0];
-        case 'skewY':
-            return [1, Math.tan(((a[0] ?? 0) * Math.PI) / 180), 0, 1, 0, 0];
-        default:
-            return IDENTITY;
-    }
-};
-
-/** Parse an SVG `transform` attribute into a 2-D affine matrix. */
-export const parseTransform = (attr: string | null): Mat => {
-    if (!attr) return IDENTITY;
-    let m: Mat = IDENTITY;
-    const re = /(matrix|translate|scale|rotate|skewX|skewY)\s*\(([^)]*)\)/g;
-    for (let match = re.exec(attr); match; match = re.exec(attr)) {
-        const args = match[2].split(/[\s,]+/).filter(Boolean).map(Number);
-        if (args.some(v => !Number.isFinite(v))) continue;
-        m = multiply(m, transformFunction(match[1], args));
-    }
-    return m;
-};
-
-const apply = (m: Mat, x: number, y: number): [number, number] => [
-    m[0] * x + m[2] * y + m[4],
-    m[1] * x + m[3] * y + m[5],
-];
-
-const scaleOf = (m: Mat): number => Math.sqrt(Math.abs(m[0] * m[3] - m[1] * m[2]));
-
-const num = (el: Element, name: string): number => {
-    const v = parseFloat(el.getAttribute(name) ?? '');
-    return Number.isFinite(v) ? v : 0;
-};
-
-const parsePoints = (attr: string | null): number[] =>
-    (attr ?? '').trim().split(/[\s,]+/).filter(Boolean).map(Number).filter(Number.isFinite);
-
-const parseDash = (v: string): number[] =>
-    !v || v === 'none'
-        ? []
-        : v.split(/[\s,]+/).map(s => parseFloat(s)).filter(n => Number.isFinite(n) && n > 0);
+/** usePanZoom's zoom tiers (`data-zoom-tier`), which App.css hides layers by. */
+export type ProxyTier = 'overview' | 'region' | 'detail';
+const TIER_RANK: Record<ProxyTier, number> = { overview: 0, region: 1, detail: 2 };
 
 /**
  * Top-level SVG groups drawn by the proxy, in pypowsybl's paint order (the
- * live SVG's DOM order is kept). Highlight halos live in
- * `#nad-background-layer` (utils/svg/highlights.ts).
+ * live SVG's DOM order is kept), with the first zoom tier that shows them —
+ * App.css hides the flow values and their arrows (`.nad-edge-infos`) at the
+ * overview tier — and whether they are read in idle slices after the build.
+ * Highlight halos live in `#nad-background-layer` (utils/svg/highlights.ts).
+ * The VL labels are HTML boxes in a root-level `foreignObject.nad-text-nodes`;
+ * `.nad-text-edges` links each VL to its label.
  */
-const DRAWN_LAYERS = new Set(['nad-vl-nodes', 'nad-branch-edges', 'nad-3wt-edges', 'nad-3wt-nodes', 'nad-injections']);
+const DRAWN_LAYERS = new Map<string, { tier: ProxyTier; deferred: boolean }>([
+    ['nad-vl-nodes', { tier: 'overview', deferred: false }],
+    ['nad-branch-edges', { tier: 'overview', deferred: false }],
+    ['nad-3wt-edges', { tier: 'overview', deferred: false }],
+    ['nad-3wt-nodes', { tier: 'overview', deferred: false }],
+    ['nad-injections', { tier: 'overview', deferred: false }],
+    ['nad-edge-infos', { tier: 'region', deferred: true }],
+    ['nad-text-edges', { tier: 'overview', deferred: true }],
+    ['nad-label-nodes', { tier: 'overview', deferred: true }],
+    ['nad-text-nodes', { tier: 'overview', deferred: true }],
+]);
+/** Layers of the VL labels, which the legend's label toggle hides (`nad-hide-vl-labels`). */
+const LABEL_LAYERS = new Set(['nad-text-edges', 'nad-label-nodes', 'nad-text-nodes']);
+const HIDE_LABELS_CLASS = 'nad-hide-vl-labels';
 const DRAWN_TAGS = new Set(['polyline', 'polygon', 'line', 'circle', 'ellipse', 'rect', 'path']);
 const GRID = 8;
-
-type BBox = [number, number, number, number];
-
-interface Style {
-    fill: string | null;
-    fillAlpha: number;
-    stroke: string | null;
-    strokeAlpha: number;
-    /** Stroke width: CSS px when `nonScaling`, else root user units. */
-    width: number;
-    nonScaling: boolean;
-    /**
-     * A line halo whose width follows the zoom (`--nad-halo-w`, App.css): its
-     * width as a multiple of that var — the contingency halo is wider than
-     * the others. 0 for every other stroke.
-     */
-    zoomWidth: number;
-    /** Dash pattern, same units as `width`. */
-    dash: number[];
-}
+/**
+ * Text is drawn once it is readable: below this on-screen font size (CSS px)
+ * labels and flow values are specks, and the thousands of them in view at
+ * region zoom would cost the frames their fluidity.
+ */
+export const TEXT_MIN_PX = 4;
+/**
+ * The flow arrows, label backgrounds and label connectors are left out until
+ * they are this big on screen (CSS px; the smaller side of a filled shape,
+ * the length of a line, a label background's font size): the arrows then
+ * come with their flow values, the backgrounds with their text. Drawn
+ * smaller, thousands of them at region / detail zoom cost zoom bursts and
+ * detail-zoom pans 9–20 % of their frame rate.
+ */
+const LOD_MIN_PX = TEXT_MIN_PX;
+/** Idle slices of the deferred layers (ms): long enough to progress, short enough not to block input. */
+const SLICE_MIN_MS = 5;
+const SLICE_MAX_MS = 40;
 
 interface DrawItem extends Style {
+    kind: 'shapes';
     path: Path2D;
     bbox: BBox;
+    /** Rank of the first zoom tier that shows it. */
+    minTier: number;
+    /** Root units: the group shows once an element's side reaches LOD_MIN_PX on screen; 0 = at any size. */
+    lodSize: number;
 }
 
-interface Geometry {
-    build: (p: Path2D) => void;
-    bbox: BBox;
+/** One layer's draw items, in paint order: its shapes, then its text. */
+interface Bucket {
+    shapes: DrawItem[];
+    text: TextGroup[];
 }
-
-/** Element geometry in root user space (`m` = element → root transform). */
-const geometryOf = (el: Element, m: Mat): Geometry | null => {
-    const tag = el.tagName.toLowerCase();
-    if (tag === 'polyline' || tag === 'polygon' || tag === 'line') {
-        const raw = tag === 'line'
-            ? [num(el, 'x1'), num(el, 'y1'), num(el, 'x2'), num(el, 'y2')]
-            : parsePoints(el.getAttribute('points'));
-        if (raw.length < 4) return null;
-        const pts: number[] = [];
-        const bbox: BBox = [Infinity, Infinity, -Infinity, -Infinity];
-        for (let i = 0; i + 1 < raw.length; i += 2) {
-            const [x, y] = apply(m, raw[i], raw[i + 1]);
-            pts.push(x, y);
-            if (x < bbox[0]) bbox[0] = x;
-            if (y < bbox[1]) bbox[1] = y;
-            if (x > bbox[2]) bbox[2] = x;
-            if (y > bbox[3]) bbox[3] = y;
-        }
-        const closed = tag === 'polygon';
-        return {
-            bbox,
-            build: (p) => {
-                p.moveTo(pts[0], pts[1]);
-                for (let i = 2; i < pts.length; i += 2) p.lineTo(pts[i], pts[i + 1]);
-                if (closed) p.closePath();
-            },
-        };
-    }
-    if (tag === 'circle' || tag === 'ellipse') {
-        const [x, y] = apply(m, num(el, 'cx'), num(el, 'cy'));
-        const s = scaleOf(m);
-        const rx = (tag === 'circle' ? num(el, 'r') : num(el, 'rx')) * s;
-        const ry = (tag === 'circle' ? num(el, 'r') : num(el, 'ry')) * s;
-        if (!(rx > 0 && ry > 0)) return null;
-        return {
-            bbox: [x - rx, y - ry, x + rx, y + ry],
-            build: (p) => {
-                p.moveTo(x + rx, y);
-                p.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
-            },
-        };
-    }
-    if (tag === 'rect') {
-        const x = num(el, 'x'), y = num(el, 'y'), w = num(el, 'width'), h = num(el, 'height');
-        if (!(w > 0 && h > 0)) return null;
-        const c = [apply(m, x, y), apply(m, x + w, y), apply(m, x + w, y + h), apply(m, x, y + h)];
-        return {
-            bbox: [Math.min(...c.map(q => q[0])), Math.min(...c.map(q => q[1])), Math.max(...c.map(q => q[0])), Math.max(...c.map(q => q[1]))],
-            build: (p) => {
-                p.moveTo(c[0][0], c[0][1]);
-                for (let i = 1; i < 4; i++) p.lineTo(c[i][0], c[i][1]);
-                p.closePath();
-            },
-        };
-    }
-    if (tag === 'path') {
-        const d = el.getAttribute('d');
-        if (!d || typeof DOMMatrix === 'undefined') return null;
-        // Bounding box from the coordinate pairs of the path data — exact for
-        // the absolute paths pypowsybl emits, a safe culling hint otherwise.
-        const raw = (d.match(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi) ?? []).map(Number);
-        const bbox: BBox = [Infinity, Infinity, -Infinity, -Infinity];
-        for (let i = 0; i + 1 < raw.length; i += 2) {
-            const [x, y] = apply(m, raw[i], raw[i + 1]);
-            if (x < bbox[0]) bbox[0] = x;
-            if (y < bbox[1]) bbox[1] = y;
-            if (x > bbox[2]) bbox[2] = x;
-            if (y > bbox[3]) bbox[3] = y;
-        }
-        if (!Number.isFinite(bbox[0])) return null;
-        const matrix = new DOMMatrix([m[0], m[1], m[2], m[3], m[4], m[5]]);
-        return { bbox, build: (p) => p.addPath(new Path2D(d), matrix) };
-    }
-    return null;
-};
-
-// The overload / action / contingency halos: App.css binds their stroke
-// width to `--nad-halo-w`, which usePanZoom recomputes from the zoom.
-const HALO_GROUPS = '.nad-overloaded, .nad-action-target, .nad-contingency-highlight';
-const HALO_SHAPES = new Set(['path', 'line', 'polyline', 'rect', 'polygon']);
-/** App.css's fallback for `--nad-halo-w` while usePanZoom has not set it. */
-const HALO_DEFAULT_PX = 24;
-
-const haloVarPx = (cs: CSSStyleDeclaration): number => {
-    const v = parseFloat(cs.getPropertyValue('--nad-halo-w'));
-    return Number.isFinite(v) && v > 0 ? v : HALO_DEFAULT_PX;
-};
-
-const resolveStyle = (el: Element, parent: Element | null, scale: number): Style | null => {
-    const view = el.ownerDocument.defaultView;
-    if (!view) return null;
-    const cs = view.getComputedStyle(el);
-    if (cs.display === 'none' || cs.visibility === 'hidden' || cs.visibility === 'collapse') return null;
-    const groupOpacity = parent ? parseFloat(view.getComputedStyle(parent).opacity || '1') : 1;
-    const opacity = parseFloat(cs.opacity || '1') * (Number.isFinite(groupOpacity) ? groupOpacity : 1);
-    const nonScaling = cs.getPropertyValue('vector-effect').trim() === 'non-scaling-stroke';
-    const w = parseFloat(cs.strokeWidth);
-    const stroke = cs.stroke && cs.stroke !== 'none' && w > 0 ? cs.stroke : null;
-    const fill = cs.fill && cs.fill !== 'none' ? cs.fill : null;
-    if (!stroke && !fill) return null;
-    const k = nonScaling ? 1 : scale;
-    const halo = !!stroke && nonScaling && HALO_SHAPES.has(el.tagName.toLowerCase()) && !!parent?.closest(HALO_GROUPS);
-    return {
-        fill,
-        fillAlpha: opacity * parseFloat(cs.fillOpacity || '1'),
-        stroke,
-        strokeAlpha: opacity * parseFloat(cs.strokeOpacity || '1'),
-        width: stroke ? w * k : 0,
-        nonScaling,
-        zoomWidth: halo ? w / haloVarPx(cs) : 0,
-        dash: stroke ? parseDash(cs.strokeDasharray).map(v => v * k) : [],
-    };
-};
 
 export interface CanvasProxy {
     readonly canvas: HTMLCanvasElement;
@@ -263,10 +117,16 @@ export interface CanvasProxy {
     draw: (vb: ViewBox) => void;
     /** Clear to transparent: the live SVG shows through. */
     clear: () => void;
-    /** Size the canvas to the panel and bake the overview cache for it (no-op when both match). */
+    /** Size the canvas to the panel and bake the overview cache for it (no-op when both are current). */
     prepare: () => void;
-    /** Number of grouped draw items (diagnostics and tests). */
+    /** Read more of the deferred layers (flow values, labels) for up to `budgetMs`; true once all are in. */
+    step: (budgetMs: number) => boolean;
+    /** Deferred layers left to read. */
+    readonly pending: boolean;
+    /** Number of grouped shape items (diagnostics and tests). */
     readonly itemCount: number;
+    /** Number of text runs: flow values and label lines (diagnostics and tests). */
+    readonly textRunCount: number;
 }
 
 export interface CanvasProxyOptions {
@@ -281,6 +141,12 @@ export interface CanvasProxyOptions {
      * `--nad-halo-w`. Without it, halos keep the width they had at build time.
      */
     haloWidth?: (vb: ViewBox) => number | null;
+    /**
+     * The zoom tier the live diagram would have at `vb` (usePanZoom's
+     * `data-zoom-tier`), so a frame shows the layers App.css shows there.
+     * Without it every layer is drawn.
+     */
+    tierOf?: (vb: ViewBox) => ProxyTier;
 }
 
 /** Overview-cache pixel budget (2× a typical panel at dpr 1 is ~5 MP). */
@@ -288,10 +154,16 @@ const CACHE_MAX_PIXELS = 8e6;
 /** Blit the cache while it is at least this much denser than the screen. */
 const CACHE_MAX_MAGNIFICATION = 0.65;
 
+// Inline styles of the voltage filter / highlight clones, read from the
+// attribute: `.style` builds a declaration object per element.
+const DISPLAY_NONE = /(?:^|;)\s*display\s*:\s*none/i;
+const VISIBILITY = /(?:^|;)\s*visibility\s*:\s*([a-z]+)/i;
+
 /**
  * Build the proxy for a live NAD. `extent` is the diagram's full-extent
  * viewBox (the grid of culling cells covers it); falls back to the live
- * viewBox. Reads the live SVG only — it is never modified.
+ * viewBox. Reads the live SVG only — it is never modified. The network is
+ * read at once; the flow values and labels by `step()`.
  */
 export const buildCanvasProxy = (
     live: SVGSVGElement,
@@ -300,6 +172,7 @@ export const buildCanvasProxy = (
     options: CanvasProxyOptions = {},
 ): CanvasProxy => {
     const doc = container.ownerDocument;
+    const view = doc.defaultView ?? window;
     const vb0 = live.getAttribute('viewBox')?.split(/[\s,]+/).map(Number);
     const ext: ViewBox = extent
         ?? (vb0 && vb0.length === 4 && vb0.every(Number.isFinite) ? { x: vb0[0], y: vb0[1], w: vb0[2], h: vb0[3] } : { x: 0, y: 0, w: 1, h: 1 });
@@ -311,130 +184,255 @@ export const buildCanvasProxy = (
         return cy * GRID + cx;
     };
 
-    // Element → root transform and inline-visibility, memoised per ancestor.
+    // Element → root transform; memoised for groups only (leaves are read once).
     const matrices = new Map<Element, Mat>();
-    const matrixOf = (el: Element): Mat => {
-        if (el === live) return IDENTITY;
-        const hit = matrices.get(el);
-        if (hit) return hit;
-        const parent = el.parentElement;
-        const m = multiply(parent ? matrixOf(parent) : IDENTITY, parseTransform(el.getAttribute('transform')));
-        matrices.set(el, m);
+    const groupMatrix = (el: Element | null): Mat => {
+        if (!el || el === live) return IDENTITY;
+        let m = matrices.get(el);
+        if (!m) {
+            const t = el.getAttribute('transform');
+            const pm = groupMatrix(el.parentElement);
+            m = t ? multiply(pm, parseTransform(t)) : pm;
+            matrices.set(el, m);
+        }
         return m;
+    };
+    const matrixOf = (el: Element): Mat => {
+        const t = el.getAttribute('transform');
+        const pm = groupMatrix(el.parentElement);
+        return t ? multiply(pm, parseTransform(t)) : pm;
     };
     // The voltage filter (useDiagrams) hides elements with inline styles;
     // highlight clones re-assert `visibility: visible` inline.
-    const displayNone = new Map<Element, boolean>();
-    const isDisplayNone = (el: Element | null): boolean => {
-        if (!el || el === live) return false;
-        let v = displayNone.get(el);
-        if (v === undefined) {
-            v = (el as SVGElement).style?.display === 'none' || isDisplayNone(el.parentElement);
-            displayNone.set(el, v);
-        }
-        return v;
+    const ownVisibility = (style: string | null): boolean | null => {
+        const v = style ? VISIBILITY.exec(style)?.[1].toLowerCase() : undefined;
+        return v === 'hidden' || v === 'collapse' ? true : v === 'visible' ? false : null;
     };
-    const visibilityHidden = new Map<Element, boolean>();
-    const isVisibilityHidden = (el: Element | null): boolean => {
-        if (!el || el === live) return false;
-        let v = visibilityHidden.get(el);
-        if (v === undefined) {
-            const own = (el as SVGElement).style?.visibility;
-            v = own === 'hidden' || own === 'collapse' ? true
-                : own === 'visible' ? false
-                    : isVisibilityHidden(el.parentElement);
-            visibilityHidden.set(el, v);
+    const groupHidden = new Map<Element, readonly [boolean, boolean]>();
+    const hiddenOf = (el: Element | null): readonly [boolean, boolean] => {
+        if (!el || el === live) return [false, false];
+        let h = groupHidden.get(el);
+        if (!h) {
+            const p = hiddenOf(el.parentElement);
+            const s = el.getAttribute('style');
+            h = [p[0] || (!!s && DISPLAY_NONE.test(s)), ownVisibility(s) ?? p[1]];
+            groupHidden.set(el, h);
         }
-        return v;
+        return h;
     };
-    const inlineHidden = (el: Element): boolean => isDisplayNone(el) || isVisibilityHidden(el);
+    const inlineHidden = (el: Element): boolean => {
+        const p = hiddenOf(el.parentElement);
+        const s = el.getAttribute('style');
+        if (p[0] || (!!s && DISPLAY_NONE.test(s))) return true;
+        return ownVisibility(s) ?? p[1];
+    };
+
+    const canvas = doc.createElement('canvas');
+    canvas.className = 'nad-canvas-proxy';
+    canvas.setAttribute('aria-hidden', 'true');
+    const ctx = canvas.getContext('2d');
+
+    // Font metrics, measured once per font on the proxy's own context — the
+    // engine that lays out the live labels, so the widths match it exactly.
+    const metrics = new Map<string, FontMetrics>();
+    const metricsOf = (font: string): FontMetrics | null => {
+        let mt = metrics.get(font);
+        if (!mt && ctx) {
+            ctx.font = font;
+            const x = ctx.measureText('x');
+            mt = { xHeight: x.actualBoundingBoxAscent || 0, ascent: x.fontBoundingBoxAscent || 0, descent: x.fontBoundingBoxDescent || 0 };
+            metrics.set(font, mt);
+        }
+        return mt ?? null;
+    };
+    const measure = (font: string, text: string) => {
+        if (!ctx) return 0;
+        ctx.font = font;
+        return ctx.measureText(text).width;
+    };
+
+    const labelsHidden = container.classList.contains(HIDE_LABELS_CLASS);
+    const layers: Array<{ el: Element; tier: number; deferred: boolean }> = [];
+    for (const child of Array.from(live.children)) {
+        if (child.id === 'nad-background-layer') {
+            layers.push({ el: child, tier: 0, deferred: false });
+            continue;
+        }
+        const name = (child.getAttribute('class') ?? '').split(/\s+/).find(c => DRAWN_LAYERS.has(c));
+        if (!name || (labelsHidden && LABEL_LAYERS.has(name))) continue;
+        const { tier, deferred } = DRAWN_LAYERS.get(name) as { tier: ProxyTier; deferred: boolean };
+        // Hidden by CSS for a reason other than the zoom tier (the `display` of
+        // a tier-gated layer only reflects the current tier).
+        if (tier === 'overview' && view.getComputedStyle(child).display === 'none') continue;
+        layers.push({ el: child, tier: TIER_RANK[tier], deferred });
+    }
+
+    const buckets: Bucket[] = layers.map(() => ({ shapes: [], text: [] }));
+    const shapeGroups = new Map<string, DrawItem>();
+    const textGroups = new Map<string, TextGroup>();
+    let textRunCount = 0;
+    const addShape = (li: number, minTier: number, styleKey: string, style: Style, geom: Geometry, lodSize: number) => {
+        const key = `${styleKey}#${cellOf(geom.bbox)}`;
+        let item = shapeGroups.get(key);
+        if (!item) {
+            item = { ...style, kind: 'shapes', path: new Path2D(), bbox: emptyBox(), minTier, lodSize: 0 };
+            shapeGroups.set(key, item);
+            buckets[li].shapes.push(item);
+        }
+        geom.build(item.path, !!style.stroke);
+        grow(item.bbox, geom.bbox);
+        if (lodSize > item.lodSize) item.lodSize = lodSize;
+    };
+    const addText = (li: number, minTier: number, styleKey: string, style: TextStyle, unitScale: number, run: TextRun) => {
+        const key = `${styleKey}#${cellOf(run.bbox)}`;
+        let group = textGroups.get(key);
+        if (!group) {
+            group = { ...style, kind: 'text', runs: [], bbox: emptyBox(), unitScale, minTier };
+            textGroups.set(key, group);
+            buckets[li].text.push(group);
+        }
+        group.runs.push(run);
+        textRunCount++;
+        grow(group.bbox, run.bbox);
+    };
+    const collector = createTextCollector({ view, matrixOf, inlineHidden, metricsOf, measure, shape: addShape, text: addText });
 
     const styles = new Map<string, Style | null>();
-    const groups = new Map<string, DrawItem>();
-    const layers: Element[] = [];
-    for (const child of Array.from(live.children)) {
-        if (child.id === 'nad-background-layer') { layers.push(child); continue; }
-        const cls = child.getAttribute('class') ?? '';
-        if (cls.split(/\s+/).some(c => DRAWN_LAYERS.has(c))) layers.push(child);
-    }
-    layers.forEach((layer, li) => {
-        for (const el of Array.from(layer.querySelectorAll('*'))) {
-            const tag = el.tagName.toLowerCase();
-            if (!DRAWN_TAGS.has(tag) || inlineHidden(el)) continue;
-            const parent = el.parentElement;
-            const m = matrixOf(el);
-            const scale = scaleOf(m);
-            const styleKey = [
-                li, tag, el.getAttribute('class'), el.getAttribute('style'),
-                parent?.getAttribute('class'), parent?.getAttribute('style'), scale.toPrecision(3),
-            ].join('|');
-            let style = styles.get(styleKey);
-            if (style === undefined) {
-                style = resolveStyle(el, parent, scale);
-                styles.set(styleKey, style);
-            }
-            if (!style) continue;
-            const geom = geometryOf(el, m);
-            if (!geom) continue;
-            const key = `${styleKey}#${cellOf(geom.bbox)}`;
-            let item = groups.get(key);
-            if (!item) {
-                item = { ...style, path: new Path2D(), bbox: [Infinity, Infinity, -Infinity, -Infinity] };
-                groups.set(key, item);
-            }
-            geom.build(item.path);
-            const b = item.bbox;
-            if (geom.bbox[0] < b[0]) b[0] = geom.bbox[0];
-            if (geom.bbox[1] < b[1]) b[1] = geom.bbox[1];
-            if (geom.bbox[2] > b[2]) b[2] = geom.bbox[2];
-            if (geom.bbox[3] > b[3]) b[3] = geom.bbox[3];
+    const parentKeys = new Map<Element, string>();
+    const paths = new Map<string, SubPath[] | null>();
+    // One element of an SVG layer. `lod`: the layer's shapes are left out
+    // below LOD_MIN_PX on screen (flows and labels).
+    const visit = (el: Element, li: number, tier: number, lod: boolean) => {
+        const tag = el.localName;
+        if (tag === 'text') {
+            if (ctx) collector.svgText(el, li, tier);
+            return;
         }
-    });
-    const items = [...groups.values()];
+        if (tag === 'foreignObject') {
+            // App.css shows `.nad-vl-nodes foreignObject` labels at the detail tier only.
+            if (!ctx || labelsHidden || inlineHidden(el)) return;
+            const frame = collector.labelFrame(el);
+            for (const box of Array.from(el.querySelectorAll('.nad-label-box'))) collector.labelBox(box as HTMLElement, frame, li, TIER_RANK.detail);
+            return;
+        }
+        if (!DRAWN_TAGS.has(tag) || inlineHidden(el)) return;
+        const parent = el.parentElement;
+        const m = matrixOf(el);
+        const scale = scaleOf(m);
+        let pk = parent ? parentKeys.get(parent) : '';
+        if (pk === undefined && parent) {
+            pk = `${parent.getAttribute('class')}|${parent.getAttribute('style')}`;
+            parentKeys.set(parent, pk);
+        }
+        const styleKey = `${li}|${tag}|${el.getAttribute('class')}|${el.getAttribute('style')}|${pk}|${scale.toPrecision(3)}`;
+        let style = styles.get(styleKey);
+        if (style === undefined) {
+            style = resolveStyle(el, parent, scale);
+            styles.set(styleKey, style);
+        }
+        if (!style) return;
+        const geom = geometryOf(el, m, paths);
+        if (!geom) return;
+        const b = geom.bbox;
+        const w = b[2] - b[0], h = b[3] - b[1];
+        addShape(li, tier, styleKey, style, geom, lod ? (style.fill ? Math.min(w, h) : Math.max(w, h)) : 0);
+    };
 
-    const view = doc.defaultView ?? window;
+    // The network now; flows and labels as idle slices (`step`).
+    layers.forEach((layer, li) => {
+        if (layer.deferred) return;
+        for (const el of Array.from(layer.el.querySelectorAll('*'))) visit(el, li, layer.tier, false);
+    });
+    interface Job { li: number; tier: number; layer: Element; items: Element[] | null; frame: LabelFrame | null; i: number }
+    const jobs: Job[] = [];
+    layers.forEach((layer, li) => {
+        if (layer.deferred) jobs.push({ li, tier: layer.tier, layer: layer.el, items: null, frame: null, i: 0 });
+    });
+    // Bumped as deferred layers land: the overview cache re-bakes with them.
+    let version = 0;
+    const step = (budgetMs: number): boolean => {
+        const end = performance.now() + budgetMs;
+        let n = 0;
+        while (jobs.length) {
+            const job = jobs[0];
+            if (!job.items) {
+                const labels = job.layer.localName === 'foreignObject';
+                if (labels && (!ctx || inlineHidden(job.layer))) {
+                    jobs.shift();
+                    continue;
+                }
+                job.items = Array.from(job.layer.querySelectorAll(labels ? '.nad-label-box' : '*'));
+                job.frame = labels ? collector.labelFrame(job.layer) : null;
+            }
+            const { items, frame } = job;
+            while (job.i < items.length) {
+                const el = items[job.i++];
+                if (frame) collector.labelBox(el as HTMLElement, frame, job.li, job.tier);
+                else visit(el, job.li, job.tier, true);
+                if (++n % 64 === 0 && performance.now() > end) return false;
+            }
+            jobs.shift();
+            version++;
+        }
+        return true;
+    };
+
     const opaque = (c: string | undefined) => !!c && c !== 'transparent' && !/rgba\([^)]*,\s*0\)$/.test(c);
     const containerBg = view.getComputedStyle(container).backgroundColor;
     const bodyBg = doc.body ? view.getComputedStyle(doc.body).backgroundColor : undefined;
     // Frames paint this first so they fully cover the live SVG; between
     // gestures the canvas is cleared to transparent instead.
     const background = opaque(containerBg) ? containerBg : opaque(bodyBg) ? (bodyBg as string) : 'white';
-    const canvas = doc.createElement('canvas');
-    canvas.className = 'nad-canvas-proxy';
-    canvas.setAttribute('aria-hidden', 'true');
-    const ctx = canvas.getContext('2d');
 
-    // `scale` maps root user units to device pixels. A non-scaling stroke of
-    // `w` CSS px is `w * widthMul / scale` user units: `widthMul` is the dpr
-    // for on-screen frames, and the cache-to-screen ratio for the cache.
-    const renderItems = (c: CanvasRenderingContext2D, scale: number, ox: number, oy: number, cull: BBox | null, widthMul: number, haloPx: number | null) => {
+    // `scale` maps root user units to device pixels, `pxPerUnit` to CSS px
+    // (what the size thresholds read). A non-scaling stroke of `w` CSS px is
+    // `w * widthMul / scale` user units: `widthMul` is the dpr for on-screen
+    // frames, and the cache-to-screen ratio for the cache. `tier` gates the
+    // layers App.css hides at that zoom tier.
+    const render = (
+        c: CanvasRenderingContext2D, scale: number, ox: number, oy: number, cull: BBox | null, widthMul: number,
+        haloPx: number | null, tier: number, pxPerUnit: number, shapes: boolean, text: boolean,
+    ) => {
         c.setTransform(scale, 0, 0, scale, ox, oy);
         // SVG defaults: pypowsybl sets no caps / joins on the edges.
         c.lineCap = 'butt';
         c.lineJoin = 'miter';
-        for (const it of items) {
-            const b = it.bbox;
-            if (cull && (b[2] < cull[0] || b[0] > cull[2] || b[3] < cull[1] || b[1] > cull[3])) continue;
-            if (it.fill) {
-                c.globalAlpha = it.fillAlpha;
-                c.fillStyle = it.fill;
-                c.fill(it.path);
+        c.miterLimit = 4;
+        for (const bucket of buckets) {
+            if (shapes) {
+                for (const e of bucket.shapes) {
+                    if (e.minTier > tier || (e.lodSize > 0 && e.lodSize * pxPerUnit < LOD_MIN_PX) || (cull && outside(e.bbox, cull))) continue;
+                    if (e.fill) {
+                        c.globalAlpha = e.fillAlpha;
+                        c.fillStyle = e.fill;
+                        c.fill(e.path);
+                    }
+                    if (e.stroke) {
+                        const k = e.nonScaling ? widthMul / scale : 1;
+                        c.globalAlpha = e.strokeAlpha;
+                        c.strokeStyle = e.stroke;
+                        c.lineWidth = (e.zoomWidth && haloPx != null ? haloPx * e.zoomWidth : e.width) * k;
+                        c.setLineDash(e.dash.length ? e.dash.map(d => d * k) : []);
+                        c.stroke(e.path);
+                    }
+                }
             }
-            if (it.stroke) {
-                const k = it.nonScaling ? widthMul / scale : 1;
-                c.globalAlpha = it.strokeAlpha;
-                c.strokeStyle = it.stroke;
-                c.lineWidth = (it.zoomWidth && haloPx != null ? haloPx * it.zoomWidth : it.width) * k;
-                c.setLineDash(it.dash.length ? it.dash.map(d => d * k) : []);
-                c.stroke(it.path);
+            if (text) {
+                for (const g of bucket.text) {
+                    if (g.minTier > tier || g.size * g.unitScale * pxPerUnit < TEXT_MIN_PX || (cull && outside(g.bbox, cull))) continue;
+                    renderTextGroup(c, g, scale, ox, oy, cull);
+                }
             }
         }
         c.globalAlpha = 1;
     };
+    const tierAt = (vb: ViewBox) => TIER_RANK[options.tierOf?.(vb) ?? 'detail'];
 
     let cache: HTMLCanvasElement | null = null;
-    // Panel size the cache was baked for: its stroke widths are exact only there.
+    // Panel size and content the cache was baked for: its stroke widths are
+    // exact only there, and the deferred layers re-bake it.
     let cacheFor = '';
+    let cacheVersion = -1;
     let cacheScale = 0, cacheOx = 0, cacheOy = 0;
     const sizeKey = (W: number, H: number, dpr: number) => `${W}x${H}@${dpr}`;
     const renderCache = (W: number, H: number, dpr: number) => {
@@ -453,30 +451,40 @@ export const buildCanvasProxy = (
         cc.fillStyle = background;
         cc.fillRect(0, 0, cw, ch);
         // At full extent the cache is shown at `fullScale / cacheScale`, so
-        // bake non-scaling strokes at their full-extent on-screen width.
-        const fullScale = dpr * Math.min(W / ext.w, H / ext.h);
-        renderItems(cc, cacheScale, cacheOx, cacheOy, null, (dpr * cacheScale) / fullScale, options.haloWidth?.(ext) ?? null);
+        // bake non-scaling strokes at their full-extent on-screen width. Text
+        // is never baked: its size follows the zoom.
+        const fullA = Math.min(W / ext.w, H / ext.h);
+        render(cc, cacheScale, cacheOx, cacheOy, null, (dpr * cacheScale) / (dpr * fullA), options.haloWidth?.(ext) ?? null, tierAt(ext), fullA, true, false);
         cache = c;
         cacheFor = sizeKey(W, H, dpr);
+        cacheVersion = version;
     };
 
+    // The live SVG's own box: its viewBox maps onto this fractional size (the
+    // panel's integer clientHeight put the proxy up to ~0.3 px off the live
+    // diagram at the edges). jsdom has no layout: the container's client size.
+    const size = () => {
+        const r = live.getBoundingClientRect();
+        return { W: r.width || container.clientWidth, H: r.height || container.clientHeight };
+    };
     // Resizing the canvas restyles it (a relayout + re-layerization of the
     // page): done by prepare() on idle, so a gesture normally finds it sized.
+    // Rounded up so it covers the fractional panel; CSS px = backing px / dpr.
     const fit = (W: number, H: number, dpr: number) => {
-        const pw = Math.round(W * dpr), ph = Math.round(H * dpr);
+        const pw = Math.ceil(W * dpr), ph = Math.ceil(H * dpr);
         if (canvas.width === pw && canvas.height === ph) return;
         canvas.width = pw;
         canvas.height = ph;
-        canvas.style.width = `${W}px`;
-        canvas.style.height = `${H}px`;
+        canvas.style.width = `${pw / dpr}px`;
+        canvas.style.height = `${ph / dpr}px`;
     };
 
     const prepare = () => {
-        const W = container.clientWidth, H = container.clientHeight;
+        const { W, H } = size();
         const dpr = view.devicePixelRatio || 1;
         if (!(W > 0 && H > 0)) return;
         fit(W, H, dpr);
-        if (options.overviewCache === false || cacheFor === sizeKey(W, H, dpr)) return;
+        if (options.overviewCache === false || (cacheFor === sizeKey(W, H, dpr) && cacheVersion === version)) return;
         renderCache(W, H, dpr);
     };
 
@@ -489,10 +497,9 @@ export const buildCanvasProxy = (
     const draw = (vb: ViewBox) => {
         if (!ctx) return;
         const dpr = view.devicePixelRatio || 1;
-        const W = container.clientWidth, H = container.clientHeight;
+        const { W, H } = size();
         if (!(W > 0 && H > 0 && vb.w > 0 && vb.h > 0)) return;
         fit(W, H, dpr);
-        const pw = canvas.width, ph = canvas.height;
         // preserveAspectRatio="xMidYMid meet", exactly as the live SVG maps it.
         const a = Math.min(W / vb.w, H / vb.h);
         const cx = (W - a * vb.w) / 2 - a * vb.x;
@@ -500,19 +507,29 @@ export const buildCanvasProxy = (
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.globalAlpha = 1;
         ctx.fillStyle = background;
-        ctx.fillRect(0, 0, pw, ph);
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const cull: BBox = [-cx / a, -cy / a, (W - cx) / a, (H - cy) / a];
+        const tier = tierAt(vb);
+        const haloPx = options.haloWidth?.(vb) ?? null;
         // A cache baked for another panel size waits for the next idle
         // prepare() (never re-baked mid-gesture); vectors are exact meanwhile.
         if (cache && cacheFor === sizeKey(W, H, dpr) && (dpr * a) / cacheScale <= CACHE_MAX_MAGNIFICATION) {
             const k = (dpr * a) / cacheScale;
             ctx.setTransform(k, 0, 0, k, dpr * cx - k * cacheOx, dpr * cy - k * cacheOy);
             ctx.drawImage(cache, 0, 0);
+            // Text readable this far out (a small grid) goes over the blit.
+            if (textRunCount) render(ctx, dpr * a, dpr * cx, dpr * cy, cull, dpr, haloPx, tier, a, false, true);
             return;
         }
-        renderItems(ctx, dpr * a, dpr * cx, dpr * cy, [-cx / a, -cy / a, (W - cx) / a, (H - cy) / a], dpr, options.haloWidth?.(vb) ?? null);
+        render(ctx, dpr * a, dpr * cx, dpr * cy, cull, dpr, haloPx, tier, a, true, true);
     };
 
-    return { canvas, drawable: !!ctx, draw, clear, prepare, itemCount: items.length };
+    return {
+        canvas, drawable: !!ctx, draw, clear, prepare, step,
+        get pending() { return jobs.length > 0; },
+        get itemCount() { return shapeGroups.size; },
+        get textRunCount() { return textRunCount; },
+    };
 };
 
 /**
@@ -553,20 +570,25 @@ interface ControllerDeps {
     getExtent: () => ViewBox | null;
     /** See `CanvasProxyOptions.haloWidth`. */
     haloWidth?: (vb: ViewBox) => number | null;
+    /** See `CanvasProxyOptions.tierOf`. */
+    tierOf?: (vb: ViewBox) => ProxyTier;
 }
 
-export const createCanvasProxyController = ({ getLiveSvg, getContainer, getExtent, haloWidth }: ControllerDeps): CanvasProxyController => {
+export const createCanvasProxyController = ({ getLiveSvg, getContainer, getExtent, haloWidth, tierOf }: ControllerDeps): CanvasProxyController => {
     let proxy: CanvasProxy | null = null;
     let builtFor: SVGSVGElement | null = null;
     let stale = true;
     let showing = false;
     let token = 0;
     let idleScheduled = false;
+    let stepScheduled = false;
     let rebuildTimer: ReturnType<typeof setTimeout> | null = null;
     // A build that threw is not retried for the same diagram until it changes.
     let failedFor: SVGSVGElement | null = null;
     // Bumped by dispose() so an idle build scheduled before it is dropped.
     let generation = 0;
+
+    const viewOf = () => getContainer()?.ownerDocument.defaultView ?? window;
 
     // The canvas never changes style once mounted: it stays composited
     // (`will-change`) and click-through (`pointer-events: none`) over the live
@@ -580,6 +602,25 @@ export const createCanvasProxyController = ({ getLiveSvg, getContainer, getExten
         getContainer()?.removeAttribute(GESTURE_PROXY_ATTR);
     };
 
+    // Read the deferred layers in idle slices — never during a gesture (a
+    // slice would cost its frames; settle / hide resume it).
+    const continueBuild = () => {
+        const target = proxy;
+        if (stepScheduled || !target?.pending) return;
+        stepScheduled = true;
+        const view = viewOf();
+        const gen = generation;
+        const run = (deadline?: IdleDeadline) => {
+            stepScheduled = false;
+            if (gen !== generation || proxy !== target || showing || !target.pending) return;
+            const budget = deadline ? Math.min(SLICE_MAX_MS, Math.max(SLICE_MIN_MS, deadline.timeRemaining())) : 4 * SLICE_MIN_MS;
+            if (target.step(budget)) target.prepare();
+            else continueBuild();
+        };
+        if (typeof view.requestIdleCallback === 'function') view.requestIdleCallback(run, { timeout: 1000 });
+        else view.setTimeout(() => run(), 50);
+    };
+
     const ensure = (): CanvasProxy | null => {
         const live = getLiveSvg();
         const container = getContainer();
@@ -591,9 +632,12 @@ export const createCanvasProxyController = ({ getLiveSvg, getContainer, getExten
         // No Path2D / 2D canvas (jsdom, exotic embeds): no proxy, and the
         // gesture takes the classic path. Same if the build fails.
         if (typeof Path2D !== 'function' || failedFor === live) return null;
+        // A hidden panel has no layout to read the labels from: build once it
+        // is shown (the resize observer prewarms then).
+        if (!(container.clientWidth > 0 && container.clientHeight > 0)) return null;
         let next: CanvasProxy;
         try {
-            next = buildCanvasProxy(live, container, getExtent(), { haloWidth });
+            next = buildCanvasProxy(live, container, getExtent(), { haloWidth, tierOf });
         } catch {
             failedFor = live;
             return null;
@@ -610,13 +654,13 @@ export const createCanvasProxyController = ({ getLiveSvg, getContainer, getExten
         proxy = next;
         builtFor = live;
         stale = false;
+        continueBuild();
         return proxy;
     };
 
     const prewarm = () => {
         if (idleScheduled) return;
-        const container = getContainer();
-        const view = container?.ownerDocument.defaultView ?? window;
+        const view = viewOf();
         idleScheduled = true;
         const gen = generation;
         const run = () => {
@@ -643,16 +687,18 @@ export const createCanvasProxyController = ({ getLiveSvg, getContainer, getExten
         },
         settle: () => {
             const t = ++token;
-            const view = getContainer()?.ownerDocument.defaultView ?? window;
+            const view = viewOf();
             view.requestAnimationFrame(() => view.requestAnimationFrame(() => {
                 if (t !== token) return;
                 hideCanvas();
                 if (stale) prewarm();
+                else continueBuild();
             }));
         },
         hide: () => {
             token++;
             hideCanvas();
+            continueBuild();
         },
         invalidate: () => {
             stale = true;
@@ -668,6 +714,7 @@ export const createCanvasProxyController = ({ getLiveSvg, getContainer, getExten
             token++;
             generation++;
             idleScheduled = false;
+            stepScheduled = false;
             failedFor = null;
             if (rebuildTimer !== null) clearTimeout(rebuildTimer);
             rebuildTimer = null;

@@ -3,7 +3,9 @@
 **Status:** the default pan/zoom mode since 2026-11-15 (`'canvas'`, Settings →
 Configurations → *Pan/zoom rendering* → "Canvas proxy (default)").
 **Code:** [`utils/svg/canvasProxy.ts`](../../frontend/src/utils/svg/canvasProxy.ts)
-(the proxy and its controller), [`hooks/usePanZoom.ts`](../../frontend/src/hooks/usePanZoom.ts)
+(the proxy and its controller), [`canvasProxyShapes.ts`](../../frontend/src/utils/svg/canvasProxyShapes.ts)
+(transforms, geometry, shape styles), [`canvasProxyText.ts`](../../frontend/src/utils/svg/canvasProxyText.ts)
+(flow values and VL labels), [`hooks/usePanZoom.ts`](../../frontend/src/hooks/usePanZoom.ts)
 (gesture wiring), [`utils/smoothPanZoom.ts`](../../frontend/src/utils/smoothPanZoom.ts)
 (the mode), [`utils/svg/vlInteractions.ts`](../../frontend/src/utils/svg/vlInteractions.ts)
 (proxy-aware hover / click).
@@ -26,11 +28,15 @@ panel 1439×886 CSS px, dpr 1.
 - During a wheel zoom or a drag on the N, N-1 and Action tabs (and their
   detached windows), a light canvas copy of the network replaces the live
   SVG: lines, buses, transformer windings and the overload / action /
-  contingency halos, in their computed colours. Flow values and arrows, VL
-  labels and legends are not drawn.
+  contingency halos, in their computed colours — and, once they are
+  readable (≥ 4 px on screen), the **flow values with their arrows and the
+  VL labels**, so they stay on screen through the gesture and when it ends
+  (§3.4). Legends are not drawn.
 - The live diagram catches up **once, 400 ms after the last wheel notch or
-  mouse release**; flow values and labels reappear then. A drag or a wheel
-  notch inside those 400 ms continues on the proxy.
+  mouse release**, under the canvas; at reading zoom the swap does not show.
+  Text too small to read on the proxy (flow values at detail zoom, ~2.5 px)
+  appears with the live diagram. A drag or a wheel notch inside those 400 ms
+  continues on the proxy.
 - A plain click (VL select, double-click → SLD) never shows the proxy.
   While the proxy covers the map, hover tooltips and clicks are ignored: the
   live SVG underneath is still at the gesture's start view, so it would
@@ -88,6 +94,38 @@ columns used 0.9, the old zoom-in step). Raw files in
   read 27.6, 34.4 and 30.2 fps on three runs of the same gesture code): compare
   variants back to back.
 
+### Labels and flow values on the proxy (§3.4)
+
+Measured against `main` (the proxy without text), **interleaved**: a kept
+session per build, the two alternated scenario by scenario and the order
+flipped every repetition, median of 3 — on 2026-11-15 evening the load
+drifted enough that back-to-back blocks of runs moved by 10–30 % between
+halves. The machine was busier than for the table above: compare the two
+columns, not with it. Raw files: `audit_results/text_il_{main,branch}.json`,
+`text_reveal.txt`, `text_fidelity.md`, `text_on_proxy_reading_zoom.png`.
+
+| | `main` | this change |
+|---|---|---|
+| Zoom-in burst (16 notches) | 36 ms · 47.7 fps · 1.00 | 49 ms · 43.1 fps · 1.00 |
+| Zoom-out burst (20 notches) | 58 ms · 49.0 fps · 1.00 | 64 ms · 46.5 fps · 1.00 |
+| Pan at region zoom (~35 %) | 138 ms · 13.0 fps · 1.00 | 137 ms · 13.4 fps · 1.00 |
+| Pan at detail zoom (~12 %) | 124 ms · 34.7 fps · 1.00 | 126 ms · 42.2 fps · 1.00 |
+| Pan at reading zoom (~4 %, text drawn) | 118 ms · 46.2 fps · 1.00 | 148 ms · 42.2 fps · 1.00 |
+| Zoom into reading zoom (10 notches) | 67 ms · 57.6 fps · 1.00 | 65 ms · 52.8 fps · 1.00 |
+| **Text on screen after a zoom to reading zoom** | **0.75–0.91 s** | **on the proxy's last frame (+20–34 ms)** |
+| **… after a drag at reading zoom** | **0.66–0.80 s** | **on screen throughout** |
+| … after a zoom to detail zoom (text under 4 px, with the live SVG) | 0.75–1.15 s | 1.08–1.22 s — the same bake (traced: layout 133 / 140, paint 122 / 116, layerize 68 / 66 ms) |
+| Proxy vs live pixels differing (> 16 levels), reading / detail / region zoom | 9.3 / 9.0 / 7.9 % | 0.4 / 1.7 / 5.5 % |
+
+- **The text is there when the gesture ends.** At reading zoom the labels and
+  flow values never leave the screen; at detail zoom, where the text is
+  under 4 px, they still come with the live diagram, as before.
+- **Frames short of reading zoom cost what they did**: the spread between
+  repetitions (e.g. zoom-in bursts 36.9–50.8 fps on `main`, 36.3–52.3 on this
+  change) covers the differences, which go both ways.
+- **At reading zoom the text costs ~8–9 %** (52.8 vs 57.6 fps zooming in,
+  42.2 vs 46.2 panning) — the frames that now carry it.
+
 ### How it got there
 
 The prototype (audit §4.2) toggled the canvas's `display`. Rebuilt as
@@ -117,7 +155,10 @@ the first *moved* frame.
 1. **Layers.** `#nad-background-layer` (the highlight clones / halos) plus the
    network groups `.nad-vl-nodes`, `.nad-branch-edges`, `.nad-3wt-edges`,
    `.nad-3wt-nodes`, `.nad-injections`, in their DOM order (= pypowsybl's paint
-   order). `.nad-edge-infos` (flow values, arrows) and the labels are skipped.
+   order). The flow values (`.nad-edge-infos`), label connectors
+   (`.nad-text-edges`) and labels (`foreignObject.nad-text-nodes`) come after
+   them in that order too, read in idle slices once the network is built
+   (§3.4).
 2. **Shapes.** `polyline`, `polygon`, `line`, `circle`, `ellipse`, `rect`,
    `path`, mapped into root user space through their composed `transform`s
    (`parseTransform`). Elements hidden inline (the voltage filter's
@@ -146,11 +187,13 @@ the first *moved* frame.
    vectors beyond. The cache is keyed by panel size and dpr: after a resize,
    frames use vectors until the next idle `prepare()` re-bakes it.
 
-A full build, cache included, costs **84–145 ms** on the European grid. It
+The network part, cache included, costs **84–165 ms** on the European grid. It
 runs in an idle callback (`requestIdleCallback`, 2 s timeout; `setTimeout`
 200 ms where unavailable) and never during a gesture, except when a gesture
 starts while the proxy is stale and the idle build has not run yet — then it
-is built synchronously at that gesture's start.
+is built synchronously at that gesture's start. A hidden panel (an inactive
+tab, `clientWidth` 0) is not built: the labels need its layout; the resize
+observer prewarms once it is shown.
 
 ### 3.2 During a gesture
 
@@ -164,9 +207,21 @@ is built synchronously at that gesture's start.
   container — and each frame applies the travel since the last one, scaled
   with the `xMidYMid meet` letterbox (`max(vb.w / W, vb.h / H)` user units per
   px).
-- **`frame(vb)` draws**: background fill, then either the cache blit or every
-  group whose box meets the view, stroking non-scaling widths as
-  `width × dpr / scale` and halos at `computeHaloWidthPx(vb)`.
+- **`frame(vb)` draws**: background fill, then either the cache blit or, layer
+  by layer in paint order, every shape group whose box meets the view
+  (non-scaling widths as `width × dpr / scale`, halos at
+  `computeHaloWidthPx(vb)`) followed by the layer's readable text (§3.4).
+  Layers the live SVG hides at the frame's zoom tier are skipped (`tierOf`:
+  the flow values at the overview tier, as App.css). Flow arrows and label
+  connectors wait until they are 4 px across on screen (`LOD_MIN_PX`; the
+  smaller side of a filled shape, a line's length) and a label's background
+  until its font is: the arrows come with their flow values, the backgrounds
+  with their text. Over the cache blit (near full extent) only text is drawn,
+  when any is readable there (a small grid).
+- **The mapping** is the live SVG's: `preserveAspectRatio="xMidYMid meet"` on
+  its own box (`getBoundingClientRect`, fractional — the panel's integer
+  `clientHeight` put the proxy ~0.3 px off at the edges, a 1 px jump of the
+  text at the swap). The canvas is that box rounded up, at the dpr.
 - **Nothing else changes**: no class on the container (`.svg-interacting` is
   the classic path's), no viewBox write, no style change on the canvas.
 
@@ -188,7 +243,52 @@ its own release). Then `endInteraction()`:
 A programmatic `setViewBox` (Inspect, Unzoom, tab sync) ends a canvas gesture
 at once: the canvas is cleared and the jump applied to the live SVG.
 
-### 3.4 Staying in sync
+### 3.4 Flow values and labels
+
+Read after the network, in idle slices (`step(budget)`, 5–40 ms each — about a
+dozen slices of 12–27 ms on the European grid, ~180 ms in all; read with the
+network, they made one 410 ms task). The slices pause while the proxy covers
+the diagram and resume after the settle; until they are in, frames draw the
+network alone, as before. Then the overview cache re-bakes with the label
+backgrounds.
+
+- **Flow values** (`<text>` in `.nad-edge-infos`, 15,706 on the European
+  grid): each keeps its group's `translate · scale`, its own `rotate`, its
+  `x`, its anchor (`text-anchor: end` → right-aligned) and
+  `dominant-baseline: middle`, which Blink places half an x-height above the
+  alphabetic baseline (the x-height is measured on the proxy's own context).
+  The white halo (`paint-order: stroke`) is stroked first, at the text's
+  local stroke width. The arrows are ordinary shapes of that layer, their
+  `M H L Z` path parsed once per `d` straight into the group's `Path2D`.
+- **Labels** (HTML `.nad-label-box` in `foreignObject.nad-text-nodes`,
+  5,247): the box at its exact inline `left` / `top` (CSSOM re-serialises
+  them with 6 significant digits: ±5 units at 1.5e6), its size and line box
+  from the live layout (`offsetWidth/Height`; the line's `offsetLeft/Top`,
+  `clientWidth/Height`), its rounded background (`roundRect`, the computed
+  `border-radius`), then the text, with the `line-height: normal` leading
+  split evenly around the font's ascent and descent. All 5,247 labels are
+  single-line boxes sized to their text, and the canvas measures them at the
+  layout's exact widths (11,218 vs 11,218 units): only a box holding several
+  lines is word-wrapped.
+- **When**: text is drawn once its on-screen font size reaches 4 px
+  (`TEXT_MIN_PX`), run by run inside the view. On the European grid the labels
+  reach it at ~10 % of the extent and the flow values at ~8 %; region zoom
+  (thousands of 1-px texts) draws none.
+- **Visibility follows the live SVG**: the flow layer is skipped at the
+  overview tier (`tierOf`, the rule App.css applies with `data-zoom-tier`);
+  the labels and their connectors are not built while the legend hides them
+  (`nad-hide-vl-labels` on the container — usePanZoom observes that class and
+  rebuilds); inline-hidden elements (the voltage filter) are skipped as
+  everywhere.
+- **Fidelity** (probe `fidelity`: pixels differing by more than 16 / 48 levels
+  between a proxy frame and the settled live SVG at the same view): reading
+  zoom 0.41 % / 0.05 % (`main`: 9.3 % / 2.6 %), detail zoom 1.7 % / 1.0 %
+  (`main`: 9.0 % / 3.0 % — the labels and flow values under 4 px, their
+  backgrounds and arrows, are left to the live SVG), region zoom 5.5 % /
+  2.3 % (`main`: 7.9 % / 3.0 % — 1-px text and specks). Most of what is left
+  at reading zoom is anti-aliasing.
+
+### 3.5 Staying in sync
 
 - **Diagram changes** — a `MutationObserver` on the live SVG (class and
   inline-style attributes, child lists; the root's own attributes ignored, as
@@ -197,6 +297,8 @@ at once: the canvas is cleared and the jump applied to the live SVG.
   highlights, deltas, the voltage filter, the Inspect highlight.
 - **Theme** — a `data-theme` change on `<html>` does the same (colours are
   resolved at build).
+- **Label toggle** — a `class` change on the container (`nad-hide-vl-labels`,
+  the legend's 🏷 VL) does the same: hidden labels are not built.
 - **Panel size** — a `ResizeObserver` on the container re-fits the canvas and
   re-bakes the overview cache on idle.
 - **Lifecycle** — a new diagram, or the tab becoming inactive, disposes the
@@ -206,14 +308,14 @@ at once: the canvas is cleared and the jump applied to the live SVG.
 - **Windows** — every timer and animation frame uses the container's owner
   window, so a detached tab works in its popup.
 
-### 3.5 Fallbacks
+### 3.6 Fallbacks
 
 `begin()` returns false, and the gesture takes the classic path, when there is
 no live diagram, no `Path2D` (jsdom), no 2D context, or the build throws. A
 build that threw is not retried for the same diagram until it changes. The
 Action overview opts out with `usePanZoom(…, { gestureProxy: false })`.
 
-### 3.6 Contracts with the rest of the app
+### 3.7 Contracts with the rest of the app
 
 | Contract | Where | Why |
 |---|---|---|
@@ -222,6 +324,8 @@ Action overview opts out with `usePanZoom(…, { gestureProxy: false })`.
 | `gestureProxy: false` | `ActionOverviewDiagram.tsx` | Pins and dimming are not drawn by the proxy. |
 | `canvas.nad-canvas-proxy` (`aria-hidden`, absolute at 0,0 of `.svg-container`, whose `contain: layout` makes it the containing block) | `canvasProxy.ts` | The harness counts proxy frames by the background `fillRect` on that canvas. |
 | `user-select: none` on `.svg-container` | `App.css` | A drag no longer runs text selection or starts a drag-and-drop. |
+| `tierOf(vb)` = usePanZoom's `computeZoomTier` | `usePanZoom.ts` → `canvasProxy.ts` | The proxy hides the layers App.css hides at the frame's `data-zoom-tier` (`.nad-edge-infos` at the overview tier). A new tier rule in App.css needs its layer's tier in `DRAWN_LAYERS`. |
+| The label DOM: `foreignObject.nad-text-nodes` > `.nad-label-box` (inline `left` / `top`) > one element per line | pypowsybl → `canvasProxyText.ts` | How the labels are read; another shape (an SVG `<text>` label) goes through the `<text>` path instead. |
 
 ## 4. Rules, and the measurements behind them
 
@@ -272,6 +376,37 @@ Action overview opts out with `usePanZoom(…, { gestureProxy: false })`.
 8. **Bake the overview cache on idle only, keyed by panel size.** Re-baking
    mid-gesture would stall a frame (it renders the whole network); a
    stale-size cache would draw wrong stroke widths.
+9. **Draw the text, once it is readable (4 px).** Left to the live SVG, the
+   labels and flow values came back 0.75–0.91 s after the last input at
+   reading zoom (probe `reveal`, `main`): the 400 ms pause, then a ~0.3 s
+   bake of the whole SVG — layout 110–137 ms, paint 100–126 ms, layerize
+   ~60 ms; the re-raster is only 9–23 ms there — and ~1 s at detail zoom.
+   Drawn on the proxy, they are on its frames throughout and the swap does
+   not show (§2). Under 4 px text is specks, and region zoom has thousands in
+   view.
+10. **Read the text layers in idle slices.** Read with the network, the
+    15,706 flow values and arrows and the 5,247 labels made the build one
+    410 ms task (from 84–145 ms) — a gesture starting then waits for it.
+    Sliced (≤ 40 ms, paused during gestures), the network task is back to
+    ~165 ms and the rest comes in about a dozen slices of 12–27 ms.
+11. **Draw the arrows and label backgrounds with their text.** A first build
+    drew the flow arrows, label backgrounds and connectors at every size: at
+    region zoom (6,361 arrows and 2,047 labels in view, ~1 px each) the
+    median pan frame went from 33 to 50 ms. Cut under 1.5 px (their larger
+    side), region pans were back to 33 ms, but measured back to back with
+    `main` the zoom bursts and detail-zoom pans still lost 9–19 % fps
+    (thousands of 2–3 px label backgrounds on the way in, 3.6 px arrows at
+    detail zoom). With a 4 px cut on their smaller side the bursts were
+    level, but detail pans still lost ~20 %: frames slipped to two vsyncs
+    while the main thread spent ~0.4 ms per frame — the GPU process filling
+    the ~390 rounded backgrounds in view (each cell's whole path). Sized by
+    their font, the backgrounds now show with their text, and frames short
+    of reading zoom carry what the proxy drew before (§2).
+12. **Map with the live SVG's own box.** The proxy took the panel's integer
+    `clientHeight` (886) for the SVG's 886.3 px: up to ~0.3 px off at the
+    edges — invisible on lines, a 1 px jump of the text at the swap. With
+    the fractional box the proxy / live pixel diff at reading zoom went from
+    2.2 % to 0.4 % (> 16 levels) and from 0.64 % to 0.05 % (> 48).
 
 Wheel input (all modes): one wheel event may carry several coalesced notches
 when the main thread is busy, so the zoom follows the delta magnitude
@@ -283,7 +418,8 @@ up to half of a fast zoom.
 
 | Phase | Cost (European grid) | Notes |
 |---|---|---|
-| Proxy build, overview cache included | 84–145 ms | idle callback; synchronous only if a gesture starts on a stale proxy |
+| Proxy build: the network, overview cache included | 84–165 ms | idle callback; synchronous only if a gesture starts on a stale proxy |
+| Proxy build: flow values and labels | ~12 idle slices of 12–27 ms (~180 ms) | after the network, paused during gestures; the cache re-bakes in the last one |
 | Frame near full extent (cache blit) | < 16.7 ms | 60 fps, GPU and software |
 | Frame at detail zoom (~12 % of the extent) | ~19 ms | 51–53 fps |
 | Frame at region zoom (~35 %) | ~33 ms GPU, ~25 ms software | 30 / 40 fps — the most paths in view |
@@ -292,7 +428,11 @@ up to half of a fast zoom.
 | First feedback, drag at full extent | 24 ms GPU, 43 ms software | |
 | First feedback, drag at region / detail zoom | 93–106 ms GPU, 123–124 ms software | press hit test ~21 ms + first-move hit test ~20 ms + drag-selection check ~21 ms, then the frame |
 | Settle bake, main thread (region zoom) | ~0.25–0.3 s | layout ~106 ms, paint 52–120 ms, layerize 66–73 ms |
-| Settle re-raster (region zoom) | ~0.94 s GPU raster | off the main thread, but later commits wait for it |
+| Settle re-raster (region zoom) | ~0.94 s GPU raster (1–1.4 s under load) | off the main thread, but later commits wait for it |
+| Settle bake at reading zoom (~4 %) | ~0.3 s main thread, re-raster 9–23 ms | layout 110–137 ms, paint 100–126 ms, layerize ~60 ms: the whole SVG, whatever the zoom |
+| Frame at reading zoom (~4 %), text drawn | ~19–24 ms | 42–53 fps, ~8–9 % below `main` there (§2) |
+| Labels / flow values on screen after the last input, reading zoom | on the proxy's last frame (+20–34 ms) | 0.75–0.91 s on `main` (the pause + the bake); the live SVG takes over at ~+0.7–0.8 s unseen |
+| … at detail zoom (~12 %, text under 4 px) | ~0.75–1.2 s, with the live SVG | as on `main` |
 | Inspect / Unzoom jump | 440–496 / 316–344 ms | same as the classic path |
 | Hover over the live SVG | 20–40 ms per mousemove | every mode — not a proxy cost |
 | Wheel burst, 12 notches | 4 expensive hit tests, 125–154 ms in total | 0 ms if the canvas were hit-testable (§7.1) |
@@ -309,6 +449,9 @@ up to half of a fast zoom.
 | `CACHE_MAX_PIXELS` | 8 MP | `canvasProxy.ts` | memory vs overview sharpness |
 | `CACHE_MAX_MAGNIFICATION` | 0.65 | `canvasProxy.ts` | how far from full extent the blit is used (strokes thicken as it is magnified) |
 | `HALO_MIN_PX` / `HALO_MAX_PX` | 24 / 50 px | `usePanZoom.ts` | halo widths, live and proxy |
+| `TEXT_MIN_PX` | 4 px | `canvasProxy.ts` | lower: smaller text on the proxy too (less pop-in at detail zoom), heavier frames there — ~1,200 flow values and their halos in view at ~12 % |
+| `LOD_MIN_PX` | = `TEXT_MIN_PX` (4 px) | `canvasProxy.ts` | lower: arrows / label backgrounds before their text is readable (closer to the live SVG at detail zoom), heavier frames on the way (at 1.5 px: −9 to −19 % fps on zoom bursts and detail pans) |
+| `SLICE_MIN_MS` / `SLICE_MAX_MS` | 5 / 40 ms | `canvasProxy.ts` | the idle slices reading flow values and labels: longer, fewer slices but longer tasks in the way of an input |
 
 ## 7. Known limits and next levers
 
@@ -320,16 +463,26 @@ up to half of a fast zoom.
    hit-testable (`pointer-events: none` on the edges, edge infos and halos by
    default), so a hit test walks a fraction of the tree. Expected: first
    feedback under 50 ms on every drag, cheaper hover. Measure with the
-   `drag-hits` and `wheel-hits` probes.
-2. **The settle bake** (~0.3 s of main thread + ~0.94 s re-raster at region
-   zoom). A gesture started within ~1 s of a settle still waits for it. Levers:
+   `drag-hits` and `wheel-hits` probes. A narrower one: `vlInteractions`
+   resolves the VL under every press, with `elementsFromPoint` when the
+   direct target is not a VL (~33 ms at the start of a detail-zoom drag in a
+   CPU profile) — a press that travels is a pan, so that resolve could wait
+   for the click.
+2. **The settle bake** (~0.3 s of main thread at any zoom — it lays out,
+   paints and layerizes the whole SVG — plus a re-raster of ~1–1.4 s at region
+   zoom, 9–23 ms at reading zoom). The text no longer waits for it, but hover
+   and clicks do (~0.7 s after the last input at reading zoom), and a gesture
+   started within ~1 s of a region-zoom settle waits for its raster. Levers:
    audit Q1 (`--nad-halo-w` on the background layer: no full-tree restyle when
    the halo width changes), Q4 (tier rules that hide the HTML labels at the
-   overview), S1 (viewport-limited flow values and labels), S2 (bake the
-   per-VL `translate·scale` into coordinates: fewer paint chunks, cheaper
-   layerization for every frame of every mode).
-3. **Labels and flow values on the proxy** at detail zoom (text on the
-   canvas), so the pause shows less pop-in.
+   overview), S1 (viewport-limited flow values and labels: off-screen ones out
+   of the layout — the proxy's text layers make the live ones invisible until
+   the settle anyway), S2 (bake the per-VL `translate·scale` into coordinates:
+   fewer paint chunks, cheaper layerization for every frame of every mode).
+3. **Text under 4 px** — the flow values at detail zoom (~2.5 px, ~1,200 in
+   view) — still appears with the live SVG. Drawing them costs the frames
+   ~2,400 text calls with their halos; a cheaper stand-in (a glyph atlas, or
+   the halo alone as a short stroke) would close the gap.
 4. **Fly-to for Inspect / Unzoom on the proxy** (audit A3): animate the jump on
    the canvas and bake once at the end.
 5. **Incremental rebuild**: patch the groups a highlight change touches
@@ -364,7 +517,17 @@ node audit_probe.mjs wheel-hits  # hit tests during a wheel burst
 node audit_probe.mjs rebuild     # rebuild timing vs an Inspect jump, SVG mutations
 node audit_probe.mjs detached    # a drag in a detached window
 node audit_probe.mjs layers      # composited layers during a gesture
+node audit_probe.mjs reveal      # when the labels / flow values are on screen after a gesture (--trace: the bake's split)
+node audit_probe.mjs fidelity --out-dir shots   # proxy frame vs settled live SVG: pixel diff + PNGs
 ```
+
+`pan_deep` and `zoom_in_deep` are the reading-zoom scenarios (~4 % of the
+extent), where the proxy draws text. For a before / after, interleave: serve
+each build from its own backend (`COSTUDY4GRID_FRONTEND_DIST` pointing at its
+`dist`), keep a session on each (`--keep 1 --port 9351` / `9352`), then
+alternate them scenario by scenario (`--attach 1 --keep 1 --scenarios <one>
+--reps 1`), flipping the order every repetition. Back-to-back blocks of runs
+drifted by 10–30 % with the machine's load on 2026-11-15.
 
 Things that bit:
 
@@ -381,6 +544,15 @@ Things that bit:
   real files, or run `git lfs pull`.
 - **Traces** of a full gesture are 10–40 MB: trace one scenario at a time
   (`--trace pan_region`) and read them with `audit_trace_breakdown.py`.
+- **A region-zoom pan inside the previous bake's re-raster.** The harness
+  starts a gesture 1.2 s after its pre-zoom; under load the region-zoom
+  re-raster (1–1.4 s) can still be running, and the interval it blocked
+  counts as the gesture's first frame (a 0.7–1.1 s "max frame", 15–18 fps).
+  It hit `main` and the branch alike in the 2026-11-15 evening runs: read the
+  median frame, and compare back to back.
+- **A click is a click.** A probe that presses and releases at the same point
+  on a label opens its SLD over the diagram, and every later input lands on
+  the SLD (`fidelity` releases after a real move).
 
 Reference probe output (2026-11-15, final build, region zoom):
 
@@ -395,6 +567,11 @@ drag-hits   as built: 6 hit tests > 2 ms (165 ms); capture on pointerdown: 5 (11
 wheel-hits  click-through canvas: 14 hit tests (154 ms, 4 over 2 ms); hit-testable: 14 (0 ms)
 rebuild     viewBox written at +7–10 ms; rebuild at +607–610 ms (90–145 ms); 1 class mutation
 detached    proxy drawn in the popup; live viewBox unchanged mid-drag; baked after the pause
+reveal      (2026-11-15 evening) reading zoom: main shows the text with the live SVG at
+            +0.75–0.91 s, the text-drawing proxy on its last frame (+20–34 ms); detail zoom
+            (text under 4 px): with the live SVG either way, ~0.75–1.2 s
+fidelity    pixels differing > 16 levels, reading / detail / region zoom:
+            main 9.3 / 9.0 / 7.9 %, with text 0.4 / 1.7 / 5.5 %
 ```
 
 ## 9. Tests
@@ -406,11 +583,22 @@ detached    proxy drawn in the popup; live viewBox unchanged mid-drag; baked aft
   clear to hide two frames after the settle, never restyles the canvas, a new
   gesture cancels a pending settle, debounced rebuild and dispose, cache
   re-bake on idle after a resize, fallbacks (no diagram, no `Path2D`, no 2D
-  context, a build that throws is not retried).
+  context, a build that throws is not retried), no build while the panel is
+  hidden. Flow values and labels: the network read at once and the text
+  layers in steps; a flow value drawn under its group and own transforms, its
+  anchor, its middle baseline and its halo first; text left out under
+  `TEXT_MIN_PX`; flows hidden at the overview tier, labels not; a label box at
+  its layout's position, background then text on the line box baseline; paint
+  order network → arrows → flow values → connectors → labels; specks under
+  `LOD_MIN_PX` left out; the legend's label toggle; text never baked into the
+  overview cache but drawn over the blit; the cache re-baked once the text
+  layers are in; the controller's idle slices, paused during a gesture.
+  `straightPath` for the arrows' `M H L Z` paths.
 - `hooks/usePanZoom.test.tsx` — `wheelZoomFactor`; drag-end flush and
   letterbox drag scale; a press owning a pending wheel settle; canvas mode:
   one bake after the pause, chained drags, a click draws nothing, wheel zoom,
-  the opt-out surface, a programmatic jump. The other cases pin the classic
+  the opt-out surface, a programmatic jump, a rebuild when the legend toggles
+  the labels. The other cases pin the classic
   path.
 - `utils/svg/vlInteractions.test.ts` — hover and clicks ignored while the
   proxy is up.
