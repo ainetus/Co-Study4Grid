@@ -25,6 +25,7 @@ interface AppSidebarProps {
   nameMap: Record<string, string>;
   n1LinesOverloaded: string[] | undefined;
   n1LinesOverloadedRho: number[] | undefined;
+  n1LinesOverloadedRhoBefore?: (number | null)[];
   /** N-state pre-existing overloads, surfaced in the SidebarSummary info bubble. */
   nLinesOverloaded?: string[];
   nLinesOverloadedRho?: number[];
@@ -87,6 +88,7 @@ export default function AppSidebar({
   nameMap,
   n1LinesOverloaded,
   n1LinesOverloadedRho,
+  n1LinesOverloadedRhoBefore,
   nLinesOverloaded,
   nLinesOverloadedRho,
   selectedOverloads,
@@ -208,6 +210,7 @@ export default function AppSidebar({
         selectedContingency={selectedContingency}
         n1LinesOverloaded={n1LinesOverloaded}
         n1LinesOverloadedRho={n1LinesOverloadedRho}
+        n1LinesOverloadedRhoBefore={n1LinesOverloadedRhoBefore}
         nLinesOverloaded={nLinesOverloaded}
         nLinesOverloadedRho={nLinesOverloadedRho}
         selectedOverloads={selectedOverloads}

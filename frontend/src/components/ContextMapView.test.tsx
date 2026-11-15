@@ -246,6 +246,41 @@ describe('ContextMapView', () => {
         expect(screen.queryByTestId('context-map-rho-L1')).toBeNull();
     });
 
+    it('draws a contingency and the overload on its twin circuit side by side, not one over the other', () => {
+        // Twin circuits: the same two substations, the overload digitised the other way round.
+        const twin: ContextMapHighlight = {
+            role: 'overload', rho: 1.21, rhoBefore: 0.87,
+            element: { ...contingency.element, id: 'L3', name: 'LINE ONE BIS',
+                points: [contingency.element.points![1], contingency.element.points![0]] },
+        };
+        render(<ContextMapView state={state({ highlights: [contingency, twin] })} />);
+        const path = (id: string) => screen.getByTestId(`context-map-highlight-${id}`).querySelector('path')!.getAttribute('d')!;
+        // Each runs its own course between the shared substations…
+        const middle = (d: string) => d.split('L')[1];
+        expect(middle(path('L1'))).not.toEqual(middle(path('L3')));
+        // …and the contingency is drawn last, on top where they still meet.
+        const shapes = [...screen.getByTestId('context-map-highlights').querySelectorAll('[data-role]')];
+        expect(shapes.map(s => s.getAttribute('data-role'))).toEqual(['overload', 'contingency']);
+    });
+
+    it('tells the line and its loading before → after on hovering its percentage', () => {
+        const twin: ContextMapHighlight = { ...overload, rho: 1.21, rhoBefore: 0.87 };
+        render(<ContextMapView state={state({ highlights: [contingency, twin], monitoringFactor: 0.95 })} />);
+        fireEvent.mouseEnter(screen.getByTestId('context-map-rho-L2'), { clientX: 10, clientY: 10 });
+        const tip = screen.getByTestId('context-map-tooltip');
+        expect(tip).toHaveTextContent('Overload: LINE TWO');
+        expect(screen.getByTestId('context-map-tooltip-loading')).toHaveTextContent('87 % → 121 % with the contingency');
+        expect(tip).toHaveTextContent('Overloaded from 95 % of its limit');
+        fireEvent.mouseLeave(screen.getByTestId('context-map-rho-L2'));
+        expect(screen.queryByTestId('context-map-tooltip')).toBeNull();
+    });
+
+    it('falls back to the loading after the contingency when the N loading is unknown', () => {
+        render(<ContextMapView state={state({ highlights: [contingency, overload] })} />);
+        fireEvent.mouseEnter(screen.getByTestId('context-map-rho-L2'), { clientX: 10, clientY: 10 });
+        expect(screen.getByTestId('context-map-tooltip-loading')).toHaveTextContent('Loading after contingency: 108 %');
+    });
+
     it('frames a new contingency and its overloads, unless the map was moved', () => {
         const { rerender } = render(<ContextMapView state={state()} />);
         const svg = screen.getByRole('img', { name: /Situation map/ });

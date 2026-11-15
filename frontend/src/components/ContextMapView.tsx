@@ -57,7 +57,10 @@ const clientToUser = (svg: SVGSVGElement, vb: ViewBox, clientX: number, clientY:
     return { x: vb.x + (clientX - rect.left - offX) / a, y: vb.y + (clientY - rect.top - offY) / a, a };
 };
 
-const HoverCard: React.FC<{ hover: ContextHover }> = ({ hover }) => {
+/** Loading as an operator reads it: a whole percentage of the limit. */
+const pct = (rho: number) => `${Math.round(rho * 100)} %`;
+
+const HoverCard: React.FC<{ hover: ContextHover; monitoringFactor?: number }> = ({ hover, monitoringFactor }) => {
     if (hover.kind === 'plant') {
         const { plant, units } = hover;
         return (
@@ -92,12 +95,21 @@ const HoverCard: React.FC<{ hover: ContextHover }> = ({ hover }) => {
         );
     }
     if (hover.kind === 'element') {
-        const { element, role, rho } = hover.highlight;
+        const { element, role, rho, rhoBefore } = hover.highlight;
         return (
             <>
                 <div style={{ fontWeight: 700 }}>{role === 'contingency' ? 'Contingency' : 'Overload'}: {element.name}</div>
                 {element.name !== element.id && <div style={{ color: colors.textSecondary }}>{element.id}</div>}
-                {rho !== undefined && <div>Loading after contingency: {Math.round(rho * 100)} %</div>}
+                {rho !== undefined && (rhoBefore !== undefined
+                    ? <div data-testid="context-map-tooltip-loading">
+                        Loading: {pct(rhoBefore)} → <b>{pct(rho)}</b> with the contingency
+                    </div>
+                    : <div data-testid="context-map-tooltip-loading">Loading after contingency: <b>{pct(rho)}</b></div>)}
+                {role === 'overload' && monitoringFactor !== undefined && (
+                    <div style={{ color: colors.textSecondary, fontSize: text.xs }}>
+                        Overloaded from {pct(monitoringFactor)} of its limit (monitoring factor)
+                    </div>
+                )}
                 <div style={{ color: colors.textSecondary }}>
                     {[...new Set(element.zones.filter(Boolean))].join(' – ')}
                     {!element.points && ' (placed by zone: no geographic layout)'}
@@ -438,7 +450,7 @@ const ContextMapView: React.FC<ContextMapViewProps> = ({ state }) => {
                     ...card, left: hover.x, top: hover.y, pointerEvents: 'none', zIndex: 30,
                     width: TOOLTIP_WIDTH, boxSizing: 'border-box',
                 }}>
-                    <HoverCard hover={hover.hover} />
+                    <HoverCard hover={hover.hover} monitoringFactor={state.monitoringFactor} />
                 </div>
             )}
         </div>

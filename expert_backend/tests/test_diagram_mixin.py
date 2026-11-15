@@ -322,3 +322,27 @@ class TestGetElementMaxCurrents:
         network.get_2_windings_transformers.assert_called_once_with(
             attributes=["i1", "i2"]
         )
+
+
+class TestGetNStateLoading:
+    """`_get_n_state_loading` divides the N currents cached with the N
+    diagram by the permanent limits — the "before" of each N-1 overload."""
+
+    @staticmethod
+    def _network(limits: dict[str, float]):
+        network = MagicMock()
+        rows = [{"element_id": e, "type": "CURRENT", "acceptable_duration": -1, "value": v}
+                for e, v in limits.items()]
+        network.get_operational_limits.return_value = (
+            pd.DataFrame(rows).set_index(["element_id", "type", "acceptable_duration"])[["value"]])
+        return network
+
+    def test_uses_the_currents_cached_with_the_n_diagram(self):
+        mixin = DiagramMixin()
+        mixin._n_state_currents = {"L1": 87.0, "L2": 30.0}
+        out = mixin._get_n_state_loading(self._network({"L1": 100.0, "L2": 60.0}), ["L1", "L2"])
+        assert out == [pytest.approx(0.87), pytest.approx(0.5)]
+
+    def test_unknown_before_the_n_diagram(self):
+        mixin = DiagramMixin()
+        assert mixin._get_n_state_loading(self._network({"L1": 100.0}), ["L1"]) == [None]

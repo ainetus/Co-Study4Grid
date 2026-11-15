@@ -494,7 +494,10 @@ branch) across the whole zoomed-in range, growing toward a still-modest
 ~50px marker only past the overview boundary, with **no `data-zoom-tier`
 step** (the old discrete 24px-vs-120px snap looked jarring + coarse at
 deep zoom). App.css binds `stroke-width: var(--nad-halo-w, 24px)` on the
-three halo classes (thin default if JS hasn't set it). The var is only
+three halo classes (thin default if JS hasn't set it) — the contingency
+halo at 1.7 × that width and inserted first in `#nad-background-layer`, so
+an overload on its twin circuit leaves a yellow band around the orange
+(`docs/features/context-tab.md`). The var is only
 written when the rounded px value changes, so it's free during a pan and
 re-evaluated on each settle. Guarded by the
 `nad_overload_halo_zoom_adaptive` Layer-4 invariant +
@@ -539,7 +542,8 @@ Modes:
   / dash) × 8×8 grid cell, in DOM paint order, `vector-effect:
   non-scaling-stroke` emulated by dividing the line width by the scale, the
   overload / action / contingency halos drawn at the width
-  `computeHaloWidthPx` gives the live `--nad-halo-w` for the frame's zoom,
+  `computeHaloWidthPx` gives the live `--nad-halo-w` for the frame's zoom
+  (× 1.7 for the contingency halo, as App.css),
   plus an overview cache bitmap (2× the panel, ≤ 8 MP) blitted when zoomed
   out. During a gesture `usePanZoom` only redraws that canvas, stacked over
   the SVG — no `.svg-interacting` toggle, no viewBox write. The gesture

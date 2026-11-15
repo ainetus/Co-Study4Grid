@@ -15,6 +15,9 @@ interface SidebarSummaryProps {
   selectedContingency: string[];
   n1LinesOverloaded: string[] | undefined;
   n1LinesOverloadedRho: number[] | undefined;
+  /** Each N-1 overload's loading before the contingency (N), parallel to
+   *  `n1LinesOverloaded` — told on hovering its percentage. */
+  n1LinesOverloadedRhoBefore?: (number | null)[];
   /** N-state pre-existing overloads. Surfaced via the info bubble next to
    *  the Overloads label, since they are no longer shown in a dedicated
    *  OverloadPanel card. */
@@ -66,6 +69,7 @@ export default function SidebarSummary({
   selectedContingency,
   n1LinesOverloaded,
   n1LinesOverloadedRho,
+  n1LinesOverloadedRhoBefore,
   nLinesOverloaded,
   nLinesOverloadedRho,
   selectedOverloads,
@@ -187,6 +191,10 @@ export default function SidebarSummary({
             {n1LinesOverloaded!.map((name, i) => {
               const rho = n1LinesOverloadedRho?.[i];
               const rhoPct = rho != null && !Number.isNaN(rho) ? `${(rho * 100).toFixed(1)}%` : null;
+              const before = n1LinesOverloadedRhoBefore?.[i];
+              const rhoTitle = rhoPct && before != null && !Number.isNaN(before)
+                ? `${displayName(name)}: ${(before * 100).toFixed(1)}% before the contingency → ${rhoPct} after`
+                : undefined;
               const isSelected = selectedOverloads?.has(name) ?? true;
               return (
                 <React.Fragment key={name}>
@@ -218,7 +226,14 @@ export default function SidebarSummary({
                     {displayName(name)}
                   </button>
                   {rhoPct && (
-                    <span style={{ color: isSelected ? colors.textPrimary : colors.borderStrong, marginLeft: space.half }}>
+                    <span
+                      data-testid={`sidebar-summary-overload-rho-${name}`}
+                      title={rhoTitle}
+                      style={{
+                        color: isSelected ? colors.textPrimary : colors.borderStrong, marginLeft: space.half,
+                        cursor: rhoTitle ? 'help' : undefined,
+                      }}
+                    >
                       ({rhoPct})
                     </span>
                   )}

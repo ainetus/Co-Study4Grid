@@ -160,6 +160,7 @@ export function useContingencyFetch({
               originalViewBox: nDiagram?.originalViewBox ? { ...nDiagram.originalViewBox } : null,
               lines_overloaded: patch.lines_overloaded,
               lines_overloaded_rho: patch.lines_overloaded_rho,
+              lines_overloaded_rho_before: patch.lines_overloaded_rho_before,
               flow_deltas: patch.flow_deltas,
               reactive_flow_deltas: patch.reactive_flow_deltas,
               asset_deltas: patch.asset_deltas,

@@ -47,6 +47,24 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   windows, layers). The bitmap mode's docs and comments no longer claim an
   off-thread decode: Chrome decodes its SVG snapshot on the main thread.
 
+### Contingency and overload highlights — twin circuits, loading before → after
+
+- **A contingency no longer hides an overload on its twin circuit** (two lines
+  between the same substations), nor the reverse. On the Context map such
+  lines are drawn side by side, leaving and rejoining their shared substations
+  (`separateCoincident`), the contingency in the middle and on top, and the
+  overload's % pill sits clear of its line. On the N-1 diagram the contingency
+  halo is 1.7× wider and always beneath the other halos, so a yellow band stays
+  visible around the orange — during pan/zoom too (the canvas gesture proxy
+  keeps the ratio).
+- **Loading before → after on hover**: the Context map's % pill names the line
+  and gives its loading before and after the contingency, with the threshold it
+  is judged against (the monitoring factor, 95 % by default); the sidebar's
+  overload percentages tell the same in their tooltip. Both N-1 endpoints
+  (`/api/contingency-diagram`, `/api/contingency-diagram-patch`) now return
+  `lines_overloaded_rho_before`, from the N-state currents cached with the N
+  diagram (`overloads.get_n_state_loading`).
+
 ### Context tab — the Carte-Front situation map, first on screen
 
 - **New leftmost "Context" tab**, opened after every study load: the

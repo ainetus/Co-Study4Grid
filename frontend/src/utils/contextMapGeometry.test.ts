@@ -10,7 +10,7 @@ import type { ContextMapData, ContextMapHighlight } from '../types';
 import {
     FIGURE_WIDTH_PT, PROD_REF_MW, RENDER_SIZE,
     arcControl, arrowHead, arrowWidthPt, formatMw, highlightBox, pieSlices, polylineMidpoint, productionMix, ptUnit,
-    rampColor, renderScale, trimmedArc, volumeRadiusPt, type Point,
+    rampColor, renderScale, separateCoincident, trimmedArc, volumeRadiusPt, type Point,
 } from './contextMapGeometry';
 
 const length = (pts: Point[]) =>
@@ -128,5 +128,49 @@ describe('labels and highlights', () => {
         const box = highlightBox(data, [hl([[1, 1], [2, 3]], []), hl(null, [[4, 2]])]);
         expect(box).toEqual({ x: 1 * k, y: 1 * k, w: 3 * k, h: 2 * k });
         expect(highlightBox(data, [])).toBeNull();
+    });
+});
+
+describe('separateCoincident — twin lines pulled apart', () => {
+    const A: Point = [0, 0];
+    const B: Point = [100, 0];
+
+    it('a contingency and its overload on a twin circuit become a lens, both visible', () => {
+        // Same substations, the overload's line digitised the other way round.
+        const [cont, over] = separateCoincident([[A, B], [[100.5, 0.4], [0.3, -0.2]]], 2, 6);
+        // Each keeps its own end points…
+        expect(cont!.points[0]).toEqual(A);
+        expect(cont!.points[3]).toEqual(B);
+        expect(over!.points[0]).toEqual([100.5, 0.4]);
+        expect(over!.points[3]).toEqual([0.3, -0.2]);
+        // The sides point away from each other — where each one's label goes.
+        expect(cont!.side![1] * over!.side![1]).toBeLessThan(0);
+        expect(Math.sign(over!.side![1])).toBe(Math.sign(over!.points[1][1] - cont!.points[1][1]));
+    });
+
+    it('twin lines run parallel, `gap` apart, between their shared ends', () => {
+        const [one, two] = separateCoincident([[A, B], [B, A]], 2, 6);
+        expect(Math.abs(one!.points[1][1] - two!.points[2][1])).toBeCloseTo(6);
+        expect(one!.points[2][1]).toBeCloseTo(one!.points[1][1]);
+        expect(two!.points[2][1]).toBeCloseTo(two!.points[1][1]);
+        expect(two!.points[0]).toEqual(B);
+        expect(two!.points[3]).toEqual(A);
+    });
+
+    it('the first-listed line keeps the middle of an odd group', () => {
+        const [first, second, third] = separateCoincident([[A, B], [A, B], [B, A]], 2, 6);
+        expect(first!.side).toBeNull();
+        expect(first!.points[1][1]).toBeCloseTo(0);
+        expect(Math.abs(second!.points[1][1])).toBeCloseTo(6);
+        expect(third!.points[1][1]).toBeCloseTo(-second!.points[1][1]);
+    });
+
+    it('leaves alone lines that do not coincide, and shapes that are not segments', () => {
+        const C: Point = [0, 50];
+        const out = separateCoincident([[A, B], [A, C], [[10, 10]], null], 2, 6);
+        expect(out[0]).toEqual({ points: [A, B], side: null });
+        expect(out[1]).toEqual({ points: [A, C], side: null });
+        expect(out[2]).toBeNull();
+        expect(out[3]).toBeNull();
     });
 });

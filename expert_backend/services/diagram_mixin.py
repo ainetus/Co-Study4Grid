@@ -53,6 +53,7 @@ from expert_backend.services.diagram.nad_render import generate_diagram
 from expert_backend.services.diagram.obs_prewarm import build_prewarmed_obs
 from expert_backend.services.diagram.overloads import (
     get_element_max_currents,
+    get_n_state_loading,
     get_overloaded_lines,
 )
 from expert_backend.services.diagram.sld_render import (
@@ -142,6 +143,11 @@ class DiagramMixin(_Base):
             monitoring_factor=getattr(config, "MONITORING_FACTOR_THERMAL_LIMITS", 0.95),
             worsening_threshold=getattr(config, "PRE_EXISTING_OVERLOAD_WORSENING_THRESHOLD", 0.02),
         )
+
+    def _get_n_state_loading(self, network, element_ids):
+        """N-state loading of ``element_ids`` (from the currents cached with
+        the N diagram), parallel to them — ``None`` where unknown."""
+        return get_n_state_loading(network, element_ids, getattr(self, "_n_state_currents", None))
 
     def _get_network_flows(self, network):
         return get_network_flows(network)
@@ -266,6 +272,7 @@ class DiagramMixin(_Base):
             )
             diagram["lines_overloaded"] = names
             diagram["lines_overloaded_rho"] = rhos
+            diagram["lines_overloaded_rho_before"] = self._get_n_state_loading(n, names)
             # Pre-warm the post-contingency observation cache while the
             # variant is already set. Step 1 of the analysis pipeline
             # then re-uses this observation instead of running a second
@@ -431,6 +438,7 @@ class DiagramMixin(_Base):
             )
             payload["lines_overloaded"] = names
             payload["lines_overloaded_rho"] = rhos
+            payload["lines_overloaded_rho_before"] = self._get_n_state_loading(n, names)
 
             payload["meta"] = {
                 "base_state": "N",

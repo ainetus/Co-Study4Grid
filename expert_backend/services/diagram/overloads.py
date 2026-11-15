@@ -6,7 +6,7 @@
 
 """Overload-detection helpers over pypowsybl networks.
 
-Two entry points:
+Three entry points:
   - :func:`get_element_max_currents` — ``{element_id: max(|i1|,|i2|)}``
     for every line and 2-winding transformer. Used as the N-state
     reference for pre-existing-overload filtering.
@@ -14,6 +14,8 @@ Two entry points:
     permanent current limits, the monitoring set, and an optional
     N-state reference (to exclude pre-existing overloads unless
     worsened).
+  - :func:`get_n_state_loading` — the N-state loading of given elements
+    (what a contingency's overloads carried before it).
 
 Both use narrow pypowsybl queries (only ``i1``, ``i2``) + numpy
 vectorisation — on the 10 k-branch PyPSA-EUR France grid the overload
@@ -142,3 +144,22 @@ def get_overloaded_lines(
     if with_rho:
         return sanitize_for_json(overloaded), sanitize_for_json(overloaded_rho)
     return sanitize_for_json(overloaded)
+
+
+def get_n_state_loading(
+    network: Any,
+    element_ids: list[str],
+    n_state_currents: dict[str, float] | None,
+) -> list[float | None]:
+    """Loading (``max_i / permanent limit``) of each element in the N state,
+    parallel to ``element_ids`` — the "before" of a contingency's overloads.
+    ``None`` where the N currents or the limit are unknown."""
+    if not n_state_currents:
+        return [None] * len(element_ids)
+    limit_dict = _limit_dict(network)
+    loading: list[float | None] = []
+    for element_id in element_ids:
+        limit = limit_dict.get(element_id)
+        current = n_state_currents.get(element_id)
+        loading.append(float(current / limit) if limit and current is not None else None)
+    return sanitize_for_json(loading)

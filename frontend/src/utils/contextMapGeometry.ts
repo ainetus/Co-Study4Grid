@@ -229,6 +229,70 @@ export const highlightBox = (data: ContextMapData, highlights: readonly ContextM
     return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
 };
 
+/** A line pulled apart from the ones drawn over it. */
+export interface SeparatedLine {
+    points: Point[];
+    /** Unit normal towards the side the line moved to; null when it kept the
+     *  shared axis (or had nothing to share it with). */
+    side: Point | null;
+}
+
+/** Slots across a corridor, the middle one first, then alternately outwards. */
+const centreOut = (n: number, gap: number): number[] =>
+    Array.from({ length: n }, (_, k) => (k - (n - 1) / 2) * gap)
+        .map((o, k) => ({ o, k }))
+        .sort((a, b) => Math.abs(a.o) - Math.abs(b.o) || a.k - b.k)
+        .map(({ o }) => o);
+
+/**
+ * Segments drawn over each other — a contingency and the overload it causes
+ * on a twin circuit, or parallel overloaded circuits — pulled apart into a
+ * lens: each leaves the shared ends, runs `gap` from its neighbours and comes
+ * back, so every one stays visible. Two segments coincide when both their
+ * ends lie within `tolerance` of each other (either way round). In a group the
+ * first-listed segment takes the middle slot, so list what must stay central
+ * first. Shapes other than two-point segments pass through unchanged.
+ */
+export const separateCoincident = (
+    lines: readonly (Point[] | null)[], tolerance: number, gap: number,
+): (SeparatedLine | null)[] => {
+    const near = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1]) <= tolerance;
+    const groups: { ends: [Point, Point]; members: number[] }[] = [];
+    lines.forEach((pts, i) => {
+        if (!pts || pts.length !== 2) return;
+        const [a, b] = pts;
+        const group = groups.find(({ ends: [p, q] }) => (near(a, p) && near(b, q)) || (near(a, q) && near(b, p)));
+        if (group) group.members.push(i);
+        else groups.push({ ends: [a, b], members: [i] });
+    });
+    const out: (SeparatedLine | null)[] = lines.map(pts => (pts && pts.length >= 2 ? { points: pts, side: null } : null));
+    for (const { ends: [p, q], members } of groups) {
+        const len = Math.hypot(q[0] - p[0], q[1] - p[1]);
+        if (members.length < 2 || len === 0) continue;
+        const u: Point = [(q[0] - p[0]) / len, (q[1] - p[1]) / len];
+        const n: Point = [-u[1], u[0]];
+        const taper = Math.min(len * 0.3, gap * 2);
+        const slots = centreOut(members.length, gap);
+        members.forEach((i, slot) => {
+            const [a, b] = lines[i]!;
+            const reversed = !(near(a, p) && near(b, q));
+            const [start, end] = reversed ? [b, a] : [a, b];
+            const o = slots[slot];
+            const lens: Point[] = [
+                start,
+                [start[0] + u[0] * taper + n[0] * o, start[1] + u[1] * taper + n[1] * o],
+                [end[0] - u[0] * taper + n[0] * o, end[1] - u[1] * taper + n[1] * o],
+                end,
+            ];
+            out[i] = {
+                points: reversed ? lens.reverse() : lens,
+                side: o === 0 ? null : [n[0] * Math.sign(o), n[1] * Math.sign(o)],
+            };
+        });
+    }
+    return out;
+};
+
 /**
  * Production by type summed over the zones drawn as pies — the regions
  * (or countries), not the neighbour badges — largest first: the national

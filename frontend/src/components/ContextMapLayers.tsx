@@ -14,7 +14,8 @@ import { contextFiliereColors, contextMapPalette as P } from '../styles/tokens';
 import {
     DENSE_SCALE, DENSE_ZONE_COUNT, PIE_GAP_PT, PROD_REF_MW,
     arrowHead, arrowWidthPt, formatMw, highlightBox, highlightPoints, pieSlices, polylinePath,
-    polylineMidpoint, ptUnit, rampColor, renderScale, ringPath, trimmedArc, volumeRadiusPt, type Point,
+    polylineMidpoint, ptUnit, rampColor, renderScale, ringPath, separateCoincident, trimmedArc, volumeRadiusPt,
+    type Point, type SeparatedLine,
 } from '../utils/contextMapGeometry';
 
 type ContextHighlight = ContextMapHighlight;
@@ -40,6 +41,10 @@ const FILIERE_ORDER = Object.keys(contextFiliereColors) as ContextFiliere[];
 const SIGNAL = { contingency: 'var(--signal-contingency)', overload: 'var(--signal-overload)' } as const;
 /** Transfer labels on a dense map (many zones): smaller, so all fit. */
 const DENSE_LABEL_PT = 5.2;
+/** Highlighted lines whose ends both lie this close on screen (twin
+ *  circuits) are drawn LENS_GAP_PT apart, so neither hides the other. */
+const LENS_TOLERANCE_PT = 6;
+const LENS_GAP_PT = 6;
 
 interface Geometry {
     k: number;
@@ -365,42 +370,54 @@ const AttentionRing: React.FC<{ data: ContextMapData; highlights: ContextHighlig
     );
 };
 
-/** Where an overload's loading is written: beside its line (on the side
- *  facing up, clear of the stroke), its substation, or its zones' link. */
-const rhoAnchor = (h: ContextHighlight, g: Geometry): Point | null => {
-    const pts = h.element.points ? highlightPoints(h, g.k) : null;
-    if (pts && pts.length === 2) {
-        const [[x1, y1], [x2, y2]] = pts;
+/** Where an overload's loading is written: beside its line, clear of the
+ *  stroke whatever the line's angle (on the side a twin line pushed it to,
+ *  else the side facing up), its substation, or its zones' link. `pill` is
+ *  the label's [width, height]. */
+const rhoAnchor = (h: ContextHighlight, line: SeparatedLine | null, g: Geometry, pill: Point): Point | null => {
+    if (line) {
+        const [x1, y1] = line.points[0];
+        const [x2, y2] = line.points[line.points.length - 1];
         const len = Math.hypot(x2 - x1, y2 - y1) || 1;
-        let [nx, ny] = [-(y2 - y1) / len, (x2 - x1) / len];
-        if (ny > 0) [nx, ny] = [-nx, -ny];
-        return [(x1 + x2) / 2 + nx * 10 * g.pt, (y1 + y2) / 2 + ny * 10 * g.pt];
+        let [nx, ny] = line.side ?? [-(y2 - y1) / len, (x2 - x1) / len];
+        if (!line.side && ny > 0) [nx, ny] = [-nx, -ny];
+        // The stroke's half-width, a gap, and the pill's half-extent along the normal.
+        const clear = 5 * g.pt + (Math.abs(nx) * pill[0] + Math.abs(ny) * pill[1]) / 2;
+        const [mx, my] = polylineMidpoint(line.points);
+        return [mx + nx * clear, my + ny * clear];
     }
+    const pts = h.element.points ? highlightPoints(h, g.k) : null;
     if (pts && pts.length === 1) return [pts[0][0] + 12 * g.pt, pts[0][1] - 8 * g.pt];
     const zones = [...new Set(h.element.zones.filter((z): z is string => !!z))]
         .map(id => g.zones.get(id)).filter((z): z is ContextMapZone => !!z?.placed);
-    const line = zones.length >= 2 ? trimmedArc(g.pos(zones[0]), g.pos(zones[1]), 0.25, 0, 0) : null;
-    if (line) {
-        const [x, y] = polylineMidpoint(line);
+    const arc = zones.length >= 2 ? trimmedArc(g.pos(zones[0]), g.pos(zones[1]), 0.25, 0, 0) : null;
+    if (arc) {
+        const [x, y] = polylineMidpoint(arc);
         return [x, y - 9 * g.pt];
     }
     return zones.length === 1 ? [g.pos(zones[0])[0], g.pos(zones[0])[1] - g.radius(zones[0]) - 12 * g.pt] : null;
 };
 
-/** An overload's loading after the contingency, in a pill of its colour. */
-const RhoLabel: React.FC<{ h: ContextHighlight; g: Geometry }> = ({ h, g }) => {
-    const at = h.rho !== undefined ? rhoAnchor(h, g) : null;
-    if (!at) return null;
-    const text = `${Math.round(h.rho! * 100)} %`;
+/** An overload's loading after the contingency, in a pill of its colour;
+ *  hovering it tells the line and its loading before → after. */
+const RhoLabel: React.FC<{
+    h: ContextHighlight; line: SeparatedLine | null; g: Geometry; onHover: ContextMapLayersProps['onHover'];
+}> = ({ h, line, g, onHover }) => {
+    if (h.rho === undefined) return null;
+    const text = `${Math.round(h.rho * 100)} %`;
     const size = 7.5 * g.pt;
     const w = (text.length * 0.62 + 1.2) * size;
     const hgt = 1.55 * size;
+    const at = rhoAnchor(h, line, g, [w, hgt]);
+    if (!at) return null;
+    const enter = (e: React.MouseEvent) => onHover({ kind: 'element', highlight: h }, e);
     return (
-        <g data-testid={`context-map-rho-${h.element.id}`} style={{ pointerEvents: 'none' }}>
+        <g data-testid={`context-map-rho-${h.element.id}`} style={{ cursor: 'help' }}
+            onMouseEnter={enter} onMouseMove={enter} onMouseLeave={() => onHover(null)}>
             <rect x={at[0] - w / 2} y={at[1] - hgt / 2} width={w} height={hgt} rx={hgt / 2}
                 style={{ fill: SIGNAL.overload }} stroke={P.highlightCasing} strokeWidth={0.9 * g.pt} />
             <text x={at[0]} y={at[1]} fontSize={size} fontWeight={700} textAnchor="middle"
-                dominantBaseline="central" fill={P.highlightCasing}>{text}</text>
+                dominantBaseline="central" fill={P.highlightCasing} style={{ pointerEvents: 'none' }}>{text}</text>
         </g>
     );
 };
@@ -408,18 +425,32 @@ const RhoLabel: React.FC<{ h: ContextHighlight; g: Geometry }> = ({ h, g }) => {
 /** The contingency (yellow) and its overloads (orange, their loading beside
  *  them), Co-Study's halo colours. */
 const Highlights: React.FC<{ highlights: ContextHighlight[]; g: Geometry; onHover: ContextMapLayersProps['onHover'] }> = ({ highlights, g, onHover }) => {
-    // Overloads first: the contingency stays on top where they share a corridor.
-    const ordered = [...highlights].sort((a, b) => (a.role === b.role ? 0 : a.role === 'overload' ? -1 : 1));
+    const contingencies = highlights.filter(h => h.role === 'contingency');
+    const overloads = highlights.filter(h => h.role !== 'contingency');
+    // A contingency and an overload on twin circuits would cover each other:
+    // pull coincident lines apart, the contingency keeping the corridor's middle…
+    const listed = [...contingencies, ...overloads];
+    const lines = separateCoincident(
+        listed.map(h => (h.element.points ? highlightPoints(h, g.k) : null)),
+        LENS_TOLERANCE_PT * g.pt, LENS_GAP_PT * g.pt,
+    );
+    const lineOf = new Map(listed.map((h, i) => [h.element.id, lines[i]]));
+    const line = (h: ContextHighlight) => lineOf.get(h.element.id) ?? null;
+    // …and drawn last, on top where lines still cross.
     return (
         <g data-testid="context-map-highlights">
-            {ordered.map(h => <HighlightShape key={h.element.id} h={h} g={g} onHover={onHover} />)}
-            {ordered.filter(h => h.role === 'overload').map(h => <RhoLabel key={h.element.id} h={h} g={g} />)}
+            {[...overloads, ...contingencies].map(h => (
+                <HighlightShape key={h.element.id} h={h} line={line(h)} g={g} onHover={onHover} />
+            ))}
+            {overloads.map(h => <RhoLabel key={h.element.id} h={h} line={line(h)} g={g} onHover={onHover} />)}
         </g>
     );
 };
 
 /** One studied element: its line, its substation, or its zones' link. */
-const HighlightShape: React.FC<{ h: ContextHighlight; g: Geometry; onHover: ContextMapLayersProps['onHover'] }> = ({ h, g, onHover }) => {
+const HighlightShape: React.FC<{
+    h: ContextHighlight; line: SeparatedLine | null; g: Geometry; onHover: ContextMapLayersProps['onHover'];
+}> = ({ h, line, g, onHover }) => {
     const color = SIGNAL[h.role];
     const enter = (e: React.MouseEvent) => onHover({ kind: 'element', highlight: h }, e);
     const common = {
@@ -427,20 +458,23 @@ const HighlightShape: React.FC<{ h: ContextHighlight; g: Geometry; onHover: Cont
         'data-role': h.role,
         onMouseEnter: enter, onMouseMove: enter, onMouseLeave: () => onHover(null),
     };
-    const pts = h.element.points ? highlightPoints(h, g.k) : null;
-    if (pts && pts.length === 2) {
-        const d = polylinePath(pts);
+    if (line) {
+        const d = polylinePath(line.points);
+        const ends = [line.points[0], line.points[line.points.length - 1]];
         return (
             <g {...common}>
-                <path d={d} stroke={P.highlightCasing} strokeWidth={6.5 * g.pt} strokeLinecap="round" fill="none" />
-                <path d={d} style={{ stroke: color }} strokeWidth={3.8 * g.pt} strokeLinecap="round" fill="none" />
-                {pts.map((p, i) => (
+                <path d={d} stroke={P.highlightCasing} strokeWidth={6.5 * g.pt} strokeLinecap="round"
+                    strokeLinejoin="round" fill="none" />
+                <path d={d} style={{ stroke: color }} strokeWidth={3.8 * g.pt} strokeLinecap="round"
+                    strokeLinejoin="round" fill="none" />
+                {ends.map((p, i) => (
                     <circle key={i} cx={p[0]} cy={p[1]} r={2.6 * g.pt} style={{ fill: color }}
                         stroke={P.highlightCasing} strokeWidth={1.1 * g.pt} />
                 ))}
             </g>
         );
     }
+    const pts = h.element.points ? highlightPoints(h, g.k) : null;
     if (pts && pts.length === 1) {
         return (
             <circle {...common} cx={pts[0][0]} cy={pts[0][1]} r={4.5 * g.pt}

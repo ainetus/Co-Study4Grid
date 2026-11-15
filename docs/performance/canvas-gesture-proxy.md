@@ -131,9 +131,12 @@ the first *moved* frame.
    collapse into ~270 draw items (counted on the prototype, which grouped the
    same way).
 5. **Halos.** Shapes inside `.nad-overloaded`, `.nad-action-target` and
-   `.nad-contingency-highlight` are flagged `zoomWidth`: their width is taken
-   at draw time from `computeHaloWidthPx(vb)` — the value usePanZoom gives the
-   live `--nad-halo-w` (24 px zoomed in → 50 px at full extent).
+   `.nad-contingency-highlight` carry a `zoomWidth`: their computed width over
+   the `--nad-halo-w` they inherit (1.7 for the contingency halo, which App.css
+   draws wider so an overload on its twin circuit leaves it visible; 1 for the
+   others). At draw time their width is that factor × `computeHaloWidthPx(vb)`
+   — the value usePanZoom gives the live `--nad-halo-w` (24 px zoomed in →
+   50 px at full extent).
 6. **Background.** The container's background colour (else the body's, else
    white) — frames paint it first so they fully cover the live SVG.
 7. **Overview cache** (`prepare()`). The whole network rendered once into an

@@ -62,11 +62,14 @@ const fakeComputedStyle = (el: Element): Partial<CSSStyleDeclaration> => {
         strokeDasharray: 'none', backgroundColor: '', getPropertyValue: () => '',
     };
     if (el.tagName.toLowerCase() === 'polyline') {
-        const halo = /nad-overloaded/.test(parentCls);
+        const contingency = /nad-contingency-highlight/.test(parentCls);
+        const halo = contingency || /nad-overloaded/.test(parentCls);
         return {
-            ...base, stroke: halo ? 'rgb(255, 165, 0)' : /300to500/.test(cls) ? 'rgb(255, 0, 0)' : 'rgb(0, 128, 0)',
-            strokeWidth: halo ? '24px' : '5px', fill: 'none',
-            getPropertyValue: (p: string) => (p === 'vector-effect' ? 'non-scaling-stroke' : ''),
+            ...base,
+            stroke: contingency ? 'rgb(255, 255, 0)' : halo ? 'rgb(255, 165, 0)' : /300to500/.test(cls) ? 'rgb(255, 0, 0)' : 'rgb(0, 128, 0)',
+            // App.css: the contingency halo is 1.7 × `--nad-halo-w`, the others 1 ×.
+            strokeWidth: contingency ? '40.8px' : halo ? '24px' : '5px', fill: 'none',
+            getPropertyValue: (p: string) => (p === 'vector-effect' ? 'non-scaling-stroke' : p === '--nad-halo-w' ? '24px' : ''),
         };
     }
     if (el.tagName.toLowerCase() === 'circle') {
@@ -206,6 +209,26 @@ describe('buildCanvasProxy', () => {
         expect(width('rgb(255, 165, 0)')).toBeCloseTo(2.4);
         // Plain edges keep their own (non-scaling) width.
         expect(width('rgb(255, 0, 0)')).toBeCloseTo(0.5);
+    });
+
+    it('keeps the contingency halo wider than an overload on its twin, beneath it, at every zoom', () => {
+        const { container, svg } = buildDiagram();
+        // applyContingencyHighlight puts its clone first in the background layer.
+        svg.querySelector('#nad-background-layer')!.insertAdjacentHTML('afterbegin', `
+            <g class="nad-contingency-highlight nad-highlight-clone" style="visibility: visible">
+                <polyline class="nad-vl300to500 nad-edge-path" points="0,5 100,5"></polyline>
+            </g>`);
+        const haloWidth = (vb: { w: number }) => (vb.w >= 1000 ? 50 : 24);
+        const proxy = buildCanvasProxy(svg, container, { x: 0, y: 0, w: 1000, h: 800 }, { overviewCache: false, haloWidth });
+        const width = (colour: string) => opsOf(ctx.calls, 'stroke').find(c => c.style === colour)!.lineWidth!;
+        proxy.draw({ x: 0, y: 0, w: 1000, h: 800 });
+        expect(opsOf(ctx.calls, 'stroke')[0].style).toBe('rgb(255, 255, 0)');
+        expect(width('rgb(255, 255, 0)')).toBeCloseTo(85);
+        expect(width('rgb(255, 165, 0)')).toBeCloseTo(50);
+        ctx.calls = [];
+        proxy.draw({ x: 0, y: 0, w: 100, h: 80 }); // zoomed 10×
+        expect(width('rgb(255, 255, 0)')).toBeCloseTo(4.08);
+        expect(width('rgb(255, 165, 0)')).toBeCloseTo(2.4);
     });
 
     it('culls cells outside the view', () => {
