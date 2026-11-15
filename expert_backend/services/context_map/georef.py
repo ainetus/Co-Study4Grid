@@ -146,9 +146,6 @@ class _Fit:
         lat = geography.inverse_mercator_y(self.my_c + self.y_sign * self.s * (pts[:, 1] - self.y_c))
         return np.column_stack([lon, lat])
 
-    def moved(self, **changes: float) -> _Fit:
-        return replace(self, **changes)
-
 
 def _initial_fit(home_pts: np.ndarray, home: str) -> _Fit | None:
     """Align the robust box of the home levels with the home mainland."""
@@ -156,8 +153,10 @@ def _initial_fit(home_pts: np.ndarray, home: str) -> _Fit | None:
     if x_hi <= x_lo or y_hi <= y_lo:
         return None
     ring = geography.main_ring(home)
+    if ring is None:
+        return None
     lon_lo, lon_hi = np.radians(ring[:, 0].min()), np.radians(ring[:, 0].max())
-    my_lo, my_hi = geography.mercator_y(ring[:, 1].min()), geography.mercator_y(ring[:, 1].max())
+    my_lo, my_hi = float(geography.mercator_y(ring[:, 1].min())), float(geography.mercator_y(ring[:, 1].max()))
     sx, sy = (lon_hi - lon_lo) / (x_hi - x_lo), (my_hi - my_lo) / (y_hi - y_lo)
     if max(sx, sy) / min(sx, sy) > SCALE_RATIO_MAX:
         return None
@@ -208,21 +207,21 @@ def _best_translation(fit: _Fit, check: _Containment, span: float) -> tuple[_Fit
     best_share = check.share(fit)
     for step in TRANSLATION_STEPS:
         offsets = np.arange(-2, 3) * step * span
-        scored = [(check.share(fit.moved(lon_c=fit.lon_c + dx, my_c=fit.my_c + dy)), dx, dy)
+        scored = [(check.share(replace(fit, lon_c=fit.lon_c + dx, my_c=fit.my_c + dy)), dx, dy)
                   for dx in offsets for dy in offsets]
         top = max(s for s, _, _ in scored)
         plateau = [(dx, dy) for s, dx, dy in scored if s >= top - PLATEAU_TOLERANCE]
         dx, dy = np.mean(plateau, axis=0)
-        fit = fit.moved(lon_c=fit.lon_c + dx, my_c=fit.my_c + dy)
+        fit = replace(fit, lon_c=fit.lon_c + dx, my_c=fit.my_c + dy)
         best_share = check.share(fit)
     return fit, best_share
 
 
 def _refine(fit: _Fit, check: _Containment, span: float) -> tuple[_Fit, float]:
     """Orientation, scale (unless Mercator) and translation of a first fit."""
-    fit = max((fit.moved(y_sign=sign) for sign in (-1.0, 1.0)), key=check.share)
+    fit = max((replace(fit, y_sign=sign) for sign in (-1.0, 1.0)), key=check.share)
     scales = (1.0,) if fit.mercator else SCALE_FACTORS
-    candidates = [_best_translation(fit.moved(s=fit.s * k), check, span) for k in scales]
+    candidates = [_best_translation(replace(fit, s=fit.s * k), check, span) for k in scales]
     top = max(share for _, share in candidates)
     # The LARGEST scale that keeps (almost) everything inside: shrinking the
     # network always fits it better, so the plain maximum would favour it.

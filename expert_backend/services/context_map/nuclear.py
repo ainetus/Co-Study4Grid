@@ -129,9 +129,10 @@ def _matched_units(snap: NetworkSnapshot, zoning: Zoning) -> pd.DataFrame:
     (``matched_fleets``: the zone's untyped MW over its fleet's typical
     output), split over its units by capacity — so the dots add up to the
     pie's nuclear slice."""
-    sites = snap.plants.nuclear_sites if snap.plants else {}
+    plants = snap.plants
+    sites = plants.nuclear_sites if plants else {}
     gens = snap.generators
-    if not sites or gens.empty:
+    if plants is None or not sites or gens.empty:
         return pd.DataFrame()
     fleets = matched_fleets(snap, zoning)
     untyped = network_filiere(gens).isna()
@@ -143,7 +144,7 @@ def _matched_units(snap: NetworkSnapshot, zoning: Zoning) -> pd.DataFrame:
         fleet = fleets.get(zoning.vl_zone.get(vl, UNKNOWN_ZONE))
         if fleet is None:
             continue
-        output = snap.plants.expected[gen].get("nuclear", 0.0) * fleet.scale
+        output = plants.expected[gen].get("nuclear", 0.0) * fleet.scale
         for k, (unit, capacity) in enumerate(site.units or [(site.name, site.capacity)], start=1):
             mw = output * capacity / site.capacity
             index.append(f"{gen}#{k}")

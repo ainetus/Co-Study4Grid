@@ -195,7 +195,8 @@ def _zone_entries(zones: list[str], zoning: Zoning, zone_pos: dict, lat0: float,
             "placed": zone in zone_pos,
         }
         if zone in zone_pos:
-            entry["x"], entry["y"] = geography.project(*zone_pos[zone], lat0)
+            lon, lat = zone_pos[zone]
+            entry["x"], entry["y"] = geography.project(lon, lat, lat0)
         if entry["kind"] == "neighbor" and zoning.mesh == "region" and zone in geography.COUNTRY_BOX:
             entry["badge"] = list(geography.project(*geography.country_badge_pos(zone), lat0))
         out.append(entry)
@@ -330,12 +331,13 @@ def element_geometry(cmap: ContextMap, snap: NetworkSnapshot, element_id: str) -
         return None
     zones = [cmap.zoning.vl_zone.get(vl) for vl in vls]
     points = [cmap.vl_xy.get(vl) for vl in vls]
+    placed = [p for p in points if p is not None]
     zone_points = [cmap.zone_xy.get(z) if z else None for z in zones]
     return {
         "id": element_id,
         "name": snap.names.get(element_id, element_id),
         "kind": kind,
         "zones": zones,
-        "points": [list(p) for p in points] if all(p is not None for p in points) else None,
+        "points": [list(p) for p in placed] if len(placed) == len(points) else None,
         "zone_points": [list(p) if p is not None else None for p in zone_points],
     }

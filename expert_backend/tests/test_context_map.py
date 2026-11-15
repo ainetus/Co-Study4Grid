@@ -213,8 +213,7 @@ class TestRegionMesh:
         assert flows[("IT", "LYON")]["direction"] == "import"
         assert flows[("IT", "LYON")]["mw"] == pytest.approx(802.5)
         # The HVDC converter stations read as branch ends.
-        assert flows[("LYON", "ES")] == pytest.approx(flows[("LYON", "ES")]) and \
-            flows[("LYON", "ES")]["mw"] == pytest.approx(199.0)
+        assert flows[("LYON", "ES")]["mw"] == pytest.approx(199.0)
         assert flows[("LYON", "ES")]["direction"] == "export"
         # Foreign ↔ foreign is not drawn on the region mesh; the dead line neither.
         assert not any({"ES", "IT"} == {a, b} for a, b in flows)
