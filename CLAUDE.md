@@ -154,7 +154,10 @@ Co-Study4Grid/
 │                                  # actionPinRender, highlights, vlInteractions (VL-disk
 │                                  # hover name / click-to-inspect / dbl-click SLD),
 │                                  # overflowPinPayload, canvasProxy (pan/zoom
-│                                  # gesture proxy — the default 'canvas' mode)
+│                                  # gesture proxy — the default 'canvas' mode;
+│                                  # + canvasProxyShapes / canvasProxyText:
+│                                  # geometry, and the flow values + VL labels
+│                                  # it draws once readable)
 │                                  # + overflowOverlayRender + pinGlyph (PR #116 —
 │                                  # iframe-overlay pin pipeline)
 ├── standalone_interface_legacy.html  # DECOMMISSIONED 2026-04-20 — hand-maintained
@@ -449,7 +452,8 @@ NAD/SLD payloads:
   the React dev build and the auto-generated standalone (they share
   the same source tree). The default `'canvas'` mode
   (`utils/svg/canvasProxy.ts`, since 2026-11-15) draws a light canvas copy
-  of the network during the gesture and writes the viewBox once, when the
+  of the network — with its flow values and VL labels once they are
+  readable — during the gesture and writes the viewBox once, when the
   operator pauses ("Classic" per-frame repaint stays selectable) — see
   `frontend/CLAUDE.md` and `docs/performance/canvas-gesture-proxy.md`.
 

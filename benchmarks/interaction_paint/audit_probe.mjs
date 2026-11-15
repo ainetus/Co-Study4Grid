@@ -220,6 +220,136 @@ const probes = {
     await dump('during a canvas gesture');
     await mouse(page, 'mouseReleased', { x: p0.x + 40, y: p0.y }, 0);
   },
+
+  // When the labels and flow values come back after a gesture: last input →
+  // last proxy frame → settle (live viewBox written) → canvas cleared → the
+  // first frame after the clear (the clear's commit waits for the bake's
+  // re-raster, so this is when the live SVG — and its text — is on screen).
+  // A 3-notch zoom ending at region / detail / deep zoom, and a drag at deep
+  // zoom. --trace adds the main-thread / raster split of each settle.
+  async reveal() {
+    const traceIt = argv.includes('--trace');
+    await ev(`(() => {
+      if (window.__rv) return;
+      const R = window.__rv = { on: false };
+      const proto = CanvasRenderingContext2D.prototype;
+      for (const k of ['clearRect', 'fillRect', 'fillText']) {
+        const f = proto[k];
+        proto[k] = function (...a) { const c = this.canvas; if (R.on && c && c.classList && c.classList.contains('nad-canvas-proxy')) R[k].push(performance.now()); return f.apply(this, a); };
+      }
+      const box = document.querySelector('#n-svg-container');
+      const svg = [...box.children].find(e => e.tagName.toLowerCase() === 'svg');
+      new MutationObserver(() => { if (R.on) R.vb.push(performance.now()); }).observe(svg, { attributes: true, attributeFilter: ['viewBox'] });
+      for (const ty of ['wheel', 'mouseup']) window.addEventListener(ty, (e) => { if (R.on) R.input.push(e.timeStamp); }, { capture: true, passive: true });
+      const tick = (t) => { if (!R.on) return; R.raf.push(t); requestAnimationFrame(tick); };
+      R.start = () => { Object.assign(R, { on: true, clearRect: [], fillRect: [], fillText: [], vb: [], raf: [], input: [] }); requestAnimationFrame(tick); };
+      R.stop = () => { R.on = false; return { clear: R.clearRect, fill: R.fillRect, text: R.fillText, vb: R.vb, raf: R.raf, input: R.input }; };
+      // What is in view: label boxes and flow values inside the live viewBox,
+      // and their on-screen font size.
+      R.inView = () => {
+        const [x, y, w, h] = svg.getAttribute('viewBox').split(/\\s+/).map(Number);
+        const r = box.getBoundingClientRect();
+        const pxPerUnit = Math.min(r.width / w, r.height / h);
+        const inside = (px, py) => px >= x && px <= x + w && py >= y && py <= y + h;
+        let labels = 0, flows = 0;
+        for (const d of svg.querySelectorAll('.nad-label-box')) if (inside(parseFloat(d.style.left), parseFloat(d.style.top))) labels++;
+        for (const g of svg.querySelectorAll('.nad-edge-infos > g')) { const m = /translate\\(([-\\d.e]+)[ ,]+([-\\d.e]+)\\)/.exec(g.getAttribute('transform') || ''); if (m && inside(+m[1], +m[2])) flows++; }
+        const lab = svg.querySelector('.nad-label-box');
+        const labelPx = lab ? parseFloat(getComputedStyle(lab).fontSize) * pxPerUnit : null;
+        return { widthRatio: null, labels, flows, labelFontPx: labelPx && +labelPx.toFixed(1), tier: box.getAttribute('data-zoom-tier') };
+      };
+    })()`);
+    const wheel = (p, dy) => page.send('Input.dispatchMouseEvent', { type: 'mouseWheel', ...p, deltaX: 0, deltaY: dy });
+    const preZoom = async (notches) => {
+      await unzoom();
+      for (let i = 0; i < notches; i++) { await wheel(at(0.45, 0.55), -100); await sleep(60); }
+      await sleep(7000);
+    };
+    const NAMES = ['UpdateLayoutTree', 'Layout', 'Paint', 'PrePaint', 'PaintArtifactCompositor::Update', 'LayerTreeHost::WaitForCommitCompletion', 'RasterTask', 'HitTest'];
+    const measure = async (label, gesture) => {
+      let evs = null;
+      const run = async () => {
+        await ev('window.__rv.start()');
+        await gesture();
+        await sleep(4000);
+      };
+      if (traceIt) evs = await traced(run); else await run();
+      const d = await ev('window.__rv.stop()');
+      const view = await ev('window.__rv.inView()');
+      const last = Math.max(...d.input);
+      const after = (arr, t) => arr.find(v => v > t);
+      const settle = after(d.vb, last), clear = settle != null ? after(d.clear, settle) : null;
+      const shown = clear != null ? after(d.raf, clear) : null;
+      const lastFrame = d.fill.filter(t => t <= (settle ?? Infinity)).pop();
+      // The proxy draws the text itself once it is readable: then it is on
+      // screen from the last proxy frame on, not from the live SVG's reveal.
+      const proxyText = lastFrame != null && d.text.some(t => t >= lastFrame && t <= (settle ?? Infinity));
+      const rel = (t) => (t == null ? '-' : `+${Math.round(t - last)}`);
+      console.log(`${label.padEnd(26)} in view: ${view.labels} labels, ${view.flows} flow values, label font ${view.labelFontPx} px, tier ${view.tier}`);
+      console.log(`${''.padEnd(26)} after the last input (ms): last proxy frame ${rel(lastFrame)}${proxyText ? ' (with the text)' : ''}, settle ${rel(settle)}, canvas cleared ${rel(clear)}, live SVG on screen ~${rel(shown)} → text on screen ~${proxyText ? rel(lastFrame) : rel(shown)}`);
+      if (evs) console.log(`${''.padEnd(26)} ${totals(evs.filter(e => e.ts >= 0), NAMES)}`);
+    };
+    for (const [label, notches] of [['zoom → region (~39 %)', 10], ['zoom → detail (~12 %)', 22], ['zoom → deep (~4 %)', 34]]) {
+      await preZoom(notches - 3);
+      await measure(label, async () => { for (let i = 0; i < 3; i++) { await wheel(at(0.45, 0.55), -100); if (i < 2) await sleep(40); } });
+    }
+    await preZoom(34);
+    await measure('drag at deep zoom', () => drag(at(0.35, 0.5), at(0.6, 0.5), 20));
+  },
+
+  // How faithful the proxy frame is to the live SVG it stands in for: a
+  // screenshot of the settled diagram, then one of the proxy at the same view
+  // (a press, a 1 px move and back — the proxy shows, the view is unchanged),
+  // diffed in the page. Writes live / proxy / diff PNGs to --out-dir. The
+  // release comes after a real move: released where it was pressed, it is a
+  // click, and a click on a label opens its SLD over the diagram.
+  async fidelity() {
+    const fs = await import('node:fs');
+    const dir = opt('out-dir', '.');
+    fs.mkdirSync(dir, { recursive: true });
+    const shot = async (clip) => (await page.send('Page.captureScreenshot', { format: 'png', clip })).data;
+    for (const [label, notches] of [['deep', 34], ['detail', 26], ['region', 16]]) {
+      await unzoom();
+      for (let i = 0; i < notches; i++) { await page.send('Input.dispatchMouseEvent', { type: 'mouseWheel', ...at(0.45, 0.55), deltaX: 0, deltaY: -100 }); await sleep(60); }
+      await sleep(8000);
+      const r = await rectOf();
+      const clip = { x: r.x, y: r.y, width: r.w, height: r.h, scale: 1 };
+      const live = await shot(clip);
+      const p = at(0.5, 0.5);
+      await mouse(page, 'mousePressed', p);
+      await mouse(page, 'mouseMoved', { x: p.x + 1, y: p.y });
+      await sleep(150);
+      await mouse(page, 'mouseMoved', p);
+      await sleep(250);
+      const proxyUp = await ev(`document.querySelector('#n-svg-container').hasAttribute('data-gesture-proxy')`);
+      const proxy = await shot(clip);
+      await mouse(page, 'mouseMoved', { x: p.x + 60, y: p.y });
+      await sleep(50);
+      await mouse(page, 'mouseReleased', { x: p.x + 60, y: p.y }, 0);
+      const res = await ev(`(async () => {
+        const load = (b64) => new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = 'data:image/png;base64,' + b64; });
+        const [a, b] = await Promise.all([load(${JSON.stringify(live)}), load(${JSON.stringify(proxy)})]);
+        const W = a.width, H = a.height;
+        const px = (img) => { const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.drawImage(img, 0, 0); return x.getImageData(0, 0, W, H).data; };
+        const A = px(a), B = px(b);
+        const out = document.createElement('canvas'); out.width = W; out.height = H;
+        const oc = out.getContext('2d'); const D = oc.createImageData(W, H);
+        let diff = 0, strong = 0;
+        for (let i = 0; i < A.length; i += 4) {
+          const d = Math.max(Math.abs(A[i] - B[i]), Math.abs(A[i + 1] - B[i + 1]), Math.abs(A[i + 2] - B[i + 2]));
+          const g = 255 - (255 - (A[i] + A[i + 1] + A[i + 2]) / 3) * 0.25;
+          D.data[i] = d > 48 ? 255 : g; D.data[i + 1] = d > 48 ? 0 : g; D.data[i + 2] = d > 48 ? 0 : g; D.data[i + 3] = 255;
+          if (d > 16) diff++;
+          if (d > 48) strong++;
+        }
+        oc.putImageData(D, 0, 0);
+        return { W, H, diffPct: +(100 * diff / (W * H)).toFixed(2), strongPct: +(100 * strong / (W * H)).toFixed(2), diffPng: out.toDataURL('image/png').split(',')[1] };
+      })()`);
+      for (const [name, b64] of [['live', live], ['proxy', proxy], ['diff', res.diffPng]]) fs.writeFileSync(`${dir}/fidelity_${label}_${name}.png`, Buffer.from(b64, 'base64'));
+      console.log(`${label.padEnd(8)} proxy up: ${proxyUp}; pixels differing > 16: ${res.diffPct} %, > 48: ${res.strongPct} % (${res.W}×${res.H}); PNGs in ${dir}`);
+      await sleep(2000);
+    }
+  },
 };
 
 if (!probes[PROBE]) {

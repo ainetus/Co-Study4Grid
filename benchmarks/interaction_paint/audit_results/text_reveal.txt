@@ -1,0 +1,85 @@
+# Probe 'reveal' — when labels / flow values are on screen after a gesture (2026-11-15 evening, GPU)
+
+## main
+zoom → region (~39 %)      in view: 2047 labels, 6361 flow values, label font 1 px, tier region
+                           after the last input (ms): last proxy frame +8, settle +409, canvas cleared +1031, live SVG on screen ~+2390 → text on screen ~+2390
+zoom → detail (~12 %)      in view: 389 labels, 1191 flow values, label font 3.1 px, tier detail
+                           after the last input (ms): last proxy frame +29, settle +429, canvas cleared +791, live SVG on screen ~+994 → text on screen ~+994
+zoom → deep (~4 %)         in view: 50 labels, 139 flow values, label font 9.8 px, tier detail
+                           after the last input (ms): last proxy frame +34, settle +434, canvas cleared +737, live SVG on screen ~+750 → text on screen ~+750
+drag at deep zoom          in view: 30 labels, 87 flow values, label font 9.8 px, tier detail
+                           after the last input (ms): last proxy frame +-18, settle +401, canvas cleared +792, live SVG on screen ~+798 → text on screen ~+798
+
+## branch, 1.5 px cut
+zoom → region (~39 %)      in view: 2047 labels, 6361 flow values, label font 1 px, tier region
+                           after the last input (ms): last proxy frame +15, settle +415, canvas cleared +993, live SVG on screen ~+2364 → text on screen ~+2364
+zoom → detail (~12 %)      in view: 389 labels, 1191 flow values, label font 3.1 px, tier detail
+                           after the last input (ms): last proxy frame +31, settle +431, canvas cleared +854, live SVG on screen ~+1129 → text on screen ~+1129
+zoom → deep (~4 %)         in view: 50 labels, 139 flow values, label font 9.8 px, tier detail
+                           after the last input (ms): last proxy frame +20 (with the text), settle +420, canvas cleared +729, live SVG on screen ~+735 → text on screen ~+20
+drag at deep zoom          in view: 30 labels, 87 flow values, label font 9.8 px, tier detail
+                           after the last input (ms): last proxy frame +-18 (with the text), settle +401, canvas cleared +701, live SVG on screen ~+712 → text on screen ~+-18
+
+## main (round 2)
+zoom → region (~39 %)      in view: 2047 labels, 6361 flow values, label font 1 px, tier region
+                           after the last input (ms): last proxy frame +16, settle +416, canvas cleared +1058, live SVG on screen ~+2465 → text on screen ~+2465
+zoom → detail (~12 %)      in view: 389 labels, 1191 flow values, label font 3.1 px, tier detail
+                           after the last input (ms): last proxy frame +19, settle +419, canvas cleared +719, live SVG on screen ~+1068 → text on screen ~+1068
+zoom → deep (~4 %)         in view: 50 labels, 139 flow values, label font 9.8 px, tier detail
+                           after the last input (ms): last proxy frame +23, settle +423, canvas cleared +757, live SVG on screen ~+772 → text on screen ~+772
+drag at deep zoom          in view: 30 labels, 87 flow values, label font 9.8 px, tier detail
+                           after the last input (ms): last proxy frame +-18, settle +401, canvas cleared +665, live SVG on screen ~+681 → text on screen ~+681
+
+## branch, 4 px cut on the smaller side (round 2)
+zoom → region (~39 %)      in view: 2047 labels, 6361 flow values, label font 1 px, tier region
+                           after the last input (ms): last proxy frame +13, settle +413, canvas cleared +1100, live SVG on screen ~+2495 → text on screen ~+2495
+zoom → detail (~12 %)      in view: 389 labels, 1191 flow values, label font 3.1 px, tier detail
+                           after the last input (ms): last proxy frame +20, settle +420, canvas cleared +841, live SVG on screen ~+1218 → text on screen ~+1218
+zoom → deep (~4 %)         in view: 50 labels, 139 flow values, label font 9.8 px, tier detail
+                           after the last input (ms): last proxy frame +34 (with the text), settle +434, canvas cleared +744, live SVG on screen ~+749 → text on screen ~+34
+drag at deep zoom          in view: 30 labels, 87 flow values, label font 9.8 px, tier detail
+                           after the last input (ms): last proxy frame +-17 (with the text), settle +401, canvas cleared +673, live SVG on screen ~+687 → text on screen ~+-17
+
+## main (round 3)
+zoom → region (~39 %)      in view: 2047 labels, 6361 flow values, label font 1 px, tier region
+                           after the last input (ms): last proxy frame +17, settle +417, canvas cleared +1026, live SVG on screen ~+2616 → text on screen ~+2616
+zoom → detail (~12 %)      in view: 389 labels, 1191 flow values, label font 3.1 px, tier detail
+                           after the last input (ms): last proxy frame +34, settle +434, canvas cleared +735, live SVG on screen ~+1083 → text on screen ~+1083
+zoom → deep (~4 %)         in view: 50 labels, 139 flow values, label font 9.8 px, tier detail
+                           after the last input (ms): last proxy frame +31, settle +431, canvas cleared +910, live SVG on screen ~+913 → text on screen ~+913
+drag at deep zoom          in view: 30 labels, 87 flow values, label font 9.8 px, tier detail
+                           after the last input (ms): last proxy frame +-18, settle +401, canvas cleared +744, live SVG on screen ~+748 → text on screen ~+748
+
+## branch (final) (round 3)
+zoom → region (~39 %)      in view: 2047 labels, 6361 flow values, label font 1 px, tier region
+                           after the last input (ms): last proxy frame +30, settle +430, canvas cleared +1308, live SVG on screen ~+3079 → text on screen ~+3079
+zoom → detail (~12 %)      in view: 389 labels, 1191 flow values, label font 3.1 px, tier detail
+                           after the last input (ms): last proxy frame +30, settle +431, canvas cleared +790, live SVG on screen ~+1162 → text on screen ~+1162
+zoom → deep (~4 %)         in view: 50 labels, 139 flow values, label font 9.8 px, tier detail
+                           after the last input (ms): last proxy frame +20 (with the text), settle +421, canvas cleared +780, live SVG on screen ~+803 → text on screen ~+20
+drag at deep zoom          in view: 30 labels, 87 flow values, label font 9.8 px, tier detail
+                           after the last input (ms): last proxy frame +-17 (with the text), settle +401, canvas cleared +736, live SVG on screen ~+759 → text on screen ~+-17
+
+## Interleaved (sessions on both builds, order main, branch, branch, main) — final build
+== main
+last proxy frame +28, settle +429, canvas cleared +1017, live SVG on screen ~+2277 → text on screen ~+2277
+last proxy frame +18, settle +418, canvas cleared +742, live SVG on screen ~+750 → text on screen ~+750
+last proxy frame +23, settle +423, canvas cleared +789, live SVG on screen ~+837 → text on screen ~+837
+last proxy frame +-18, settle +401, canvas cleared +661, live SVG on screen ~+664 → text on screen ~+664
+== branch
+last proxy frame +26, settle +426, canvas cleared +1068, live SVG on screen ~+2274 → text on screen ~+2274
+last proxy frame +25, settle +425, canvas cleared +842, live SVG on screen ~+1123 → text on screen ~+1123
+last proxy frame +23 (with the text), settle +423, canvas cleared +728, live SVG on screen ~+737 → text on screen ~+23
+last proxy frame +-17 (with the text), settle +401, canvas cleared +796, live SVG on screen ~+798 → text on screen ~+-17
+== branch
+last proxy frame +16, settle +416, canvas cleared +1013, live SVG on screen ~+2515 → text on screen ~+2515
+last proxy frame +28, settle +428, canvas cleared +823, live SVG on screen ~+1075 → text on screen ~+1075
+last proxy frame +30 (with the text), settle +431, canvas cleared +964, live SVG on screen ~+978 → text on screen ~+30
+last proxy frame +-18 (with the text), settle +416, canvas cleared +771, live SVG on screen ~+779 → text on screen ~+-18
+== main
+last proxy frame +16, settle +416, canvas cleared +1026, live SVG on screen ~+2847 → text on screen ~+2847
+last proxy frame +35, settle +435, canvas cleared +758, live SVG on screen ~+1116 → text on screen ~+1116
+last proxy frame +26, settle +426, canvas cleared +753, live SVG on screen ~+774 → text on screen ~+774
+last proxy frame +-18, settle +401, canvas cleared +684, live SVG on screen ~+697 → text on screen ~+697
+
+## --trace at detail zoom (bake split): main Layout 133 / Paint 122 / Layerize 68 / RasterTask 321 ms; branch 140 / 116 / 66 / 314 ms — the same work.

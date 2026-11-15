@@ -7,6 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { parseTransform, buildCanvasProxy, createCanvasProxyController, GESTURE_PROXY_ATTR } from './canvasProxy';
+import { straightPath } from './canvasProxyShapes';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -17,40 +18,76 @@ class FakePath2D {
     lineTo(x: number, y: number) { this.ops.push(['lineTo', x, y]); }
     closePath() { this.ops.push(['closePath']); }
     ellipse(x: number, y: number, rx: number, ry: number) { this.ops.push(['ellipse', x, y, rx, ry]); }
+    roundRect(x: number, y: number, w: number, h: number, r: number) { this.ops.push(['roundRect', x, y, w, h, r]); }
     addPath() { this.ops.push(['addPath']); }
 }
 
+interface FakeCall {
+    op: string;
+    path?: FakePath2D;
+    lineWidth?: number;
+    style?: string;
+    alpha?: number;
+    text?: string;
+    x?: number;
+    y?: number;
+    /** The transform the text was drawn under. */
+    t?: number[];
+    align?: string;
+    baseline?: string;
+    font?: string;
+}
+
 interface FakeCtx {
-    calls: Array<{ op: string; path?: FakePath2D; lineWidth?: number; style?: string; alpha?: number }>;
+    calls: FakeCall[];
     lineWidth: number;
     strokeStyle: string;
     fillStyle: string;
     globalAlpha: number;
     lineCap: string;
     lineJoin: string;
-    setTransform: () => void;
+    miterLimit: number;
+    font: string;
+    textAlign: string;
+    textBaseline: string;
+    t: number[];
+    setTransform: (...m: number[]) => void;
     setLineDash: () => void;
     fillRect: () => void;
     clearRect: () => void;
     fill: (p: FakePath2D) => void;
     stroke: (p: FakePath2D) => void;
     drawImage: () => void;
+    measureText: (s: string) => Partial<TextMetrics>;
+    fillText: (s: string, x: number, y: number) => void;
+    strokeText: (s: string, x: number, y: number) => void;
 }
 
 const makeCtx = (): FakeCtx => {
     const ctx: FakeCtx = {
         calls: [],
-        lineWidth: 1, strokeStyle: '', fillStyle: '', globalAlpha: 1, lineCap: '', lineJoin: '',
-        setTransform: () => {},
+        lineWidth: 1, strokeStyle: '', fillStyle: '', globalAlpha: 1, lineCap: '', lineJoin: '', miterLimit: 10,
+        font: '', textAlign: 'start', textBaseline: 'alphabetic', t: [1, 0, 0, 1, 0, 0],
+        setTransform: (...m) => { ctx.t = m; },
         setLineDash: () => {},
         fillRect: () => { ctx.calls.push({ op: 'fillRect', style: ctx.fillStyle }); },
         clearRect: () => { ctx.calls.push({ op: 'clearRect' }); },
         fill: (p) => { ctx.calls.push({ op: 'fill', path: p, style: ctx.fillStyle, alpha: ctx.globalAlpha }); },
         stroke: (p) => { ctx.calls.push({ op: 'stroke', path: p, style: ctx.strokeStyle, lineWidth: ctx.lineWidth, alpha: ctx.globalAlpha }); },
         drawImage: () => { ctx.calls.push({ op: 'drawImage' }); },
+        // Every font: x-height 7, ascent 13, descent 3, 7 per character.
+        measureText: (s) => ({ width: s.length * 7, actualBoundingBoxAscent: 7, fontBoundingBoxAscent: 13, fontBoundingBoxDescent: 3 }),
+        fillText: (s, x, y) => {
+            ctx.calls.push({ op: 'fillText', text: s, x, y, t: ctx.t, align: ctx.textAlign, baseline: ctx.textBaseline, font: ctx.font, style: ctx.fillStyle, alpha: ctx.globalAlpha });
+        },
+        strokeText: (s, x, y) => {
+            ctx.calls.push({ op: 'strokeText', text: s, x, y, t: ctx.t, style: ctx.strokeStyle, lineWidth: ctx.lineWidth, alpha: ctx.globalAlpha });
+        },
     };
     return ctx;
 };
+
+const nonScaling = (p: string) => (p === 'vector-effect' ? 'non-scaling-stroke' : '');
 
 // Computed styles keyed off the classes the NAD uses (jsdom does not resolve
 // pypowsybl's CSS, so the test supplies what Chrome would compute).
@@ -61,6 +98,37 @@ const fakeComputedStyle = (el: Element): Partial<CSSStyleDeclaration> => {
         display: 'inline', visibility: 'visible', opacity: '1', strokeOpacity: '1', fillOpacity: '1',
         strokeDasharray: 'none', backgroundColor: '', getPropertyValue: () => '',
     };
+    const font = { fontFamily: 'serif', fontStyle: 'normal', fontWeight: '400', direction: 'ltr' };
+    if (el.localName === 'text') {
+        // pypowsybl's flow values: a white halo painted first, centred on the x-height.
+        const props: Record<string, string> = {
+            'text-anchor': /text-anchor:\s*end/.test(el.getAttribute('style') ?? '') ? 'end' : 'start',
+            'dominant-baseline': 'middle', 'paint-order': 'stroke', 'stroke-linejoin': 'miter', 'stroke-miterlimit': '4',
+        };
+        return {
+            ...base, ...font, fontSize: /tiny/.test(cls) ? '1px' : '20px',
+            fill: 'rgb(84, 110, 122)', stroke: 'rgba(255, 255, 255, 0.667)', strokeWidth: '10px',
+            getPropertyValue: (p: string) => props[p] ?? '',
+        };
+    }
+    if (/nad-label-box/.test(cls)) {
+        return { ...base, backgroundColor: 'rgba(108, 108, 108, 0.125)', borderTopLeftRadius: '6px', borderLeftWidth: '0px', borderTopWidth: '0px' };
+    }
+    if (/nad-label-box/.test(parentCls)) {
+        return {
+            ...base, ...font, fontSize: '15px', color: 'rgb(0, 0, 0)', textAlign: 'start',
+            paddingLeft: '0px', paddingRight: '0px', paddingTop: '0px', paddingBottom: '0px', borderLeftWidth: '0px', borderTopWidth: '0px',
+        };
+    }
+    if (el.localName === 'path' && el.closest('.nad-edge-infos')) {
+        return { ...base, stroke: 'none', strokeWidth: '0', fill: 'rgb(1, 1, 1)' };
+    }
+    if (el.localName === 'polyline' && el.closest('.nad-text-edges')) {
+        return { ...base, stroke: 'rgb(0, 0, 0)', strokeWidth: '3px', fill: 'none', strokeDasharray: '6, 7', getPropertyValue: nonScaling };
+    }
+    if (el.localName === 'polyline' && el.closest('.nad-edge-infos')) {
+        return { ...base, stroke: 'rgb(9, 9, 9)', strokeWidth: '1px', fill: 'none', getPropertyValue: nonScaling };
+    }
     if (el.tagName.toLowerCase() === 'polyline') {
         const contingency = /nad-contingency-highlight/.test(parentCls);
         const halo = contingency || /nad-overloaded/.test(parentCls);
@@ -107,6 +175,58 @@ const buildDiagram = () => {
 };
 
 const opsOf = (calls: FakeCtx['calls'], op: string) => calls.filter(c => c.op === op);
+
+const EXT = { x: 0, y: 0, w: 1000, h: 800 };
+/** 10× into the middle: 1 user unit = 10 px. */
+const VIEW10 = { x: 450, y: 350, w: 100, h: 80 };
+
+// A branch edge, its flow value (arrow + text in pypowsybl's
+// translate · scale group, the text rotated and end-anchored), a tiny flow
+// value, a label connector and an HTML label box — with the layout jsdom
+// cannot compute supplied by hand.
+const buildTextDiagram = (containerClass = 'svg-container') => {
+    const container = document.createElement('div');
+    container.className = containerClass;
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 1000 800');
+    svg.innerHTML = `
+        <g class="nad-branch-edges"><g><polyline class="nad-vl300to500 nad-edge-path" points="400,400 600,400"></polyline></g></g>
+        <g class="nad-edge-infos">
+            <g transform="translate(500,400) scale(2)">
+                <path class="nad-active nad-arrow-in" d="M-10 -10 H10 L0 10z"></path>
+                <text transform="rotate(90)" class="nad-active" x="19" style="text-anchor:end">-19</text>
+            </g>
+            <g transform="translate(480,420) scale(2)"><text class="nad-active tiny" x="19">7</text></g>
+        </g>
+        <g class="nad-text-edges"><polyline points="500,400 520,390"></polyline></g>
+        <foreignObject class="nad-text-nodes" width="1" height="1"><div>
+            <div class="nad-label-box nad-vl300to500" style="position: absolute; top: 380px; left: 450px"><div>BUS 400kV</div></div>
+        </div></foreignObject>`;
+    container.appendChild(svg);
+    document.body.appendChild(container);
+    const layout = (el: Element, props: Record<string, number>) => {
+        for (const [k, v] of Object.entries(props)) Object.defineProperty(el, k, { configurable: true, value: v });
+    };
+    layout(container, { clientWidth: 1000, clientHeight: 800 });
+    const box = svg.querySelector('.nad-label-box')!;
+    layout(box, { offsetWidth: 100, offsetHeight: 30 });
+    layout(box.firstElementChild!, { offsetLeft: 6, offsetTop: 6, clientWidth: 88, clientHeight: 18 });
+    return { container, svg };
+};
+
+describe('straightPath', () => {
+    it('reads the flow arrows (M H L Z)', () => {
+        expect(straightPath('M-10 -10 H10 L0 10z')).toEqual([{ pts: [-10, -10, 10, -10, 0, 10], closed: true }]);
+    });
+
+    it('follows relative commands and implicit line-tos', () => {
+        expect(straightPath('m1 1 2 0 v3 h-2z')).toEqual([{ pts: [1, 1, 3, 1, 3, 4, 1, 4], closed: true }]);
+    });
+
+    it('gives up on curves (the generic path takes them)', () => {
+        expect(straightPath('M0 0 C1 1 2 2 3 3')).toBeNull();
+    });
+});
 
 describe('parseTransform', () => {
     it('composes a pypowsybl node transform (translate · scale)', () => {
@@ -281,6 +401,165 @@ describe('buildCanvasProxy', () => {
     });
 });
 
+describe('flow values and labels on the proxy', () => {
+    let ctx: FakeCtx;
+
+    beforeEach(() => {
+        vi.stubGlobal('Path2D', FakePath2D);
+        ctx = makeCtx();
+        vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+            () => ctx as unknown as CanvasRenderingContext2D,
+        );
+        vi.spyOn(window, 'getComputedStyle').mockImplementation(
+            (el: Element) => fakeComputedStyle(el) as CSSStyleDeclaration,
+        );
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+        document.body.innerHTML = '';
+    });
+
+    const texts = () => opsOf(ctx.calls, 'fillText').map(c => c.text);
+    const filled = (style: string) => ctx.calls.filter(c => c.op === 'fill' && c.style === style).length;
+    const stroked = (style: string) => ctx.calls.filter(c => c.op === 'stroke' && c.style === style).length;
+    const ready = (options: Parameters<typeof buildCanvasProxy>[3] = {}, containerClass?: string) => {
+        const { container, svg } = buildTextDiagram(containerClass);
+        const proxy = buildCanvasProxy(svg, container, EXT, { overviewCache: false, ...options });
+        proxy.step(Infinity);
+        return proxy;
+    };
+
+    it('reads the network at once, the flow values and labels in steps', () => {
+        const { container, svg } = buildTextDiagram();
+        const proxy = buildCanvasProxy(svg, container, EXT, { overviewCache: false });
+        expect(proxy.itemCount).toBe(1); // the branch edge
+        expect(proxy.textRunCount).toBe(0);
+        expect(proxy.pending).toBe(true);
+        expect(proxy.step(Infinity)).toBe(true);
+        expect(proxy.pending).toBe(false);
+        expect(proxy.textRunCount).toBe(3); // -19, 7, BUS 400kV
+    });
+
+    it('draws a flow value as Blink lays it out: group and own transforms, anchor, middle baseline, halo first', () => {
+        ready().draw(VIEW10);
+        const halo = ctx.calls.find(c => c.op === 'strokeText' && c.text === '-19')!;
+        const fill = ctx.calls.find(c => c.op === 'fillText' && c.text === '-19')!;
+        expect(ctx.calls.indexOf(halo)).toBeLessThan(ctx.calls.indexOf(fill)); // paint-order: stroke
+        // translate(500,400) scale(2) rotate(90), under the 10× view (offset -4500, -3500).
+        [0, 20, -20, 0, 500, 500].forEach((v, i) => expect(fill.t![i]).toBeCloseTo(v));
+        expect(fill.x).toBe(19);
+        expect(fill.y).toBeCloseTo(3.5); // half the x-height below the anchor
+        expect(fill.align).toBe('right'); // text-anchor: end
+        expect(fill.baseline).toBe('alphabetic');
+        expect(halo.lineWidth).toBe(10); // local units: the transform scales it
+        expect(halo.style).toBe('rgba(255, 255, 255, 0.667)');
+    });
+
+    it('leaves text out until it is readable on screen (TEXT_MIN_PX)', () => {
+        const proxy = ready();
+        proxy.draw(EXT); // 1 unit = 1 px: the flow value is 40 px, the tiny one 2 px
+        expect(texts()).toContain('-19');
+        expect(texts()).not.toContain('7');
+        ctx.calls = [];
+        proxy.draw(VIEW10); // the tiny one is 20 px now
+        expect(texts()).toContain('7');
+    });
+
+    it('hides the flow values and their arrows at the overview tier, as App.css does', () => {
+        const tierOf = (vb: { w: number }) => (vb.w > 500 ? 'overview' as const : 'detail' as const);
+        const proxy = ready({ tierOf });
+        proxy.draw(EXT);
+        expect(texts()).not.toContain('-19');
+        expect(filled('rgb(1, 1, 1)')).toBe(0);
+        expect(texts()).toContain('BUS 400kV'); // the labels are not tier-gated
+        ctx.calls = [];
+        proxy.draw(VIEW10);
+        expect(texts()).toContain('-19');
+        expect(filled('rgb(1, 1, 1)')).toBe(1);
+    });
+
+    it('draws a label box as laid out: its background, then its text on the line box baseline', () => {
+        ready().draw(VIEW10);
+        const bg = ctx.calls.find(c => c.op === 'fill' && c.style === 'rgba(108, 108, 108, 0.125)')!;
+        expect(bg.path!.ops).toContainEqual(['roundRect', 450, 380, 100, 30, 6]);
+        const label = ctx.calls.find(c => c.op === 'fillText' && c.text === 'BUS 400kV')!;
+        expect(ctx.calls.indexOf(bg)).toBeLessThan(ctx.calls.indexOf(label));
+        // Line box at (450 + 6, 380 + 6), 18 tall, glyphs 13 + 3: baseline 386 + 1 + 13.
+        expect([label.x, label.y]).toEqual([456, 400]);
+        expect(label.t).toEqual([10, 0, 0, 10, -4500, -3500]); // root user space
+        expect(label.style).toBe('rgb(0, 0, 0)');
+        expect(label.font).toBe('normal 400 15px serif');
+    });
+
+    it('paints in pypowsybl order: network, flow arrows and values, label connectors, labels', () => {
+        ready().draw(VIEW10);
+        const at = (pred: (c: FakeCall) => boolean) => ctx.calls.findIndex(pred);
+        const order = [
+            at(c => c.op === 'stroke' && c.style === 'rgb(255, 0, 0)'),
+            at(c => c.op === 'fill' && c.style === 'rgb(1, 1, 1)'),
+            at(c => c.op === 'fillText' && c.text === '-19'),
+            at(c => c.op === 'stroke' && c.style === 'rgb(0, 0, 0)'),
+            at(c => c.op === 'fillText' && c.text === 'BUS 400kV'),
+        ];
+        expect(order.every(i => i >= 0)).toBe(true);
+        expect([...order].sort((a, b) => a - b)).toEqual(order);
+    });
+
+    it('leaves out arrows and connectors under LOD_MIN_PX, and a label background until its text shows', () => {
+        const proxy = ready();
+        proxy.draw({ x: -9500, y: -7600, w: 20000, h: 16000 }); // 1 unit = 0.05 px
+        expect(filled('rgb(1, 1, 1)')).toBe(0); // a 40-unit arrow: 2 px across
+        expect(stroked('rgb(0, 0, 0)')).toBe(0); // a 20-unit connector: 1 px long
+        expect(stroked('rgb(255, 0, 0)')).toBe(1); // the network is always drawn
+        ctx.calls = [];
+        proxy.draw({ x: -2000, y: -1600, w: 5000, h: 4000 }); // 1 unit = 0.2 px
+        expect(filled('rgb(1, 1, 1)')).toBe(1); // 8 px
+        expect(stroked('rgb(0, 0, 0)')).toBe(1); // 4 px
+        // The 15-unit label font is 3 px: neither the text nor its background.
+        expect(texts()).not.toContain('BUS 400kV');
+        expect(filled('rgba(108, 108, 108, 0.125)')).toBe(0);
+        ctx.calls = [];
+        proxy.draw({ x: -750, y: -600, w: 2500, h: 2000 }); // 1 unit = 0.4 px: the font is 6 px
+        expect(texts()).toContain('BUS 400kV');
+        expect(filled('rgba(108, 108, 108, 0.125)')).toBe(1);
+    });
+
+    it('leaves the labels out when the legend hides them', () => {
+        ready({}, 'svg-container nad-hide-vl-labels').draw(VIEW10);
+        expect(texts()).not.toContain('BUS 400kV');
+        expect(filled('rgba(108, 108, 108, 0.125)')).toBe(0);
+        expect(stroked('rgb(0, 0, 0)')).toBe(0);
+        expect(texts()).toContain('-19');
+    });
+
+    it('never bakes text into the overview cache; readable text goes over the blit', () => {
+        const { container, svg } = buildTextDiagram();
+        const proxy = buildCanvasProxy(svg, container, EXT);
+        proxy.step(Infinity);
+        proxy.prepare();
+        expect(texts()).toHaveLength(0);
+        ctx.calls = [];
+        proxy.draw(EXT);
+        const blit = ctx.calls.findIndex(c => c.op === 'drawImage');
+        expect(blit).toBeGreaterThan(-1);
+        expect(ctx.calls.findIndex(c => c.op === 'fillText' && c.text === '-19')).toBeGreaterThan(blit);
+    });
+
+    it('re-bakes the overview cache once the deferred layers are in', () => {
+        const { container, svg } = buildTextDiagram();
+        const proxy = buildCanvasProxy(svg, container, EXT);
+        proxy.prepare();
+        ctx.calls = [];
+        proxy.prepare(); // nothing new: no re-bake
+        expect(opsOf(ctx.calls, 'fill')).toHaveLength(0);
+        proxy.step(Infinity);
+        proxy.prepare();
+        expect(filled('rgba(108, 108, 108, 0.125)')).toBe(1);
+    });
+});
+
 describe('createCanvasProxyController', () => {
     let ctx: FakeCtx;
 
@@ -444,5 +723,40 @@ describe('createCanvasProxyController', () => {
         });
         expect(ctl.begin()).toBe(false);
         expect(container.hasAttribute(GESTURE_PROXY_ATTR)).toBe(false);
+    });
+
+    it('reads the flow values and labels in idle slices after the build, never during a gesture', () => {
+        vi.useFakeTimers();
+        vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 0);
+        const { container, svg } = buildTextDiagram();
+        const ctl = createCanvasProxyController({
+            getLiveSvg: () => svg, getContainer: () => container, getExtent: () => EXT,
+        });
+        const texts = () => opsOf(ctx.calls, 'fillText').map(c => c.text);
+        ctl.begin(); // the network is built now, synchronously
+        ctl.frame(VIEW10);
+        expect(texts()).toHaveLength(0);
+        vi.advanceTimersByTime(1000); // no slice while the proxy covers the diagram
+        ctx.calls = [];
+        ctl.frame(VIEW10);
+        expect(texts()).toHaveLength(0);
+        ctl.hide(); // the gesture is over: the slices resume
+        vi.advanceTimersByTime(100);
+        ctx.calls = [];
+        ctl.begin();
+        ctl.frame(VIEW10);
+        expect(texts()).toEqual(expect.arrayContaining(['-19', '7', 'BUS 400kV']));
+    });
+
+    it('waits for the panel to be shown before building: the labels need its layout', () => {
+        const { container, svg } = buildDiagram();
+        Object.defineProperty(container, 'clientWidth', { configurable: true, value: 0 });
+        const ctl = createCanvasProxyController({
+            getLiveSvg: () => svg, getContainer: () => container, getExtent: () => null,
+        });
+        expect(ctl.begin()).toBe(false);
+        expect(container.querySelector('canvas')).toBeNull();
+        Object.defineProperty(container, 'clientWidth', { configurable: true, value: 1000 });
+        expect(ctl.begin()).toBe(true);
     });
 });

@@ -36,6 +36,8 @@ LABELS = {
     "pan_overview": "Pan at full extent",
     "pan_region": "Pan at region zoom (~35 %)",
     "pan_detail": "Pan at detail zoom (~12 %)",
+    "pan_deep": "Pan at reading zoom (~4 %, text drawn)",
+    "zoom_in_deep": "Zoom into reading zoom (10 notches)",
     "navigate_region": "Navigate across Europe (4 drags)",
     "unzoom_click": "Unzoom button",
     "inspect_jump": "Inspect → zoom to element",
