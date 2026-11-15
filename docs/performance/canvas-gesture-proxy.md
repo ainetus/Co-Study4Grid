@@ -426,7 +426,7 @@ up to half of a fast zoom.
 | Zoom frames | 42–57 fps GPU, 55–58 software | |
 | First feedback, wheel | 43–56 ms GPU, 44–62 ms software | |
 | First feedback, drag at full extent | 24 ms GPU, 43 ms software | |
-| First feedback, drag at region / detail zoom | 93–106 ms GPU, 123–124 ms software | press hit test ~21 ms + first-move hit test ~20 ms + drag-selection check ~21 ms, then the frame |
+| First feedback, drag at region / detail zoom | 93–106 ms GPU, 123–124 ms software | press hit test ~21 ms + first-move hit test ~20 ms + drag-selection check ~21 ms, then the frame. Since `vlInteractions` waits for a click before hit-testing the paint stack (`docs/features/vl-disk-interactions.md`), a press off a disk no longer pays a ~33 ms `elementsFromPoint`: one hit test fewer at a drag start (`drag-hits`: 6 → 5 over 2 ms, 161 → 114 ms) and first feedback 40–60 ms sooner, interleaved against `main` under load (region 148 → 98 ms, detail 144 → 84 ms, navigation 139 → 88 ms, median of 3) |
 | Settle bake, main thread (region zoom) | ~0.25–0.3 s | layout ~106 ms, paint 52–120 ms, layerize 66–73 ms |
 | Settle re-raster (region zoom) | ~0.94 s GPU raster (1–1.4 s under load) | off the main thread, but later commits wait for it |
 | Settle bake at reading zoom (~4 %) | ~0.3 s main thread, re-raster 9–23 ms | layout 110–137 ms, paint 100–126 ms, layerize ~60 ms: the whole SVG, whatever the zoom |

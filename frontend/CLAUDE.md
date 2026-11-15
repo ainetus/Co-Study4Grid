@@ -470,7 +470,11 @@ performance levers are applied today:
   existing `.svg-interacting` rule disables SVG hit-testing so no
   handler resolves a node mid-gesture. A click is told apart from a pan
   by pointer travel; the single-click action is deferred
-  `VL_SINGLE_CLICK_DELAY_MS` so a double-click pre-empts it. Full
+  `VL_SINGLE_CLICK_DELAY_MS` so a double-click pre-empts it. The press
+  only climbs from its target: the paint-stack fallback for a disk under
+  an edge (`elementsFromPoint`, a hit test of the whole NAD — ~33 ms on
+  the European grid) waits until the press is a click, so a pan never
+  pays it. Full
   write-up: [`docs/features/vl-disk-interactions.md`](../docs/features/vl-disk-interactions.md).
 - **SVG DOM recycling** (`utils/svgPatch.ts`, PR #108): on N-1 /
   action tab switches the N-state `SVGSVGElement` is cloned and
