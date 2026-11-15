@@ -59,6 +59,9 @@ const mockApi = vi.hoisted(() => ({
   getVoltageLevels: vi.fn().mockResolvedValue({ voltage_levels: ['VL1', 'VL2'], name_map: {} }),
   getNominalVoltages: vi.fn().mockResolvedValue({ mapping: {}, unique_kv: [63, 225] }),
   getVoltageLevelSubstations: vi.fn().mockResolvedValue({ mapping: {} }),
+  // Context tab (useContextMap): no situation map in these tests.
+  getContextMap: vi.fn().mockResolvedValue(null),
+  getContextMapElements: vi.fn().mockResolvedValue([]),
   getNetworkDiagram: vi.fn().mockResolvedValue({ svg: '<svg></svg>', metadata: null }),
   getContingencyDiagram: vi.fn().mockResolvedValue({ svg: '<svg></svg>', metadata: null, lines_overloaded: [] }),
   getActionVariantDiagram: vi.fn().mockResolvedValue({ svg: '<svg></svg>', metadata: null }),
@@ -135,6 +138,8 @@ describe('App — action-card origin (provenance) end-to-end', () => {
     mockApi.getVoltageLevels.mockResolvedValue({ voltage_levels: ['VL1', 'VL2'], name_map: {} });
     mockApi.getNominalVoltages.mockResolvedValue({ mapping: {}, unique_kv: [63, 225] });
     mockApi.getVoltageLevelSubstations.mockResolvedValue({ mapping: {} });
+    mockApi.getContextMap.mockResolvedValue(null);
+    mockApi.getContextMapElements.mockResolvedValue([]);
     mockApi.getNetworkDiagram.mockResolvedValue({ svg: '<svg></svg>', metadata: null });
     mockApi.getContingencyDiagram.mockResolvedValue({ svg: '<svg></svg>', metadata: null, lines_overloaded: [] });
     mockApi.getActionVariantDiagram.mockResolvedValue({ svg: '<svg></svg>', metadata: null });

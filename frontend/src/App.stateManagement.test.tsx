@@ -130,6 +130,9 @@ const mockApi = vi.hoisted(() => ({
   getVoltageLevels: vi.fn().mockResolvedValue({ voltage_levels: ['VL1', 'VL2'], name_map: {} }),
   getNominalVoltages: vi.fn().mockResolvedValue({ mapping: {}, unique_kv: [63, 225] }),
   getVoltageLevelSubstations: vi.fn().mockResolvedValue({ mapping: {} }),
+  // Context tab (useContextMap): no situation map in these tests.
+  getContextMap: vi.fn().mockResolvedValue(null),
+  getContextMapElements: vi.fn().mockResolvedValue([]),
   getNetworkDiagram: vi.fn().mockResolvedValue({ svg: '<svg></svg>', metadata: null }),
   getContingencyDiagram: vi.fn().mockResolvedValue({ svg: '<svg></svg>', metadata: null, lines_overloaded: [] }),
   pickPath: vi.fn(),
@@ -218,6 +221,8 @@ async function selectBranch(branchName: string, opts: { append?: boolean } = {})
 describe('Phase 2: State Management Optimization', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // No situation map unless a test gives one (clearAllMocks keeps it).
+    mockApi.getContextMap.mockResolvedValue(null);
     localStorage.clear();
     vi.unstubAllGlobals();
     vizPanelRenderLog.length = 0;
@@ -382,9 +387,10 @@ describe('Phase 2: State Management Optimization', () => {
         expect(mockApi.updateConfig).toHaveBeenCalled();
       });
 
-      // After reset, the activeTab should be 'n' (default)
+      // After reset, the activeTab is the Context tab: its situation map
+      // lands well before the N-state NAD.
       const vizPanel = vizPanelRenderLog[vizPanelRenderLog.length - 1];
-      expect(vizPanel.activeTab).toBe('n');
+      expect(vizPanel.activeTab).toBe('context');
     });
 
     it('clears contingency state when switching branches after analysis', async () => {

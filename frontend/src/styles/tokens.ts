@@ -149,3 +149,52 @@ export const pinChrome = {
   crossFill: '#ef4444',
   crossStroke: '#b91c1c',
 } as const;
+
+// ===== Context tab — the Carte-Front situation map =====
+// Ported palette ("inspired by éco2mix"): a dark sea, neighbours in deep
+// blue, the studied territory in pale blue, transfers in blue / teal
+// (export) / orange (import). Written to raw SVG attributes, hence hex
+// here. Like the diagram signals it does not flip with the dark theme:
+// the map is its own dark-sea backdrop in both.
+export const contextMapPalette = {
+  sea: '#0d3b4f',
+  land: '#1c5670',
+  landEdge: '#5aa7c2',
+  home: '#bfe3ee',
+  homeEdge: '#2a9fc0',
+  pin: '#ee6c4d',
+  export: '#1f9d8f',
+  import: '#ef8354',
+  interZone: '#4f9bd9',
+  consumption: '#9c4dcc',
+  textDark: '#0d3b4f',
+  textLight: '#eaf6fa',
+  countryText: '#bcdcea',
+  halo: '#ffffff',
+  badgeFill: '#ffffff',
+  /** Dark casing under a highlighted element, so the bright signal
+   *  colours read on the pale home fill as on the sea. */
+  highlightCasing: '#1f2937',
+  /** Nuclear units (Carte-Front): fill ramp from Pmin to Pmax — amber, the
+   *  nuclear identity, kept clear of the 400 kV red — and outlines. */
+  nuclearLow: '#fff3c4',
+  nuclearMid: '#f6a609',
+  nuclearHigh: '#c1290a',
+  nuclearEdge: '#3a2a00',
+  nuclearStoppedEdge: '#9aa7ad',
+  nuclearPlant: '#5f8296',
+} as const;
+
+/** Generation-type colours (Carte-Front `FILIERE_COLORS`, éco2mix-like). */
+export const contextFiliereColors = {
+  nuclear: '#f3a900',
+  gas: '#ef5350',
+  coal: '#4d4d4d',
+  oil: '#6d4c41',
+  hydro: '#1e88e5',
+  wind: '#26c6da',
+  solar: '#fdd835',
+  biomass: '#43a047',
+  storage: '#78909c',
+  other: '#9e9e9e',
+} as const;

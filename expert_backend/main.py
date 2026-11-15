@@ -5,7 +5,6 @@
 # SPDX-License-Identifier: MPL-2.0
 # This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
-import gzip
 from collections.abc import Iterator
 from typing import Any, Literal
 import json as json_module
@@ -18,7 +17,6 @@ import sys
 from pathlib import Path
 
 from fastapi import Body, FastAPI, HTTPException, Query, Request
-from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -32,7 +30,13 @@ from expert_backend.services.api_errors import (
     install_error_handlers,
 )
 from expert_backend.services.diagram_mixin import ActionResultUnavailableError
+from expert_backend.services.gzip_response import (  # moved out for the size ceiling
+    maybe_gzip_json as _maybe_gzip_json,
+    maybe_gzip_svg_text as _maybe_gzip_svg_text,
+)
+from expert_backend.context_map_api import install_context_map_routes
 from expert_backend.game_api import install_game_routes
+from expert_backend.services.context_map import context_map_service
 from expert_backend.services.network_service import network_service
 from expert_backend.services.overflow_overlay import inject_overlay
 from expert_backend.services.paths import OVERFLOW_DIR
@@ -61,10 +65,6 @@ install_error_handlers(app)
 install_game_routes(app)
 
 
-# --- Per-endpoint JSON gzip helper ---
-_GZIP_MIN_BYTES = 10_000
-_GZIP_LEVEL = 5
-
 # Study-mutation busy-gate detail (HTTP 409). Study-level operations
 # (config load + the analysis pipeline) mutate the shared singleton
 # state, so at most one runs at a time; a second is rejected rather
@@ -75,50 +75,8 @@ _STUDY_BUSY_DETAIL = (
 )
 
 
-def _maybe_gzip_svg_text(diagram: dict, request: Request) -> Response:
-    diagram = dict(diagram)
-    svg = diagram.pop("svg", "")
-    meta_line = json_module.dumps(
-        jsonable_encoder(diagram), separators=(",", ":"), ensure_ascii=False
-    )
-    body = (meta_line + "\n" + svg).encode("utf-8")
-    accept = request.headers.get("accept-encoding", "")
-    if len(body) < _GZIP_MIN_BYTES or "gzip" not in accept.lower():
-        return Response(
-            content=body,
-            media_type="text/plain; charset=utf-8",
-            headers={"Vary": "Accept-Encoding"},
-        )
-    compressed = gzip.compress(body, compresslevel=_GZIP_LEVEL)
-    return Response(
-        content=compressed,
-        media_type="text/plain; charset=utf-8",
-        headers={
-            "Content-Encoding": "gzip",
-            "Vary": "Accept-Encoding",
-        },
-    )
-
-
-def _maybe_gzip_json(payload, request: Request) -> Response:
-    data = jsonable_encoder(payload)
-    body = json_module.dumps(data, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-    accept = request.headers.get("accept-encoding", "")
-    if len(body) < _GZIP_MIN_BYTES or "gzip" not in accept.lower():
-        return Response(
-            content=body,
-            media_type="application/json",
-            headers={"Vary": "Accept-Encoding"},
-        )
-    compressed = gzip.compress(body, compresslevel=_GZIP_LEVEL)
-    return Response(
-        content=compressed,
-        media_type="application/json",
-        headers={
-            "Content-Encoding": "gzip",
-            "Vary": "Accept-Encoding",
-        },
-    )
+# Context tab routes (GET /api/context-map, POST /api/context-map/elements).
+install_context_map_routes(app)
 
 # --- User config file management ---
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -428,7 +386,12 @@ def update_config(config: ConfigRequest) -> dict:
         # re-populate) torn state between the reset and the reload.
         with recommender_service.network_lock():
             recommender_service.reset()
+            context_map_service.reset()
             network_service.load_network(config.network_path)
+            # Snapshot for the Context tab, before the NAD prefetch starts
+            # switching variants (fast; never raises).
+            context_map_service.capture(network_service.network, config.layout_path,
+                                        config.network_path)
             last_network_path = config.network_path
             recommender_service.update_config(config)
 

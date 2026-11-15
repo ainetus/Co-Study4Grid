@@ -47,6 +47,7 @@ docs/
 | [`game-mode-codabench.md`](features/game-mode-codabench.md) | Timed, scored Game Mode wrapper (`?game=1`) + Codabench benchmark bundle: session config, timer, ≤3-action cap, JSON/CSV log export, shared scoring, local E2E. |
 | [`game-mode-rte7000-tht.md`](features/game-mode-rte7000-tht.md) | France THT scenario family: 656 N-1 cases on reconstructed French THT snapshots, graded easy/medium/hard by expert-model solvability; opening-page difficulty + count picker, sampler, hidden dates, bundled data. |
 | [`game-mode-matpower.md`](features/game-mode-matpower.md) | France RTE Matpower scenario family (offline pipeline): NODE_BREAKER rebuild of the public MATPOWER RTE cases so the recommender gets coupler / node-splitting levers, Rosetta identity match onto real RTE substations for the France layout and busbar structure, N-1 screen + difficulty grading. |
+| [`context-tab.md`](features/context-tab.md) | Context tab (leftmost): the Carte-Front situation map ported in — RTE-region mesh (`regionCvg`) else countries, production mix pies, consumption rings, transfers and neighbour badges on a European basemap; contingency (yellow) + overloads (orange); snapshot at `/api/config` + early read so it shows seconds before the N NAD; layout georeferencing. |
 | [`dark-mode.md`](features/dark-mode.md) | Light/dark theme: design-token source of truth, `useTheme` hook + pre-mount script, the "soft-background" trap, NAD/SLD diagram + overflow-viewer theming, tests. |
 
 ## Performance (`performance/`)

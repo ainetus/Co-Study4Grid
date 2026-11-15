@@ -68,6 +68,12 @@ export interface DiagramsState {
   setN1Diagram: (v: DiagramData | null) => void;
   n1Loading: boolean;
   setN1Loading: (v: boolean) => void;
+  /**
+   * A contingency opened on the Context tab first: its N-1 tab glows once
+   * the diagram is ready (`n1Attention`) until the operator visits it.
+   */
+  setN1Pending: (v: boolean) => void;
+  n1Attention: boolean;
 
   // Action variant
   selectedActionId: string | null;
@@ -218,6 +224,9 @@ export function useDiagrams(
 ): DiagramsState {
   // Tab
   const [activeTab, setActiveTab] = useState<TabId>('n');
+  const [n1Pending, setN1Pending] = useState(false);
+  // Visiting the N-1 tab is what the glow asked for.
+  if (n1Pending && activeTab === 'contingency') setN1Pending(false);
   const activeTabRef = useRef<TabId>(activeTab);
   useLayoutEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
   const prevTabRef = useRef<TabId>(activeTab);
@@ -646,7 +655,7 @@ export function useDiagrams(
   // detached into a popup).
   const handleManualZoomIn = useCallback((targetTab?: TabId) => {
     const tab = targetTab ?? activeTab;
-    if (tab === 'overflow') return;
+    if (tab === 'overflow' || tab === 'context') return;
     interactionLogger.record('zoom_in', { tab });
     const pz = tab === 'action' ? actionPZ : tab === 'n' ? nPZ : n1PZ;
     const vb = pz?.viewBox;
@@ -663,7 +672,7 @@ export function useDiagrams(
 
   const handleManualZoomOut = useCallback((targetTab?: TabId) => {
     const tab = targetTab ?? activeTab;
-    if (tab === 'overflow') return;
+    if (tab === 'overflow' || tab === 'context') return;
     interactionLogger.record('zoom_out', { tab });
     const pz = tab === 'action' ? actionPZ : tab === 'n' ? nPZ : n1PZ;
     const vb = pz?.viewBox;
@@ -680,7 +689,7 @@ export function useDiagrams(
 
   const handleManualReset = useCallback((targetTab?: TabId) => {
     const tab = targetTab ?? activeTab;
-    if (tab === 'overflow') return;
+    if (tab === 'overflow' || tab === 'context') return;
     interactionLogger.record('zoom_reset', { tab });
     setInspectQuery('');
 
@@ -929,6 +938,7 @@ export function useDiagrams(
   // nodes/edges when the user was pinned to 225 kV) invisible after
   // the user expands the range back out.
   const prevFilterHadHidden = useRef<Record<TabId, boolean>>({
+    context: false,
     n: false,
     'contingency': false,
     action: false,
@@ -1033,7 +1043,7 @@ export function useDiagrams(
     // query. This is how asset focus works inside a detached popup
     // for a tab that isn't currently activeTab.
     const focusTab = inspectFocusTabRef.current ?? activeTab;
-    if (focusTab === 'overflow') return;
+    if (focusTab === 'overflow' || focusTab === 'context') return;
 
     // For zoom-target purposes the contingency is summarised as its
     // first element — multi-element contingencies don't have a
@@ -1088,6 +1098,8 @@ export function useDiagrams(
     nDiagram, setNDiagram,
     n1Diagram, setN1Diagram,
     n1Loading, setN1Loading,
+    setN1Pending,
+    n1Attention: n1Pending && !!n1Diagram?.svg && activeTab !== 'contingency',
     selectedActionId, setSelectedActionId,
     actionDiagram, setActionDiagram,
     actionDiagramLoading, setActionDiagramLoading,
@@ -1125,7 +1137,7 @@ export function useDiagrams(
     primeActionDiagram,
     refreshSldIfAction,
   }), [
-    activeTab, nDiagram, n1Diagram, n1Loading,
+    activeTab, nDiagram, n1Diagram, n1Loading, n1Pending,
     selectedActionId, actionDiagram, actionDiagramLoading, actionViewMode, handleViewModeChange,
     showVoltageLevelNames,
     overflowLayoutMode, setOverflowLayoutMode, overflowLayoutLoading, handleOverflowLayoutChange,

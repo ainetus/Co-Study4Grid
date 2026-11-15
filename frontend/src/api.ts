@@ -6,7 +6,8 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study. 
 
 import axios from 'axios';
-import type { ConfigRequest, BranchResponse, DiagramData, DiagramPatch, FlowDelta, AssetDelta, AvailableAction, SessionResult, VlInjection, FeederLabel } from './types';
+import { signalStudyLoad } from './utils/studyLoadSignal';
+import type { ConfigRequest, BranchResponse, DiagramData, DiagramPatch, FlowDelta, AssetDelta, AvailableAction, SessionResult, VlInjection, FeederLabel, ContextMapData, ContextMapElement, ContextMapUnavailable } from './types';
 
 // Same-origin by default when built with `VITE_API_BASE_URL=''` (the
 // frontend is served by the backend, e.g. on a HuggingFace Docker Space):
@@ -85,8 +86,17 @@ export const api = {
         return response.data;
     },
     updateConfig: async (config: ConfigRequest) => {
-        const response = await axios.post(`${API_BASE_URL}/api/config`, config);
-        return response.data;
+        // Lets the Context tab read its map while the backend is still
+        // loading the action space (see utils/studyLoadSignal).
+        signalStudyLoad('start');
+        try {
+            const response = await axios.post(`${API_BASE_URL}/api/config`, config);
+            signalStudyLoad('loaded');
+            return response.data;
+        } catch (err) {
+            signalStudyLoad('failed');
+            throw err;
+        }
     },
     /**
      * Lists the recommendation models registered on the backend. Called
@@ -124,6 +134,19 @@ export const api = {
             { params: { element_id: elementId } }
         );
         return response.data;
+    },
+    // Context tab: built from the snapshot taken at /api/config, so it
+    // answers while the base NAD is still being generated.
+    getContextMap: async (): Promise<ContextMapData | ContextMapUnavailable> => {
+        const response = await axios.get<ContextMapData | ContextMapUnavailable>(`${API_BASE_URL}/api/context-map`);
+        return response.data;
+    },
+    getContextMapElements: async (elementIds: string[]): Promise<ContextMapElement[]> => {
+        const response = await axios.post<{ elements: ContextMapElement[] }>(
+            `${API_BASE_URL}/api/context-map/elements`,
+            { element_ids: elementIds },
+        );
+        return response.data.elements;
     },
     getNetworkDiagram: async (): Promise<DiagramData & { svg: string }> => {
         const res = await fetch(`${API_BASE_URL}/api/network-diagram?format=text`);

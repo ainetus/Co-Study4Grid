@@ -85,7 +85,11 @@ frontend/
     │   ├── useDetachedTabs.ts      # Detached visualization windows
     │   ├── useTiedTabsSync.ts      # Mirror viewBox between detached + main
     │   ├── useContingencyFetch.ts           # N-1 diagram fetch (svgPatch fast-path
-    │   │                           # + full /api/contingency-diagram fallback)
+    │   │                           # + full /api/contingency-diagram fallback);
+    │   │                           # with a Context tab (`contextFirst`) a new
+    │   │                           # contingency opens THERE and
+    │   │                           # useDiagrams.n1Attention makes the N-1 tab
+    │   │                           # glow (.tab-attention) until visited
     │   ├── useDiagramHighlights.ts # Per-tab SVG highlight pipeline
     │   │                           # (overload halos, contingency highlight,
     │   │                           # action targets, delta visuals) + the
@@ -95,6 +99,15 @@ frontend/
     │   │                           # geo switch, postMessage bridge, pin overlay
     │   ├── useTheme.ts             # Light/dark theme toggle + persistence
     │   │                           # (0.8.0; see docs/features/dark-mode.md)
+    │   ├── useContextMap.ts        # Context tab data: the situation map, read
+    │   │                           # EARLY (polled from the moment /api/config
+    │   │                           # is sent, new study told by capture_id),
+    │   │                           # confirmed on useSettings.studyGeneration;
+    │   │                           # contingency + overload highlights with ρ;
+    │   │                           # `available` (null while read, false = no
+    │   │                           # tab: the network places < 2 zones on the
+    │   │                           # map) + contextUnavailableNotice
+    │   │                           # (docs/features/context-tab.md)
     │   ├── useSldFeederRelabel.ts  # Relabel SLD branch feeders with the far-
     │   │                           # end VL name + wrap EVERY long feeder name
     │   │                           # (generators / loads / unmatched branches)
@@ -115,6 +128,13 @@ frontend/
     │   ├── ActionOverviewDiagram.tsx, ActionSearchDropdown.tsx,
     │   ├── ActionTypeIcon.tsx, SeverityIcon.tsx,   # action-type + severity
     │   │                               # pictograms (shared by cards / rings / pins)
+    │   ├── ContextMapView.tsx      # Context tab (leftmost, not detachable):
+    │   │                           # Carte-Front situation map — pan/zoom,
+    │   │                           # summary + legend cards, hover tooltips,
+    │   │                           # "Zoom to contingency"
+    │   ├── ContextMapLayers.tsx    # Its SVG layers: basemap, transfer arrows,
+    │   │                           # neighbour badges, pies + consumption
+    │   │                           # rings, contingency / overload highlights
     │   ├── DiagramLegend.tsx, AdditionalLinesPicker.tsx,
     │   ├── ActionFilterRings.tsx       # Shared sidebar strip: severity ring
     │   │                               # (4 colour-coded pictogram toggles
@@ -199,6 +219,12 @@ frontend/
         │   └── feederLabels.ts        # - SLD feeder relabel + friendly-name↔IIDM-id
         │                              #   overload bridge (see useSldFeederRelabel +
         │                              #   docs/features/sld-diagram-feeder-labels.md)
+        ├── contextMapGeometry.ts      # Context tab geometry: Carte-Front point
+        │                              # sizing (pies, arrows), matplotlib arc3
+        │                              # arrows, pie slices, highlight box
+        ├── studyLoadSignal.ts         # 'start' / 'loaded' / 'failed' around
+        │                              # api.updateConfig — lets the Context tab
+        │                              # read its map before /api/config answers
         ├── svgPatch.ts                # SVG DOM recycling: clone N-state SVG
         │                              # and patch per-branch deltas on N-1 / action
         │                              # tab switches (PR #108). Used by useContingencyFetch.
@@ -296,7 +322,10 @@ silently (the `redispatch_details` save-drop bug).
    parallel `Promise.all` of `getBranches` + `getVoltageLevels` +
    `getNominalVoltages` + `getNetworkDiagram` (the slow NAD overlaps
    with the fast metadata calls — see
-   `docs/performance/history/loading-parallel.md`).
+   `docs/performance/history/loading-parallel.md`). `resetAllState()`
+   lands on the **Context** tab, whose situation map
+   (`useContextMap`) is read while `/api/config` still runs — seconds
+   before the N NAD (see `docs/features/context-tab.md`).
 3. **Select contingency**: typing in the contingency input fires the
    N-1 useEffect when the value matches a valid branch. If analysis
    state already exists, a confirmation dialog appears

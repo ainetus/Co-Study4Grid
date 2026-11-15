@@ -109,6 +109,8 @@ export interface SettingsState {
     compute_overflow_graph: boolean;
   };
   applyConfigResponse: (configRes: Record<string, unknown>) => void;
+  /** Bumped by every `applyConfigResponse` — a study was (re)loaded. */
+  studyGeneration: number;
   createCurrentBackup: () => SettingsBackup;
 }
 
@@ -430,7 +432,12 @@ export function useSettings(): SettingsState {
     compute_overflow_graph: computeOverflowGraph,
   }), [networkPath, actionPath, layoutPath, minLineReconnections, minCloseCoupling, minOpenCoupling, minLineDisconnections, minPst, minLoadShedding, minRenewableCurtailmentActions, minRedispatch, allowedActionTypes, nPrioritizedActions, linesMonitoringPath, monitoringFactor, preExistingOverloadThreshold, ignoreReconnections, pypowsyblFastMode, recommenderModel, computeOverflowGraph]);
 
+  // Every load path (Apply Settings, Load Study, session reload) goes
+  // through applyConfigResponse right after /api/config: the Context tab
+  // fetches its situation map on this signal, without waiting for the NAD.
+  const [studyGeneration, setStudyGeneration] = useState(0);
   const applyConfigResponse = useCallback((configRes: Record<string, unknown>) => {
+    setStudyGeneration(g => g + 1);
     if (configRes && configRes.total_lines_count !== undefined) {
       setMonitoredLinesCount(configRes.monitored_lines_count as number);
       setTotalLinesCount(configRes.total_lines_count as number);
@@ -480,6 +487,7 @@ export function useSettings(): SettingsState {
     buildConfigRequest,
     configRequestFromUserConfig,
     applyConfigResponse,
+    studyGeneration,
     createCurrentBackup,
   }), [
     networkPath, actionPath, layoutPath, outputFolderPath,
@@ -490,6 +498,6 @@ export function useSettings(): SettingsState {
     actionDictFileName, actionDictStats,
     isSettingsOpen, settingsTab, settingsBackup,
     configFilePath, changeConfigFilePath,
-    pickSettingsPath, handleOpenSettings, handleCloseSettings, buildConfigRequest, configRequestFromUserConfig, applyConfigResponse, createCurrentBackup
+    pickSettingsPath, handleOpenSettings, handleCloseSettings, buildConfigRequest, configRequestFromUserConfig, applyConfigResponse, studyGeneration, createCurrentBackup
   ]);
 }

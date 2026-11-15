@@ -127,9 +127,28 @@ class TestStepSelection:
         assert _step_script_names(captured_runs) == ["add_detailed_topology"]
 
     def test_unknown_step_errors(self, captured_runs, monkeypatch):
+        monkeypatch.setattr(sys, "argv", ["build_pipeline.py", "--steps", "8"])
+        with pytest.raises(SystemExit):
+            bp.main()
+
+    def test_plant_matching_runs_last_only_with_plants(self, captured_runs, monkeypatch):
+        monkeypatch.setattr(sys, "argv", ["build_pipeline.py", "--plants", "pp.csv"])
+        bp.main()
+        assert _step_script_names(captured_runs)[-1] == "match_power_plants"
+        cmd = captured_runs[-1]
+        assert cmd[cmd.index("--plants") + 1] == "pp.csv"
+        assert cmd[cmd.index("--network") + 1].endswith("pypsa_eur_fr225_400")
+
+    def test_plant_matching_alone_on_an_existing_bundle(self, captured_runs, monkeypatch):
+        monkeypatch.setattr(sys, "argv", ["build_pipeline.py", "--steps", "7", "--plants", "pp.csv"])
+        bp.main()
+        assert _step_script_names(captured_runs) == ["match_power_plants"]
+
+    def test_plant_matching_needs_the_database(self, captured_runs, monkeypatch):
         monkeypatch.setattr(sys, "argv", ["build_pipeline.py", "--steps", "7"])
         with pytest.raises(SystemExit):
             bp.main()
+        assert captured_runs == []
 
     def test_skip_osm_with_steps_containing_1(self, captured_runs, monkeypatch):
         """--skip-osm wins even when --steps explicitly lists 1."""

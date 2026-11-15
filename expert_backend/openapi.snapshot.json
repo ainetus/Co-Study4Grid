@@ -325,6 +325,39 @@
         "title": "ConfigRequest",
         "type": "object"
       },
+      "ContextMapElementsRequest": {
+        "properties": {
+          "element_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Element Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "element_ids"
+        ],
+        "title": "ContextMapElementsRequest",
+        "type": "object"
+      },
+      "ContextMapElementsResponse": {
+        "properties": {
+          "elements": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Elements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "elements"
+        ],
+        "title": "ContextMapElementsResponse",
+        "type": "object"
+      },
       "ContingencySldRequest": {
         "properties": {
           "disconnected_elements": {
@@ -1568,6 +1601,62 @@
           }
         },
         "summary": "Set Config File Path"
+      }
+    },
+    "/api/context-map": {
+      "get": {
+        "description": "Zones, production mix, consumption and inter-zone transfers of\nthe loaded network, on a European basemap (see services/context_map).",
+        "operationId": "get_context_map_api_context_map_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Context Map"
+      }
+    },
+    "/api/context-map/elements": {
+      "post": {
+        "description": "Map position of the elements the operator studies — the\ncontingency and its overloads — in the frame of the context map.",
+        "operationId": "get_context_map_elements_api_context_map_elements_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContextMapElementsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextMapElementsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Context Map Elements"
       }
     },
     "/api/contingency-diagram": {

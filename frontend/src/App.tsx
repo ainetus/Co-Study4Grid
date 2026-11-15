@@ -31,6 +31,7 @@ import { useContingencyFetch } from './hooks/useContingencyFetch';
 import { useDiagramHighlights } from './hooks/useDiagramHighlights';
 import { useManualSimulation } from './hooks/useManualSimulation';
 import { useLeverInteraction } from './hooks/useLeverInteraction';
+import { contextUnavailableNotice, useContextMap } from './hooks/useContextMap';
 import { interactionLogger } from './utils/interactionLogger';
 import { gameBridge } from './game/gameBridge';
 import { buildChosenActionRecord } from './game/solutionLog';
@@ -305,7 +306,7 @@ function App() {
     // an empty slot by default. Prefers the first tab that is not itself
     // detached; falls back to 'n' (which is always available).
     if (entry && diagrams.activeTab === tabId) {
-      const order: TabId[] = ['n', 'contingency', 'action', 'overflow'];
+      const order: TabId[] = ['context', 'n', 'contingency', 'action', 'overflow'];
       const fallback = order.find(t => t !== tabId && !detachedTabs[t]);
       diagrams.setActiveTab(fallback ?? 'n');
     }
@@ -418,7 +419,7 @@ function App() {
   // Full reset: contingency state + network/diagram state
   const resetAllState = useCallback(() => {
     clearContingencyState();
-    diagrams.setActiveTab('n');
+    diagrams.setActiveTab('context');
     diagrams.setNDiagram(null);
     diagrams.setN1Diagram(null);
     diagrams.setOriginalViewBox(null);
@@ -1080,7 +1081,18 @@ function App() {
   }, [selectedContingency, diagrams.selectedContingencyForSld]);
 
 
+  // Context tab: the situation map, fetched on every study load.
+  const contextMap = useContextMap({
+    studyGeneration: settings.studyGeneration, selectedContingency, result, n1Diagram, selectedOverloads,
+  });
+  // The study answered it has no situation map: its Context tab is gone.
+  const noContextMap = !!(contextMap.unavailableReason || contextMap.error);
+  useEffect(() => {
+    if (noContextMap && diagrams.activeTab === 'context') diagrams.setActiveTab('n');
+  }, [noContextMap, diagrams]);
+
   useContingencyFetch({
+    contextFirst: contextMap.available === true,
     selectedContingency,
     branches,
     voltageLevelsLength: voltageLevels.length,
@@ -1404,12 +1416,14 @@ function App() {
   // the reset-on-apply-settings behaviour).
   const [showActionDictNotice, setShowActionDictNotice] = useState(true);
   const [showRecommenderNotice, setShowRecommenderNotice] = useState(true);
+  const [showContextNotice, setShowContextNotice] = useState(true);
 
   // Re-arm the notices whenever a fresh study is loaded — same
   // semantics as the local state ActionFeed used to own.
   useEffect(() => {
     setShowActionDictNotice(true);
     setShowRecommenderNotice(true);
+    setShowContextNotice(true);
   }, [networkPath, actionPath]);
 
   const sidebarNotices = useMemo(() => {
@@ -1541,8 +1555,12 @@ function App() {
       });
     }
 
+    if (showContextNotice && contextMap.unavailableReason) {
+      list.push(contextUnavailableNotice(contextMap.unavailableReason, () => setShowContextNotice(false)));
+    }
     return list;
   }, [
+    showContextNotice, contextMap.unavailableReason,
     showActionDictNotice, actionDictFileName, actionDictStats, result,
     showMonitoringWarning, monitoredLinesCount, totalLinesCount,
     monitoringFactor, preExistingOverloadThreshold,
@@ -1694,11 +1712,13 @@ function App() {
         <div style={{ flex: 1, background: 'white', display: 'flex', flexDirection: 'column' }}>
           <VisualizationPanel
             activeTab={activeTab}
+            contextMap={contextMap}
             configLoading={configLoading}
             onTabChange={handleTabChange}
             nDiagram={nDiagram}
             n1Diagram={n1Diagram}
             n1Loading={n1Loading}
+            n1Attention={diagrams.n1Attention}
             actionDiagram={actionDiagram}
             actionDiagramLoading={actionDiagramLoading}
             selectedActionId={selectedActionId}

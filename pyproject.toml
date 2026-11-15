@@ -71,6 +71,10 @@ where = ["."]
 include = ["expert_backend*"]
 exclude = ["frontend*", "tests*", "venv*"]
 
+[tool.setuptools.package-data]
+# Context tab basemap (Natural Earth outlines, see services/context_map/geography.py).
+"expert_backend.services.context_map" = ["resources/*.geojson"]
+
 # --- Code-quality tooling ---------------------------------------------------
 # Ruff is scoped to a light, non-stylistic ruleset: we catch real bugs
 # (undefined names, unused imports, common bug patterns) and leave formatting
