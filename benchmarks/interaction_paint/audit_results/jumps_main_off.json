@@ -1,0 +1,209 @@
+{
+ "hw": "gpu",
+ "mode": "off",
+ "exp": "",
+ "expApplied": null,
+ "proxyStats": null,
+ "perfMetrics": {
+  "Documents": 2,
+  "JSEventListeners": 778,
+  "LayoutObjects": 182870,
+  "Nodes": 253809,
+  "JSHeapUsedSize": 39306896
+ },
+ "gpu": "ANGLE (Intel, Mesa Intel(R) Graphics (RPL-P), OpenGL 4.6 (Core Profile) Mesa 23.2.1-1ubuntu3.1~22.04.3)",
+ "viewport": {
+  "W": 1920,
+  "H": 1080
+ },
+ "rect": {
+  "x": 481,
+  "y": 106.703125,
+  "w": 1439,
+  "h": 886.296875
+ },
+ "vb0": "-2185664.32 -1735668.54 4371428.64 3471297.08",
+ "load": {
+  "click": 30678.59999999404,
+  "nMount": 36384.09999999404,
+  "nMountPainted": 37058.5,
+  "resources": [
+   {
+    "n": "/api/user-config",
+    "start": 30173,
+    "dur": 8,
+    "ttfb": 5,
+    "xfer": 1448,
+    "size": 1148
+   },
+   {
+    "n": "/api/config-file-path",
+    "start": 30174,
+    "dur": 7,
+    "ttfb": 5,
+    "xfer": 453,
+    "size": 153
+   },
+   {
+    "n": "/api/models",
+    "start": 30175,
+    "dur": 7,
+    "ttfb": 6,
+    "xfer": 2725,
+    "size": 2425
+   },
+   {
+    "n": "/api/user-config",
+    "start": 30186,
+    "dur": 9,
+    "ttfb": 7,
+    "xfer": 320,
+    "size": 20
+   },
+   {
+    "n": "/api/config",
+    "start": 30682,
+    "dur": 2864,
+    "ttfb": 2863,
+    "xfer": 692,
+    "size": 392
+   },
+   {
+    "n": "/api/branches",
+    "start": 33547,
+    "dur": 522,
+    "ttfb": 518,
+    "xfer": 666266,
+    "size": 665966
+   },
+   {
+    "n": "/api/voltage-levels",
+    "start": 33547,
+    "dur": 169,
+    "ttfb": 167,
+    "xfer": 431664,
+    "size": 431364
+   },
+   {
+    "n": "/api/nominal-voltages",
+    "start": 33547,
+    "dur": 80,
+    "ttfb": 74,
+    "xfer": 169349,
+    "size": 169049
+   },
+   {
+    "n": "/api/network-diagram",
+    "start": 33548,
+    "dur": 2179,
+    "ttfb": 2136,
+    "xfer": 1843847,
+    "size": 16913098
+   },
+   {
+    "n": "/api/voltage-level-substations",
+    "start": 33548,
+    "dur": 57,
+    "ttfb": 51,
+    "xfer": 274868,
+    "size": 274568
+   }
+  ],
+  "domNodes": 98960,
+  "svgBytes": 9944994
+ },
+ "tabSwitch": {
+  "clickToPaint": 970.0999999940395,
+  "loaf": [
+   {
+    "start": 40062.90000000596,
+    "dur": 62.30000001192093,
+    "renderStart": 40125,
+    "styleStart": 40125.20000001788,
+    "blocking": 0,
+    "scripts": []
+   },
+   {
+    "start": 38992.59999999404,
+    "dur": 960.4000000059605,
+    "renderStart": 38993,
+    "styleStart": 39952.90000000596,
+    "blocking": 910.412,
+    "scripts": []
+   }
+  ]
+ },
+ "consoleLines": [
+  "[SVG] declutter pass: 201ms (parse 59ms, 15706 labels, 14837 moved)",
+  "[SVG] De-cluttered 14837 flow labels. Boosted vlCount=5247, ratio 3497.14, boost 34.14, nodeBoost 60.00, straightened 0 half-edges, reconnected 0 endpoints, projected 0 flow indicators in 258ms",
+  "[SVG] DOM injection for n took 32.00ms"
+ ],
+ "results": [
+  {
+   "name": "unzoom_click",
+   "rep": 0,
+   "inputToPaintedMs": 342,
+   "changeFrameMs": 333,
+   "loaf": [
+    {
+     "dur": 290,
+     "styleLayoutPaint": 0,
+     "scripts": ""
+    }
+   ],
+   "finalState": "-2185664.32 -1735668.54 4371428.64 3471297.08|||0|overview|n-svg-container|"
+  },
+  {
+   "name": "inspect_jump",
+   "rep": 0,
+   "inputToPaintedMs": 607,
+   "changeFrameMs": 600,
+   "loaf": [],
+   "finalState": "-1262495.36 616004.5611585195 222173.1900000001 136839.0576829613|||0|detail|n-svg-container|"
+  },
+  {
+   "name": "unzoom_click",
+   "rep": 1,
+   "inputToPaintedMs": 306,
+   "changeFrameMs": 300,
+   "loaf": [],
+   "finalState": "-2185664.32 -1735668.54 4371428.64 3471297.08|||0|overview|n-svg-container|"
+  },
+  {
+   "name": "inspect_jump",
+   "rep": 1,
+   "inputToPaintedMs": 496,
+   "changeFrameMs": 483,
+   "loaf": [
+    {
+     "dur": 335,
+     "styleLayoutPaint": 0,
+     "scripts": "DIV.oninput:175"
+    }
+   ],
+   "finalState": "-1262495.36 616004.5611585195 222173.1900000001 136839.0576829613|||0|detail|n-svg-container|"
+  },
+  {
+   "name": "unzoom_click",
+   "rep": 2,
+   "inputToPaintedMs": 316,
+   "changeFrameMs": 300,
+   "loaf": [
+    {
+     "dur": 279,
+     "styleLayoutPaint": 0,
+     "scripts": ""
+    }
+   ],
+   "finalState": "-2185664.32 -1735668.54 4371428.64 3471297.08|||0|overview|n-svg-container|"
+  },
+  {
+   "name": "inspect_jump",
+   "rep": 2,
+   "inputToPaintedMs": 442,
+   "changeFrameMs": 433,
+   "loaf": [],
+   "finalState": "-1262495.36 616004.5611585195 222173.1900000001 136839.0576829613|||0|detail|n-svg-container|"
+  }
+ ]
+}

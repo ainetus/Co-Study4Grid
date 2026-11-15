@@ -153,7 +153,8 @@ Co-Study4Grid/
 │                                  # svgBoost, fitRect, deltaVisuals, actionPinData,
 │                                  # actionPinRender, highlights, vlInteractions (VL-disk
 │                                  # hover name / click-to-inspect / dbl-click SLD),
-│                                  # overflowPinPayload
+│                                  # overflowPinPayload, canvasProxy (pan/zoom
+│                                  # gesture proxy — the default 'canvas' mode)
 │                                  # + overflowOverlayRender + pinGlyph (PR #116 —
 │                                  # iframe-overlay pin pipeline)
 ├── standalone_interface_legacy.html  # DECOMMISSIONED 2026-04-20 — hand-maintained
@@ -220,6 +221,7 @@ Co-Study4Grid/
 | `docs/features/sld-topology-edit.md` | Interactive SLD topology edit → manual action card |
 | `docs/features/sld-diagram-feeder-labels.md` | SLD feeders relabelled by far-end VL name (+ parallel index), overload-halo friendly-name↔IIDM-id bridge, and the charging-current annotation explaining the "after" loading of a line opened at one end |
 | `docs/features/context-tab.md` | Context tab (leftmost): the Carte-Front situation map ported in — region mesh (`regionCvg`) else countries, mix pies / consumption rings / transfers / neighbour badges, contingency + overload highlights, snapshot at `/api/config` + early read, layout georeferencing |
+| `docs/performance/canvas-gesture-proxy.md` | Default pan/zoom renderer on large grids: canvas gesture proxy design, time budget on the European grid, decision log (never restyle the canvas, pointer capture, settle on a pause), next levers, probes |
 | `docs/features/vl-disk-interactions.md` | Interactive VL disks on the NAD (hover name / click → Inspect / double-click → SLD) + delegation performance contract |
 | `docs/features/game-mode-codabench.md` | Timed, scored Game Mode (`?game=1`) + Codabench benchmark bundle |
 | `deploy/huggingface/` | HuggingFace Docker Space deployment (Space README + `SETUP.md`) |
@@ -445,7 +447,11 @@ NAD/SLD payloads:
 - **Pan/zoom**: the `usePanZoom` hook writes the SVG `viewBox`
   directly (rAF-batched, cached CTM) — no pan/zoom library — in both
   the React dev build and the auto-generated standalone (they share
-  the same source tree).
+  the same source tree). The default `'canvas'` mode
+  (`utils/svg/canvasProxy.ts`, since 2026-11-15) draws a light canvas copy
+  of the network during the gesture and writes the viewBox once, when the
+  operator pauses ("Classic" per-frame repaint stays selectable) — see
+  `frontend/CLAUDE.md` and `docs/performance/canvas-gesture-proxy.md`.
 
 ## Dependencies
 

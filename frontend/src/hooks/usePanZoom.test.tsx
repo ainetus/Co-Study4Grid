@@ -5,9 +5,9 @@
 // SPDX-License-Identifier: MPL-2.0
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study. 
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { usePanZoom } from './usePanZoom';
+import { usePanZoom, wheelZoomFactor } from './usePanZoom';
 import { setSmoothPanZoomMode } from '../utils/smoothPanZoom';
 import type { ViewBox } from '../types';
 
@@ -28,6 +28,10 @@ function createMockSvgContainer(viewBox?: string) {
 
 describe('usePanZoom', () => {
     const initialVB: ViewBox = { x: 0, y: 0, w: 1000, h: 800 };
+
+    // The canvas proxy is the default mode; most cases here pin the classic
+    // path (per-frame viewBox writes), and the canvas mode has its own block.
+    beforeEach(() => { setSmoothPanZoomMode('off'); });
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -473,6 +477,244 @@ describe('usePanZoom', () => {
             } finally {
                 setSmoothPanZoomMode('off');
             }
+        });
+    });
+    describe('wheelZoomFactor — delta magnitude', () => {
+        it('zooms 10 % per mouse-wheel notch, in both directions', () => {
+            expect(wheelZoomFactor(100, 0, 800)).toBeCloseTo(1.1);
+            expect(wheelZoomFactor(-100, 0, 800)).toBeCloseTo(1 / 1.1);
+        });
+
+        it('counts any notched-wheel delta as at least one notch (53 px on some platforms)', () => {
+            expect(wheelZoomFactor(53, 0, 800)).toBeCloseTo(1.1);
+        });
+
+        it('keeps every notch of a coalesced event (Chrome sums queued deltas)', () => {
+            expect(wheelZoomFactor(300, 0, 800)).toBeCloseTo(1.1 ** 3);
+        });
+
+        it('zooms small trackpad deltas proportionally instead of 10 % each', () => {
+            expect(wheelZoomFactor(4, 0, 800)).toBeCloseTo(1.1 ** 0.04);
+        });
+
+        it('normalises line / page delta modes and caps a single event at 10 notches', () => {
+            expect(wheelZoomFactor(3, 1, 800)).toBeCloseTo(1.1 ** 0.99);
+            expect(wheelZoomFactor(5, 2, 800)).toBeCloseTo(1.1 ** 10);
+            expect(wheelZoomFactor(0, 0, 800)).toBe(1);
+        });
+    });
+
+    describe('drag-pan follows the cursor', () => {
+        let frames: FrameRequestCallback[];
+
+        const layout = (svg: SVGSVGElement, w: number, h: number) => {
+            svg.getBoundingClientRect = () => ({ left: 0, top: 0, right: w, bottom: h, width: w, height: h, x: 0, y: 0, toJSON: () => ({}) });
+            Object.defineProperty(svg, 'clientWidth', { configurable: true, value: w });
+            Object.defineProperty(svg, 'clientHeight', { configurable: true, value: h });
+        };
+
+        beforeEach(() => {
+            frames = [];
+            vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { frames.push(cb); return frames.length; });
+            vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        const drag = (container: HTMLElement, from: number, to: number, runFrames: boolean) => {
+            act(() => { container.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: from, clientY: 100 })); });
+            act(() => { window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: to, clientY: 100 })); });
+            if (runFrames) act(() => { while (frames.length) frames.shift()!(0); });
+            act(() => { window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })); });
+        };
+
+        it('applies the pending movement when the mouseup arrives before the frame', () => {
+            const { container, svg } = createMockSvgContainer('0 0 1000 800');
+            layout(svg, 1000, 800);
+            renderHook(() => usePanZoom({ current: container }, initialVB, true));
+            // The mousemove's frame never runs before the mouseup — the case of
+            // a busy main thread delivering both in one task.
+            drag(container, 100, 200, false);
+            expect(svg.getAttribute('viewBox')).toBe('-100 0 1000 800');
+        });
+
+        it('uses the letterboxed axis scale under preserveAspectRatio "meet"', () => {
+            // Panel 2.5:1, diagram 1.25:1 → the height binds: 2 user units per px.
+            const { container, svg } = createMockSvgContainer('0 0 1000 800');
+            layout(svg, 1000, 400);
+            renderHook(() => usePanZoom({ current: container }, initialVB, true));
+            drag(container, 100, 150, true);
+            expect(svg.getAttribute('viewBox')).toBe('-100 0 1000 800');
+        });
+    });
+
+    describe('a press during the wheel settle', () => {
+        beforeEach(() => {
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+            vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 0);
+            vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+            vi.restoreAllMocks();
+            document.body.innerHTML = '';
+        });
+
+        it('takes the gesture over: the wheel settle does not un-cull mid-drag', () => {
+            const { container } = createMockSvgContainer('0 0 1000 800');
+            document.body.appendChild(container);
+            renderHook(() => usePanZoom({ current: container }, initialVB, true));
+            act(() => { container.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -100, clientX: 500, clientY: 400 })); });
+            expect(container.classList.contains('svg-interacting')).toBe(true);
+            act(() => { container.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100, clientY: 100 })); });
+            act(() => { vi.advanceTimersByTime(500); });
+            expect(container.classList.contains('svg-interacting')).toBe(true);
+            act(() => { window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })); });
+            expect(container.classList.contains('svg-interacting')).toBe(false);
+        });
+    });
+
+    describe('canvas gesture proxy mode', () => {
+        let frames: FrameRequestCallback[];
+        let paints: string[];
+
+        // jsdom has no 2D canvas: a context that records what the on-screen
+        // proxy paints (the offscreen overview cache is not recorded).
+        class FakePath2D { moveTo() {} lineTo() {} closePath() {} ellipse() {} addPath() {} }
+        const fakeCtx = (canvas: HTMLCanvasElement) => {
+            const record = (op: string) => { if (canvas.classList.contains('nad-canvas-proxy')) paints.push(op); };
+            return {
+                globalAlpha: 1, fillStyle: '', strokeStyle: '', lineWidth: 1, lineCap: '', lineJoin: '',
+                setTransform: () => {}, setLineDash: () => {}, fill: () => {}, stroke: () => {}, drawImage: () => {},
+                fillRect: () => record('fillRect'),
+                clearRect: () => record('clearRect'),
+            };
+        };
+        const shown = () => paints[paints.length - 1] === 'fillRect';
+        const flushFrames = () => act(() => { while (frames.length) frames.shift()!(0); });
+
+        beforeEach(() => {
+            frames = [];
+            paints = [];
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+            vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { frames.push(cb); return frames.length; });
+            vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+            vi.stubGlobal('Path2D', FakePath2D);
+            vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (this: HTMLCanvasElement) {
+                return fakeCtx(this) as unknown as CanvasRenderingContext2D;
+            });
+            setSmoothPanZoomMode('canvas');
+        });
+
+        afterEach(() => {
+            setSmoothPanZoomMode('off');
+            vi.useRealTimers();
+            vi.restoreAllMocks();
+            vi.unstubAllGlobals();
+            document.body.innerHTML = '';
+        });
+
+        const setup = (options?: { gestureProxy?: boolean }) => {
+            const { container, svg } = createMockSvgContainer('0 0 1000 800');
+            document.body.appendChild(container);
+            svg.getBoundingClientRect = () => ({ left: 0, top: 0, right: 1000, bottom: 800, width: 1000, height: 800, x: 0, y: 0, toJSON: () => ({}) });
+            for (const el of [svg, container]) {
+                Object.defineProperty(el, 'clientWidth', { configurable: true, value: 1000 });
+                Object.defineProperty(el, 'clientHeight', { configurable: true, value: 800 });
+            }
+            const hook = renderHook(() => usePanZoom({ current: container }, initialVB, true, options));
+            return { container, svg, hook };
+        };
+        const press = (el: Element, x: number, y = 100) => act(() => { el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: x, clientY: y })); });
+        const move = (x: number, y = 100) => act(() => { window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: x, clientY: y })); });
+        const release = () => act(() => { window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })); });
+
+        it('pans on the canvas and bakes the live viewBox once, when the operator pauses', () => {
+            const { container, svg } = setup();
+            press(container, 100);
+            // A press alone draws nothing: a plain click selects a VL.
+            expect(paints).toEqual([]);
+            move(150);
+            flushFrames();
+            expect(shown()).toBe(true);
+            expect(container.hasAttribute('data-gesture-proxy')).toBe(true);
+            // No culling toggle on this path: it restyles the whole live tree.
+            expect(container.classList.contains('svg-interacting')).toBe(false);
+            expect(svg.getAttribute('viewBox')).toBe('0 0 1000 800');
+
+            release();
+            expect(svg.getAttribute('viewBox')).toBe('0 0 1000 800');
+            act(() => { vi.advanceTimersByTime(400); });
+            expect(svg.getAttribute('viewBox')).toBe('-50 0 1000 800');
+            // The canvas stays up until the live SVG has painted the bake.
+            expect(shown()).toBe(true);
+            flushFrames();
+            expect(shown()).toBe(false);
+            expect(container.hasAttribute('data-gesture-proxy')).toBe(false);
+        });
+
+        it('chains drags that follow within the pause, with a single bake', () => {
+            const { container, svg } = setup();
+            press(container, 100);
+            move(150);
+            flushFrames();
+            release();
+            act(() => { vi.advanceTimersByTime(200); });
+            press(container, 300);
+            move(350);
+            flushFrames();
+            release();
+            act(() => { vi.advanceTimersByTime(399); });
+            expect(svg.getAttribute('viewBox')).toBe('0 0 1000 800');
+            act(() => { vi.advanceTimersByTime(1); });
+            expect(svg.getAttribute('viewBox')).toBe('-100 0 1000 800');
+        });
+
+        it('a plain click neither draws the proxy nor rewrites the viewBox', () => {
+            const { container, svg } = setup();
+            const setAttr = vi.spyOn(svg, 'setAttribute');
+            press(container, 100);
+            release();
+            act(() => { vi.advanceTimersByTime(1000); });
+            flushFrames();
+            expect(paints).toEqual([]);
+            expect(setAttr).not.toHaveBeenCalledWith('viewBox', expect.anything());
+        });
+
+        it('zooms on the canvas and bakes after the wheel pause', () => {
+            const { container, svg } = setup();
+            act(() => { container.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -100, clientX: 500, clientY: 400 })); });
+            flushFrames();
+            expect(shown()).toBe(true);
+            expect(svg.getAttribute('viewBox')).toBe('0 0 1000 800');
+            act(() => { vi.advanceTimersByTime(400); });
+            const [, , w] = svg.getAttribute('viewBox')!.split(' ').map(Number);
+            expect(w).toBeCloseTo(1000 / 1.1);
+        });
+
+        it('falls back to the default path on surfaces that opt out (Action overview)', () => {
+            const { container } = setup({ gestureProxy: false });
+            press(container, 100);
+            expect(container.querySelector('canvas.nad-canvas-proxy')).toBeNull();
+            expect(container.classList.contains('svg-interacting')).toBe(true);
+            release();
+        });
+
+        it('a programmatic viewBox jump ends a canvas gesture', () => {
+            const { container, svg, hook } = setup();
+            press(container, 100);
+            move(150);
+            flushFrames();
+            expect(shown()).toBe(true);
+            act(() => { hook.result.current.setViewBox({ x: 10, y: 20, w: 300, h: 240 }); });
+            expect(shown()).toBe(false);
+            expect(svg.getAttribute('viewBox')).toBe('10 20 300 240');
+            release();
+            act(() => { vi.advanceTimersByTime(1000); });
+            expect(svg.getAttribute('viewBox')).toBe('10 20 300 240');
         });
     });
 });

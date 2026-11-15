@@ -189,10 +189,10 @@ export const createNadSnapshotCanvas = async (
 // far too much to run inside the mousedown handler (it froze the pan start).
 // So we (1) serialise ONCE per diagram state and cache the string (this is the
 // viewBox-independent part), (2) re-build only the cheap `<svg>` header +
-// inlined <style> per gesture, and (3) decode off the main thread via
-// createImageBitmap. The caller pre-warms the cache on idle and invalidates it
-// via a MutationObserver, so a gesture's snapshot is usually a cheap string
-// compose + an off-thread decode.
+// inlined <style> per gesture, and (3) decode asynchronously. The caller
+// pre-warms the cache on idle and invalidates it via a MutationObserver, so a
+// gesture's snapshot is a cheap string compose + one decode — which Chrome
+// runs on the main thread (see rasterizeMarkupToCanvas).
 
 /**
  * Serialise an FO-stripped clone of the live SVG to a string (the expensive,
@@ -230,9 +230,11 @@ export const composeSnapshotMarkup = (serialized: string, opts: SnapshotOptions)
 };
 
 /**
- * Rasterise an SVG markup string onto a dpr-scaled canvas. Prefers
- * `createImageBitmap` (off-main-thread decode → no jank); falls back to an
- * `<Image>` blob decode where it's unavailable / rejects (e.g. older Safari).
+ * Rasterise an SVG markup string onto a dpr-scaled canvas. Tries
+ * `createImageBitmap` first, but Chrome rejects SVG blobs there, so in
+ * practice it is the `<Image>` blob decode — which lays out and rasterises the
+ * whole snapshot on the main thread (0.4–3 s on the European grid, see
+ * docs/performance/large-grid-interaction-audit-2026-11.md).
  */
 export const rasterizeMarkupToCanvas = async (
     markup: string, width: number, height: number, dpr: number,

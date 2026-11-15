@@ -1,0 +1,1241 @@
+{
+ "hw": "gpu",
+ "mode": "off",
+ "exp": "",
+ "expApplied": null,
+ "proxyStats": null,
+ "perfMetrics": {
+  "Documents": 2,
+  "JSEventListeners": 815,
+  "LayoutObjects": 120932,
+  "Nodes": 254675,
+  "JSHeapUsedSize": 39729308
+ },
+ "gpu": "ANGLE (Intel, Mesa Intel(R) Graphics (RPL-P), OpenGL 4.6 (Core Profile) Mesa 23.2.1-1ubuntu3.1~22.04.3)",
+ "viewport": {
+  "W": 1920,
+  "H": 1080
+ },
+ "rect": {
+  "x": 481,
+  "y": 106.703125,
+  "w": 1439,
+  "h": 886.296875
+ },
+ "vb0": "-2185664.32 -1735668.54 4371428.64 3471297.08",
+ "load": {
+  "click": 30660.29999998212,
+  "nMount": 35231.69999998808,
+  "nMountPainted": 35242.90000000596,
+  "resources": [
+   {
+    "n": "/api/user-config",
+    "start": 30151,
+    "dur": 13,
+    "ttfb": 10,
+    "xfer": 1448,
+    "size": 1148
+   },
+   {
+    "n": "/api/config-file-path",
+    "start": 30151,
+    "dur": 11,
+    "ttfb": 7,
+    "xfer": 453,
+    "size": 153
+   },
+   {
+    "n": "/api/models",
+    "start": 30152,
+    "dur": 12,
+    "ttfb": 11,
+    "xfer": 2737,
+    "size": 2437
+   },
+   {
+    "n": "/api/user-config",
+    "start": 30175,
+    "dur": 10,
+    "ttfb": 7,
+    "xfer": 320,
+    "size": 20
+   },
+   {
+    "n": "/api/context-map",
+    "start": 30665,
+    "dur": 75,
+    "ttfb": 74,
+    "xfer": 39165,
+    "size": 132880
+   },
+   {
+    "n": "/api/config",
+    "start": 30665,
+    "dur": 2354,
+    "ttfb": 2352,
+    "xfer": 692,
+    "size": 392
+   },
+   {
+    "n": "/api/branches",
+    "start": 33020,
+    "dur": 1325,
+    "ttfb": 1322,
+    "xfer": 666266,
+    "size": 665966
+   },
+   {
+    "n": "/api/voltage-levels",
+    "start": 33020,
+    "dur": 247,
+    "ttfb": 240,
+    "xfer": 431664,
+    "size": 431364
+   },
+   {
+    "n": "/api/nominal-voltages",
+    "start": 33020,
+    "dur": 119,
+    "ttfb": 101,
+    "xfer": 169349,
+    "size": 169049
+   },
+   {
+    "n": "/api/network-diagram",
+    "start": 33021,
+    "dur": 1565,
+    "ttfb": 1515,
+    "xfer": 1843847,
+    "size": 16913098
+   },
+   {
+    "n": "/api/voltage-level-substations",
+    "start": 33021,
+    "dur": 86,
+    "ttfb": 77,
+    "xfer": 274868,
+    "size": 274568
+   },
+   {
+    "n": "/api/context-map",
+    "start": 33023,
+    "dur": 1717,
+    "ttfb": 1715,
+    "xfer": 39165,
+    "size": 132880
+   }
+  ],
+  "domNodes": 98960,
+  "svgBytes": 9944994
+ },
+ "tabSwitch": {
+  "clickToPaint": 518,
+  "loaf": [
+   {
+    "start": 36846.19999998808,
+    "dur": 454.90000000596046,
+    "renderStart": 36854.09999999404,
+    "styleStart": 36866.90000000596,
+    "blocking": 404.947,
+    "scripts": [
+     {
+      "inv": "VoidFunction",
+      "dur": 6,
+      "fs": 0,
+      "fn": ""
+     },
+     {
+      "inv": "FrameRequestCallback",
+      "dur": 11,
+      "fs": 0,
+      "fn": ""
+     }
+    ]
+   }
+  ]
+ },
+ "consoleLines": [
+  "[SVG] declutter pass: 154ms (parse 52ms, 15706 labels, 14837 moved)",
+  "[SVG] De-cluttered 14837 flow labels. Boosted vlCount=5247, ratio 3497.14, boost 34.14, nodeBoost 60.00, straightened 0 half-edges, reconnected 0 endpoints, projected 0 flow indicators in 207ms",
+  "[SVG] DOM injection for n took 29.10ms"
+ ],
+ "results": [
+  {
+   "name": "zoom_in_burst",
+   "rep": 0,
+   "nInputs": 16,
+   "gestureMs": 2383,
+   "completeness": 0.56,
+   "doneVersion": 2,
+   "framesInGesture": 10,
+   "fps": 4.2,
+   "frameMs": {
+    "p50": 216.7,
+    "p90": 416.6,
+    "max": 650
+   },
+   "visualUpdates": 9,
+   "firstVisualMs": 442,
+   "catchUpMs": 993,
+   "settleAfterLastInputMs": 1093,
+   "settleFrameMs": null,
+   "longFramesInGesture": 7,
+   "longFramesSumMs": 2379,
+   "loafGesture": [
+    {
+     "dur": 414,
+     "pre": 229,
+     "styleLayoutPaint": 186,
+     "scripts": "DIV#n-svg-container.onwheel:199(forced 199)"
+    },
+    {
+     "dur": 271,
+     "pre": 5,
+     "styleLayoutPaint": 265,
+     "scripts": ""
+    },
+    {
+     "dur": 403,
+     "pre": 205,
+     "styleLayoutPaint": 198,
+     "scripts": "DIV#n-svg-container.onwheel:192(forced 192)"
+    },
+    {
+     "dur": 194,
+     "pre": 8,
+     "styleLayoutPaint": 186,
+     "scripts": ""
+    },
+    {
+     "dur": 619,
+     "pre": 410,
+     "styleLayoutPaint": 209,
+     "scripts": "DIV#n-svg-container.onwheel:192(forced 191)"
+    },
+    {
+     "dur": 256,
+     "pre": 11,
+     "styleLayoutPaint": 245,
+     "scripts": ""
+    },
+    {
+     "dur": 223,
+     "pre": 10,
+     "styleLayoutPaint": 213,
+     "scripts": ""
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "-1018286.6918357015 -566522.8002561824 1693581.021337405 1344851.6121978723|||0|region|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 1,
+   "inputs": "wheel,65,26 wheel,820,66 wheel,1246,146 wheel,1672,226 wheel,2115,306 wheel,2411,386 wheel,2664,466 wheel,2942,546 wheel,3119,627",
+   "timeline": "-24:0o -8:0o 9:0o 26:1o 442:0o* 759:0o 776:0o 792:1o 1209:1o* 1426:1o* 2076:1o* 2359:1o* 2625:1o* 2909:1r* 3075:1r* 3375:1r* 3475:0r"
+  },
+  {
+   "name": "zoom_out_burst",
+   "rep": 0,
+   "nInputs": 20,
+   "gestureMs": 1900,
+   "completeness": 0.55,
+   "doneVersion": 2,
+   "framesInGesture": 9,
+   "fps": 4.7,
+   "frameMs": {
+    "p50": 133.4,
+    "p90": 433.4,
+    "max": 850
+   },
+   "visualUpdates": 11,
+   "firstVisualMs": 463,
+   "catchUpMs": 680,
+   "settleAfterLastInputMs": 730,
+   "settleFrameMs": 500,
+   "longFramesInGesture": 7,
+   "longFramesSumMs": 1861,
+   "loafGesture": [
+    {
+     "dur": 429,
+     "pre": 310,
+     "styleLayoutPaint": 119,
+     "scripts": "DIV#n-svg-container.onwheel:270(forced 269) FrameRequestCallback:6"
+    },
+    {
+     "dur": 844,
+     "pre": 725,
+     "styleLayoutPaint": 119,
+     "scripts": "DIV#n-svg-container.onwheel:355(forced 326) FrameRequestCallback:7"
+    },
+    {
+     "dur": 120,
+     "pre": 8,
+     "styleLayoutPaint": 112,
+     "scripts": ""
+    },
+    {
+     "dur": 118,
+     "pre": 14,
+     "styleLayoutPaint": 105,
+     "scripts": ""
+    },
+    {
+     "dur": 120,
+     "pre": 9,
+     "styleLayoutPaint": 111,
+     "scripts": ""
+    },
+    {
+     "dur": 115,
+     "pre": 14,
+     "styleLayoutPaint": 102,
+     "scripts": ""
+    },
+    {
+     "dur": 115,
+     "pre": 14,
+     "styleLayoutPaint": 101,
+     "scripts": ""
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "-941015.1677183931 -489134.25097669347 1516327.8750899278 1204097.0947022652|||0|region|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 0,
+   "inputs": "wheel,84,34 wheel,867,73 wheel,1383,154 wheel,1522,234 wheel,1661,313 wheel,1806,394 wheel,1941,474 wheel,2069,553 wheel,2211,633 wheel,2347,714 wheel,2498,793",
+   "timeline": "-37:0d -4:0d 13:0d 30:1d 463:1d* 480:1d 1330:1d* 1480:1r* 1613:1r* 1763:1r* 1896:1r* 2030:1r* 2163:1r* 2296:1r* 2446:1r* 2580:1r* 2596:1r 2613:1r 2630:0r 3130:0r 3146:0r 3163:0r 3180:0r 3196:0r"
+  },
+  {
+   "name": "zoom_in_smooth",
+   "rep": 0,
+   "nInputs": 24,
+   "gestureMs": 2466,
+   "completeness": 0.54,
+   "doneVersion": 2,
+   "framesInGesture": 10,
+   "fps": 4.1,
+   "frameMs": {
+    "p50": 216.7,
+    "p90": 483.4,
+    "max": 533.3
+   },
+   "visualUpdates": 13,
+   "firstVisualMs": 504,
+   "catchUpMs": 821,
+   "settleAfterLastInputMs": 854,
+   "settleFrameMs": null,
+   "longFramesInGesture": 9,
+   "longFramesSumMs": 2343,
+   "loafGesture": [
+    {
+     "dur": 478,
+     "pre": 219,
+     "styleLayoutPaint": 259,
+     "scripts": "DIV#n-svg-container.onwheel:193(forced 193)"
+    },
+    {
+     "dur": 251,
+     "pre": 5,
+     "styleLayoutPaint": 246,
+     "scripts": ""
+    },
+    {
+     "dur": 523,
+     "pre": 341,
+     "styleLayoutPaint": 182,
+     "scripts": "DIV#n-svg-container.onwheel:328(forced 279)"
+    },
+    {
+     "dur": 192,
+     "pre": 8,
+     "styleLayoutPaint": 184,
+     "scripts": ""
+    },
+    {
+     "dur": 197,
+     "pre": 9,
+     "styleLayoutPaint": 188,
+     "scripts": ""
+    },
+    {
+     "dur": 197,
+     "pre": 17,
+     "styleLayoutPaint": 180,
+     "scripts": ""
+    },
+    {
+     "dur": 192,
+     "pre": 9,
+     "styleLayoutPaint": 183,
+     "scripts": ""
+    },
+    {
+     "dur": 202,
+     "pre": 23,
+     "styleLayoutPaint": 179,
+     "scripts": "FrameRequestCallback:8"
+    },
+    {
+     "dur": 111,
+     "pre": 8,
+     "styleLayoutPaint": 104,
+     "scripts": ""
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "-764386.1368259038 -312237.6799621439 1111158.5080994717 882357.1427630242|||0|region|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 1,
+   "inputs": "wheel,44,12 wheel,824,28 wheel,1370,60 wheel,1588,92 wheel,1818,124 wheel,2032,156 wheel,2261,188 wheel,2480,220 wheel,2620,252 wheel,2755,284 wheel,2896,316 wheel,3027,348 wheel,3166,381",
+   "timeline": "-13:0o 4:0o 20:1o 504:0o* 804:1o 1337:1o* 1570:1o* 1787:1o* 2004:1o* 2220:1o* 2453:1r* 2587:1r* 2737:1r* 2870:1r* 3003:1r* 3137:1r* 3287:1r* 3303:1r 3320:0r"
+  },
+  {
+   "name": "zoom_in_notches",
+   "rep": 0,
+   "nInputs": 6,
+   "gestureMs": 2777,
+   "completeness": 1,
+   "doneVersion": 2,
+   "framesInGesture": 12,
+   "fps": 4.3,
+   "frameMs": {
+    "p50": 16.8,
+    "p90": 383.3,
+    "max": 966.6
+   },
+   "visualUpdates": 6,
+   "firstVisualMs": 407,
+   "catchUpMs": 130,
+   "settleAfterLastInputMs": 163,
+   "settleFrameMs": 467,
+   "longFramesInGesture": 7,
+   "longFramesSumMs": 2681,
+   "loafGesture": [
+    {
+     "dur": 380,
+     "pre": 213,
+     "styleLayoutPaint": 167,
+     "scripts": "DIV#n-svg-container.onwheel:183(forced 183)"
+    },
+    {
+     "dur": 259,
+     "pre": 6,
+     "styleLayoutPaint": 253,
+     "scripts": ""
+    },
+    {
+     "dur": 364,
+     "pre": 192,
+     "styleLayoutPaint": 172,
+     "scripts": "DIV#n-svg-container.onwheel:179(forced 179)"
+    },
+    {
+     "dur": 478,
+     "pre": 8,
+     "styleLayoutPaint": 470,
+     "scripts": ""
+    },
+    {
+     "dur": 955,
+     "pre": 850,
+     "styleLayoutPaint": 105,
+     "scripts": "TimerHandler:setTimeout:133 DIV#n-svg-container.onwheel:300(forced 300)"
+    },
+    {
+     "dur": 118,
+     "pre": 10,
+     "styleLayoutPaint": 109,
+     "scripts": ""
+    },
+    {
+     "dur": 128,
+     "pre": 16,
+     "styleLayoutPaint": 112,
+     "scripts": ""
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "-944456.9289021313 -492581.21241806424 1524222.9192036646 1210366.4509780852|||0|region|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 1,
+   "inputs": "wheel,74,39 wheel,790,338 wheel,1180,639 wheel,2225,939 wheel,2673,1238 wheel,2819,1539",
+   "timeline": "-43:0o -10:0o 7:0o 23:1o 407:0o* 707:0o 723:0o 740:0o 757:1o 1123:1o* 1640:1r* 2607:1r* 2623:1r 2757:1r* 2907:1r* 2923:1r 2940:0r 3407:0r 3423:0r 3440:0r 3457:0r 3473:0r 3490:0r 3507:0r 3523:0r 3540:0r 3557:0r 3573:0r 3590:0r 3607:0r 3623:0r 3657:0r 3673:0r 3690:0r 3707:0r 3723:0r 3740:0r 3757:0r 3773:0r 3790:0r 3807:0r 3823:0r 3840:0r 3857:0r 3873:0r 3890:0r 3907:0r 3923:0r 3940:0r 3957:0r 3973:0r 3990:0r 4007:0r 4023:0r 4040:0r 4057:0r 4073:0r"
+  },
+  {
+   "name": "pan_overview",
+   "rep": 0,
+   "nInputs": 62,
+   "gestureMs": 1548,
+   "completeness": 0.78,
+   "doneVersion": 2,
+   "framesInGesture": 5,
+   "fps": 3.2,
+   "frameMs": {
+    "p50": 366.7,
+    "p90": 450,
+    "max": 533.3
+   },
+   "visualUpdates": 3,
+   "firstVisualMs": 451,
+   "catchUpMs": -380,
+   "settleAfterLastInputMs": null,
+   "settleFrameMs": null,
+   "longFramesInGesture": 4,
+   "longFramesSumMs": 1419,
+   "loafGesture": [
+    {
+     "dur": 437,
+     "pre": 332,
+     "styleLayoutPaint": 105,
+     "scripts": "DIV#n-svg-container.onmousedown:10"
+    },
+    {
+     "dur": 155,
+     "pre": 49,
+     "styleLayoutPaint": 105,
+     "scripts": ""
+    },
+    {
+     "dur": 505,
+     "pre": 394,
+     "styleLayoutPaint": 111,
+     "scripts": ""
+    },
+    {
+     "dur": 322,
+     "pre": 322,
+     "styleLayoutPaint": 0,
+     "scripts": ""
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "-3494966.4352466986 -1735668.54 4371428.64 3471297.08|||0|overview|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 1,
+   "inputs": "mousedown,29,17 mousemove,314,301 mousemove,484,467 mousemove,506,501 mousemove,660,651 mousemove,1028,1017 mouseup,1196,1034",
+   "timeline": "-32:0o -16:0o 1:1o 451:1o* 634:1o* 1168:0o* 1534:0o 1568:0o 1618:0o 1651:0o 1668:0o 1701:0o 1734:0o 1751:0o 1784:0o 1801:0o 1834:0o 1868:0o 1884:0o 1918:0o 1934:0o 1968:0o 2001:0o 2018:0o 2051:0o 2084:0o 2101:0o 2134:0o 2168:0o 2201:0o 2234:0o 2268:0o 2301:0o 2318:0o 2351:0o 2368:0o 2401:0o 2434:0o 2451:0o 2484:0o 2501:0o 2534:0o 2551:0o 2584:0o 2601:0o 2634:0o 2651:0o 2684:0o 2718:0o 2734:0o 2768:0o 2784:0o 2818:0o"
+  },
+  {
+   "name": "pan_region",
+   "rep": 0,
+   "nInputs": 62,
+   "gestureMs": 1719,
+   "completeness": 0.4,
+   "doneVersion": 2,
+   "framesInGesture": 2,
+   "fps": 1.2,
+   "frameMs": {
+    "p50": 616.7,
+    "p90": 616.7,
+    "max": 1100
+   },
+   "visualUpdates": 1,
+   "firstVisualMs": 1089,
+   "catchUpMs": -630,
+   "settleAfterLastInputMs": null,
+   "settleFrameMs": null,
+   "longFramesInGesture": 2,
+   "longFramesSumMs": 1551,
+   "loafGesture": [
+    {
+     "dur": 1086,
+     "pre": 984,
+     "styleLayoutPaint": 102,
+     "scripts": "DIV#n-svg-container.onmousedown:18 DIV#root.onpointerout:98"
+    },
+    {
+     "dur": 465,
+     "pre": 465,
+     "styleLayoutPaint": 0,
+     "scripts": ""
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "-1259046.3708781481 -516943.3577562743 1524222.9192036646 1210366.4509780852|||0|region|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 1,
+   "inputs": "mousedown,119,89 mousemove,737,607 mousemove,1200,1089 mouseup,1218,1106",
+   "timeline": "-94:0r -11:1r 1089:0r* 1706:0r 1739:0r 1773:0r 1806:0r 1839:0r 1873:0r 1906:0r 1939:0r 1973:0r 2006:0r 2039:0r 2073:0r 2123:0r 2156:0r 2189:0r 2223:0r 2256:0r 2289:0r 2323:0r 2356:0r 2389:0r 2406:0r 2439:0r 2473:0r 2506:0r 2539:0r 2573:0r 2606:0r 2706:0r 2739:0r 2773:0r 2789:0r 2823:0r 2856:0r 2889:0r 2923:0r 2956:0r 2989:0r 3006:0r"
+  },
+  {
+   "name": "pan_detail",
+   "rep": 0,
+   "nInputs": 62,
+   "gestureMs": 1637,
+   "completeness": 0.28,
+   "doneVersion": 2,
+   "framesInGesture": 3,
+   "fps": 1.8,
+   "frameMs": {
+    "p50": 549.9,
+    "p90": 549.9,
+    "max": 1066.7
+   },
+   "visualUpdates": 1,
+   "firstVisualMs": 537,
+   "catchUpMs": -1100,
+   "settleAfterLastInputMs": null,
+   "settleFrameMs": null,
+   "longFramesInGesture": 2,
+   "longFramesSumMs": 1471,
+   "loafGesture": [
+    {
+     "dur": 537,
+     "pre": 439,
+     "styleLayoutPaint": 98,
+     "scripts": "DIV#n-svg-container.onmousedown:16"
+    },
+    {
+     "dur": 934,
+     "pre": 934,
+     "styleLayoutPaint": 0,
+     "scripts": "DIV#root.onpointermove:26"
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "-589602.9818455973 -65052.711817799034 531463.6698326023 422028.68607641204|||0|detail|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 1,
+   "inputs": "mousedown,89,38 mousemove,440,404 mousemove,594,589 mousemove,996,955 mousemove,1019,1004 mousemove,1047,1038 mouseup,1070,1054",
+   "timeline": "-46:0d -13:1d 537:0d* 1604:0d 1654:0d 1687:0d 1720:0d 1754:0d 1787:0d 1820:0d 1837:0d 1870:0d 1904:0d 1937:0d 1970:0d 2004:0d 2020:0d 2054:0d 2087:0d 2120:0d 2154:0d 2187:0d 2220:0d 2254:0d 2287:0d 2320:0d 2354:0d 2370:0d 2404:0d 2420:0d 2454:0d 2487:0d 2504:0d 2537:0d 2570:0d 2587:0d 2620:0d 2637:0d 2670:0d 2687:0d 2720:0d 2737:0d 2770:0d 2787:0d 2820:0d 2837:0d 2870:0d 2887:0d 2920:0d"
+  },
+  {
+   "name": "navigate_region",
+   "rep": 0,
+   "nInputs": 176,
+   "gestureMs": 4857,
+   "completeness": 0.47,
+   "doneVersion": 2,
+   "framesInGesture": 4,
+   "fps": 0.8,
+   "frameMs": {
+    "p50": 550,
+    "p90": 1383.3,
+    "max": 2383.2
+   },
+   "visualUpdates": 3,
+   "firstVisualMs": 531,
+   "catchUpMs": -560,
+   "settleAfterLastInputMs": null,
+   "settleFrameMs": null,
+   "longFramesInGesture": 5,
+   "longFramesSumMs": 4719,
+   "loafGesture": [
+    {
+     "dur": 520,
+     "pre": 432,
+     "styleLayoutPaint": 88,
+     "scripts": "DIV#n-svg-container.onmousedown:17"
+    },
+    {
+     "dur": 1371,
+     "pre": 1259,
+     "styleLayoutPaint": 112,
+     "scripts": "DIV#n-svg-container.onmousedown:20"
+    },
+    {
+     "dur": 2357,
+     "pre": 2261,
+     "styleLayoutPaint": 96,
+     "scripts": "DIV#n-svg-container.onmousedown:27 DIV#n-svg-container.onmousedown:16"
+    },
+    {
+     "dur": 385,
+     "pre": 385,
+     "styleLayoutPaint": 0,
+     "scripts": ""
+    },
+    {
+     "dur": 87,
+     "pre": 87,
+     "styleLayoutPaint": 0,
+     "scripts": "FrameRequestCallback:38"
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "248221.09858210036 -531477.2984407849 1524222.9192036646 1210366.4509780852|||0|region|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 1,
+   "inputs": "mousedown,107,78 mousemove,470,444 mousemove,619,611 mousemove,668,661 mousemove,703,695 mousemove,739,728 mousemove,774,761 mousemove,811,778 mouseup,842,794 mousedown,1211,991 mousemove,1544,1539 mousemove,2015,1689 mouseup,2032,1706 mousedown,2515,1902 mousemove,2899,2602 mouseup,3235,2618 mousedown,3599,2813 mousemove,3942,3513 mouseup,4392,3530",
+   "timeline": "-86:0r -3:1r 531:1r* 1914:1r* 4297:0r* 4847:0r 4930:0r 4964:0r 4980:0r 5014:0r 5047:0r 5080:0r 5114:0r 5147:0r 5164:0r 5197:0r 5230:0r 5264:0r 5297:0r 5364:0r 5397:0r 5430:0r 5447:0r 5480:0r 5514:0r 5547:0r 5580:0r 5614:0r 5630:0r 5664:0r 5697:0r 5730:0r 5764:0r 5780:0r 5814:0r 5847:0r 5880:0r 5897:0r 5930:0r 5964:0r 5980:0r 6014:0r 6047:0r 6080:0r 6114:0r 6130:0r"
+  },
+  {
+   "name": "unzoom_click",
+   "rep": 0,
+   "inputToPaintedMs": 490,
+   "changeFrameMs": 467,
+   "loaf": [
+    {
+     "dur": 404,
+     "styleLayoutPaint": 0,
+     "scripts": "FrameRequestCallback:35"
+    },
+    {
+     "dur": 53,
+     "styleLayoutPaint": 0,
+     "scripts": ""
+    }
+   ],
+   "finalState": "-2185664.32 -1735668.54 4371428.64 3471297.08|||0|overview|n-svg-container|"
+  },
+  {
+   "name": "inspect_jump",
+   "rep": 0,
+   "inputToPaintedMs": 373,
+   "changeFrameMs": 367,
+   "loaf": [
+    {
+     "dur": 281,
+     "styleLayoutPaint": 0,
+     "scripts": "DIV.oninput:6"
+    }
+   ],
+   "finalState": "-1262495.36 616004.5611585195 222173.1900000001 136839.0576829613|||0|detail|n-svg-container|"
+  },
+  {
+   "name": "tab_return_n",
+   "rep": 0,
+   "inputToPaintedMs": 424,
+   "changeFrameMs": 362,
+   "loaf": [
+    {
+     "dur": 362,
+     "styleLayoutPaint": 356
+    },
+    {
+     "dur": 55,
+     "styleLayoutPaint": 0
+    }
+   ]
+  },
+  {
+   "name": "zoom_in_burst",
+   "rep": 1,
+   "nInputs": 16,
+   "gestureMs": 2486,
+   "completeness": 0.56,
+   "doneVersion": 2,
+   "framesInGesture": 11,
+   "fps": 4.4,
+   "frameMs": {
+    "p50": 200,
+    "p90": 400,
+    "max": 800
+   },
+   "visualUpdates": 9,
+   "firstVisualMs": 430,
+   "catchUpMs": 694,
+   "settleAfterLastInputMs": 728,
+   "settleFrameMs": 533,
+   "longFramesInGesture": 7,
+   "longFramesSumMs": 2438,
+   "loafGesture": [
+    {
+     "dur": 395,
+     "pre": 227,
+     "styleLayoutPaint": 167,
+     "scripts": "DIV#n-svg-container.onwheel:183(forced 183)"
+    },
+    {
+     "dur": 247,
+     "pre": 247,
+     "styleLayoutPaint": 0,
+     "scripts": ""
+    },
+    {
+     "dur": 380,
+     "pre": 200,
+     "styleLayoutPaint": 180,
+     "scripts": "DIV#n-svg-container.onwheel:179(forced 179)"
+    },
+    {
+     "dur": 179,
+     "pre": 9,
+     "styleLayoutPaint": 171,
+     "scripts": ""
+    },
+    {
+     "dur": 767,
+     "pre": 455,
+     "styleLayoutPaint": 313,
+     "scripts": "DIV#n-svg-container.onwheel:176(forced 176)"
+    },
+    {
+     "dur": 277,
+     "pre": 93,
+     "styleLayoutPaint": 183,
+     "scripts": "DOMWindow.onwheel:82 FrameRequestCallback:6"
+    },
+    {
+     "dur": 193,
+     "pre": 10,
+     "styleLayoutPaint": 183,
+     "scripts": ""
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "-1018286.6918357015 -566522.8002561824 1693581.021337405 1344851.6121978723|||0|region|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 1,
+   "inputs": "wheel,57,14 wheel,771,53 wheel,1190,133 wheel,1652,213 wheel,2279,293 wheel,2501,373 wheel,2722,454 wheel,2927,533 wheel,3067,614",
+   "timeline": "-20:0o -3:0o 13:0o 30:1o 430:0o* 713:0o 730:0o 747:0o 763:1o 1163:1o* 1363:1o* 2163:1o* 2480:1o* 2697:1o* 2897:1r* 3047:1r* 3180:1r* 3197:1r 3213:0r 3747:0r 3763:0r 3780:0r"
+  },
+  {
+   "name": "zoom_out_burst",
+   "rep": 1,
+   "nInputs": 20,
+   "gestureMs": 1883,
+   "completeness": 0.55,
+   "doneVersion": 2,
+   "framesInGesture": 9,
+   "fps": 4.8,
+   "frameMs": {
+    "p50": 133.3,
+    "p90": 466.6,
+    "max": 816.6
+   },
+   "visualUpdates": 11,
+   "firstVisualMs": 488,
+   "catchUpMs": 673,
+   "settleAfterLastInputMs": 706,
+   "settleFrameMs": 450,
+   "longFramesInGesture": 7,
+   "longFramesSumMs": 1852,
+   "loafGesture": [
+    {
+     "dur": 463,
+     "pre": 358,
+     "styleLayoutPaint": 106,
+     "scripts": "DIV#n-svg-container.onwheel:290(forced 289)"
+    },
+    {
+     "dur": 817,
+     "pre": 717,
+     "styleLayoutPaint": 100,
+     "scripts": "DIV#n-svg-container.onwheel:250(forced 250)"
+    },
+    {
+     "dur": 127,
+     "pre": 9,
+     "styleLayoutPaint": 118,
+     "scripts": ""
+    },
+    {
+     "dur": 112,
+     "pre": 9,
+     "styleLayoutPaint": 103,
+     "scripts": ""
+    },
+    {
+     "dur": 110,
+     "pre": 9,
+     "styleLayoutPaint": 101,
+     "scripts": ""
+    },
+    {
+     "dur": 112,
+     "pre": 9,
+     "styleLayoutPaint": 103,
+     "scripts": ""
+    },
+    {
+     "dur": 111,
+     "pre": 9,
+     "styleLayoutPaint": 102,
+     "scripts": ""
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "-941015.1677183931 -489134.25097669347 1516327.8750899278 1204097.0947022652|||0|region|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 0,
+   "inputs": "wheel,96,52 wheel,987,91 wheel,1396,172 wheel,1542,252 wheel,1674,331 wheel,1803,412 wheel,1936,492 wheel,2067,571 wheel,2206,652 wheel,2336,731 wheel,2483,812",
+   "timeline": "-61:0d -12:0d 5:0d 22:1d 488:1d* 505:1d 1322:1d* 1472:1r* 1605:1r* 1738:1r* 1872:1r* 2005:1r* 2138:1r* 2272:1r* 2422:1r* 2555:1r* 2572:1r 2588:0r 3038:0r 3055:0r 3072:0r 3088:0r 3105:0r 3122:0r 3138:0r 3155:0r 3172:0r"
+  },
+  {
+   "name": "zoom_in_smooth",
+   "rep": 1,
+   "nInputs": 24,
+   "gestureMs": 2145,
+   "completeness": 0.54,
+   "doneVersion": 2,
+   "framesInGesture": 10,
+   "fps": 4.7,
+   "frameMs": {
+    "p50": 200,
+    "p90": 416.7,
+    "max": 650
+   },
+   "visualUpdates": 13,
+   "firstVisualMs": 445,
+   "catchUpMs": 833,
+   "settleAfterLastInputMs": 883,
+   "settleFrameMs": null,
+   "longFramesInGesture": 8,
+   "longFramesSumMs": 2063,
+   "loafGesture": [
+    {
+     "dur": 406,
+     "pre": 227,
+     "styleLayoutPaint": 179,
+     "scripts": "DIV#n-svg-container.onwheel:183(forced 183)"
+    },
+    {
+     "dur": 648,
+     "pre": 482,
+     "styleLayoutPaint": 167,
+     "scripts": "DIV#n-svg-container.onwheel:178(forced 178)"
+    },
+    {
+     "dur": 173,
+     "pre": 8,
+     "styleLayoutPaint": 165,
+     "scripts": ""
+    },
+    {
+     "dur": 178,
+     "pre": 9,
+     "styleLayoutPaint": 170,
+     "scripts": ""
+    },
+    {
+     "dur": 178,
+     "pre": 9,
+     "styleLayoutPaint": 170,
+     "scripts": ""
+    },
+    {
+     "dur": 178,
+     "pre": 9,
+     "styleLayoutPaint": 169,
+     "scripts": ""
+    },
+    {
+     "dur": 177,
+     "pre": 9,
+     "styleLayoutPaint": 169,
+     "scripts": ""
+    },
+    {
+     "dur": 124,
+     "pre": 8,
+     "styleLayoutPaint": 116,
+     "scripts": ""
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "-764386.1368259038 -312237.6799621439 1111158.5080994717 882357.1427630242|||0|region|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 0,
+   "inputs": "wheel,55,13 wheel,754,28 wheel,1144,61 wheel,1340,92 wheel,1544,124 wheel,1752,157 wheel,1954,188 wheel,2159,221 wheel,2320,253 wheel,2473,284 wheel,2612,317 wheel,2748,348 wheel,2878,380",
+   "timeline": "-21:0o -5:0o 12:0o 29:1o 445:1o* 462:1o 1112:1o* 1312:1o* 1528:1o* 1728:1o* 1928:1o* 2128:1r* 2295:1r* 2445:1r* 2595:1r* 2728:1r* 2862:1r* 2978:1r* 2995:1r 3012:1r 3028:0r"
+  },
+  {
+   "name": "zoom_in_notches",
+   "rep": 1,
+   "nInputs": 6,
+   "gestureMs": 2633,
+   "completeness": 1,
+   "doneVersion": 2,
+   "framesInGesture": 10,
+   "fps": 3.8,
+   "frameMs": {
+    "p50": 149.9,
+    "p90": 650,
+    "max": 683.3
+   },
+   "visualUpdates": 6,
+   "firstVisualMs": 427,
+   "catchUpMs": 127,
+   "settleAfterLastInputMs": 160,
+   "settleFrameMs": 500,
+   "longFramesInGesture": 7,
+   "longFramesSumMs": 2589,
+   "loafGesture": [
+    {
+     "dur": 395,
+     "pre": 215,
+     "styleLayoutPaint": 180,
+     "scripts": "DIV#n-svg-container.onwheel:171(forced 171)"
+    },
+    {
+     "dur": 667,
+     "pre": 484,
+     "styleLayoutPaint": 184,
+     "scripts": "DIV#n-svg-container.onwheel:197(forced 197)"
+    },
+    {
+     "dur": 624,
+     "pre": 452,
+     "styleLayoutPaint": 172,
+     "scripts": "DIV#n-svg-container.onwheel:177(forced 177)"
+    },
+    {
+     "dur": 462,
+     "pre": 9,
+     "styleLayoutPaint": 453,
+     "scripts": ""
+    },
+    {
+     "dur": 202,
+     "pre": 202,
+     "styleLayoutPaint": 0,
+     "scripts": "FrameRequestCallback:201"
+    },
+    {
+     "dur": 120,
+     "pre": 9,
+     "styleLayoutPaint": 111,
+     "scripts": ""
+    },
+    {
+     "dur": 119,
+     "pre": 10,
+     "styleLayoutPaint": 109,
+     "scripts": ""
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "-944456.9289021313 -492581.21241806424 1524222.9192036646 1210366.4509780852|||0|region|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 0,
+   "inputs": "wheel,73,30 wheel,740,329 wheel,1436,630 wheel,1827,931 wheel,2522,1230 wheel,2666,1530",
+   "timeline": "-40:0o -6:0o 10:0o 27:1o 427:1o* 444:1o 1127:1o* 1143:1o 1793:1r* 2277:1r* 2477:1r 2627:1r* 2760:1r* 2793:0r 3293:0r 3327:0r 3343:0r 3360:0r 3377:0r 3393:0r 3410:0r 3427:0r 3443:0r 3460:0r 3477:0r 3493:0r 3510:0r 3527:0r 3543:0r 3560:0r 3577:0r 3593:0r 3610:0r 3627:0r 3643:0r 3660:0r 3677:0r 3693:0r 3710:0r 3727:0r 3743:0r 3760:0r 3777:0r 3793:0r 3810:0r 3827:0r 3843:0r 3860:0r 3877:0r 3893:0r 3910:0r 3927:0r"
+  },
+  {
+   "name": "pan_overview",
+   "rep": 1,
+   "nInputs": 62,
+   "gestureMs": 1471,
+   "completeness": 0.71,
+   "doneVersion": 2,
+   "framesInGesture": 5,
+   "fps": 3.4,
+   "frameMs": {
+    "p50": 383.3,
+    "p90": 383.3,
+    "max": 516.7
+   },
+   "visualUpdates": 3,
+   "firstVisualMs": 386,
+   "catchUpMs": -401,
+   "settleAfterLastInputMs": null,
+   "settleFrameMs": null,
+   "longFramesInGesture": 4,
+   "longFramesSumMs": 1352,
+   "loafGesture": [
+    {
+     "dur": 374,
+     "pre": 279,
+     "styleLayoutPaint": 95,
+     "scripts": ""
+    },
+    {
+     "dur": 150,
+     "pre": 45,
+     "styleLayoutPaint": 105,
+     "scripts": ""
+    },
+    {
+     "dur": 495,
+     "pre": 386,
+     "styleLayoutPaint": 109,
+     "scripts": ""
+    },
+    {
+     "dur": 333,
+     "pre": 333,
+     "styleLayoutPaint": 0,
+     "scripts": ""
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "-3385604.7736483663 -1735668.54 4371428.64 3471297.08|||0|overview|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 1,
+   "inputs": "mousedown,34,26 mousemove,273,259 mousemove,426,410 mousemove,446,426 mousemove,594,576 mousemove,955,943 mousemove,1116,1026 mouseup,1132,1043",
+   "timeline": "-30:0o -14:0o 3:1o 386:1o* 553:1o* 1070:0o* 1453:0o 1503:0o 1536:0o 1553:0o 1586:0o 1620:0o 1636:0o 1670:0o 1703:0o 1736:0o 1753:0o 1786:0o 1820:0o 1836:0o 1870:0o 1886:0o 1920:0o 1953:0o 1970:0o 2003:0o 2020:0o 2053:0o 2086:0o 2120:0o 2136:0o 2170:0o 2203:0o 2220:0o 2253:0o 2270:0o 2303:0o 2320:0o 2353:0o 2386:0o 2403:0o 2436:0o 2453:0o 2503:0o 2520:0o 2553:0o 2570:0o 2603:0o 2636:0o 2653:0o 2686:0o 2703:0o 2736:0o 2770:0o"
+  },
+  {
+   "name": "pan_region",
+   "rep": 1,
+   "nInputs": 62,
+   "gestureMs": 1606,
+   "completeness": 0.7,
+   "doneVersion": 2,
+   "framesInGesture": 4,
+   "fps": 2.4,
+   "frameMs": {
+    "p50": 516.7,
+    "p90": 533.3,
+    "max": 566.7
+   },
+   "visualUpdates": 2,
+   "firstVisualMs": 521,
+   "catchUpMs": -568,
+   "settleAfterLastInputMs": null,
+   "settleFrameMs": null,
+   "longFramesInGesture": 3,
+   "longFramesSumMs": 1427,
+   "loafGesture": [
+    {
+     "dur": 513,
+     "pre": 421,
+     "styleLayoutPaint": 92,
+     "scripts": "DIV#n-svg-container.onmousedown:16"
+    },
+    {
+     "dur": 499,
+     "pre": 398,
+     "styleLayoutPaint": 101,
+     "scripts": ""
+    },
+    {
+     "dur": 415,
+     "pre": 415,
+     "styleLayoutPaint": 0,
+     "scripts": ""
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "-1493134.8108670362 -534950.1608323426 1524222.9192036646 1210366.4509780852|||0|region|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 1,
+   "inputs": "mousedown,65,33 mousemove,415,383 mousemove,569,549 mousemove,899,882 mousemove,941,933 mousemove,1092,1033 mouseup,1111,1049",
+   "timeline": "-45:0r -12:1r 521:1r* 1038:0r* 1605:0r 1621:0r 1655:0r 1671:0r 1721:0r 1738:0r 1771:0r 1805:0r 1821:0r 1855:0r 1871:0r 1904:0r 1938:0r 1971:0r 2005:0r 2021:0r 2088:0r 2121:0r 2138:0r 2171:0r 2188:0r 2221:0r 2238:0r 2271:0r 2288:0r 2321:0r 2355:0r 2371:0r 2404:0r 2438:0r 2521:0r 2555:0r 2571:0r 2605:0r 2621:0r 2655:0r 2671:0r 2704:0r 2738:0r 2755:0r 2788:0r 2804:0r 2838:0r 2855:0r 2888:0r"
+  },
+  {
+   "name": "pan_detail",
+   "rep": 1,
+   "nInputs": 62,
+   "gestureMs": 1587,
+   "completeness": 0.34,
+   "doneVersion": 2,
+   "framesInGesture": 3,
+   "fps": 1.9,
+   "frameMs": {
+    "p50": 616.6,
+    "p90": 616.6,
+    "max": 949.9
+   },
+   "visualUpdates": 1,
+   "firstVisualMs": 606,
+   "catchUpMs": -981,
+   "settleAfterLastInputMs": null,
+   "settleFrameMs": null,
+   "longFramesInGesture": 2,
+   "longFramesSumMs": 1426,
+   "loafGesture": [
+    {
+     "dur": 591,
+     "pre": 494,
+     "styleLayoutPaint": 98,
+     "scripts": "DIV#n-svg-container.onmousedown:17"
+    },
+    {
+     "dur": 834,
+     "pre": 834,
+     "styleLayoutPaint": 0,
+     "scripts": ""
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "-603637.4637452768 -66160.69723093163 531463.6698326023 422028.68607641204|||0|detail|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 1,
+   "inputs": "mousedown,89,33 mousemove,488,466 mousemove,642,632 mousemove,1002,982 mousemove,1022,1016 mousemove,1065,1033 mouseup,1081,1049",
+   "timeline": "-44:0d -10:1d 606:0d* 1556:0d 1606:0d 1639:0d 1673:0d 1689:0d 1723:0d 1756:0d 1773:0d 1806:0d 1839:0d 1856:0d 1889:0d 1906:0d 1939:0d 1973:0d 1989:0d 2023:0d 2039:0d 2073:0d 2106:0d 2123:0d 2156:0d 2173:0d 2206:0d 2239:0d 2256:0d 2289:0d 2306:0d 2339:0d 2356:0d 2389:0d 2406:0d 2439:0d 2473:0d 2489:0d 2523:0d 2539:0d 2573:0d 2589:0d 2623:0d 2639:0d 2673:0d 2689:0d 2723:0d 2789:0d 2806:0d 2839:0d 2873:0d"
+  },
+  {
+   "name": "navigate_region",
+   "rep": 1,
+   "nInputs": 176,
+   "gestureMs": 4810,
+   "completeness": 0.51,
+   "doneVersion": 2,
+   "framesInGesture": 6,
+   "fps": 1.2,
+   "frameMs": {
+    "p50": 550,
+    "p90": 1600,
+    "max": 2083.2
+   },
+   "visualUpdates": 3,
+   "firstVisualMs": 542,
+   "catchUpMs": -585,
+   "settleAfterLastInputMs": null,
+   "settleFrameMs": null,
+   "longFramesInGesture": 4,
+   "longFramesSumMs": 4626,
+   "loafGesture": [
+    {
+     "dur": 525,
+     "pre": 429,
+     "styleLayoutPaint": 96,
+     "scripts": "DIV#n-svg-container.onmousedown:16"
+    },
+    {
+     "dur": 1587,
+     "pre": 1478,
+     "styleLayoutPaint": 109,
+     "scripts": "DIV#n-svg-container.onmousedown:23"
+    },
+    {
+     "dur": 2060,
+     "pre": 1917,
+     "styleLayoutPaint": 143,
+     "scripts": "DIV#n-svg-container.onmousedown:21 DIV#n-svg-container.onmousedown:23"
+    },
+    {
+     "dur": 455,
+     "pre": 455,
+     "styleLayoutPaint": 0,
+     "scripts": "DIV#root.onpointerup:40"
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "421933.78708064184 -603504.5107450582 1524222.9192036646 1210366.4509780852|||0|region|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 1,
+   "inputs": "mousedown,68,40 mousemove,425,389 mousemove,587,573 mousemove,911,740 mouseup,927,756 mousedown,1347,951 mousemove,1731,1651 mouseup,2199,1668 mousedown,2584,1864 mousemove,2980,2564 mouseup,3337,2580 mousedown,3708,2776 mousemove,4075,3476 mouseup,4321,3492",
+   "timeline": "-41:0r -8:1r 542:1r* 2142:1r* 4225:0r* 4792:0r 4809:0r 4825:0r 4842:0r 4859:0r 4875:0r 4892:0r 4909:0r 4925:0r 4942:0r 4959:0r 4975:0r 4992:0r 5009:0r 5025:0r 5042:0r 5059:0r 5075:0r 5092:0r 5109:0r 5142:0r 5159:0r 5175:0r 5192:0r 5209:0r 5225:0r 5242:0r 5292:0r 5309:0r 5325:0r 5342:0r 5359:0r 5375:0r 5392:0r 5409:0r 5425:0r 5442:0r 5459:0r 5475:0r 5492:0r 5509:0r 5525:0r 5542:0r 5559:0r 5575:0r 5592:0r 5609:0r 5625:0r 5642:0r 5659:0r 5675:0r 5692:0r 5709:0r 5725:0r 5742:0r 5759:0r 5775:0r 5792:0r 5809:0r 5825:0r 5842:0r 5859:0r 5875:0r 5892:0r 5909:0r 5925:0r 5942:0r 5958:0r 5975:0r 5992:0r 6008:0r 6025:0r 6042:0r 6059:0r 6075:0r 6092:0r 6108:0r"
+  },
+  {
+   "name": "unzoom_click",
+   "rep": 1,
+   "inputToPaintedMs": 320,
+   "changeFrameMs": 317,
+   "loaf": [],
+   "finalState": "-2185664.32 -1735668.54 4371428.64 3471297.08|||0|overview|n-svg-container|"
+  },
+  {
+   "name": "inspect_jump",
+   "rep": 1,
+   "inputToPaintedMs": 389,
+   "changeFrameMs": 383,
+   "loaf": [
+    {
+     "dur": 276,
+     "styleLayoutPaint": 0,
+     "scripts": "DIV.oninput:138"
+    }
+   ],
+   "finalState": "-1262495.36 616004.5611585195 222173.1900000001 136839.0576829613|||0|detail|n-svg-container|"
+  },
+  {
+   "name": "tab_return_n",
+   "rep": 1,
+   "inputToPaintedMs": 422,
+   "changeFrameMs": 356,
+   "loaf": [
+    {
+     "dur": 356,
+     "styleLayoutPaint": 351
+    },
+    {
+     "dur": 65,
+     "styleLayoutPaint": 0
+    }
+   ]
+  }
+ ]
+}

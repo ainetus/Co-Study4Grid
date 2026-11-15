@@ -1,0 +1,815 @@
+diff -ruN a/frontend/src/components/VisualizationPanel.tsx b/frontend/src/components/VisualizationPanel.tsx
+--- a/frontend/src/components/VisualizationPanel.tsx
++++ b/frontend/src/components/VisualizationPanel.tsx
+@@ -30,6 +30,10 @@
+     POPOVER_MAX_HEIGHT,
+ } from '../utils/popoverPlacement';
+ 
++// AUDIT EXPERIMENT (scratch copy only): keep inactive SVG tabs laid out but
++// unrendered (content-visibility) instead of display:none.
++const TAB_CV: boolean = (() => { try { return (localStorage.getItem('cs4g-exp') || '').split(',').includes('tab-cv'); } catch { return false; } })();
++
+ // Module-level stable references so React.memo children don't
+ // break referential equality on every parent render.
+ // eslint-disable-next-line @typescript-eslint/no-unused-vars
+@@ -1123,7 +1127,8 @@
+                         width: '100%', height: '100%',
+                         position: 'absolute', top: 0, left: 0,
+                         zIndex: !detachedTabs['n'] && activeTab === 'n' ? 10 : -1,
+-                        display: !detachedTabs['n'] && activeTab === 'n' ? 'block' : 'none',
++                        display: TAB_CV ? 'block' : (!detachedTabs['n'] && activeTab === 'n' ? 'block' : 'none'),
++                        contentVisibility: TAB_CV && !(!detachedTabs['n'] && activeTab === 'n') ? 'hidden' : 'visible',
+                         pointerEvents: !detachedTabs['n'] && activeTab === 'n' ? 'auto' : 'none',
+                     }}
+                 >
+@@ -1161,7 +1166,8 @@
+                         width: '100%', height: '100%',
+                         position: 'absolute', top: 0, left: 0,
+                         zIndex: !detachedTabs['contingency'] && activeTab === 'contingency' ? 10 : -1,
+-                        display: !detachedTabs['contingency'] && activeTab === 'contingency' ? 'block' : 'none',
++                        display: TAB_CV ? 'block' : (!detachedTabs['contingency'] && activeTab === 'contingency' ? 'block' : 'none'),
++                        contentVisibility: TAB_CV && !(!detachedTabs['contingency'] && activeTab === 'contingency') ? 'hidden' : 'visible',
+                         pointerEvents: !detachedTabs['contingency'] && activeTab === 'contingency' ? 'auto' : 'none',
+                     }}
+                 >
+@@ -1214,7 +1220,8 @@
+                         width: '100%', height: '100%',
+                         position: 'absolute', top: 0, left: 0,
+                         zIndex: !detachedTabs['action'] && activeTab === 'action' ? 10 : -1,
+-                        display: !detachedTabs['action'] && activeTab === 'action' ? 'block' : 'none',
++                        display: TAB_CV ? 'block' : (!detachedTabs['action'] && activeTab === 'action' ? 'block' : 'none'),
++                        contentVisibility: TAB_CV && !(!detachedTabs['action'] && activeTab === 'action') ? 'hidden' : 'visible',
+                         pointerEvents: !detachedTabs['action'] && activeTab === 'action' ? 'auto' : 'none',
+                     }}
+                 >
+diff -ruN a/frontend/src/hooks/usePanZoom.ts b/frontend/src/hooks/usePanZoom.ts
+--- a/frontend/src/hooks/usePanZoom.ts
++++ b/frontend/src/hooks/usePanZoom.ts
+@@ -14,6 +14,8 @@
+     composeSnapshotMarkup,
+     rasterizeMarkupToCanvas,
+ } from '../utils/svg/bitmapSnapshot';
++import { buildVectorProxy } from '../utils/svg/vectorProxy';
++import { buildCanvasProxy, type CanvasProxy } from '../utils/svg/canvasProxy';
+ 
+ /**
+  * Custom Hook for SVG Pan/Zoom via viewBox manipulation.
+@@ -29,6 +31,13 @@
+  * - Pointer-events disabled on SVG children during interaction
+  *   (eliminates expensive hit-testing on thousands of elements)
+  */
++// AUDIT EXPERIMENT FLAGS (scratch copy only): localStorage 'cs4g-exp'.
++const EXP: Set<string> = (() => {
++    try { return new Set((localStorage.getItem('cs4g-exp') || '').split(',').filter(Boolean)); }
++    catch { return new Set<string>(); }
++})();
++export const expFlag = (f: string): boolean => EXP.has(f);
++
+ export type ZoomTier = 'overview' | 'region' | 'detail';
+ 
+ const computeZoomTier = (current: ViewBox, original: ViewBox): ZoomTier => {
+@@ -121,6 +130,7 @@
+     const isDragging = useRef(false);
+     const startPoint = useRef({ x: 0, y: 0, pendingX: 0, pendingY: 0 });
+     const wheelTimerId = useRef<ReturnType<typeof setTimeout> | null>(null);
++    const lastWheelAt = useRef(0);
+     const rafId = useRef<number | null>(null);
+     // Cached SVG element ref — avoids querySelector on every event
+     const svgElRef = useRef<SVGSVGElement | null>(null);
+@@ -166,10 +176,68 @@
+     // cheap header re-compose + an off-thread decode instead of the 250ms
+     // main-thread serialize that froze the pan start.
+     const snapshotSerializedRef = useRef<string | null>(null);
++    // AUDIT PROTOTYPE 'proxy' mode: light merged-path stand-in SVG.
++    const proxyRef = useRef<SVGSVGElement | null>(null);
++    const proxyStaleRef = useRef(true);
++    const proxyTokenRef = useRef(0);
++
++    const canvasProxyRef = useRef<CanvasProxy | null>(null);
++    const hideProxy = () => {
++        proxyTokenRef.current++;
++        const p = proxyRef.current;
++        if (p && p.style.display !== 'none') p.style.display = 'none';
++        const cp = canvasProxyRef.current;
++        if (cp && cp.canvas.style.display !== 'none') cp.canvas.style.display = 'none';
++    };
++    const ensureCanvasProxy = (): CanvasProxy | null => {
++        const live = svgElRef.current;
++        const container = svgRef.current;
++        if (!live || !container) return null;
++        if (canvasProxyRef.current && !proxyStaleRef.current && canvasProxyRef.current.canvas.parentElement === container) return canvasProxyRef.current;
++        const cp = buildCanvasProxy(live, container, originalVbRef.current, EXP.has('canvas-cache'));
++        (window as unknown as { __proxyStats?: unknown }).__proxyStats = cp.stats;
++        // Audit harness hook (visual fidelity screenshots).
++        (window as unknown as { __cs4gCanvasProxy?: CanvasProxy }).__cs4gCanvasProxy = cp;
++        const c = cp.canvas;
++        c.style.position = 'absolute';
++        c.style.left = '0';
++        c.style.top = '0';
++        c.style.display = 'none';
++        if (canvasProxyRef.current) canvasProxyRef.current.canvas.remove();
++        container.appendChild(c);
++        canvasProxyRef.current = cp;
++        proxyStaleRef.current = false;
++        return cp;
++    };
++    const ensureProxy = (): SVGSVGElement | null => {
++        const live = svgElRef.current;
++        const container = svgRef.current;
++        if (!live || !container) return null;
++        if (proxyRef.current && !proxyStaleRef.current && proxyRef.current.parentElement === container) return proxyRef.current;
++        const { proxy, stats } = buildVectorProxy(live, originalVbRef.current);
++        (window as unknown as { __proxyStats?: unknown }).__proxyStats = stats;
++        proxy.style.position = 'absolute';
++        proxy.style.left = '0';
++        proxy.style.top = '0';
++        proxy.style.width = `${live.clientWidth || live.getBoundingClientRect().width}px`;
++        proxy.style.height = `${live.clientHeight || live.getBoundingClientRect().height}px`;
++        proxy.style.background = 'var(--color-diagram-surface)';
++        // Own compositing layer: otherwise the proxy shares the live SVG's
++        // layer and every proxy frame re-rasters the (occluded) heavy diagram
++        // tiles underneath it.
++        if (EXP.has('proxy-layer')) proxy.style.willChange = 'transform';
++        proxy.style.display = 'none';
++        if (proxyRef.current) proxyRef.current.remove();
++        container.appendChild(proxy);
++        proxyRef.current = proxy;
++        proxyStaleRef.current = false;
++        return proxy;
++    };
+ 
+ 
+     // Toggle interaction class on container to disable pointer-events on SVG children
+     const setInteracting = (interacting: boolean) => {
++        if (EXP.has('no-cull')) return;
+         const container = svgRef.current;
+         if (container) {
+             container.classList.toggle('svg-interacting', interacting);
+@@ -229,7 +297,15 @@
+             const haloW = computeHaloWidthPx(vb, orig);
+             if (haloW !== currentHaloWRef.current && container.style) {
+                 currentHaloWRef.current = haloW;
+-                container.style.setProperty('--nad-halo-w', `${haloW}px`);
++                if (EXP.has('halo-bg')) {
++                    // Scope the var to the halo layer: setting an inherited
++                    // custom property on the container restyles all ~99k nodes.
++                    container.dataset.nadHaloW = `${haloW}px`;
++                    const bg = svg?.querySelector('#nad-background-layer') as SVGGElement | null;
++                    if (bg?.style) bg.style.setProperty('--nad-halo-w', `${haloW}px`);
++                } else {
++                    container.style.setProperty('--nad-halo-w', `${haloW}px`);
++                }
+             }
+         }
+     }, [svgRef]);
+@@ -239,6 +315,7 @@
+     // tab-switch lifecycle effects can cancel an in-flight bitmap gesture too.
+     // No-op in the default / GPU paths (no canvas, SVG never hidden).
+     const teardownBitmap = useCallback(() => {
++        hideProxy();
+         bitmapTokenRef.current++; // invalidate any in-flight async raster
+         const canvas = bitmapCanvasRef.current;
+         if (canvas) {
+@@ -264,6 +341,12 @@
+     }, []);
+ 
+     const scheduleSnapshotPrewarm = useCallback(() => {
++        if (getSmoothPanZoomMode() === 'proxy' || getSmoothPanZoomMode() === 'canvas') {
++            const canvasMode = getSmoothPanZoomMode() === 'canvas';
++            const run = () => { if (!interactingRef.current && proxyStaleRef.current) { try { if (canvasMode) ensureCanvasProxy(); else ensureProxy(); } catch { /* ignore */ } } };
++            if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 1500 }); else setTimeout(run, 200);
++            return;
++        }
+         if (getSmoothPanZoomMode() !== 'bitmap') return;
+         if (typeof requestIdleCallback === 'function') {
+             requestIdleCallback(() => prewarmSnapshot(), { timeout: 1500 });
+@@ -274,6 +357,7 @@
+ 
+     const invalidateSnapshotCache = useCallback(() => {
+         snapshotSerializedRef.current = null;
++        proxyStaleRef.current = true;
+         scheduleSnapshotPrewarm();
+     }, [scheduleSnapshotPrewarm]);
+ 
+@@ -487,6 +571,48 @@
+             setTimeout(build, 0);
+         };
+ 
++        const beginProxyInteraction = () => {
++            if (interactingRef.current) return;
++            const svg = svgElRef.current;
++            if (!svg || !viewBoxRef.current) return;
++            const proxy = ensureProxy();
++            if (!proxy) return;
++            proxyTokenRef.current++; // cancel a pending post-settle hide
++            const rect = svg.getBoundingClientRect();
++            baseVbRef.current = { ...viewBoxRef.current };
++            baseSizeRef.current = { w: svg.clientWidth || rect.width, h: svg.clientHeight || rect.height };
++            const vb = viewBoxRef.current;
++            proxy.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
++            proxy.style.display = 'block';
++            interactingRef.current = true;
++        };
++        const beginCanvasInteraction = () => {
++            if (interactingRef.current) return;
++            const svg = svgElRef.current;
++            if (!svg || !viewBoxRef.current) return;
++            const cp = ensureCanvasProxy();
++            if (!cp) return;
++            proxyTokenRef.current++;
++            const rect = svg.getBoundingClientRect();
++            baseVbRef.current = { ...viewBoxRef.current };
++            baseSizeRef.current = { w: svg.clientWidth || rect.width, h: svg.clientHeight || rect.height };
++            cp.draw(viewBoxRef.current);
++            cp.canvas.style.display = 'block';
++            interactingRef.current = true;
++        };
++        const applyCanvasFrame = (vb: ViewBox) => {
++            viewBoxRef.current = vb;
++            const cp = canvasProxyRef.current;
++            if (cp && interactingRef.current) cp.draw(vb);
++            else applyViewBox(vb);
++        };
++        const applyProxyFrame = (vb: ViewBox) => {
++            viewBoxRef.current = vb;
++            const proxy = proxyRef.current;
++            if (proxy && interactingRef.current) proxy.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
++            else applyViewBox(vb);
++        };
++
+         // Per-frame: keep viewBoxRef in lockstep (the wheel/drag math + the
+         // settle bake all read it), then transform the canvas if it's mounted,
+         // else fall back to a viewBox write (pre-raster frames).
+@@ -508,6 +634,21 @@
+         const endInteraction = () => {
+             if (interactingRef.current) {
+                 interactingRef.current = false;
++                if (modeRef.current === 'proxy' || modeRef.current === 'canvas') {
++                    // Bake once onto the live SVG (it repaints behind the opaque
++                    // proxy), then reveal it after it has painted.
++                    if (viewBoxRef.current) applyViewBox(viewBoxRef.current);
++                    const token = ++proxyTokenRef.current;
++                    requestAnimationFrame(() => requestAnimationFrame(() => {
++                        if (token !== proxyTokenRef.current) return;
++                        const p = proxyRef.current;
++                        if (p) p.style.display = 'none';
++                        const cp = canvasProxyRef.current;
++                        if (cp) cp.canvas.style.display = 'none';
++                    }));
++                    commitViewBox();
++                    return;
++                }
+                 if (bitmapCanvasRef.current) {
+                     // BITMAP settle. Bake the target viewBox onto the STILL-HIDDEN
+                     // live SVG first (it repaints behind the bitmap), then keep the
+@@ -555,7 +696,14 @@
+             e.preventDefault();
+ 
+             // Accumulate scale factor (multiplicative) and record latest cursor
+-            const scaleFactor = e.deltaY > 0 ? 1.1 : 0.9;
++            // wheel-delta: honour the delta MAGNITUDE. Chrome sums the deltas
++            // of wheel events it coalesces behind a busy main thread, so a
++            // sign-only step loses notches exactly when frames are slow (and
++            // makes small trackpad deltas zoom 10 % each).
++            const px = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * 800 : e.deltaY;
++            const scaleFactor = EXP.has('wheel-delta')
++                ? Math.pow(1.1, Math.max(-10, Math.min(10, px / 100)))
++                : (e.deltaY > 0 ? 1.1 : 0.9);
+             pendingWheelScale.current *= scaleFactor;
+             pendingWheelCursor.current = { x: e.clientX, y: e.clientY };
+ 
+@@ -563,14 +711,20 @@
+             // gesture and, when smooth, capture the transform base / snapshot.
+             modeRef.current = getSmoothPanZoomMode();
+             smoothRef.current = modeRef.current !== 'off';
+-            setInteracting(true);
++            lastWheelAt.current = performance.now();
++            // Read the CTM while the DOM is still clean: after the class toggle
++            // below, getScreenCTM() forces a synchronous full-tree style recalc.
++            const ctmEarly = EXP.has('ctm-first') ? getCTM() : null;
++            if (modeRef.current !== 'proxy' && modeRef.current !== 'canvas') setInteracting(true);
+             if (modeRef.current === 'gpu') beginInteraction();
+             else if (modeRef.current === 'bitmap') beginBitmapInteraction();
++            else if (modeRef.current === 'proxy') beginProxyInteraction();
++            else if (modeRef.current === 'canvas') beginCanvasInteraction();
+ 
+             // Schedule rAF if not already queued
+             if (!wheelRafId.current) {
+                 // Snapshot the CTM before the rAF (while it's still valid)
+-                const ctm = getCTM();
++                const ctm = ctmEarly ?? getCTM();
+ 
+                 wheelRafId.current = requestAnimationFrame(() => {
+                     wheelRafId.current = null;
+@@ -584,7 +738,7 @@
+ 
+                     const cursor = pendingWheelCursor.current;
+                     let svgP: { x: number; y: number };
+-                    if (modeRef.current === 'bitmap') {
++                    if (modeRef.current === 'bitmap' || modeRef.current === 'proxy' || modeRef.current === 'canvas') {
+                         // Live SVG is hidden at its base viewBox, so getScreenCTM
+                         // is stale — derive the cursor's user point analytically.
+                         svgP = cursorToUserSpace(svg, baseSizeRef.current, vb, cursor.x, cursor.y);
+@@ -605,6 +759,10 @@
+ 
+                     if (modeRef.current === 'bitmap') {
+                         applyBitmapFrame(newVb);
++                    } else if (modeRef.current === 'proxy') {
++                        applyProxyFrame(newVb);
++                    } else if (modeRef.current === 'canvas') {
++                        applyCanvasFrame(newVb);
+                     } else if (modeRef.current === 'gpu') {
+                         applyInteractionFrame(newVb);
+                     } else {
+@@ -617,10 +775,19 @@
+             // Debounced commit: sync to React after scrolling stops
+             if (wheelTimerId.current) clearTimeout(wheelTimerId.current);
+             wheelTimerId.current = setTimeout(() => {
+-                if (smoothRef.current) endInteraction();
+-                else commitViewBox();
+-                setInteracting(false);
+-            }, 150);
++                const settle = () => {
++                    if (smoothRef.current) endInteraction();
++                    else commitViewBox();
++                    setInteracting(false);
++                };
++                if (!EXP.has('settle-confirm')) { settle(); return; }
++                // Frames slower than the debounce let this timer fire BETWEEN
++                // two queued wheel events (culling flips mid-gesture). Queued
++                // input is dispatched before rAF callbacks, so confirm on the
++                // next frame that no newer wheel arrived before settling.
++                const armedAt = lastWheelAt.current;
++                requestAnimationFrame(() => { if (lastWheelAt.current === armedAt) settle(); });
++            }, EXP.has('settle400') ? 400 : 150);
+         };
+ 
+         // rAF-throttled drag: at most one DOM update per display frame
+@@ -635,6 +802,12 @@
+ 
+             rafId.current = requestAnimationFrame(() => {
+                 rafId.current = null;
++                applyDragDelta();
++            });
++        };
++
++        const applyDragDelta = () => {
++            {
+                 const sp = startPoint.current;
+                 const dx = sp.pendingX - sp.x;
+                 const dy = sp.pendingY - sp.y;
+@@ -651,7 +824,13 @@
+                     ? (svg.clientWidth || svg.getBoundingClientRect().width)
+                     : svg.getBoundingClientRect().width;
+                 const vb = viewBoxRef.current!;
+-                const scale = vb.w / screenW;
++                // drag-meet: under preserveAspectRatio "xMidYMid meet" one screen
++                // px is max(w/W, h/H) user units; vb.w/W alone makes the map slide
++                // slower than the cursor whenever the panel is wider than the diagram.
++                const screenH = svg.clientHeight || svg.getBoundingClientRect().height;
++                const scale = EXP.has('drag-meet') && screenH > 0
++                    ? Math.max(vb.w / screenW, vb.h / screenH)
++                    : vb.w / screenW;
+ 
+                 const newVb: ViewBox = {
+                     ...vb,
+@@ -660,13 +839,17 @@
+                 };
+                 if (modeRef.current === 'bitmap') {
+                     applyBitmapFrame(newVb);
++                } else if (modeRef.current === 'proxy') {
++                    applyProxyFrame(newVb);
++                } else if (modeRef.current === 'canvas') {
++                    applyCanvasFrame(newVb);
+                 } else if (modeRef.current === 'gpu') {
+                     applyInteractionFrame(newVb);
+                 } else {
+                     viewBoxRef.current = newVb;
+                     applyViewBox(newVb);
+                 }
+-            });
++            }
+         };
+ 
+         // Track the window where mousemove/mouseup are currently bound for
+@@ -679,6 +862,9 @@
+             if (rafId.current) {
+                 cancelAnimationFrame(rafId.current);
+                 rafId.current = null;
++                // The coalesced last mousemove(s) are still pending: apply them
++                // instead of dropping them, or a slow frame loses the drag end.
++                if (EXP.has('drag-flush')) applyDragDelta();
+             }
+             if (activeDragWindow) {
+                 activeDragWindow.removeEventListener('mousemove', handleMouseMove);
+@@ -698,9 +884,11 @@
+             startPoint.current = { x: e.clientX, y: e.clientY, pendingX: e.clientX, pendingY: e.clientY };
+             modeRef.current = getSmoothPanZoomMode();
+             smoothRef.current = modeRef.current !== 'off';
+-            setInteracting(true);
++            if (modeRef.current !== 'proxy' && modeRef.current !== 'canvas') setInteracting(true);
+             if (modeRef.current === 'gpu') beginInteraction();
+             else if (modeRef.current === 'bitmap') beginBitmapInteraction();
++            else if (modeRef.current === 'proxy') beginProxyInteraction();
++            else if (modeRef.current === 'canvas') beginCanvasInteraction();
+ 
+             // Resolve the element's CURRENT owner window per-drag rather
+             // than capturing it at effect-bind time. This is critical for
+diff -ruN a/frontend/src/utils/smoothPanZoom.ts b/frontend/src/utils/smoothPanZoom.ts
+--- a/frontend/src/utils/smoothPanZoom.ts
++++ b/frontend/src/utils/smoothPanZoom.ts
+@@ -30,14 +30,14 @@
+  * instances (N / N-1 / Action / overview) read it imperatively at gesture
+  * start, and only the Settings selector writes it. localStorage-persisted.
+  */
+-export type PanZoomMode = 'off' | 'gpu' | 'bitmap';
++export type PanZoomMode = 'off' | 'gpu' | 'bitmap' | 'proxy' | 'canvas';
+ 
+ const STORAGE_KEY = 'cs4g-smooth-pan-zoom';
+ 
+ const readInitial = (): PanZoomMode => {
+     try {
+         const v = localStorage.getItem(STORAGE_KEY);
+-        if (v === 'gpu' || v === 'bitmap' || v === 'off') return v;
++        if (v === 'gpu' || v === 'bitmap' || v === 'off' || v === 'proxy' || v === 'canvas') return v;
+         if (v === '1') return 'gpu'; // migrate the legacy boolean storage
+         return 'off';
+     } catch {
+diff -ruN a/frontend/src/utils/svg/canvasProxy.ts b/frontend/src/utils/svg/canvasProxy.ts
+--- a/frontend/src/utils/svg/canvasProxy.ts
++++ b/frontend/src/utils/svg/canvasProxy.ts
+@@ -0,0 +1,213 @@
++// AUDIT PROTOTYPE (scratch copy only) — canvas proxy for pan/zoom gestures.
++//
++// Same idea as vectorProxy.ts (draw a light stand-in of the NAD during the
++// gesture, bake the live SVG once on settle) but drawn with Canvas 2D from
++// prebuilt Path2D objects. A canvas redraw invalidates only the canvas'
++// own compositor layer: Blink does not repaint or re-layerize the document,
++// so the per-frame cost no longer depends on the ~20k paint chunks of the
++// live SVG that stays mounted underneath (PaintArtifactCompositor::Update
++// was ~67 ms/frame with the SVG proxy at region zoom).
++//
++// Colours / widths are resolved ONCE at build time from the live diagram's
++// computed styles (so pypowsybl's palette, App.css overrides and the theme
++// are honoured), then the gesture frames are pure Path2D strokes / fills
++// under a transform; non-scaling stroke is emulated by lineWidth / scale.
++
++type VB = { x: number; y: number; w: number; h: number };
++
++interface DrawItem {
++    path: Path2D;
++    kind: 'stroke' | 'fill';
++    color: string;
++    widthPx: number;       // stroke width in screen px (non-scaling)
++    dash: number[];        // screen px
++    bbox: [number, number, number, number]; // user space minX, minY, maxX, maxY
++}
++
++export interface CanvasProxy {
++    canvas: HTMLCanvasElement;
++    draw: (vb: VB) => void;
++    stats: { items: number; buildMs: number };
++}
++
++const GRID = 8;
++
++const parseDash = (v: string): number[] =>
++    !v || v === 'none' ? [] : v.split(/[\s,]+/).map(s => parseFloat(s)).filter(n => Number.isFinite(n) && n > 0);
++
++export const buildCanvasProxy = (live: SVGSVGElement, container: HTMLElement, extent: VB | null, useCache = false): CanvasProxy => {
++    const t0 = performance.now();
++    const vb0 = live.viewBox?.baseVal;
++    const ext: VB = extent ?? { x: vb0?.x ?? 0, y: vb0?.y ?? 0, w: vb0?.width || 1, h: vb0?.height || 1 };
++    const cellOf = (x: number, y: number) => {
++        const cx = Math.max(0, Math.min(GRID - 1, Math.floor(((x - ext.x) / ext.w) * GRID)));
++        const cy = Math.max(0, Math.min(GRID - 1, Math.floor(((y - ext.y) / ext.h) * GRID)));
++        return cy * GRID + cx;
++    };
++
++    // Group key → accumulated geometry for that style + grid cell.
++    type Acc = { path: Path2D; kind: 'stroke' | 'fill'; color: string; widthPx: number; dash: number[]; bbox: [number, number, number, number] };
++    const acc = new Map<string, Acc>();
++    const styleCache = new Map<string, { color: string; widthPx: number; dash: number[]; kind: 'stroke' | 'fill'; visible: boolean }>();
++    const styleFor = (el: Element, key: string, kind: 'stroke' | 'fill') => {
++        let st = styleCache.get(key);
++        if (!st) {
++            const cs = getComputedStyle(el);
++            const visible = cs.display !== 'none' && cs.visibility !== 'hidden';
++            st = kind === 'stroke'
++                ? { kind, visible: visible && cs.stroke !== 'none', color: cs.stroke, widthPx: parseFloat(cs.strokeWidth) || 1, dash: parseDash(cs.strokeDasharray) }
++                : { kind, visible: visible && cs.fill !== 'none', color: cs.fill, widthPx: 0, dash: [] };
++            styleCache.set(key, st);
++        }
++        return st;
++    };
++    const add = (key: string, st: { color: string; widthPx: number; dash: number[]; kind: 'stroke' | 'fill' }, build: (p: Path2D) => void, x0: number, y0: number, x1: number, y1: number) => {
++        const k = `${key}\u0000${cellOf((x0 + x1) / 2, (y0 + y1) / 2)}`;
++        let a = acc.get(k);
++        if (!a) { a = { path: new Path2D(), kind: st.kind, color: st.color, widthPx: st.widthPx, dash: st.dash, bbox: [Infinity, Infinity, -Infinity, -Infinity] }; acc.set(k, a); }
++        build(a.path);
++        if (x0 < a.bbox[0]) a.bbox[0] = x0;
++        if (y0 < a.bbox[1]) a.bbox[1] = y0;
++        if (x1 > a.bbox[2]) a.bbox[2] = x1;
++        if (y1 > a.bbox[3]) a.bbox[3] = y1;
++    };
++
++    // Halo clones (N-1 / Action highlights): polylines under a matrix transform.
++    for (const clone of Array.from(live.querySelectorAll('#nad-background-layer > *'))) {
++        const m = (clone as SVGGraphicsElement).transform?.baseVal?.consolidate()?.matrix;
++        for (const pl of Array.from(clone.querySelectorAll('polyline'))) {
++            const st = styleFor(pl, 'halo|' + (clone.getAttribute('class') || ''), 'stroke');
++            if (!st.visible) continue;
++            const pts = (pl.getAttribute('points') || '').trim().split(/\s+/).map(p => p.split(',').map(Number));
++            const tp = pts.map(([x, y]) => m ? [m.a * x + m.c * y + m.e, m.b * x + m.d * y + m.f] : [x, y]);
++            const xs = tp.map(p => p[0]), ys = tp.map(p => p[1]);
++            add('halo|' + (clone.getAttribute('class') || ''), { ...st, dash: [] }, (p) => { tp.forEach(([x, y], i) => (i ? p.lineTo(x, y) : p.moveTo(x, y))); },
++                Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys));
++        }
++    }
++    // Branch half-edges.
++    for (const pl of Array.from(live.querySelectorAll('.nad-branch-edges polyline'))) {
++        const key = 'edge|' + (pl.parentElement?.getAttribute('class') || '') + '|' + (pl.getAttribute('class') || '');
++        const st = styleFor(pl, key, 'stroke');
++        if (!st.visible) continue;
++        const raw = (pl.getAttribute('points') || '').trim();
++        if (!raw) continue;
++        const pts = raw.split(/\s+/).map(p => p.split(',').map(Number));
++        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
++        for (const [x, y] of pts) { if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y; }
++        add(key, st, (p) => { pts.forEach(([x, y], i) => (i ? p.lineTo(x, y) : p.moveTo(x, y))); }, x0, y0, x1, y1);
++    }
++    // Transformer windings (stroked circles in branch edges).
++    for (const c of Array.from(live.querySelectorAll('.nad-branch-edges circle'))) {
++        const cc = c as SVGCircleElement;
++        const key = 'wind|' + (c.parentElement?.getAttribute('class') || '') + '|' + (c.getAttribute('class') || '');
++        const st = styleFor(c, key, 'stroke');
++        if (!st.visible) continue;
++        const x = cc.cx.baseVal.value, y = cc.cy.baseVal.value, r = cc.r.baseVal.value;
++        add(key, st, (p) => { p.moveTo(x + r, y); p.arc(x, y, r, 0, Math.PI * 2); }, x - r, y - r, x + r, y + r);
++    }
++    // Bus nodes: filled circles under the VL node's translate/scale.
++    for (const node of Array.from(live.querySelectorAll('.nad-vl-nodes > g'))) {
++        const m = (node as SVGGElement).transform?.baseVal?.consolidate()?.matrix;
++        const a = m ? m.a : 1, e = m ? m.e : 0, f = m ? m.f : 0;
++        for (const ch of Array.from(node.querySelectorAll('circle'))) {
++            const cc = ch as SVGCircleElement;
++            const key = 'bus|' + (node.getAttribute('class') || '') + '|' + (ch.getAttribute('class') || '');
++            const st = styleFor(ch, key, 'fill');
++            if (!st.visible) continue;
++            const x = e + a * cc.cx.baseVal.value, y = f + a * cc.cy.baseVal.value, r = a * cc.r.baseVal.value;
++            add(key, st, (p) => { p.moveTo(x + r, y); p.arc(x, y, r, 0, Math.PI * 2); }, x - r, y - r, x + r, y + r);
++        }
++    }
++
++    // pypowsybl's paint order: halos (behind), bus nodes, then branch edges
++    // and windings on top.
++    const order = (k: string) => (k.startsWith('halo|') ? 0 : k.startsWith('bus|') ? 1 : 2);
++    const items: DrawItem[] = [...acc.entries()].sort((a, b) => order(a[0]) - order(b[0])).map(([, v]) => v);
++
++    const canvas = document.createElement('canvas');
++    canvas.className = 'nad-canvas-proxy';
++    const ctx = canvas.getContext('2d', { alpha: false, desynchronized: false });
++    const bg = getComputedStyle(container).backgroundColor || 'white';
++
++    // Overview cache: the whole network rendered ONCE (at build time, i.e. on
++    // idle) at 2x the full-extent scale. Frames near full extent blit it
++    // instead of re-stroking every path.
++    let cache: HTMLCanvasElement | null = null;
++    let cacheScale = 0, cacheOx = 0, cacheOy = 0;
++    const renderItems = (c: CanvasRenderingContext2D, a: number, ox: number, oy: number, k: number, ux0: number, uy0: number, ux1: number, uy1: number, widthMul = 1) => {
++        c.setTransform(k * a, 0, 0, k * a, k * ox, k * oy);
++        // SVG defaults (pypowsybl sets neither on edges).
++        c.lineCap = 'butt';
++        c.lineJoin = 'miter';
++        for (const it of items) {
++            const b = it.bbox;
++            if (b[2] < ux0 || b[0] > ux1 || b[3] < uy0 || b[1] > uy1) continue;
++            if (it.kind === 'fill') {
++                c.fillStyle = it.color;
++                c.fill(it.path);
++            } else {
++                c.strokeStyle = it.color;
++                c.lineWidth = ((it.widthPx || 1) * widthMul) / a;
++                c.setLineDash(it.dash.length ? it.dash.map(d => (d * widthMul) / a) : []);
++                c.stroke(it.path);
++            }
++        }
++    };
++    const ensureCache = (W: number, H: number, dpr: number) => {
++        if (cache) return;
++        const CW = Math.min(4096, Math.round(2 * W * dpr)), CH = Math.min(4096, Math.round(2 * H * dpr));
++        const c = document.createElement('canvas');
++        c.width = CW; c.height = CH;
++        const cc = c.getContext('2d', { alpha: false });
++        if (!cc) return;
++        cacheScale = Math.min(CW / ext.w, CH / ext.h);
++        cacheOx = (CW - cacheScale * ext.w) / 2 - cacheScale * ext.x;
++        cacheOy = (CH - cacheScale * ext.h) / 2 - cacheScale * ext.y;
++        cc.fillStyle = bg;
++        cc.fillRect(0, 0, CW, CH);
++        // Stroke widths are exact at full extent, where the cache is shown at 1/2.
++        renderItems(cc, cacheScale, cacheOx, cacheOy, 1, -Infinity, -Infinity, Infinity, Infinity, 2);
++        cache = c;
++    };
++
++    const draw = (vb: VB) => {
++        if (!ctx) return;
++        const dpr = (container.ownerDocument.defaultView || window).devicePixelRatio || 1;
++        const W = container.clientWidth, H = container.clientHeight;
++        if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) {
++            canvas.width = Math.round(W * dpr);
++            canvas.height = Math.round(H * dpr);
++            canvas.style.width = `${W}px`;
++            canvas.style.height = `${H}px`;
++        }
++        // Exposed for the audit harness (detects canvas frames as visual updates).
++        canvas.dataset.vb = `${vb.x} ${vb.y} ${vb.w} ${vb.h}`;
++        // preserveAspectRatio="xMidYMid meet" mapping, as the live SVG.
++        const a = Math.min(W / vb.w, H / vb.h);
++        const cx = (W - a * vb.w) / 2 - a * vb.x;
++        const cy = (H - a * vb.h) / 2 - a * vb.y;
++        ctx.setTransform(1, 0, 0, 1, 0, 0);
++        ctx.fillStyle = bg;
++        ctx.fillRect(0, 0, canvas.width, canvas.height);
++        if (useCache) ensureCache(W, H, dpr);
++        // Only near full extent (<= ~1.3x zoom): beyond, the non-scaling
++        // strokes would visibly thicken, so draw vectors (cells are culled).
++        if (useCache && cache && (dpr * a) / cacheScale <= 0.65) {
++            // screen px = dpr*(a*u + c), cache px = cacheScale*u + co
++            const k = (dpr * a) / cacheScale;
++            ctx.setTransform(k, 0, 0, k, dpr * cx - k * cacheOx, dpr * cy - k * cacheOy);
++            ctx.imageSmoothingEnabled = true;
++            ctx.drawImage(cache, 0, 0);
++            return;
++        }
++        // Visible user-space rect for culling whole cells.
++        const ux0 = (0 - cx) / a, uy0 = (0 - cy) / a, ux1 = (W - cx) / a, uy1 = (H - cy) / a;
++        renderItems(ctx, a, cx, cy, dpr, ux0, uy0, ux1, uy1);
++    };
++    if (useCache) {
++        const dpr0 = (container.ownerDocument.defaultView || window).devicePixelRatio || 1;
++        ensureCache(container.clientWidth, container.clientHeight, dpr0);
++    }
++    return { canvas, draw, stats: { items: items.length, buildMs: performance.now() - t0 } };
++};
+diff -ruN a/frontend/src/utils/svg/highlights.ts b/frontend/src/utils/svg/highlights.ts
+--- a/frontend/src/utils/svg/highlights.ts
++++ b/frontend/src/utils/svg/highlights.ts
+@@ -19,6 +19,10 @@
+         if (svg) {
+             backgroundLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+             backgroundLayer.setAttribute('id', 'nad-background-layer');
++            // AUDIT EXPERIMENT (halo-bg): inherit the zoom-adaptive halo width
++            // usePanZoom last computed for this container.
++            const haloW = (container as HTMLElement).dataset?.nadHaloW;
++            if (haloW) (backgroundLayer as SVGGElement).style.setProperty('--nad-halo-w', haloW);
+             if (svg.firstChild) {
+                 svg.insertBefore(backgroundLayer, svg.firstChild);
+             } else {
+diff -ruN a/frontend/src/utils/svg/vectorProxy.ts b/frontend/src/utils/svg/vectorProxy.ts
+--- a/frontend/src/utils/svg/vectorProxy.ts
++++ b/frontend/src/utils/svg/vectorProxy.ts
+@@ -0,0 +1,143 @@
++// AUDIT PROTOTYPE (scratch copy only) — vector proxy for pan/zoom gestures.
++//
++// Builds a LIGHT stand-in <svg> for the live NAD: every branch half-edge
++// polyline and every bus/winding circle is merged into ONE <path> per CSS
++// class group (≈ 30 elements instead of ≈ 99k nodes). The groups keep the
++// pypowsybl classes and nesting, so the NAD's own <style> (a document-level
++// sheet) and App.css colour / non-scaling-stroke rules paint the proxy exactly
++// like the live diagram. Highlight halos (#nad-background-layer) are cloned
++// as-is (a handful of nodes). Edge-info flows and VL labels are left out —
++// the gesture already culls them today.
++//
++// During a gesture usePanZoom only rewrites the PROXY's viewBox; the live SVG
++// is not touched until settle, so no 99k-node style/layout runs per frame.
++
++const NS = 'http://www.w3.org/2000/svg';
++const GRID = 8;
++
++const circlePath = (cx: number, cy: number, r: number): string =>
++    `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0`;
++
++const ensureGroup = (root: Element, cache: Map<string, Element>, outer: string, inner: string, tag = 'g'): Element => {
++    const key = `${outer}|${inner}`;
++    let g = cache.get(key);
++    if (!g) {
++        let o = cache.get(outer);
++        if (!o) {
++            o = document.createElementNS(NS, tag);
++            o.setAttribute('class', outer);
++            root.appendChild(o);
++            cache.set(outer, o);
++        }
++        g = document.createElementNS(NS, 'g');
++        if (inner) g.setAttribute('class', inner);
++        o.appendChild(g);
++        cache.set(key, g);
++    }
++    return g;
++};
++
++export interface VectorProxyStats { elements: number; mergedPaths: number; buildMs: number; segments: number }
++
++export const buildVectorProxy = (
++    live: SVGSVGElement,
++    extent?: { x: number; y: number; w: number; h: number } | null,
++): { proxy: SVGSVGElement; stats: VectorProxyStats } => {
++    const t0 = performance.now();
++    const proxy = document.createElementNS(NS, 'svg') as SVGSVGElement;
++    proxy.setAttribute('preserveAspectRatio', live.getAttribute('preserveAspectRatio') || 'xMidYMid meet');
++    proxy.setAttribute('class', 'nad-vector-proxy');
++    const groups = new Map<string, Element>();
++    const dParts = new Map<Element, Map<string, string[]>>();
++    // Spatial chunking: one merged path per (class group, grid cell) instead of
++    // one per class group. A single path spanning the whole network is
++    // re-tessellated by EVERY raster tile it touches; per-cell paths let the
++    // tile / cull-rect bounds skip what is not on that tile or off-screen.
++    // Grid over the FULL diagram extent (the live viewBox may be zoomed in).
++    const vb0 = live.viewBox?.baseVal;
++    const gx0 = extent ? extent.x : (vb0?.x ?? 0), gy0 = extent ? extent.y : (vb0?.y ?? 0);
++    const gw = (extent ? extent.w : vb0?.width) || 1, gh = (extent ? extent.h : vb0?.height) || 1;
++    const cell = (x: number, y: number): number => {
++        const cx = Math.max(0, Math.min(GRID - 1, Math.floor(((x - gx0) / gw) * GRID)));
++        const cy = Math.max(0, Math.min(GRID - 1, Math.floor(((y - gy0) / gh) * GRID)));
++        return cy * GRID + cx;
++    };
++    const push = (g: Element, cls: string, d: string, x = 0, y = 0) => {
++        let m = dParts.get(g);
++        if (!m) { m = new Map(); dParts.set(g, m); }
++        const key = `${cls}\u0000${cell(x, y)}`;
++        let arr = m.get(key);
++        if (!arr) { arr = []; m.set(key, arr); }
++        arr.push(d);
++    };
++    let segments = 0;
++
++    // Halos first (they render BEHIND the network, as in the live SVG).
++    const bg = live.querySelector('#nad-background-layer');
++    if (bg && bg.childElementCount) {
++        const c = bg.cloneNode(true) as Element;
++        c.removeAttribute('id');
++        proxy.appendChild(c);
++    }
++
++    // Outer groups in pypowsybl's paint order: bus nodes under the edges.
++    for (const outer of ['nad-vl-nodes', 'nad-branch-edges']) {
++        const o = document.createElementNS(NS, 'g');
++        o.setAttribute('class', outer);
++        proxy.appendChild(o);
++        groups.set(outer, o);
++    }
++
++    // Branch edges: <g class="nad-branch-edges"><g [class=state]><polyline class="nad-vlX nad-edge-path" points/>
++    for (const pl of Array.from(live.querySelectorAll('.nad-branch-edges polyline'))) {
++        const parent = pl.parentElement;
++        const pts = (pl.getAttribute('points') || '').trim();
++        if (!pts) continue;
++        const list = pts.split(/[\s]+/);
++        segments += list.length - 1;
++        const g = ensureGroup(proxy, groups, 'nad-branch-edges', parent?.getAttribute('class') || '');
++        const [fx, fy] = list[0].split(',').map(Number);
++        push(g, pl.getAttribute('class') || '', 'M' + list.join('L'), fx, fy);
++    }
++    // Transformer windings drawn as circles inside branch edges.
++    for (const c of Array.from(live.querySelectorAll('.nad-branch-edges circle'))) {
++        const parent = c.parentElement;
++        const cc = c as SVGCircleElement;
++        const g = ensureGroup(proxy, groups, 'nad-branch-edges', parent?.getAttribute('class') || '');
++        push(g, c.getAttribute('class') || '', circlePath(cc.cx.baseVal.value, cc.cy.baseVal.value, cc.r.baseVal.value), cc.cx.baseVal.value, cc.cy.baseVal.value);
++    }
++    // Bus nodes: <g class="nad-vl-nodes"><g class="nad-vlX" transform="translate scale"><circle class="nad-bus-k nad-busnode" r/>
++    for (const node of Array.from(live.querySelectorAll('.nad-vl-nodes > g'))) {
++        const ng = node as SVGGElement;
++        const m = ng.transform?.baseVal?.consolidate()?.matrix;
++        const a = m ? m.a : 1, e = m ? m.e : 0, f = m ? m.f : 0;
++        for (const ch of Array.from(node.children)) {
++            if (ch.tagName === 'circle') {
++                const cc = ch as SVGCircleElement;
++                const g = ensureGroup(proxy, groups, 'nad-vl-nodes', node.getAttribute('class') || '');
++                const ccx = e + a * cc.cx.baseVal.value, ccy = f + a * cc.cy.baseVal.value;
++                push(g, ch.getAttribute('class') || '', circlePath(ccx, ccy, a * cc.r.baseVal.value), ccx, ccy);
++            } else {
++                // Multi-bus rings etc.: keep them as transformed clones (rare).
++                const g = ensureGroup(proxy, groups, 'nad-vl-nodes', node.getAttribute('class') || '');
++                const wrap = document.createElementNS(NS, 'g');
++                const tr = node.getAttribute('transform');
++                if (tr) wrap.setAttribute('transform', tr);
++                wrap.appendChild(ch.cloneNode(true));
++                g.appendChild(wrap);
++            }
++        }
++    }
++    let elements = 0;
++    for (const [g, m] of dParts) {
++        for (const [key, parts] of m) {
++            const cls = key.split('\u0000')[0];
++            const p = document.createElementNS(NS, 'path');
++            if (cls) p.setAttribute('class', cls);
++            p.setAttribute('d', parts.join(''));
++            g.appendChild(p);
++            elements++;
++        }
++    }
++    return { proxy, stats: { elements: proxy.querySelectorAll('*').length, mergedPaths: elements, buildMs: performance.now() - t0, segments } };
++};

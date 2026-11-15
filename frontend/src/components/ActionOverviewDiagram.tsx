@@ -462,8 +462,10 @@ const ActionOverviewDiagram: React.FC<ActionOverviewDiagramProps> = ({
 
     // The hook handles wheel-zoom and drag-pan on the container.
     // `active` gates the event listeners so an invisible overview
-    // doesn't steal wheel events from other tabs.
-    const pz = usePanZoom(containerRef, initialViewBox, visible && svgReady);
+    // doesn't steal wheel events from other tabs. The canvas gesture proxy
+    // draws the network only — the action pins and the dimming would vanish
+    // during a gesture — so the overview keeps the default path.
+    const pz = usePanZoom(containerRef, initialViewBox, visible && svgReady, { gestureProxy: false });
 
     // Notify the parent whenever the PZ instance changes.  Because
     // `usePanZoom` returns a new object on every viewBox update

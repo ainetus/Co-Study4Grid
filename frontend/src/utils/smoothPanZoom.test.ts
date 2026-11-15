@@ -19,8 +19,32 @@ describe('smoothPanZoom preference singleton', () => {
         setSmoothPanZoomMode('off');
     });
 
-    it('defaults to OFF', () => {
-        expect(getSmoothPanZoomMode()).toBe('off');
+    // The module reads localStorage once, at import: re-import it per case.
+    const freshModule = async (stored: string | null) => {
+        localStorage.clear();
+        if (stored !== null) localStorage.setItem('cs4g-smooth-pan-zoom', stored);
+        vi.resetModules();
+        return import('./smoothPanZoom');
+    };
+
+    it('defaults to the canvas proxy when no mode was ever chosen', async () => {
+        const m = await freshModule(null);
+        expect(m.DEFAULT_PAN_ZOOM_MODE).toBe('canvas');
+        expect(m.getSmoothPanZoomMode()).toBe('canvas');
+        expect(m.isSmoothPanZoomEnabled()).toBe(true);
+    });
+
+    it('keeps an explicit choice — including the classic path', async () => {
+        expect((await freshModule('off')).getSmoothPanZoomMode()).toBe('off');
+        expect((await freshModule('bitmap')).getSmoothPanZoomMode()).toBe('bitmap');
+        // Legacy boolean storage still migrates to the GPU path.
+        expect((await freshModule('1')).getSmoothPanZoomMode()).toBe('gpu');
+        // Anything unrecognised falls back to the default.
+        expect((await freshModule('garbage')).getSmoothPanZoomMode()).toBe('canvas');
+    });
+
+    it('can be switched to the classic path', () => {
+        expect(getSmoothPanZoomMode()).toBe('off'); // beforeEach selects it
         expect(isSmoothPanZoomEnabled()).toBe(false);
     });
 
@@ -34,6 +58,11 @@ describe('smoothPanZoom preference singleton', () => {
         expect(getSmoothPanZoomMode()).toBe('bitmap');
         expect(isSmoothPanZoomEnabled()).toBe(true);
         expect(localStorage.getItem('cs4g-smooth-pan-zoom')).toBe('bitmap');
+
+        setSmoothPanZoomMode('canvas');
+        expect(getSmoothPanZoomMode()).toBe('canvas');
+        expect(isSmoothPanZoomEnabled()).toBe(true);
+        expect(localStorage.getItem('cs4g-smooth-pan-zoom')).toBe('canvas');
 
         setSmoothPanZoomMode('off');
         expect(getSmoothPanZoomMode()).toBe('off');

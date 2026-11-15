@@ -1,0 +1,422 @@
+{
+ "hw": "gpu",
+ "mode": "proxy",
+ "exp": "halo-bg,drag-flush,settle-confirm,wheel-delta,drag-meet,css-labels-tier,css-text-geo,settle400,css-no-select,proxy-layer",
+ "expApplied": [
+  "no-select",
+  "text-geo",
+  "labels-tier"
+ ],
+ "proxyStats": {
+  "elements": 273,
+  "mergedPaths": 268,
+  "buildMs": 58.900000005960464,
+  "segments": 19472
+ },
+ "perfMetrics": {
+  "Documents": 2,
+  "JSEventListeners": 818,
+  "LayoutObjects": 105194,
+  "Nodes": 255244,
+  "JSHeapUsedSize": 62515476
+ },
+ "gpu": "ANGLE (Intel, Mesa Intel(R) Graphics (RPL-P), OpenGL 4.6 (Core Profile) Mesa 23.2.1-1ubuntu3.1~22.04.3)",
+ "viewport": {
+  "W": 1920,
+  "H": 1080
+ },
+ "rect": {
+  "x": 481,
+  "y": 106.703125,
+  "w": 1439,
+  "h": 886.296875
+ },
+ "vb0": "-2185664.32 -1735668.54 4371428.64 3471297.08",
+ "load": {
+  "click": 30644.90000000596,
+  "nMount": 35450.60000002384,
+  "nMountPainted": 35461.30000001192,
+  "resources": [
+   {
+    "n": "/api/user-config",
+    "start": 30138,
+    "dur": 10,
+    "ttfb": 9,
+    "xfer": 1448,
+    "size": 1148
+   },
+   {
+    "n": "/api/config-file-path",
+    "start": 30139,
+    "dur": 8,
+    "ttfb": 4,
+    "xfer": 453,
+    "size": 153
+   },
+   {
+    "n": "/api/models",
+    "start": 30140,
+    "dur": 9,
+    "ttfb": 6,
+    "xfer": 2737,
+    "size": 2437
+   },
+   {
+    "n": "/api/user-config",
+    "start": 30152,
+    "dur": 7,
+    "ttfb": 5,
+    "xfer": 320,
+    "size": 20
+   },
+   {
+    "n": "/api/context-map",
+    "start": 30647,
+    "dur": 78,
+    "ttfb": 76,
+    "xfer": 39165,
+    "size": 132880
+   },
+   {
+    "n": "/api/config",
+    "start": 30648,
+    "dur": 2524,
+    "ttfb": 2523,
+    "xfer": 692,
+    "size": 392
+   },
+   {
+    "n": "/api/branches",
+    "start": 33173,
+    "dur": 1536,
+    "ttfb": 1533,
+    "xfer": 666266,
+    "size": 665966
+   },
+   {
+    "n": "/api/voltage-levels",
+    "start": 33174,
+    "dur": 326,
+    "ttfb": 301,
+    "xfer": 431664,
+    "size": 431364
+   },
+   {
+    "n": "/api/nominal-voltages",
+    "start": 33174,
+    "dur": 80,
+    "ttfb": 77,
+    "xfer": 169349,
+    "size": 169049
+   },
+   {
+    "n": "/api/network-diagram",
+    "start": 33174,
+    "dur": 1611,
+    "ttfb": 1566,
+    "xfer": 1843847,
+    "size": 16913098
+   },
+   {
+    "n": "/api/voltage-level-substations",
+    "start": 33174,
+    "dur": 37,
+    "ttfb": 24,
+    "xfer": 274868,
+    "size": 274568
+   },
+   {
+    "n": "/api/context-map",
+    "start": 33177,
+    "dur": 1889,
+    "ttfb": 1887,
+    "xfer": 39165,
+    "size": 132880
+   }
+  ],
+  "domNodes": 99234,
+  "svgBytes": 9944994
+ },
+ "tabSwitch": {
+  "clickToPaint": 396.80000001192093,
+  "loaf": [
+   {
+    "start": 37516.40000000596,
+    "dur": 64.59999999403954,
+    "renderStart": 37575.60000002384,
+    "styleStart": 37581,
+    "blocking": 14.495,
+    "scripts": [
+     {
+      "inv": "IdleRequestCallback",
+      "dur": 59,
+      "fs": 0,
+      "fn": "z"
+     },
+     {
+      "inv": "FrameRequestCallback",
+      "dur": 5,
+      "fs": 0,
+      "fn": ""
+     }
+    ]
+   },
+   {
+    "start": 37119.30000001192,
+    "dur": 360,
+    "renderStart": 37122.5,
+    "styleStart": 37129.60000002384,
+    "blocking": 309.92,
+    "scripts": [
+     {
+      "inv": "FrameRequestCallback",
+      "dur": 6,
+      "fs": 0,
+      "fn": ""
+     }
+    ]
+   }
+  ]
+ },
+ "consoleLines": [
+  "[SVG] declutter pass: 163ms (parse 56ms, 15706 labels, 14837 moved)",
+  "[SVG] De-cluttered 14837 flow labels. Boosted vlCount=5247, ratio 3497.14, boost 34.14, nodeBoost 60.00, straightened 0 half-edges, reconnected 0 endpoints, projected 0 flow indicators in 215ms",
+  "[SVG] DOM injection for n took 29.20ms"
+ ],
+ "results": [
+  {
+   "name": "zoom_in_burst",
+   "rep": 0,
+   "nInputs": 16,
+   "gestureMs": 673,
+   "completeness": 0.9,
+   "doneVersion": 2,
+   "framesInGesture": 27,
+   "fps": 39.5,
+   "frameMs": {
+    "p50": 16.7,
+    "p90": 33.4,
+    "max": 66.6
+   },
+   "visualUpdates": 15,
+   "firstVisualMs": 29,
+   "catchUpMs": 1022,
+   "settleAfterLastInputMs": null,
+   "settleFrameMs": null,
+   "longFramesInGesture": 2,
+   "longFramesSumMs": 115,
+   "loafGesture": [
+    {
+     "dur": 58,
+     "pre": 58,
+     "styleLayoutPaint": 0,
+     "scripts": "FrameRequestCallback:6"
+    },
+    {
+     "dur": 57,
+     "pre": 49,
+     "styleLayoutPaint": 8,
+     "scripts": "FrameRequestCallback:6"
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "-694792.9303891206 -241965.1859879517 951350.2370915049 755455.3835912665|||0|region|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 0,
+   "inputs": "wheel,40,8 wheel,87,48 wheel,182,88 wheel,187,168 wheel,237,209 wheel,299,248 wheel,340,288 wheel,379,329 wheel,387,368 wheel,437,408 wheel,488,448 wheel,538,488 wheel,575,529 wheel,621,568 wheel,655,608",
+   "timeline": "-21:0o -4:0o 12:0o 29:0o* 62:0o* 79:0o 146:0o* 162:0o 179:0o 212:0o* 229:0o 262:0o* 279:0o 329:0o 362:0o* 379:0o 412:0o* 429:0o 462:0o* 479:0o 512:0o* 529:0o 546:0o* 562:0o 596:0o* 612:0o 629:0o* 646:0o 679:0o* 695:0o 712:0o 729:0o 745:0o 762:0o 779:0o 796:0o 812:0o 829:0o 845:0o 862:0o 879:0o 896:0o 912:0o 929:0o 946:0o 962:0o 979:0o 995:0o 1012:0o 1029:0o 1045:0o 1062:0o 1546:0r* 1579:0r 1695:0r* 1712:0r 1729:0r 1745:0r 1762:0r 1779:0r 1795:0r 1812:0r 1829:0r 1845:0r 1862:0r 1879:0r 1895:0r 1912:0r 1929:0r 1946:0r 1962:0r"
+  },
+  {
+   "name": "pan_overview",
+   "rep": 0,
+   "nInputs": 62,
+   "gestureMs": 1164,
+   "completeness": 1,
+   "doneVersion": 2,
+   "framesInGesture": 36,
+   "fps": 31.3,
+   "frameMs": {
+    "p50": 33.3,
+    "p90": 33.4,
+    "max": 133.3
+   },
+   "visualUpdates": 36,
+   "firstVisualMs": 15,
+   "catchUpMs": 51,
+   "settleAfterLastInputMs": null,
+   "settleFrameMs": null,
+   "longFramesInGesture": 2,
+   "longFramesSumMs": 199,
+   "loafGesture": [
+    {
+     "dur": 87,
+     "pre": 82,
+     "styleLayoutPaint": 5,
+     "scripts": "FrameRequestCallback:7"
+    },
+    {
+     "dur": 113,
+     "pre": 113,
+     "styleLayoutPaint": 0,
+     "scripts": ""
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "-3874297.5496613975 -1735668.54 4371428.64 3471297.08|||0|overview|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 0,
+   "inputs": "mousedown,15,7 mousemove,33,24 mousemove,65,57 mousemove,91,74 mousemove,118,107 mousemove,141,124 mousemove,156,140 mousemove,175,156 mousemove,191,174 mousemove,219,207 mousemove,246,240 mousemove,273,257 mousemove,299,291 mousemove,326,324 mousemove,355,340 mousemove,380,374 mousemove,406,390 mousemove,433,424 mousemove,469,457 mousemove,496,490 mousemove,523,506 mousemove,551,540 mousemove,579,574 mousemove,609,607 mousemove,636,624 mousemove,663,657 mousemove,690,674 mousemove,717,707 mousemove,743,740 mousemove,771,757 mousemove,797,791 mousemove,822,807 mousemove,849,840 mousemove,875,874 mousemove,901,890 mousemove,928,924 mousemove,955,940 mousemove,981,974 mousemove,1008,990 mousemove,1009,1007 mouseup,1036,1024",
+   "timeline": "-18:0o -2:0o 15:0o* 49:0o* 82:0o* 182:0o* 198:0o* 232:0o* 265:0o* 282:0o* 315:0o* 332:0o* 365:0o* 399:0o* 415:0o* 448:0o* 482:0o* 515:0o* 532:0o* 565:0o* 598:0o* 615:0o* 648:0o* 682:0o* 698:0o* 732:0o* 748:0o* 782:0o* 815:0o* 832:0o* 865:0o* 882:0o* 915:0o* 932:0o* 965:0o* 998:0o* 1015:0o* 1148:0o 1215:0o* 1232:0o 1248:0o 1265:0o 1282:0o 1298:0o 1315:0o 1332:0o 1348:0o 1365:0o 1382:0o 1398:0o 1415:0o 1432:0o 1448:0o 1465:0o 1482:0o 1498:0o 1515:0o 1532:0o 1548:0o 1565:0o 1582:0o 1598:0o 1615:0o 1632:0o 1648:0o 1665:0o 1682:0o 1698:0o 1715:0o 1732:0o 1748:0o 1765:0o 1782:0o 1798:0o 1815:0o 1832:0o 1848:0o 1865:0o 1882:0o 1898:0o 1915:0o 1932:0o 1948:0o 1965:0o 1982:0o 1998:0o 2015:0o 2032:0o 2048:0o 2065:0o 2082:0o 2098:0o 2115:0o 2132:0o 2148:0o 2165:0o 2182:0o 2198:0o 2215:0o 2232:0o 2248:0o 2265:0o 2282:0o 2298:0o 2315:0o 2332:0o 2348:0o 2365:0o 2382:0o 2398:0o 2415:0o 2432:0o 2448:0o 2465:0o"
+  },
+  {
+   "name": "pan_region",
+   "rep": 0,
+   "nInputs": 62,
+   "gestureMs": 1331,
+   "completeness": 1,
+   "doneVersion": 2,
+   "framesInGesture": 12,
+   "fps": 9,
+   "frameMs": {
+    "p50": 100,
+    "p90": 133.3,
+    "max": 233.3
+   },
+   "visualUpdates": 12,
+   "firstVisualMs": 11,
+   "catchUpMs": 113,
+   "settleAfterLastInputMs": null,
+   "settleFrameMs": null,
+   "longFramesInGesture": 2,
+   "longFramesSumMs": 173,
+   "loafGesture": [
+    {
+     "dur": 69,
+     "pre": 65,
+     "styleLayoutPaint": 4,
+     "scripts": "DIV#n-svg-container.onmousedown:17"
+    },
+    {
+     "dur": 104,
+     "pre": 104,
+     "styleLayoutPaint": 0,
+     "scripts": ""
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "-1883325.4820912234 -629010.6850951533 1685374.9773720638 1338335.294810328|||0|region|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 0,
+   "inputs": "mousedown,104,65 mousemove,128,115 mousemove,255,248 mousemove,370,365 mousemove,475,465 mousemove,579,565 mousemove,673,665 mousemove,764,749 mousemove,873,865 mousemove,980,965 mousemove,1080,1065 mouseup,1172,1081",
+   "timeline": "-72:0r -6:0r 11:0r* 177:0r* 311:0r* 411:0r* 511:0r* 594:0r* 694:0r* 794:0r* 911:0r* 1011:0r* 1094:0r* 1327:0r 1444:0r* 1527:0r 1544:0r 1594:0r 1611:0r 1627:0r 1644:0r 1661:0r 1677:0r 1694:0r 1711:0r 1727:0r 1744:0r 1761:0r 1777:0r 1794:0r 1811:0r 1827:0r 1844:0r 1861:0r 1877:0r 1894:0r 1911:0r 1927:0r 1944:0r 1961:0r 1977:0r 1994:0r 2011:0r 2061:0r 2077:0r 2094:0r 2111:0r 2127:0r 2144:0r 2161:0r 2177:0r 2194:0r 2211:0r 2227:0r 2244:0r 2261:0r 2277:0r 2294:0r 2311:0r 2327:0r 2344:0r 2361:0r 2377:0r 2394:0r 2411:0r 2427:0r 2444:0r 2461:0r 2477:0r 2494:0r 2511:0r 2527:0r 2544:0r 2561:0r 2577:0r 2594:0r 2611:0r 2627:0r"
+  },
+  {
+   "name": "pan_detail",
+   "rep": 0,
+   "nInputs": 62,
+   "gestureMs": 1255,
+   "completeness": 1,
+   "doneVersion": 2,
+   "framesInGesture": 14,
+   "fps": 11.2,
+   "frameMs": {
+    "p50": 83.3,
+    "p90": 99.9,
+    "max": 199.9
+   },
+   "visualUpdates": 14,
+   "firstVisualMs": 9,
+   "catchUpMs": 87,
+   "settleAfterLastInputMs": null,
+   "settleFrameMs": null,
+   "longFramesInGesture": 2,
+   "longFramesSumMs": 173,
+   "loafGesture": [
+    {
+     "dur": 72,
+     "pre": 68,
+     "styleLayoutPaint": 4,
+     "scripts": "DIV#n-svg-container.onmousedown:17 FrameRequestCallback:6"
+    },
+    {
+     "dur": 102,
+     "pre": 102,
+     "styleLayoutPaint": 0,
+     "scripts": ""
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "-898202.3131799707 -135882.57163663028 649785.0126982479 515986.19192081573|||0|detail|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 0,
+   "inputs": "mousedown,114,76 mousemove,141,126 mousemove,241,226 mousemove,335,326 mousemove,413,410 mousemove,494,492 mousemove,578,576 mousemove,657,643 mousemove,738,726 mousemove,817,809 mousemove,896,893 mousemove,975,959 mousemove,1051,1042 mousemove,1129,1076 mouseup,1129,1092",
+   "timeline": "-75:0d -8:0d 9:0d* 159:0d* 259:0d* 325:0d* 409:0d* 492:0d* 575:0d* 659:0d* 725:0d* 809:0d* 892:0d* 975:0d* 1042:0d* 1242:0d 1342:0d* 1375:0d 1392:0d 1409:0d 1425:0d 1442:0d 1459:0d 1475:0d 1492:0d 1509:0d 1525:0d 1542:0d 1559:0d 1575:0d 1592:0d 1609:0d 1625:0d 1642:0d 1659:0d 1675:0d 1692:0d 1709:0d 1725:0d 1742:0d 1759:0d 1775:0d 1792:0d 1809:0d 1825:0d 1842:0d 1859:0d 1875:0d 1892:0d 1909:0d 1925:0d 1942:0d 1959:0d 1975:0d 1992:0d 2009:0d 2025:0d 2042:0d 2059:0d 2075:0d 2092:0d 2109:0d 2125:0d 2142:0d 2159:0d 2175:0d 2192:0d 2209:0d 2225:0d 2242:0d 2259:0d 2275:0d 2292:0d 2309:0d 2325:0d 2342:0d 2359:0d 2375:0d 2392:0d 2409:0d 2425:0d 2442:0d 2459:0d 2475:0d 2492:0d 2509:0d 2525:0d 2542:0d"
+  },
+  {
+   "name": "navigate_region",
+   "rep": 0,
+   "nInputs": 176,
+   "gestureMs": 3710,
+   "completeness": 1,
+   "doneVersion": 2,
+   "framesInGesture": 36,
+   "fps": 9.7,
+   "frameMs": {
+    "p50": 83.4,
+    "p90": 150,
+    "max": 283.3
+   },
+   "visualUpdates": 33,
+   "firstVisualMs": 8,
+   "catchUpMs": 98,
+   "settleAfterLastInputMs": null,
+   "settleFrameMs": null,
+   "longFramesInGesture": 6,
+   "longFramesSumMs": 587,
+   "loafGesture": [
+    {
+     "dur": 68,
+     "pre": 65,
+     "styleLayoutPaint": 3,
+     "scripts": "DIV#n-svg-container.onmousedown:17"
+    },
+    {
+     "dur": 97,
+     "pre": 97,
+     "styleLayoutPaint": 0,
+     "scripts": ""
+    },
+    {
+     "dur": 175,
+     "pre": 175,
+     "styleLayoutPaint": 0,
+     "scripts": "DIV#root.onpointerout:6 DIV#n-svg-container.onmousedown:23 FrameRequestCallback:6"
+    },
+    {
+     "dur": 105,
+     "pre": 105,
+     "styleLayoutPaint": 0,
+     "scripts": ""
+    },
+    {
+     "dur": 53,
+     "pre": 49,
+     "styleLayoutPaint": 4,
+     "scripts": "DIV#n-svg-container.onmousedown:30"
+    },
+    {
+     "dur": 89,
+     "pre": 89,
+     "styleLayoutPaint": 0,
+     "scripts": ""
+    }
+   ],
+   "loafSettle": [],
+   "finalState": "2897904.1168111847 -2009501.4036217674 1685374.9773720638 1338335.294810328|||0|region|n-svg-container|",
+   "tracePath": null,
+   "cullFlips": 0,
+   "inputs": "mousedown,100,61 mousemove,124,111 mousemove,227,211 mousemove,326,311 mousemove,409,395 mousemove,496,494 mousemove,580,577 mousemove,662,644 mousemove,663,661 mousemove,745,744 mousemove,828,761 mouseup,829,777 mousedown,1043,972 mousemove,1076,1073 mousemove,1168,1157 mousemove,1262,1257 mousemove,1360,1356 mousemove,1448,1440 mousemove,1539,1523 mousemove,1672,1656 mousemove,1764,1673 mouseup,1765,1689 mousedown,1896,1885 mousemove,2046,2035 mousemove,2138,2135 mousemove,2233,2218 mousemove,2328,2319 mousemove,2413,2402 mousemove,2497,2485 mousemove,2502,2501 mousemove,2578,2568 mousemove,2660,2584 mouseup,2660,2601 mousedown,2860,2797 mousemove,2902,2897 mousemove,2975,2964 mousemove,3056,3046 mousemove,3129,3114 mousemove,3135,3130 mousemove,3208,3197 mousemove,3281,3280 mousemove,3359,3347 mousemove,3431,3414 mousemove,3437,3431 mousemove,3510,3497 mouseup,3583,3513",
+   "timeline": "-59:0r -9:0r 8:0r* 158:0r* 258:0r* 341:0r* 425:0r* 508:0r* 591:0r* 674:0r* 758:0r* 975:0r 1091:0r* 1208:0r* 1291:0r* 1375:0r* 1474:0r* 1608:0r* 1691:0r* 1974:0r 2074:0r* 2158:0r* 2258:0r* 2341:0r* 2424:0r* 2508:0r* 2591:0r* 2791:0r 2908:0r* 2991:0r* 3058:0r* 3141:0r* 3208:0r* 3291:0r* 3358:0r* 3441:0r* 3508:0r* 3691:0r 3808:0r* 3841:0r 3858:0r 3874:0r 3891:0r 3908:0r 3924:0r 3941:0r 3958:0r 3974:0r 3991:0r 4008:0r 4024:0r 4041:0r 4058:0r 4074:0r 4091:0r 4108:0r 4124:0r 4141:0r 4158:0r 4174:0r 4191:0r 4208:0r 4224:0r 4258:0r 4274:0r 4291:0r 4308:0r 4324:0r 4341:0r 4358:0r 4374:0r 4391:0r 4408:0r 4424:0r 4441:0r 4458:0r 4474:0r 4491:0r 4508:0r 4524:0r 4541:0r 4558:0r 4574:0r 4591:0r 4608:0r 4624:0r 4641:0r 4658:0r 4674:0r 4691:0r 4708:0r 4724:0r 4741:0r 4758:0r 4774:0r 4791:0r 4808:0r 4824:0r 4841:0r 4858:0r 4874:0r 4891:0r 4908:0r 4924:0r 4941:0r 4958:0r 4974:0r 4991:0r 5008:0r"
+  }
+ ]
+}

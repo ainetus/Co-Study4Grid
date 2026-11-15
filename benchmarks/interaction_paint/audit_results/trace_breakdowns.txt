@@ -1,0 +1,434 @@
+################ trace_off.zoom_in_burst.trace.json
+renderer pid 718943; window 4955 ms; input events on main: 9
+
+== Renderer main thread: self time by event (top 28) ==
+  Document::recalcStyle                                      1552.1 ms  x11
+  LocalFrameView::performLayout                              1279.0 ms  x13
+  PaintArtifactCompositor::Update                             247.8 ms  x11
+  Blink.PrePaint.UpdateTime                                   242.2 ms  x22
+  Paint                                                       239.0 ms  x22
+  InlineNode::FindSvgTextChunks                               153.8 ms  x99650
+  SvgTextLayoutAlgorithm::Layout                              144.9 ms  x127649
+  InlineNode::ShapeTextIncludingFirstLine                     132.7 ms  x107371
+  Blink.CompositingInputs.UpdateTime                          126.6 ms  x22
+  Document::rebuildLayoutTree                                 114.0 ms  x4
+  HitTest                                                     109.4 ms  x17
+  V8.GC_MC_INCREMENTAL_EMBEDDER_TRACING                        76.7 ms  x559
+  V8.GC_MARK_COMPACTOR                                         67.0 ms  x1
+  FunctionCall                                                 54.7 ms  x93
+  Layout                                                       37.5 ms  x13
+  WebFrameWidgetImpl::UpdateLifecycle                          32.9 ms  x14
+  LocalFrameView::RunPaintLifecyclePhase                        6.7 ms  x14
+  Document::updateStyleInvalidationIfNeeded                     5.4 ms  x1
+  Document::updateStyle                                         5.0 ms  x11
+  V8.GC_HEAP_EMBEDDER_TRACING_EPILOGUE                          3.3 ms  x1
+  LayoutView::HitTest                                           3.1 ms  x9
+  Blink.Paint.UpdateTime                                        2.1 ms  x14
+  V8.GC_MC_INCREMENTAL                                          1.8 ms  x560
+  LayerTreeHost::WaitForCommitCompletion                        1.8 ms  x13
+  ThreadControllerImpl::RunTask                                 1.2 ms  x151
+  CullRectUpdate                                                0.9 ms  x14
+  RunTask                                                       0.8 ms  x152
+  V8.GC_MC_SWEEP_EXTERNAL_POINTER_TABLE                         0.5 ms  x1
+  TOTAL                                                      4653.9 ms
+
+== Other threads: busy time (top-level slices) in window ==
+  GPU Process            CrGpuMain                               514.6 ms
+  Service: network.mojom Chrome_ChildIOThread                    503.9 ms
+  Browser                ThreadPoolForegroundWorker              293.4 ms
+  Renderer               ThreadPoolForegroundWorker              207.6 ms
+  Service: unzip.mojom.U ThreadPoolForegroundWorker              165.3 ms
+  Renderer               Compositor                              135.0 ms
+  Browser                ThreadPoolForegroundWorker              103.8 ms
+  Browser                CrBrowserMain                            71.7 ms
+  Renderer               ThreadPoolForegroundWorker               71.5 ms
+  Browser                Chrome_IOThread                          63.1 ms
+  Renderer               ThreadPoolForegroundWorker               59.6 ms
+  Renderer               ThreadPoolForegroundWorker               58.3 ms
+  Renderer               ThreadPoolForegroundWorker               58.1 ms
+  Browser                ThreadPoolSingleThreadForegroundBlocking1      56.4 ms
+
+== Main-thread frames in window: 13 ==
+  +    529 ms  frame    4.3 ms  | FireAnimationFrame=4 FunctionCall=4
+  +    533 ms  frame  474.2 ms  | UpdateLayoutTree=315 Paint=63 Layout=62 PrePaint=30 Layerize=19 Commit=8 HitTest=8 FireAnimationFrame=4 FunctionCall=4
+  +   1257 ms  frame  316.7 ms  | Layout=168 UpdateLayoutTree=84 PrePaint=30 Paint=26 Layerize=13 FireAnimationFrame=4 FunctionCall=4
+  +   1576 ms  frame  318.5 ms  | Layout=158 UpdateLayoutTree=91 PrePaint=30 Paint=28 Layerize=13 HitTest=4 FunctionCall=4 FireAnimationFrame=3
+  +   1899 ms  frame  326.3 ms  | Layout=156 UpdateLayoutTree=85 Paint=32 PrePaint=31 Layerize=24 Commit=8 HitTest=7 FireAnimationFrame=3 FunctionCall=3
+  +   2226 ms  frame  345.7 ms  | Layout=171 UpdateLayoutTree=99 PrePaint=30 Paint=29 Layerize=18 HitTest=4 FunctionCall=4 FireAnimationFrame=3
+  +   2572 ms  frame  302.4 ms  | Layout=144 UpdateLayoutTree=84 PrePaint=33 Paint=28 Layerize=15 FunctionCall=4 HitTest=4 FireAnimationFrame=4
+  +   2874 ms  frame  325.5 ms  | Layout=152 UpdateLayoutTree=90 PrePaint=36 Paint=29 Layerize=19 HitTest=5 FunctionCall=4 FireAnimationFrame=4
+  +   3200 ms  frame  251.4 ms  | Layout=176 PrePaint=28 Paint=27 Layerize=15 HitTest=11 Commit=8 FunctionCall=4 FireAnimationFrame=4
+  +   3452 ms  frame  234.1 ms  | Layout=151 PrePaint=42 Paint=27 Layerize=16 FunctionCall=5 FireAnimationFrame=5 HitTest=3
+
+################ traces/gpu_off_qw.zoom_in_burst.trace.json
+renderer pid 741893; window 2981 ms; input events on main: 9
+
+== Renderer main thread: self time by event (top 28) ==
+  LocalFrameView::performLayout                               784.1 ms  x8
+  Document::recalcStyle                                       267.3 ms  x5
+  FunctionCall                                                176.5 ms  x117
+  Blink.PrePaint.UpdateTime                                   171.2 ms  x38
+  PaintArtifactCompositor::Update                             167.3 ms  x9
+  Paint                                                       163.5 ms  x18
+  InlineNode::FindSvgTextChunks                               102.7 ms  x79173
+  SvgTextLayoutAlgorithm::Layout                               99.2 ms  x92343
+  InlineNode::ShapeTextIncludingFirstLine                      93.2 ms  x75102
+  Document::rebuildLayoutTree                                  88.2 ms  x1
+  Blink.CompositingInputs.UpdateTime                           75.5 ms  x38
+  HitTest                                                      67.6 ms  x13
+  WebFrameWidgetImpl::UpdateLifecycle                          25.3 ms  x29
+  Document::updateStyleInvalidationIfNeeded                    23.6 ms  x5
+  ThreadControllerImpl::RunTask                                20.2 ms  x148
+  Layout                                                       19.2 ms  x8
+  V8.GC_MC_INCREMENTAL_EMBEDDER_TRACING                        14.4 ms  x68
+  V8.GC_MARK_COMPACTOR                                          8.5 ms  x1
+  V8.GC_HEAP_EXTERNAL_WEAK_GLOBAL_HANDLES                       6.1 ms  x1
+  LocalFrameView::RunPaintLifecyclePhase                        4.0 ms  x29
+  V8.GC_MC_CLEAR_EXTERNAL_STRING_TABLE                          3.2 ms  x1
+  V8.GC_HEAP_EXTERNAL_SECOND_PASS_CALLBACKS                     3.0 ms  x1
+  LayoutView::HitTest                                           2.5 ms  x9
+  V8.GC_MC_CLEAR_WEAK_GLOBAL_HANDLES                            2.0 ms  x1
+  Blink.Paint.UpdateTime                                        1.5 ms  x29
+  LayerTreeHost::WaitForCommitCompletion                        1.4 ms  x29
+  Document::updateStyle                                         1.2 ms  x5
+  V8.GC_MC_EVACUATE_COPY_PARALLEL                               1.0 ms  x1
+  TOTAL                                                      2407.4 ms
+
+== Other threads: busy time (top-level slices) in window ==
+  Renderer               ThreadPoolForegroundWorker              472.6 ms
+  GPU Process            CrGpuMain                               284.1 ms
+  Browser                ThreadPoolForegroundWorker              106.6 ms
+  Service: network.mojom Chrome_ChildIOThread                     96.7 ms
+  Renderer               Compositor                               88.0 ms
+  Browser                CrBrowserMain                            52.0 ms
+  Browser                ThreadPoolForegroundWorker               38.3 ms
+  Browser                ThreadPoolSingleThreadForegroundBlocking1      35.1 ms
+  Browser                Chrome_IOThread                          31.2 ms
+  Service: tracing.mojom tracing.CrUtilityMain                    27.7 ms
+  GPU Process            VizCompositorThread                      25.6 ms
+  Renderer               ThreadPoolForegroundWorker               24.5 ms
+  Service: unzip.mojom.U ThreadPoolForegroundWorker               24.1 ms
+  Renderer               ThreadPoolForegroundWorker               23.9 ms
+
+== Main-thread frames in window: 29 ==
+  +      1 ms  frame  298.8 ms  | Layout=164 UpdateLayoutTree=71 Paint=28 PrePaint=25 Layerize=12 FunctionCall=5 FireAnimationFrame=5 HitTest=4
+  +    324 ms  frame   99.9 ms  | UpdateLayoutTree=74 Paint=13 FireAnimationFrame=6 FunctionCall=6 Layerize=5 PrePaint=5
+  +    509 ms  frame  175.6 ms  | Layout=112 PrePaint=28 Paint=22 Layerize=12 FunctionCall=5 FireAnimationFrame=5 HitTest=3
+  +    684 ms  frame  192.9 ms  | Layout=131 PrePaint=25 Paint=22 Layerize=14 FunctionCall=6 FireAnimationFrame=5 HitTest=3
+  +    886 ms  frame  193.5 ms  | Layout=121 Paint=28 PrePaint=27 Layerize=14 Commit=8 HitTest=7 FunctionCall=6 FireAnimationFrame=6
+  +   1083 ms  frame  194.1 ms  | Layout=123 PrePaint=32 Paint=23 Layerize=14 FireAnimationFrame=6 FunctionCall=6 UpdateLayoutTree=5
+  +   1283 ms  frame  190.3 ms  | Layout=126 PrePaint=27 Paint=23 Layerize=14 FunctionCall=6 FireAnimationFrame=6 HitTest=3
+  +   1478 ms  frame  193.8 ms  | Layout=132 PrePaint=25 Paint=22 Layerize=12 FunctionCall=6 FireAnimationFrame=6 HitTest=3
+  +   1672 ms  frame    6.0 ms  | FireAnimationFrame=6 FunctionCall=6
+  +   1684 ms  frame  607.2 ms  | Layout=204 UpdateLayoutTree=160 Paint=147 Layerize=71 PrePaint=53 Commit=36 HitTest=35 FireAnimationFrame=6 FunctionCall=6
+
+################ traces/gpu_off_qw2_pan.pan_region.trace.json
+renderer pid 754319; window 2517 ms; input events on main: 9
+
+== Renderer main thread: self time by event (top 28) ==
+  LocalFrameView::performLayout                               511.6 ms  x6
+  FunctionCall                                                383.7 ms  x216
+  Document::rebuildLayoutTree                                 165.7 ms  x2
+  HitTest                                                     136.2 ms  x21
+  Document::recalcStyle                                       114.2 ms  x2
+  Blink.PrePaint.UpdateTime                                   114.0 ms  x80
+  PaintArtifactCompositor::Update                             105.4 ms  x5
+  Paint                                                       102.9 ms  x10
+  SvgTextLayoutAlgorithm::Layout                               75.7 ms  x70231
+  InlineNode::FindSvgTextChunks                                71.2 ms  x59302
+  InlineNode::ShapeTextIncludingFirstLine                      65.4 ms  x57084
+  Blink.CompositingInputs.UpdateTime                           56.5 ms  x80
+  WebFrameWidgetImpl::HandleInputEvent                         34.4 ms  x9
+  Layout                                                       14.4 ms  x6
+  WebFrameWidgetImpl::UpdateLifecycle                          12.4 ms  x62
+  Document::updateStyleInvalidationIfNeeded                     9.8 ms  x2
+  LayoutView::HitTest                                           4.8 ms  x17
+  LocalFrameView::RunPaintLifecyclePhase                        2.9 ms  x62
+  Blink.Paint.UpdateTime                                        1.6 ms  x62
+  RunTask                                                       1.5 ms  x191
+  LocalFrameView::ScheduleAnimation                             1.5 ms  x129
+  ProxyMain::BeginMainFrame                                     1.4 ms  x62
+  AsyncTask Run                                                 1.3 ms  x66
+  ThreadControllerImpl::RunTask                                 1.2 ms  x180
+  LayerTreeHost::WaitForCommitCompletion                        1.2 ms  x62
+  Commit                                                        1.2 ms  x62
+  Document::updateStyle                                         0.9 ms  x2
+  EventDispatch                                                 0.8 ms  x30
+  TOTAL                                                      2002.7 ms
+
+== Other threads: busy time (top-level slices) in window ==
+  Renderer               ThreadPoolForegroundWorker              969.7 ms
+  GPU Process            CrGpuMain                               221.7 ms
+  Renderer               Compositor                               65.2 ms
+
+== Main-thread frames in window: 62 ==
+  +    326 ms  frame  160.6 ms  | Layout=105 PrePaint=24 Layerize=13 Paint=12 FunctionCall=5 FireAnimationFrame=5 HitTest=2
+  +    491 ms  frame  163.5 ms  | Layout=110 PrePaint=25 Paint=12 Layerize=11 FunctionCall=5 FireAnimationFrame=5 HitTest=2
+  +    660 ms  frame  164.9 ms  | Layout=110 PrePaint=26 Paint=12 Layerize=10 FunctionCall=5 FireAnimationFrame=5 HitTest=3
+  +    830 ms  frame  181.7 ms  | Layout=121 PrePaint=28 Paint=13 Layerize=11 Commit=6 FireAnimationFrame=6 FunctionCall=6 HitTest=6
+  +   1374 ms  frame  166.0 ms  | Paint=156 Layerize=61 HitTest=17 FunctionCall=5 FireAnimationFrame=5
+  +   1540 ms  frame    6.4 ms  | FireAnimationFrame=6 FunctionCall=6
+  +   1555 ms  frame    7.4 ms  | FireAnimationFrame=7 FunctionCall=7
+  +   1572 ms  frame    5.2 ms  | FireAnimationFrame=5 FunctionCall=5
+  +   1589 ms  frame    6.2 ms  | FireAnimationFrame=6 FunctionCall=6
+  +   1605 ms  frame    7.1 ms  | FireAnimationFrame=7 FunctionCall=7
+  +   1622 ms  frame    5.9 ms  | FireAnimationFrame=6 FunctionCall=6
+  +   1639 ms  frame    5.0 ms  | FireAnimationFrame=5 FunctionCall=5
+  +   1655 ms  frame    5.2 ms  | FireAnimationFrame=5 FunctionCall=5
+  +   1672 ms  frame    5.4 ms  | FireAnimationFrame=5 FunctionCall=5
+  +   1688 ms  frame    9.6 ms  | FireAnimationFrame=9 FunctionCall=9
+  +   1705 ms  frame    6.8 ms  | FireAnimationFrame=7 FunctionCall=7
+  +   1722 ms  frame    5.9 ms  | FireAnimationFrame=6 FunctionCall=6
+  +   1739 ms  frame    5.9 ms  | FireAnimationFrame=6 FunctionCall=6
+  +   1755 ms  frame    5.0 ms  | FireAnimationFrame=5 FunctionCall=5
+  +   1772 ms  frame    6.9 ms  | FireAnimationFrame=7 FunctionCall=7
+  +   1789 ms  frame   11.7 ms  | FireAnimationFrame=11 FunctionCall=11
+
+################ traces/gpu_gpu.pan_region.trace.json
+renderer pid 741220; window 2671 ms; input events on main: 4
+
+== Renderer main thread: self time by event (top 28) ==
+  WidgetBase::WillBeginMainFrame                              641.2 ms  x30
+  LocalFrameView::performLayout                               377.1 ms  x4
+  Document::recalcStyle                                       342.1 ms  x4
+  MouseEventManager::handleMouseDraggedEvent                  233.5 ms  x2
+  Document::rebuildLayoutTree                                 187.7 ms  x2
+  FunctionCall                                                159.9 ms  x111
+  HitTest                                                      97.5 ms  x13
+  Paint                                                        90.9 ms  x5
+  Blink.PrePaint.UpdateTime                                    77.1 ms  x43
+  PaintArtifactCompositor::Update                              71.0 ms  x2
+  SvgTextLayoutAlgorithm::Layout                               54.3 ms  x50004
+  InlineNode::ShapeTextIncludingFirstLine                      51.8 ms  x42013
+  InlineNode::FindSvgTextChunks                                50.4 ms  x39766
+  Editor::SyncSelection                                        48.3 ms  x2
+  Blink.CompositingInputs.UpdateTime                           40.0 ms  x43
+  VisibleUnits::mostBackwardCaretPosition                      32.1 ms  x116
+  LayoutView::commitPendingSelection                           30.5 ms  x34
+  VisibleUnits::mostForwardCaretPosition                       25.0 ms  x64
+  EditingUtility::previousCandidateAlgorithm                   12.8 ms  x4
+  Layout                                                        9.7 ms  x4
+  SelectionController::handleMouseDraggedEvent                  8.1 ms  x2
+  ProxyMain::BeginMainFrame                                     6.4 ms  x30
+  EditingUtility::nextCandidateAlgorithm                        5.7 ms  x4
+  WebFrameWidgetImpl::UpdateLifecycle                           5.6 ms  x29
+  WebFrameWidgetImpl::HandleInputEvent                          5.4 ms  x4
+  LayoutView::HitTest                                           2.8 ms  x10
+  LocalFrameView::RunPaintLifecyclePhase                        2.1 ms  x29
+  Document::updateStyle                                         1.9 ms  x4
+  TOTAL                                                      2681.9 ms
+
+== Other threads: busy time (top-level slices) in window ==
+  Renderer               ThreadPoolForegroundWorker              904.3 ms
+  Service: unzip.mojom.U ThreadPoolForegroundWorker              149.9 ms
+  Service: network.mojom Chrome_ChildIOThread                    105.8 ms
+  Browser                ThreadPoolForegroundWorker               78.7 ms
+  Renderer               Compositor                               62.4 ms
+  Browser                ThreadPoolForegroundWorker               52.8 ms
+  GPU Process            CrGpuMain                                28.1 ms
+  Browser                CrBrowserMain                            21.5 ms
+  GPU Process            VizCompositorThread                      20.9 ms
+
+== Main-thread frames in window: 30 ==
+  +    630 ms  frame  513.9 ms  | Layout=101 PrePaint=54 Layerize=13 Paint=13 HitTest=11 Commit=8 FunctionCall=7 FireAnimationFrame=6 UpdateLayoutTree=5
+  +   1666 ms  frame  205.7 ms  | Paint=173 Layerize=58 HitTest=21 FireAnimationFrame=6 FunctionCall=6
+  +   1872 ms  frame   27.9 ms  | FireAnimationFrame=5 FunctionCall=5
+  +   1900 ms  frame   26.5 ms  | FireAnimationFrame=5 FunctionCall=5
+  +   1927 ms  frame   27.0 ms  | FireAnimationFrame=5 FunctionCall=5
+  +   1954 ms  frame   27.0 ms  | FireAnimationFrame=5 FunctionCall=5
+  +   1981 ms  frame   26.3 ms  | FireAnimationFrame=5 FunctionCall=5
+  +   2008 ms  frame   27.8 ms  | FireAnimationFrame=5 FunctionCall=5
+  +   2036 ms  frame   26.8 ms  | FireAnimationFrame=5 FunctionCall=5
+  +   2063 ms  frame   26.8 ms  | FireAnimationFrame=5 FunctionCall=5
+  +   2090 ms  frame   27.0 ms  | FireAnimationFrame=5 FunctionCall=5
+  +   2117 ms  frame   62.3 ms  | Commit=36 HitTest=36 FireAnimationFrame=5 FunctionCall=5
+  +   2179 ms  frame   26.6 ms  | FireAnimationFrame=5 FunctionCall=5
+  +   2206 ms  frame   26.3 ms  | FireAnimationFrame=5 FunctionCall=5
+  +   2233 ms  frame   26.3 ms  | FireAnimationFrame=5 FunctionCall=5
+
+################ traces/gpu_proxy.zoom_in_burst.trace.json
+renderer pid 742717; window 2341 ms; input events on main: 10
+
+== Renderer main thread: self time by event (top 28) ==
+  LayerTreeHost::WaitForCommitCompletion                      620.6 ms  x20
+  PaintArtifactCompositor::Update                             242.6 ms  x12
+  Paint                                                       177.9 ms  x24
+  LocalFrameView::performLayout                               149.6 ms  x13
+  FunctionCall                                                132.4 ms  x110
+  Document::rebuildLayoutTree                                  82.9 ms  x3
+  Blink.CompositingInputs.UpdateTime                           61.6 ms  x29
+  HitTest                                                      61.2 ms  x12
+  Blink.PrePaint.UpdateTime                                    52.1 ms  x29
+  Layout                                                       35.0 ms  x13
+  WebFrameWidgetImpl::UpdateLifecycle                          30.9 ms  x20
+  InlineNode::ShapeTextIncludingFirstLine                      24.6 ms  x13300
+  Document::recalcStyle                                        18.4 ms  x3
+  InlineNode::FindSvgTextChunks                                12.5 ms  x9616
+  SvgTextLayoutAlgorithm::Layout                               12.1 ms  x11319
+  Document::updateStyleInvalidationIfNeeded                     5.3 ms  x1
+  LocalFrameView::RunPaintLifecyclePhase                        5.0 ms  x20
+  LayoutView::HitTest                                           3.7 ms  x10
+  Blink.Paint.UpdateTime                                        1.5 ms  x20
+  ThreadControllerImpl::RunTask                                 1.1 ms  x145
+  RunTask                                                       0.8 ms  x145
+  ProxyMain::BeginMainFrame                                     0.6 ms  x20
+  EventDispatch                                                 0.6 ms  x10
+  LocalFrameView::ScheduleAnimation                             0.6 ms  x51
+  CullRectUpdate                                                0.5 ms  x20
+  Commit                                                        0.5 ms  x20
+  AsyncTask Run                                                 0.5 ms  x34
+  LatencyInfo.Flow                                              0.4 ms  x28
+  TOTAL                                                      1739.9 ms
+
+== Other threads: busy time (top-level slices) in window ==
+  GPU Process            CrGpuMain                              1039.7 ms
+  Renderer               ThreadPoolForegroundWorker              846.5 ms
+  Renderer               Compositor                               57.6 ms
+
+== Main-thread frames in window: 19 ==
+  +     61 ms  frame    6.4 ms  | FireAnimationFrame=6 FunctionCall=6
+  +     68 ms  frame    6.8 ms  | FireAnimationFrame=7 FunctionCall=7
+  +     80 ms  frame   10.3 ms  | FireAnimationFrame=10 FunctionCall=10
+  +     98 ms  frame   32.9 ms  | Paint=13 Layerize=11 FireAnimationFrame=5 FunctionCall=5 PrePaint=3 Layout=3
+  +    194 ms  frame   42.3 ms  | Paint=15 Layerize=11 PrePaint=6 FunctionCall=6 FireAnimationFrame=6 HitTest=5 Layout=3
+  +    288 ms  frame   44.7 ms  | Paint=16 Layerize=12 FunctionCall=7 FireAnimationFrame=7 PrePaint=6 HitTest=4 Layout=4
+  +    381 ms  frame   37.6 ms  | Paint=13 Layerize=11 FunctionCall=6 FireAnimationFrame=6 HitTest=4 PrePaint=3 Layout=3
+  +    480 ms  frame   38.8 ms  | Paint=12 Layerize=11 FunctionCall=6 FireAnimationFrame=6 HitTest=5 PrePaint=3 Layout=3
+  +    571 ms  frame   51.3 ms  | Paint=13 Layerize=12 HitTest=11 FunctionCall=10 FireAnimationFrame=10 Layout=4 PrePaint=4
+  +    668 ms  frame   38.3 ms  | Paint=13 Layerize=11 FunctionCall=6 FireAnimationFrame=6 HitTest=5 PrePaint=4 Layout=3
+  +    754 ms  frame   44.2 ms  | Paint=15 Layerize=11 FunctionCall=7 FireAnimationFrame=7 PrePaint=6 HitTest=5 Layout=4
+  +    836 ms  frame   45.3 ms  | Paint=16 Layerize=12 FunctionCall=7 FireAnimationFrame=7 PrePaint=6 HitTest=4 Layout=4
+  +    916 ms  frame   13.7 ms  | FireAnimationFrame=13 FunctionCall=13
+  +    930 ms  frame    6.0 ms  | FireAnimationFrame=6 FunctionCall=6
+  +   1000 ms  frame  495.1 ms  | Layout=188 Paint=147 UpdateLayoutTree=106 Layerize=69 PrePaint=43 FireAnimationFrame=6 FunctionCall=6 Commit=5 HitTest=5
+  +   1497 ms  frame    8.3 ms  | FireAnimationFrame=6 FunctionCall=6
+  +   1505 ms  frame  116.9 ms  | Paint=65 Layerize=62 PrePaint=13 FireAnimationFrame=5 FunctionCall=5 Layout=3
+  +   1623 ms  frame  624.1 ms  | FireAnimationFrame=5 FunctionCall=5
+  +   2248 ms  frame    0.2 ms  | 
+
+== Long main-thread tasks (>30 ms) ==
+
+################ traces/proxy_layer_pan.pan_region.trace.json
+renderer pid 747768; window 2578 ms; input events on main: 12
+
+== Renderer main thread: self time by event (top 28) ==
+  PaintArtifactCompositor::Update                             670.6 ms  x10
+  FunctionCall                                                467.5 ms  x253
+  Paint                                                       438.0 ms  x29
+  HitTest                                                     128.4 ms  x29
+  LocalFrameView::performLayout                                83.8 ms  x11
+  Blink.CompositingInputs.UpdateTime                           53.1 ms  x88
+  Blink.PrePaint.UpdateTime                                    37.9 ms  x88
+  Layout                                                       35.6 ms  x11
+  WebFrameWidgetImpl::UpdateLifecycle                          28.1 ms  x62
+  WebFrameWidgetImpl::HandleInputEvent                         21.4 ms  x12
+  LocalFrameView::RunPaintLifecyclePhase                       17.0 ms  x62
+  SvgTextLayoutAlgorithm::Layout                               15.9 ms  x14148
+  InlineNode::FindSvgTextChunks                                14.6 ms  x9963
+  InlineNode::ShapeTextIncludingFirstLine                      11.2 ms  x10904
+  LayoutView::HitTest                                           7.8 ms  x25
+  Blink.Paint.UpdateTime                                        2.9 ms  x62
+  ThreadControllerImpl::RunTask                                 2.5 ms  x230
+  RunTask                                                       2.0 ms  x230
+  LocalFrameView::ScheduleAnimation                             2.0 ms  x135
+  LayerTreeHost::WaitForCommitCompletion                        1.9 ms  x62
+  AsyncTask Run                                                 1.9 ms  x72
+  ProxyMain::BeginMainFrame                                     1.8 ms  x62
+  Commit                                                        1.5 ms  x62
+  EventDispatch                                                 1.2 ms  x36
+  PageAnimator::serviceScriptedAnimations                       1.0 ms  x62
+  CullRectUpdate                                                1.0 ms  x62
+  EventHandler::handleMouseMoveEvent                            0.8 ms  x20
+  Document::recalcStyle                                         0.8 ms  x3
+  TOTAL                                                      2061.7 ms
+
+== Other threads: busy time (top-level slices) in window ==
+  Service: network.mojom Chrome_ChildIOThread                    632.1 ms
+  GPU Process            CrGpuMain                               569.7 ms
+  Browser                ThreadPoolForegroundWorker              414.2 ms
+  Renderer               ThreadPoolForegroundWorker              272.3 ms
+  Service: unzip.mojom.U ThreadPoolForegroundWorker              171.6 ms
+  Browser                CrBrowserMain                            94.2 ms
+  Renderer               Compositor                               92.4 ms
+  Browser                Chrome_IOThread                          65.5 ms
+  Browser                ThreadPoolSingleThreadForegroundBlocking1      58.9 ms
+  Browser                ThreadPoolForegroundWorker               56.4 ms
+  Service: tracing.mojom tracing.CrUtilityMain                    40.2 ms
+  GPU Process            VizCompositorThread                      28.3 ms
+  Service: unzip.mojom.U ThreadPoolForegroundWorker               25.8 ms
+  Service: unzip.mojom.U ThreadPoolForegroundWorker               20.8 ms
+
+== Main-thread frames in window: 62 ==
+  +     37 ms  frame  142.7 ms  | Layerize=82 Paint=79 FunctionCall=6 FireAnimationFrame=6 PrePaint=4 Layout=3
+  +    180 ms  frame  116.3 ms  | Paint=80 Layerize=57 FireAnimationFrame=7 FunctionCall=7 PrePaint=4 Layout=3
+  +    310 ms  frame  114.4 ms  | Paint=76 Layerize=55 FunctionCall=7 FireAnimationFrame=6 PrePaint=4 Layout=4
+  +    426 ms  frame  119.4 ms  | Paint=78 Layerize=60 FireAnimationFrame=6 FunctionCall=6 PrePaint=5 Layout=4
+  +    546 ms  frame  116.9 ms  | Paint=78 Layerize=58 FireAnimationFrame=7 FunctionCall=7 PrePaint=4 Layout=4
+  +    664 ms  frame  147.3 ms  | Layerize=85 Paint=82 FireAnimationFrame=8 FunctionCall=8 PrePaint=4 Layout=3
+  +    812 ms  frame  121.9 ms  | Paint=83 Layerize=60 FireAnimationFrame=7 FunctionCall=7 PrePaint=5 Layout=4
+  +    935 ms  frame  138.8 ms  | Paint=117 Layerize=60 FireAnimationFrame=7 FunctionCall=7 PrePaint=4 Layout=3
+  +   1243 ms  frame  154.4 ms  | Paint=123 Layerize=79 FireAnimationFrame=7 FunctionCall=7
+  +   1399 ms  frame  139.4 ms  | Paint=79 Layerize=75 PrePaint=13 FireAnimationFrame=7 FunctionCall=7 Layout=3
+
+################ traces/gpu_off_notches.zoom_in_notches.trace.json
+renderer pid 743417; window 3926 ms; input events on main: 6
+
+== Renderer main thread: self time by event (top 28) ==
+  Document::recalcStyle                                      1325.8 ms  x7
+  LocalFrameView::performLayout                               633.4 ms  x9
+  FunctionCall                                                307.0 ms  x114
+  PaintArtifactCompositor::Update                             149.2 ms  x7
+  Paint                                                       148.8 ms  x14
+  Blink.PrePaint.UpdateTime                                   136.5 ms  x56
+  V8.GC_MARK_COMPACTOR                                        127.4 ms  x1
+  Document::rebuildLayoutTree                                 108.6 ms  x4
+  V8.GC_MC_INCREMENTAL_EMBEDDER_TRACING                        90.3 ms  x279
+  ThreadControllerImpl::RunTask                                87.1 ms  x155
+  HitTest                                                      82.9 ms  x12
+  InlineNode::ShapeTextIncludingFirstLine                      81.8 ms  x65103
+  SvgTextLayoutAlgorithm::Layout                               75.4 ms  x71268
+  InlineNode::FindSvgTextChunks                                75.0 ms  x59227
+  Blink.CompositingInputs.UpdateTime                           70.5 ms  x56
+  Layout                                                       25.7 ms  x9
+  WebFrameWidgetImpl::UpdateLifecycle                          20.3 ms  x52
+  Document::updateStyleInvalidationIfNeeded                     4.7 ms  x1
+  LocalFrameView::RunPaintLifecyclePhase                        4.0 ms  x51
+  V8.GC_HEAP_EMBEDDER_TRACING_EPILOGUE                          2.8 ms  x1
+  Document::updateStyle                                         2.5 ms  x7
+  Blink.Paint.UpdateTime                                        2.0 ms  x51
+  LayoutView::HitTest                                           1.8 ms  x6
+  LayerTreeHost::WaitForCommitCompletion                        1.2 ms  x51
+  RunTask                                                       1.2 ms  x157
+  ProxyMain::BeginMainFrame                                     1.2 ms  x52
+  LocalFrameView::ScheduleAnimation                             1.1 ms  x107
+  AsyncTask Run                                                 1.1 ms  x59
+  TOTAL                                                      3582.6 ms
+
+== Other threads: busy time (top-level slices) in window ==
+  Renderer               ThreadPoolForegroundWorker              693.8 ms
+  Renderer               ThreadPoolForegroundWorker              336.5 ms
+  GPU Process            CrGpuMain                               233.9 ms
+  Renderer               ThreadPoolForegroundWorker               99.9 ms
+  Renderer               Compositor                               94.2 ms
+  Renderer               ThreadPoolForegroundWorker               73.2 ms
+  Renderer               ThreadPoolForegroundWorker               71.9 ms
+  Renderer               ThreadPoolForegroundWorker               71.9 ms
+  Renderer               ThreadPoolForegroundWorker               69.2 ms
+  Renderer               ThreadPoolForegroundWorker               68.5 ms
+  Renderer               ThreadPoolForegroundWorker               67.3 ms
+  Renderer               ThreadPoolForegroundWorker               64.2 ms
+  Renderer               ThreadPoolForegroundWorker               61.9 ms
+  Renderer               ThreadPoolForegroundWorker               60.9 ms
+
+== Main-thread frames in window: 51 ==
+  +    765 ms  frame  573.5 ms  | UpdateLayoutTree=430 Layout=54 Paint=48 PrePaint=24 Layerize=22 Commit=9 HitTest=9 FireAnimationFrame=6 FunctionCall=6
+  +   1695 ms  frame  252.6 ms  | Layout=126 UpdateLayoutTree=69 PrePaint=24 Paint=22 Layerize=13 FireAnimationFrame=5 FunctionCall=5
+  +   1953 ms  frame  264.6 ms  | Layout=124 UpdateLayoutTree=72 PrePaint=31 Paint=22 Layerize=14 FunctionCall=6 FireAnimationFrame=6 HitTest=3
+  +   2226 ms  frame  196.6 ms  | Layout=132 PrePaint=25 Paint=22 Layerize=12 Commit=8 HitTest=7 FunctionCall=6 FireAnimationFrame=6
+  +   2423 ms  frame  193.1 ms  | Layout=131 PrePaint=26 Paint=24 Layerize=11 FunctionCall=6 FireAnimationFrame=6 HitTest=2
+  +   2622 ms  frame    6.0 ms  | FireAnimationFrame=6 FunctionCall=6
+  +   2633 ms  frame  568.5 ms  | UpdateLayoutTree=228 Layout=154 Paint=136 Layerize=62 PrePaint=48 FireAnimationFrame=5 FunctionCall=5
+  +   3203 ms  frame    8.2 ms  | FireAnimationFrame=6 FunctionCall=6
+  +   3216 ms  frame    5.8 ms  | FireAnimationFrame=6 FunctionCall=6
+  +   3227 ms  frame    5.5 ms  | FireAnimationFrame=5 FunctionCall=5
+

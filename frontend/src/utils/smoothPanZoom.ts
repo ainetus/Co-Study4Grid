@@ -9,11 +9,20 @@ import { useSyncExternalStore } from 'react';
 import { interactionLogger } from './interactionLogger';
 
 /**
- * Pan/zoom rendering mode preference — an OPT-IN, off-by-default setting that
- * changes how usePanZoom renders a gesture on large grids:
+ * Pan/zoom rendering mode preference — how usePanZoom renders a gesture:
  *
- *  - 'off'    (default, safe everywhere): per-frame viewBox rewrite + the
- *             interaction-time paint culling in App.css. GPU-independent.
+ *  - 'canvas' (default): draw a light stand-in of the network (grouped Path2D
+ *             per style and grid cell, utils/svg/canvasProxy.ts) on a canvas
+ *             over the live SVG during the gesture and rewrite the live
+ *             viewBox once, when the operator pauses. 30–60 fps on the full
+ *             European grid, with or without a GPU, every gesture complete
+ *             (docs/performance/canvas-gesture-proxy.md). Falls back to 'off'
+ *             where no proxy can be drawn (no Path2D / 2D canvas) and on
+ *             surfaces that opt out (the Action overview).
+ *  - 'off'    ("Classic", safe everywhere): per-frame viewBox rewrite + the
+ *             interaction-time paint culling in App.css. GPU-independent, but
+ *             every frame restyles and re-lays out the whole SVG (2–5 fps on
+ *             the European grid).
  *  - 'gpu'    : compositor-only CSS transform on the live <svg> during the
  *             gesture, baking back to viewBox on settle. Smoother on GPU, but
  *             Chrome still re-rasters the huge vector layer each frame, so the
@@ -21,28 +30,35 @@ import { interactionLogger } from './interactionLogger';
  *  - 'bitmap' : rasterise the NAD to a <canvas> ONCE at gesture start and
  *             transform that bitmap during the gesture (compositor-only, no
  *             vector re-raster), baking back to the live SVG on settle.
- *             Benchmarked at 120 fps / 0 dropped frames on the 5247-VL grid
- *             (~6× the GPU path) and composites cheaply even in software — at
- *             the cost of a one-shot raster of a multi-MB SVG at gesture start.
+ *             Fast on an M4 Pro, but Chrome cannot createImageBitmap() an SVG
+ *             blob, so the snapshot decodes on the main thread (0.4–3 s per
+ *             gesture on an Intel laptop) and the gesture runs on the slow
+ *             path meanwhile.
+ *
+ * An explicit choice is kept (stored 'off' stays classic); only operators who
+ * never picked a mode get the default.
  *
  * Modelled as a tiny singleton (like interactionLogger / gameBridge / useTheme)
  * rather than threaded through props, because four independent usePanZoom
  * instances (N / N-1 / Action / overview) read it imperatively at gesture
  * start, and only the Settings selector writes it. localStorage-persisted.
  */
-export type PanZoomMode = 'off' | 'gpu' | 'bitmap';
+export type PanZoomMode = 'off' | 'gpu' | 'bitmap' | 'canvas';
 
 const STORAGE_KEY = 'cs4g-smooth-pan-zoom';
+
+/** Mode until the operator picks one in Settings. */
+export const DEFAULT_PAN_ZOOM_MODE: PanZoomMode = 'canvas';
 
 const readInitial = (): PanZoomMode => {
     try {
         const v = localStorage.getItem(STORAGE_KEY);
-        if (v === 'gpu' || v === 'bitmap' || v === 'off') return v;
+        if (v === 'gpu' || v === 'bitmap' || v === 'canvas' || v === 'off') return v;
         if (v === '1') return 'gpu'; // migrate the legacy boolean storage
-        return 'off';
+        return DEFAULT_PAN_ZOOM_MODE;
     } catch {
-        // localStorage unavailable (private mode, SSR-like envs) — default off.
-        return 'off';
+        // localStorage unavailable (private mode, SSR-like envs).
+        return DEFAULT_PAN_ZOOM_MODE;
     }
 };
 
@@ -84,6 +100,6 @@ export const useSmoothPanZoom = (): {
     enabled: boolean;
     setEnabled: (b: boolean) => void;
 } => {
-    const value = useSyncExternalStore(subscribe, getSmoothPanZoomMode, () => 'off' as PanZoomMode);
+    const value = useSyncExternalStore(subscribe, getSmoothPanZoomMode, () => DEFAULT_PAN_ZOOM_MODE);
     return { mode: value, setMode: setSmoothPanZoomMode, enabled: value !== 'off', setEnabled: setSmoothPanZoomEnabled };
 };

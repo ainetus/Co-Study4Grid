@@ -7,6 +7,46 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Frontend — large-grid pan/zoom: canvas gesture proxy (new default) + gesture fixes
+
+- **New default pan/zoom mode: "Canvas proxy"** (Settings → Configurations →
+  *Pan/zoom rendering*). During a pan or zoom a light canvas copy of the
+  network (`utils/svg/canvasProxy.ts`: grouped `Path2D` per style and grid
+  cell, computed colours, zoom-following halos, overview cache) is drawn over
+  the diagram, and the live SVG's viewBox is written once, when the operator
+  pauses (400 ms after the last wheel notch or drag). On the full European
+  grid (98,960-node NAD, Intel laptop): 42–60 fps on every zoom and full-extent
+  pan (was 3–5), ~49 fps across a multi-drag navigation and 30 fps on
+  region-zoom pans (was 1–3), first feedback 24–62 ms on zooms and full-extent
+  pans (was 390–560 ms), and every gesture lands where the hand stops — the
+  same or better without a GPU (software raster: 40–60 fps). Flow values and
+  labels reappear at the pause; clicks on the map wait for it. The former
+  default is now **"Classic"** and stays selectable; an explicit earlier
+  choice is kept. The Action overview keeps the classic path (its pins are
+  not drawn by the proxy).
+- **How it stays fast**: the proxy canvas never changes style once mounted
+  (any style change re-layerizes the whole diagram: 50–110 ms; toggling
+  `display` re-rasterised it for ~3 s), drags capture the pointer once they
+  move (a plain click draws nothing), VL hover / clicks are ignored while the
+  proxy covers the diagram (`data-gesture-proxy`), and rebuilds after
+  highlight changes wait for 600 ms of quiet. Without `Path2D` / a 2D canvas,
+  or if a build throws, a gesture takes the classic path.
+- **Gesture fixes on every mode**: a drag's last movement is applied on
+  release (fast drags stopped short); wheel zoom follows the wheel delta
+  (coalesced events lost up to half of a fast zoom; trackpads zoomed 10 % per
+  tiny event) and zooms in and out by the same 1.1 per notch; the drag speed
+  honours the letterboxed aspect ratio (the map slid ~20 % slower than the
+  cursor); the diagram panel is no longer text-selectable; a press takes over
+  a pending wheel settle instead of being baked mid-drag.
+- **Docs and tooling**: `docs/performance/canvas-gesture-proxy.md` (design,
+  time budget, decision log with the measurements behind each rule, tunables,
+  next levers), the audit `docs/performance/large-grid-interaction-audit-2026-11.md`
+  with its CDP harness and the result files of every step
+  (`benchmarks/interaction_paint/audit_*`), and `audit_probe.mjs` for the
+  targeted measurements (style flips, hit tests, rebuild timing, detached
+  windows, layers). The bitmap mode's docs and comments no longer claim an
+  off-thread decode: Chrome decodes its SVG snapshot on the main thread.
+
 ### Context tab — the Carte-Front situation map, first on screen
 
 - **New leftmost "Context" tab**, opened after every study load: the

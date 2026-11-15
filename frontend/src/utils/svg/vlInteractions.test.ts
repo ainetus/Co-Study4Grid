@@ -7,6 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MetadataIndex, NodeMeta } from '../../types';
 import { attachVlInteractions, VL_SINGLE_CLICK_DELAY_MS } from './vlInteractions';
+import { GESTURE_PROXY_ATTR } from './canvasProxy';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -179,6 +180,33 @@ describe('attachVlInteractions', () => {
         // Leaving the disk hides the tooltip again.
         disk.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: null }));
         expect(tip.style.display).toBe('none');
+    });
+
+    it('ignores hover and clicks while the canvas gesture proxy covers the diagram', () => {
+        // The live SVG under the proxy is still at the gesture's start
+        // viewBox: what it hit-tests is not what the operator sees.
+        const { container, disk } = makeContainer();
+        const onSelect = vi.fn();
+        const onOpenSld = vi.fn();
+        cleanups.push(attachVlInteractions(container, makeMetaIndex(), { onSelect, onOpenSld }));
+        container.classList.add('nad-hide-vl-labels');
+        container.setAttribute(GESTURE_PROXY_ATTR, '');
+
+        disk.dispatchEvent(mouse('mouseover'));
+        expect(container.querySelector('.cs4g-vl-hover-tooltip')).toBeNull();
+        disk.dispatchEvent(mouse('mousedown'));
+        disk.dispatchEvent(mouse('click'));
+        disk.dispatchEvent(mouse('dblclick'));
+        vi.advanceTimersByTime(VL_SINGLE_CLICK_DELAY_MS);
+        expect(onSelect).not.toHaveBeenCalled();
+        expect(onOpenSld).not.toHaveBeenCalled();
+
+        // Once the gesture settles, the disk answers again.
+        container.removeAttribute(GESTURE_PROXY_ATTR);
+        disk.dispatchEvent(mouse('mousedown'));
+        disk.dispatchEvent(mouse('click'));
+        vi.advanceTimersByTime(VL_SINGLE_CLICK_DELAY_MS);
+        expect(onSelect).toHaveBeenCalledWith('VL_400');
     });
 
     it('removes its listeners and tooltip node on teardown', () => {

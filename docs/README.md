@@ -61,6 +61,8 @@ current behavior, not historical retrospectives):
 | [`performance-profiling.md`](performance/performance-profiling.md) | Benchmark table + methodology. |
 | [`nad-profile-bare-env.md`](performance/nad-profile-bare-env.md) | Baseline measurements for N-state NAD generation. |
 | [`walkthrough-network-rendering-profiling.md`](performance/walkthrough-network-rendering-profiling.md) | End-to-end profiling trace (14 MB SVG, 26 s cold path). |
+| [`canvas-gesture-proxy.md`](performance/canvas-gesture-proxy.md) | The default pan/zoom renderer: a canvas copy of the network drawn during gestures, the live SVG baked once on a pause. Design and contracts, time budget on the European grid, decision log with the measurements behind each rule, tunables, next levers, how to measure (matrix + probes). |
+| [`large-grid-interaction-audit-2026-11.md`](performance/large-grid-interaction-audit-2026-11.md) | Pan / zoom / navigation fluidity on the full European grid (98,960-node NAD) driven with real input events: where the time goes (main-thread style / layout / layerization, gesture-boundary restyles, wheel / drag bugs), measured prototypes, the canvas gesture proxy (`'canvas'` pan/zoom mode) and a ranked fix list. |
 
 Historical PR writeups — one file per shipped / rejected change —
 live under [`performance/history/`](performance/history/). See that
