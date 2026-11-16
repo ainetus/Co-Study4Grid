@@ -505,14 +505,21 @@ These three studies run on the bundle's own situation, which is synthetic
 (75 GW of load spread over 29 countries). The same grid also ships rebuilt on
 **real 2025 hours** under `data/pypsa_eur_eur220_225_380_400/situations/` —
 **14 January 9:00** (France's consumption peak, 386 GW of load) and
-**1 July 13:00** (heatwave midday, 326 GW) — each with the **observed
-dispatch** and with a **PyPSA optimal dispatch**: real loads and exchanges
+**1 July 13:00** (heatwave midday, 326 GW) — in a **PyPSA optimal
+dispatch**: real loads and exchanges
 from Energy-Charts (Fraunhofer ISE, CC BY 4.0), the real plants of
-powerplantmatching (CC BY 4.0) unit by unit. Load
+powerplantmatching (CC BY 4.0) unit by unit, every unit of 100 MW or more the
+ENTSO-E Transparency Platform capped at its own output (a reactor in outage
+stays off). Load
 `situations/<hour>_<dispatch>/network.xiidm` with the bundle's
 `grid_layout.json` and `actions.json`; the Context tab shows the hour's real
-mix and exchanges, and Game Mode's Medium tier plays one study on each. See
+mix and exchanges, and Game Mode's Medium tier plays two studies on each. See
 `docs/data/pypsa-eur-osm-to-xiidm.md`.
+
+The French 225 / 400 kV grid ships the same two hours under
+`data/pypsa_eur_fr225_400/situations/`: France alone, its exchanges with its
+six neighbours fixed where the lines the grid cuts at the borders land. The
+Context tab draws it at RTE's seven regions, with those exchanges.
 
 ---
 

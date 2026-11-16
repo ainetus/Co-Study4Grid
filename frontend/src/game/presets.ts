@@ -12,8 +12,8 @@ import type { GameStudy } from './types';
 //
 //  - **Medium** (default): the pan-European `pypsa_eur_eur220_225_380_400`
 //    grid rebuilt on real 2025 hours (`situations/`, see
-//    docs/data/pypsa-eur-osm-to-xiidm.md) — one study per situation.
-//    Moderate loadings (101–109 %), so they are clearable with a couple of
+//    docs/data/pypsa-eur-osm-to-xiidm.md) — two studies per hour.
+//    Moderate loadings (102–110 %), so they are clearable with a couple of
 //    actions.
 //  - **High**: the French `pypsa_eur_fr225_400` grid — worst-case ~130 %
 //    loadings that demand sharper remediation.
@@ -65,38 +65,36 @@ function eurSituation(situation: string): GridPaths {
   };
 }
 
-const JAN_OBSERVED = eurSituation('2025-01-14_0800Z_observed');
 const JAN_OPF = eurSituation('2025-01-14_0800Z_opf');
-const JUL_OBSERVED = eurSituation('2025-07-01_1100Z_observed');
 const JUL_OPF = eurSituation('2025-07-01_1100Z_opf');
 
 /**
- * One study per real hour — 14 January 2025 9:00 (France's consumption peak)
- * and 1 July 2025 13:00 (heatwave midday), each with its observed and its
- * PyPSA optimal dispatch. Every one is remediable by the expert model
- * (`can_proceed=True`, a top action clears it) — verified end-to-end by
+ * Two studies per real hour — 14 January 2025 9:00 (France's consumption
+ * peak) and 1 July 2025 13:00 (heatwave midday), both in their PyPSA optimal
+ * dispatch. Every one is remediable by the expert model (`can_proceed=True`,
+ * a top action clears it) — verified end-to-end by
  * `scripts/game_mode/e2e_game_session.py --grid custom`.
  */
 const EUR_STUDIES: GameStudy[] = [
   makeStudy(
-    JAN_OBSERVED, 'eu-jan-observed', 'relation_6630114-225', 'Carrières – Terrier n°2',
-    'France 225 kV, 14 Jan 9:00 (observed)', 101.1,
-    "France's 2025 consumption peak, as dispatched: losing Carrières – Terrier n°2 loads its twin n°1 to 101 %. Bring it back under 100 %.",
+    JAN_OPF, 'eu-jan-opf-2', 'way_130228930-225', 'Échalas – Le Soleil n°2',
+    'Lyon south 225 kV, 14 Jan 9:00', 109.4,
+    "France's 2025 consumption peak: losing Échalas – Le Soleil n°2 loads Échalas – La Rivière to 109 %. Bring it back under 100 %.",
   ),
   makeStudy(
-    JAN_OPF, 'eu-jan-opf', 'relation_13676255-400', 'Divača – Redipuglia',
-    'Slovenia / Italy 400 kV, 14 Jan 9:00 (optimal dispatch)', 104.4,
-    'Same hour, PyPSA optimal dispatch: losing Divača – Redipuglia loads the neighbouring Padriciano – Divača line to 104 %.',
+    JAN_OPF, 'eu-jan-opf', 'way_192698906-400', 'Saint-Avold – Vigy',
+    'Lorraine / Saarland 400 kV, 14 Jan 9:00', 107.7,
+    'Same hour: losing Saint-Avold – Vigy pushes the Ensdorf (DE) – Saint-Avold (FR) tie line to 108 %.',
   ),
   makeStudy(
-    JUL_OBSERVED, 'eu-jul-observed', 'relation_5674507-400', 'Les Attaques – Warande',
-    'Calais – Dunkirk 400 kV, 1 Jul 13:00 (observed)', 109.0,
-    'Heatwave midday, as dispatched: losing Les Attaques – Warande pushes Mandarins – Warande to 109 %. Few of the suggested actions clear it.',
+    JUL_OPF, 'eu-jul-opf-2', 'relation_5674507-400', 'Les Attaques – Warande',
+    'Calais – Dunkirk 400 kV, 1 Jul 13:00', 110.2,
+    'Heatwave midday — Penly at full power, the GB links exporting: losing Les Attaques – Warande pushes Mandarins – Warande to 110 %.',
   ),
   makeStudy(
-    JUL_OPF, 'eu-jul-opf', 'relation_1637163-380', 'Diele – Meeden (zwart)',
-    'Germany / Netherlands 380 kV, 1 Jul 13:00 (optimal dispatch)', 102.1,
-    'Same hour, PyPSA optimal dispatch: one of the two Diele – Meeden circuits trips and the other climbs to 102 %. Re-balance the border.',
+    JUL_OPF, 'eu-jul-opf', 'relation_3710278_b-380', 'Meitingen – Oberbachern',
+    'Bavaria 380 kV, 1 Jul 13:00', 102.2,
+    'Same hour: losing Meitingen – Oberbachern loads Kochel – Murnau, south of Munich, to 102 %.',
   ),
 ];
 
@@ -138,8 +136,8 @@ export const DIFFICULTY_TIERS: DifficultyTier[] = [
   {
     id: 'medium',
     label: 'Medium — European grid',
-    blurb: 'Pan-European 220 / 225 / 380 / 400 kV on real 2025 hours — 14 January 9:00 and 1 July 13:00, observed and optimal dispatch (101–109 % overloads).',
-    ...JAN_OBSERVED,
+    blurb: 'Pan-European 220 / 225 / 380 / 400 kV on real 2025 hours, PyPSA optimal dispatch — 14 January 9:00 and 1 July 13:00 (102–110 % overloads).',
+    ...JAN_OPF,
     studies: EUR_STUDIES,
   },
   {

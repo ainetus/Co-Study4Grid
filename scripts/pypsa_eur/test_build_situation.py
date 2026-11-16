@@ -40,6 +40,7 @@ def _load(name: str):
 
 bs = _load("build_situation")
 fec = _load("fetch_energy_charts")
+feu = _load("fetch_entsoe_units")
 
 AT = "2025-01-14T08:00Z"
 
@@ -207,6 +208,116 @@ def test_observed_dispatch_shares_by_capacity():
     assert sum(p[table["code"] == "SOL"]) == pytest.approx(50.0)
 
 
+def _coded_plants() -> dict:
+    """PLANTS with the ENTSO-E codes ``match_power_plants.py`` records."""
+    record = json.loads(json.dumps(PLANTS))
+    gens = record["generators"]
+    gens["G_fr_a-400"]["capacity_mw"]["Natural Gas"] = 100.0
+    gens["G_fr_a-400"]["eic"] = {"Nuclear": [["Plant 1", 1000.0, ["U_N1"]], ["Plant 2", 1000.0, ["U_N2"]]],
+                                 "Natural Gas": [["Gas B", 100.0, ["U_TWO"]]]}
+    gens["G_fr_b-400"]["eic"] = {"Natural Gas": [["Gas A", 300.0, ["U_GAS", "U_TWO"]]],
+                                 "Solar": [["Farm", 100.0, ["U_ODD"]]]}
+    gens["G_de_c-380"]["eic"] = {"Lignite": [["Lig", 1500.0, ["U_LIG", "U_FR"]]]}
+    return record
+
+
+def _unit(eic: str, kind: str, mw: float) -> dict:
+    return {"eic": eic, "name": eic, "type": kind, "mw": mw, "parts": []}
+
+
+UNITS = {
+    "schema": "costudy4grid-unit-hour/1",
+    "at_utc": AT,
+    "source": {"name": "ENTSO-E Transparency Platform", "url": "https://transparency.entsoe.eu"},
+    "countries": {
+        "FR": {"areas": ["10YFR-RTE------C"], "units": [
+            _unit("U_N1", "B14", 990.0), _unit("U_N2", "B14", -30.0), _unit("U_GAS", "B04", 150.0),
+            _unit("U_TWO", "B04", 80.0), _unit("U_ODD", "B04", 60.0), _unit("U_FR", "B02", 50.0)]},
+        "DE": {"areas": ["10YDE-VE-------2"], "units": [_unit("U_LIG", "B02", 700.0)]},
+    },
+    "missing": {},
+}
+
+
+def _write_units(path: Path, record: dict = UNITS) -> Path:
+    path.write_text(json.dumps(record), encoding="utf-8")
+    return path
+
+
+def _metered(tmp_path: Path):
+    grid = _grid()
+    record = _coded_plants()
+    table = bs.plant_table(grid, record)
+    units, source = bs.read_units(_write_units(tmp_path / "units.json"), AT)
+    return grid, table, bs.metered_plants(table, record, units, grid), source
+
+
+def test_metered_plants_link_units_by_code(tmp_path):
+    grid, table, metered, source = _metered(tmp_path)
+    assert source["name"] == "ENTSO-E Transparency Platform"
+    m = metered.set_index("plant")
+    # A reactor by its unit's name; a stopped one draws its auxiliaries.
+    assert m.loc["Plant 1", ["row", "p"]].tolist() == ["G_fr_a-400_NUC1", 990.0]
+    assert m.loc["Plant 2", "p"] == -30.0
+    # A code listed on two generators (U_TWO) places nothing, nor a unit of a
+    # type its plant lacks (a gas unit on a solar farm), nor one of another
+    # country (U_FR on a German plant).
+    assert m.loc["Gas A", ["row", "p", "units"]].tolist() == ["G_fr_b-400_GAS", 150.0, 1]
+    assert "Gas B" not in m.index and "Farm" not in m.index
+    assert m.loc["Lig", ["row", "p", "units"]].tolist() == ["G_de_c-380_LIG", 700.0, 1]
+    # Denmark is DK1 alone: its national units are left to the shared dispatch.
+    grid.buses.loc["VL_de_c-380", "country"] = "DK"
+    units = bs.read_units(_write_units(tmp_path / "dk.json", {**UNITS, "countries": {
+        "DK": {"areas": [], "units": [_unit("U_LIG", "B02", 700.0)]}}}), AT)[0]
+    assert bs.metered_plants(table.assign(country=table["vl"].map(grid.buses["country"])),
+                             _coded_plants(), units, grid).empty
+    with pytest.raises(ValueError, match="not 2025-01-14T08:00Z"):
+        bs.read_units(_write_units(tmp_path / "other.json", {**UNITS, "at_utc": "2025-07-01T11:00Z"}), AT)
+
+
+def test_one_code_for_several_reactors_is_shared_on_their_site(tmp_path):
+    # Paks: one code for the whole plant, recorded on its first unit only.
+    grid = _grid()
+    record = _coded_plants()
+    record["generators"]["G_fr_a-400"]["eic"]["Nuclear"] = [["Plant 1", 1000.0, ["U_SITE"]]]
+    table = bs.plant_table(grid, record)
+    hour = {**UNITS, "countries": {"FR": {"areas": [], "units": [_unit("U_SITE", "B14", 1800.0)]}}}
+    units = bs.read_units(_write_units(tmp_path / "site.json", hour), AT)[0]
+    m = bs.metered_plants(table, record, units, grid).set_index("row")["p"]
+    assert m.to_dict() == {"G_fr_a-400_NUC1": 900.0, "G_fr_a-400_NUC2": 900.0}
+
+
+def test_share_fills_free_capacity_then_headroom():
+    cap = pd.Series({"a": 1000.0, "b": 500.0, "c": 100.0})
+    known = pd.Series({"a": 400.0, "b": 0.0, "c": 0.0})   # a measured at 400 MW
+    free = pd.Series({"a": 0.0, "b": 500.0, "c": 100.0})  # b and c unmeasured
+    # The rest of the type over the capacity no unit measures, by capacity…
+    assert bs._share(known, free, cap, 700.0, False).tolist() == pytest.approx([400.0, 250.0, 50.0])
+    # …up to 98 % of it; beyond, over the measured plant's headroom…
+    assert bs._share(known, free, cap, 1400.0, False).tolist() == pytest.approx([812.0, 490.0, 98.0])
+    # …and beyond all room, by capacity (the caller stretches it).
+    assert bs._share(known, free, cap, 2000.0, False).sum() == pytest.approx(2000.0)
+
+
+def test_observed_dispatch_keeps_measured_outputs(tmp_path):
+    grid, table, metered, _ = _metered(tmp_path)
+    targets = bs.country_targets(grid, OBSERVED, table)
+    targets["FR"].production["NUC"] = 1000.0
+    p = bs.observed_dispatch(table, targets, metered)
+    # The measured reactor carries the country's nuclear; the stopped one stays off.
+    assert p["G_fr_a-400_NUC1"] == pytest.approx(1000.0)
+    assert p["G_fr_a-400_NUC2"] == 0.0
+    # Gas: 150 MW measured on Gas A, the other 50 MW over the 300 MW no unit
+    # measures — 200 MW beside Gas A, 100 MW at the other bus.
+    assert p["G_fr_b-400_GAS"] == pytest.approx(150.0 + 50.0 * 200 / 300)
+    assert p["G_fr_a-400_GAS"] == pytest.approx(50.0 * 100 / 300)
+    # Lignite measured whole: its 700 MW scaled onto the 1 100 Germany reports;
+    # units measuring more than the country reports scaled down onto it.
+    assert p["G_de_c-380_LIG"] == pytest.approx(1100.0)
+    targets["DE"].production["LIG"] = 500.0
+    assert bs.observed_dispatch(table, targets, metered)["G_de_c-380_LIG"] == pytest.approx(500.0)
+
+
 def test_marginal_cost():
     gas = bs.marginal_cost("GAS", 0.6)
     assert gas == pytest.approx((40.0 + 70.0 * 0.202) / 0.6 + 3.0, abs=1e-3)
@@ -252,6 +363,91 @@ def test_hvdc_border_between_two_grid_countries_is_paired():
     ext = bs.external_injections(grid, targets, _links())
     pair = ext[ext["how"] == "hvdc"]
     assert pair.set_index("country")["p0"].to_dict() == {"FR": -400.0, "DE": 400.0}
+
+
+def _france_alone() -> "bs.Grid":
+    """France on its own: no AC neighbour in the bundle."""
+    buses = _grid().buses.loc[["VL_fr_a-400", "VL_fr_b-400"]]
+    return bs.Grid(buses=buses, ac_pairs=set())
+
+
+def _osm(tmp_path: Path, buses: str, lines: str = "", links: str = "", converters: str = "") -> Path:
+    osm = tmp_path / "osm"
+    osm.mkdir()
+    (osm / "buses.csv").write_text("bus_id,voltage,dc,x,y,country\n" + buses, encoding="utf-8")
+    (osm / "lines.csv").write_text("line_id,bus0,bus1,voltage,i_nom,circuits\n" + lines, encoding="utf-8")
+    (osm / "links.csv").write_text("link_id,bus0,bus1,p_nom\n" + links, encoding="utf-8")
+    (osm / "converters.csv").write_text("converter_id,bus0,bus1\n" + converters, encoding="utf-8")
+    return osm
+
+
+def test_cut_ties_land_where_the_bundle_cut_them(tmp_path):
+    osm = _osm(tmp_path, buses=(
+        "fr_a-400,400,f,2.1,51.0,FR\nfr_b-400,400,f,4.8,45.0,FR\nfr_v-380,380,f,4.85,45.05,FR\n"
+        "fr_w-150,150,f,4.8,45.1,FR\nbe_x-400,400,f,3.0,51.5,BE\nit_y-380,380,f,7.0,45.0,IT\n"
+        "ch_z-150,150,f,6.0,46.0,CH\n"), lines=(
+        "t/be,fr_a-400,be_x-400,400,2.58,2\n"     # lands on a bundle bus
+        "t/it,it_y-380,fr_v-380,380,2.58,\n"      # its French end is no bundle bus: the nearest
+        "t/ch,fr_w-150,ch_z-150,150,1.0,1\n"      # not at the bundle's voltages
+        "l/in,fr_a-400,fr_b-400,400,2.58,1\n"))   # inside the bundle
+    grid = _france_alone()
+    # A 225 kV bus right by the Italian line's French end.
+    grid.buses = pd.concat([grid.buses, pd.DataFrame(
+        {"bus": ["fr_c-225"], "country": ["FR"], "name": ["Coco"], "target_v": [225.0], "key": [1.0],
+         "lon": [4.851], "lat": [45.051]}, index=["VL_fr_c-225"])])
+    grid.buses["kv"] = [400.0, 400.0, 225.0]
+    mapping = {"fr_a-400": "fr_a-400", "fr_b-400": "fr_b-400", "fr_c-225": "fr_c-225"}
+    ties = bs.cut_ties(osm, mapping, grid, {225.0, 400.0}).set_index("line")
+    assert ties["neighbour"].to_dict() == {"t_be": "BE", "t_it": "IT"}
+    # The 380 kV line lands on the nearest 400 kV bus, not on the closer 225 kV one.
+    assert ties["vl"].to_dict() == {"t_be": "VL_fr_a-400", "t_it": "VL_fr_b-400"}
+    assert ties.loc["t_be", "s_nom"] == pytest.approx(3 ** 0.5 * 400 * 2.58 * 2)
+    assert ties.loc["t_it", "s_nom"] == pytest.approx(3 ** 0.5 * 380 * 2.58)
+
+
+def test_an_island_converter_lands_nowhere(tmp_path):
+    osm = _osm(tmp_path, buses=(
+        "fr_a-400,400,f,2.1,51.0,FR\nfr_b-400,400,f,4.8,45.0,FR\ngb_x-400,400,f,1.0,51.2,GB\n"
+        "co_ac,200,f,9.45,42.53,FR\nit_ac-380,380,f,9.0,44.0,IT\n"
+        "dc_fr,320,t,2.1,51.0,FR\ndc_gb,320,t,1.0,51.2,GB\ndc_co,200,t,9.45,42.53,FR\n"
+        "dc_it,200,t,9.0,44.0,IT\n"),
+        links="link/gb,dc_fr,dc_gb,1000\nlink/sacoi,dc_co,dc_it,300\n",
+        converters="c1,fr_a-400,dc_fr\nc2,gb_x-400,dc_gb\nc3,co_ac,dc_co\nc4,it_ac-380,dc_it\n")
+    mapping = {"fr_a-400": "fr_a-400", "fr_b-400": "fr_b-400"}
+    links = bs.hvdc_landings(osm, mapping, _france_alone()).set_index("link")
+    assert links.loc["link/gb", "vl0"] == "VL_fr_a-400"
+    # Corsica's converter lies far off the mainland grid: no landing.
+    assert links.loc["link/sacoi", "vl0"] is None
+
+
+def test_a_country_alone_exchanges_where_its_cut_lines_land():
+    grid = _france_alone()
+    targets = {"FR": bs.Target(load=2000.0, flows={"BE": 1000.0, "IT": -600.0, "GB": 300.0})}
+    ties = pd.DataFrame([("t_be1", "FR", "BE", "VL_fr_a-400", 1500.0),
+                         ("t_be2", "FR", "BE", "VL_fr_b-400", 500.0),
+                         ("t_it", "FR", "IT", "VL_fr_b-400", 3000.0)],
+                        columns=["line", "country", "neighbour", "vl", "s_nom"])
+    links = pd.DataFrame([("link/gb", 1000.0, "FR", "VL_fr_a-400", "GB", None),
+                          ("link/it", 1000.0, "FR", "VL_fr_a-400", "IT", None)],
+                         columns=["link", "p_nom", "c0", "vl0", "c1", "vl1"])
+    ext = bs.external_injections(grid, targets, links, ties)
+    p0 = ext["p0"].round(1).to_dict()
+    # An AC border: the import spread over the cut lines by rating.
+    assert p0["X_BE_fr_a-400"] == -750.0 and p0["X_BE_fr_b-400"] == -250.0
+    # AC lines and an HVDC link on one border share the export by capacity.
+    assert p0["X_IT_fr_b-400"] == 450.0 and p0["X_IT_fr_a-400"] == 150.0
+    assert ext.loc["X_IT_fr_a-400", "how"] == "hvdc" and ext.loc["X_IT_fr_b-400", "how"] == "tie"
+    # No AC line to Great Britain: its link only, as before.
+    assert p0["X_GB_fr_a-400"] == -300.0
+    # A converter and a cut line on one bus make one load.
+    ties.loc[2, "vl"] = "VL_fr_a-400"
+    ext = bs.external_injections(grid, targets, links, ties)
+    assert ext.loc["X_IT_fr_a-400", "p0"] == pytest.approx(600.0)
+    assert ext.loc["X_IT_fr_a-400", "how"] == "hvdc+tie"
+    # A country with an AC neighbour in the bundle keeps its converters.
+    _, _, kept = _targets()
+    kept["FR"].flows = {"DE": -300.0, "GB": 300.0}
+    assert "tie" not in set(bs.external_injections(_grid(), kept, links, ties)["how"])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -327,7 +523,8 @@ def bundle(tmp_path: Path):
         "fr_a-400,400,f,2.1,51.0,FR\nfr_b-400,400,f,4.8,45.0,FR\nde_c-380,380,f,9.0,53.5,DE\n"
         "lt_d-400,400,f,23.0,54.5,LT\ngb_x-400,400,f,1.0,51.2,GB\ndc_fr,320,t,2.1,51.0,FR\n"
         "dc_gb,320,t,1.0,51.2,GB\n", encoding="utf-8")
-    (osm / "lines.csv").write_text("line_id,voltage,i_nom,circuits\nl1,400,2.58,1\nl2,400,2.58,2\nl3,380,1.29,1\n",
+    (osm / "lines.csv").write_text("line_id,bus0,bus1,voltage,i_nom,circuits\nl1,fr_a-400,fr_b-400,400,2.58,1\n"
+                                   "l2,fr_b-400,de_c-380,400,2.58,2\nl3,de_c-380,lt_d-400,380,1.29,1\n",
                                    encoding="utf-8")
     (osm / "links.csv").write_text("link_id,bus0,bus1,p_nom\nlink/gb,dc_fr,dc_gb,1000\n", encoding="utf-8")
     (osm / "converters.csv").write_text("converter_id,bus0,bus1\nc1,fr_a-400,dc_fr\nc2,gb_x-400,dc_gb\n",
@@ -375,8 +572,24 @@ def test_build_end_to_end(bundle):
     assert lim["l2"] == pytest.approx(5160.0) and lim["l3"] == pytest.approx(1290.0)
 
 
+def test_build_with_unit_outputs(bundle):
+    b, osm, observed, out = bundle
+    (b / "power_plants.json").write_text(json.dumps(_coded_plants()), encoding="utf-8")
+    hour = json.loads(json.dumps(UNITS))
+    hour["countries"]["FR"]["units"][:2] = [_unit("U_N1", "B14", 1000.0), _unit("U_N2", "B14", 600.0)]
+    summary = bs.build(b, observed, "observed", osm, out, units_path=_write_units(out.parent / "u.json", hour))
+    # Each reactor at its own output, not both at the country's 80 %.
+    assert summary["countries"]["FR"]["production_metered_mw"]["NUC"] == 1600.0
+    assert summary["units"]["units_placed"] == 4
+    assert [s["name"] for s in summary["sources"]][1] == "ENTSO-E Transparency Platform"
+    import pypowsybl as pp
+    gens = pp.network.load(str(out / "network.xiidm")).get_generators(attributes=["target_p"])
+    assert gens.loc["G_fr_a-400_NUC1", "target_p"] == pytest.approx(1000.0)
+    assert gens.loc["G_fr_a-400_NUC2", "target_p"] == pytest.approx(600.0)
+
+
 def test_cli_help():
-    for script in ("build_situation.py", "fetch_energy_charts.py"):
+    for script in ("build_situation.py", "fetch_energy_charts.py", "fetch_entsoe_units.py"):
         out = subprocess.run([sys.executable, str(HERE / script), "--help"],
                              capture_output=True, text=True, check=True)
         assert "--at" in out.stdout or "--dispatch" in out.stdout
@@ -431,6 +644,92 @@ def test_fetch_country_prefers_totals_with_self_supply(monkeypatch):
     # Albania is not covered: no call at all.
     calls.clear()
     assert fec.fetch_country("AL", fec.parse_instant(AT)) is None and calls == []
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# fetch_entsoe_units.py
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _series(side: str, eic: str, start: str, end: str, step: str, points: dict[int, float]) -> str:
+    pts = "".join(f"<Point><position>{k}</position><quantity>{v}</quantity></Point>" for k, v in points.items())
+    return (f"<TimeSeries><{side}BiddingZone_Domain.mRID codingScheme='A01'>Z</{side}BiddingZone_Domain.mRID>"
+            f"<registeredResource.mRID codingScheme='A01'>{eic}</registeredResource.mRID>"
+            "<curveType>A03</curveType><MktPSRType><psrType>B10</psrType><PowerSystemResources>"
+            f"<mRID codingScheme='A01'>{eic}_G</mRID><name>{eic} 1</name></PowerSystemResources></MktPSRType>"
+            f"<Period><timeInterval><start>{start}</start><end>{end}</end></timeInterval>"
+            f"<resolution>{step}</resolution>{pts}</Period></TimeSeries>")
+
+
+A73 = ("<GL_MarketDocument xmlns='urn:iec62325.351:tc57wg16:451-6:generationloaddocument:3:0'>"
+       # 07:00–09:00 by quarter hours, a block holding until the next point:
+       # 100, 100, 300, 300 over the hour from 08:00 — 200 MW.
+       + _series("in", "P1", "2025-01-14T07:00Z", "2025-01-14T09:00Z", "PT15M", {1: 999, 5: 100, 7: 300})
+       # Its pumping, hourly: 40 MW drawn.
+       + _series("out", "P1", "2025-01-14T08:00Z", "2025-01-14T09:00Z", "PT60M", {1: 40})
+       # A unit the hour has no value for.
+       + _series("in", "P2", "2025-01-14T07:00Z", "2025-01-14T08:00Z", "PT60M", {1: 50})
+       + "</GL_MarketDocument>")
+
+
+def test_parse_units_holds_blocks_and_nets_consumption():
+    units = feu.parse_units(A73.encode(), feu.parse_instant(AT))
+    assert units == [{"eic": "P1", "name": "P1 1", "type": "B10", "mw": 160.0, "parts": ["P1_G"]}]
+
+
+def test_parse_units_falls_back_on_the_generation_unit():
+    # A series may name its generation unit alone (a Polish one does).
+    bare = _series("in", "P3", "2025-01-14T08:00Z", "2025-01-14T09:00Z", "PT60M", {1: 70}).replace(
+        "<registeredResource.mRID codingScheme='A01'>P3</registeredResource.mRID>", "")
+    doc = ("<GL_MarketDocument xmlns='urn:iec62325.351:tc57wg16:451-6:generationloaddocument:3:0'>"
+           + bare + "</GL_MarketDocument>")
+    assert [(u["eic"], u["mw"]) for u in feu.parse_units(doc.encode(), feu.parse_instant(AT))] == [("P3_G", 70.0)]
+
+
+def test_fetch_units_country_gathers_its_control_areas(monkeypatch):
+    calls = []
+
+    def fake_get(token, **params):
+        calls.append((token, params["in_Domain"], params["periodStart"], params["periodEnd"]))
+        return A73.encode() if params["in_Domain"] == "10YDE-RWENET---I" else b"<Acknowledgement/>"
+
+    monkeypatch.setattr(feu, "_get", fake_get)
+    data = feu.fetch_country("tok", "DE", feu.parse_instant(AT))
+    assert [c[1] for c in calls] == list(feu.CONTROL_AREAS["DE"])
+    assert calls[0][2:] == ("202501140800", "202501140900")
+    assert [u["eic"] for u in data["units"]] == ["P1"]
+    assert feu.fetch_country("tok", "GB", feu.parse_instant(AT)) is None
+
+
+def test_entsoe_token_travels_in_a_header(monkeypatch, tmp_path):
+    seen = {}
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def read(self):
+            return b"<doc/>"
+
+    def fake_urlopen(request, timeout):
+        seen["url"], seen["headers"] = request.full_url, dict(request.header_items())
+        return Response()
+
+    monkeypatch.setattr(feu.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(feu, "PAUSE_S", 0.0)
+    assert feu._get("secret-token", documentType="A73", in_Domain="X") == b"<doc/>"
+    assert "secret-token" not in seen["url"] and "documentType=A73" in seen["url"]
+    assert "secret-token" in seen["headers"].values()
+    (tmp_path / "token.txt").write_text(" abc \n", encoding="utf-8")
+    assert feu.read_token(tmp_path / "token.txt") == "abc"
+    monkeypatch.setenv(feu.TOKEN_ENV, "xyz")
+    assert feu.read_token(None) == "xyz"
+    monkeypatch.delenv(feu.TOKEN_ENV)
+    with pytest.raises(SystemExit):
+        feu.read_token(None)
 
 
 def test_network_countries(tmp_path):

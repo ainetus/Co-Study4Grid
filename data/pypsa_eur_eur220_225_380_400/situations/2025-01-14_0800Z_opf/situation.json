@@ -10,6 +10,11 @@
    "attribution": "energy-charts.info"
   },
   {
+   "name": "ENTSO-E Transparency Platform",
+   "url": "https://transparency.entsoe.eu",
+   "dataset": "Actual Generation per Generation Unit [16.1.A]"
+  },
+  {
    "name": "powerplantmatching",
    "licence": "CC BY 4.0",
    "url": "https://github.com/PyPSA/powerplantmatching"
@@ -25,26 +30,26 @@
    {
     "iteration": 0,
     "status": "CONVERGED",
-    "slack_mw": 7017.9
+    "slack_mw": 6978.6
    },
    {
     "iteration": 1,
     "status": "CONVERGED",
-    "slack_mw": -197.0
+    "slack_mw": -181.1
    },
    {
     "iteration": 2,
     "status": "CONVERGED",
-    "slack_mw": 4.9
+    "slack_mw": 3.6
    }
   ],
-  "losses_mw": 5063.7
+  "losses_mw": 4942.7
  },
  "totals": {
-  "load_mw": 385646.5,
-  "production_mw": 385430.2,
+  "load_mw": 385669.9,
+  "production_mw": 385470.9,
   "external_export_mw": -5280.0,
-  "generators": 11672,
+  "generators": 11673,
   "external_injections": 22
  },
  "countries": {
@@ -52,7 +57,7 @@
    "source": "fallback",
    "load_observed_mw": 1782.3,
    "load_balanced_mw": 1782.3,
-   "load_model_mw": 1751.3,
+   "load_model_mw": 1751.4,
    "production_observed_mw": {
     "HYD": 1178.2,
     "ROR": 486.6,
@@ -66,13 +71,17 @@
     "WON": 97.5
    },
    "net_export_observed_mw": null,
-   "net_export_model_mw": 81.2
+   "net_export_model_mw": 80.6,
+   "metered_plants": 2,
+   "production_metered_mw": {
+    "HYD": 477.9
+   }
   },
   "AT": {
    "source": "observed",
    "load_observed_mw": 9988.4,
    "load_balanced_mw": 9933.3,
-   "load_model_mw": 9760.7,
+   "load_model_mw": 9761.3,
    "production_observed_mw": {
     "BIO": 272.0,
     "GAS": 2897.5,
@@ -85,24 +94,30 @@
     "WST": 100.0
    },
    "production_model_mw": {
-    "BIO": 264.5,
-    "GAS": 2296.3,
-    "HYD": 472.6,
-    "OTH": 21.1,
-    "PSP": 1335.4,
+    "BIO": 262.0,
+    "GAS": 2029.5,
+    "HYD": 469.7,
+    "OTH": 20.4,
+    "PSP": 1286.1,
     "ROR": 2315.5,
     "SOL": 712.6,
     "WON": 71.0,
     "WST": 100.0
    },
    "net_export_observed_mw": -1000.0,
-   "net_export_model_mw": -2226.0
+   "net_export_model_mw": -2547.4,
+   "metered_plants": 11,
+   "production_metered_mw": {
+    "GAS": 2491.3,
+    "HYD": 28.8,
+    "PSP": 1251.2
+   }
   },
   "BA": {
    "source": "observed",
    "load_observed_mw": 1745.9,
    "load_balanced_mw": 1676.9,
-   "load_model_mw": 1647.8,
+   "load_model_mw": 1647.9,
    "production_observed_mw": {
     "HYD": 573.8,
     "LIG": 1298.5,
@@ -118,13 +133,19 @@
     "WON": 69.1
    },
    "net_export_observed_mw": 400.0,
-   "net_export_model_mw": -86.1
+   "net_export_model_mw": -87.8,
+   "metered_plants": 8,
+   "production_metered_mw": {
+    "HYD": 238.5,
+    "LIG": 1298.5,
+    "PSP": 0.4
+   }
   },
   "BE": {
    "source": "observed",
    "load_observed_mw": 12916.4,
    "load_balanced_mw": 13005.3,
-   "load_model_mw": 12779.3,
+   "load_model_mw": 12780.1,
    "production_observed_mw": {
     "BIO": 244.0,
     "GAS": 5216.4,
@@ -140,25 +161,32 @@
    },
    "production_model_mw": {
     "BIO": 244.0,
-    "GAS": 5731.2,
+    "GAS": 5786.9,
     "NUC": 3956.4,
-    "OIL": 252.2,
+    "OIL": 253.8,
     "OTH": 7.6,
-    "PSP": 567.6,
+    "PSP": 567.7,
     "ROR": 76.8,
-    "SOL": 532.7,
+    "SOL": 532.6,
     "WOF": 623.1,
     "WON": 591.8,
     "WST": 191.3
    },
    "net_export_observed_mw": -900.0,
-   "net_export_model_mw": -107.6
+   "net_export_model_mw": -47.7,
+   "metered_plants": 23,
+   "production_metered_mw": {
+    "GAS": 3025.2,
+    "NUC": 3501.2,
+    "PSP": 568.1,
+    "WOF": 534.7
+   }
   },
   "BG": {
    "source": "observed",
    "load_observed_mw": 6848.7,
    "load_balanced_mw": 6252.7,
-   "load_model_mw": 6144.0,
+   "load_model_mw": 6144.4,
    "production_observed_mw": {
     "BIO": 14.2,
     "COA": 53.2,
@@ -174,9 +202,9 @@
    "production_model_mw": {
     "BIO": 13.7,
     "COA": 723.6,
-    "GAS": 490.5,
+    "GAS": 472.5,
     "HYD": 212.1,
-    "LIG": 961.2,
+    "LIG": 1043.8,
     "NUC": 1975.8,
     "ROR": 79.8,
     "SOL": 485.5,
@@ -184,13 +212,17 @@
     "WST": 2.4
    },
    "net_export_observed_mw": -400.0,
-   "net_export_model_mw": -927.5
+   "net_export_model_mw": -866.6,
+   "metered_plants": 1,
+   "production_metered_mw": {
+    "LIG": 77.0
+   }
   },
   "CH": {
    "source": "observed",
    "load_observed_mw": 10432.7,
    "load_balanced_mw": 10448.6,
-   "load_model_mw": 10267.0,
+   "load_model_mw": 10267.6,
    "production_observed_mw": {
     "HYD": 4823.2,
     "NUC": 2961.4,
@@ -202,22 +234,29 @@
    },
    "production_model_mw": {
     "GAS": 88.9,
-    "HYD": 4823.3,
+    "HYD": 4823.2,
     "NUC": 2961.4,
     "OTH": 453.7,
-    "PSP": 1275.5,
+    "PSP": 1361.5,
     "ROR": 1747.2,
     "SOL": 334.8,
     "WON": 52.8
    },
    "net_export_observed_mw": 1200.0,
-   "net_export_model_mw": 1418.4
+   "net_export_model_mw": 1506.2,
+   "metered_plants": 17,
+   "production_metered_mw": {
+    "HYD": 668.0,
+    "NUC": 2968.9,
+    "PSP": 1361.5,
+    "ROR": 111.6
+   }
   },
   "CZ": {
    "source": "observed",
    "load_observed_mw": 10261.1,
    "load_balanced_mw": 9989.6,
-   "load_model_mw": 9816.0,
+   "load_model_mw": 9816.6,
    "production_observed_mw": {
     "BIO": 332.0,
     "COA": 383.4,
@@ -235,10 +274,10 @@
    },
    "production_model_mw": {
     "BIO": 332.0,
-    "COA": 1127.9,
+    "COA": 1177.2,
     "GAS": 1637.1,
     "HYD": 162.5,
-    "LIG": 1997.7,
+    "LIG": 2192.1,
     "NUC": 3519.9,
     "OTH": 64.8,
     "PSP": 112.5,
@@ -248,13 +287,17 @@
     "WST": 23.4
    },
    "net_export_observed_mw": 200.0,
-   "net_export_model_mw": -357.0
+   "net_export_model_mw": -118.6,
+   "metered_plants": 1,
+   "production_metered_mw": {
+    "PSP": 48.9
+   }
   },
   "DE": {
    "source": "observed",
    "load_observed_mw": 79983.6,
    "load_balanced_mw": 80056.7,
-   "load_model_mw": 78665.4,
+   "load_model_mw": 78670.1,
    "production_observed_mw": {
     "BIO": 5230.7,
     "COA": 6044.7,
@@ -271,28 +314,38 @@
     "WST": 1029.4
    },
    "production_model_mw": {
-    "BIO": 5117.9,
-    "COA": 13681.6,
-    "GAS": 13626.1,
+    "BIO": 5101.6,
+    "COA": 13674.2,
+    "GAS": 13721.6,
     "HYD": 384.3,
-    "LIG": 16077.0,
-    "OIL": 97.4,
-    "OTH": 1307.5,
-    "PSP": 2424.9,
+    "LIG": 16024.5,
+    "OIL": 277.3,
+    "OTH": 1265.0,
+    "PSP": 2424.8,
     "ROR": 2040.4,
-    "SOL": 8562.7,
+    "SOL": 8562.6,
     "WOF": 4999.5,
     "WON": 16959.6,
     "WST": 1020.9
    },
    "net_export_observed_mw": 4100.0,
-   "net_export_model_mw": 6685.4
+   "net_export_model_mw": 6835.8,
+   "metered_plants": 55,
+   "production_metered_mw": {
+    "COA": 4021.0,
+    "GAS": 8653.8,
+    "LIG": 10075.2,
+    "OIL": 173.5,
+    "PSP": 1176.8,
+    "ROR": 248.9,
+    "WST": 57.3
+   }
   },
   "DK": {
    "source": "observed",
    "load_observed_mw": 3556.4,
    "load_balanced_mw": 3556.4,
-   "load_model_mw": 3494.6,
+   "load_model_mw": 3494.8,
    "production_observed_mw": {
     "BIO": 354.8,
     "COA": 134.6,
@@ -312,13 +365,13 @@
     "WST": 52.6
    },
    "net_export_observed_mw": -100.0,
-   "net_export_model_mw": 853.4
+   "net_export_model_mw": 853.2
   },
   "ES": {
    "source": "observed",
    "load_observed_mw": 36394.0,
    "load_balanced_mw": 36048.0,
-   "load_model_mw": 35421.5,
+   "load_model_mw": 35423.7,
    "production_observed_mw": {
     "BIO": 445.0,
     "COA": 875.0,
@@ -335,24 +388,33 @@
    },
    "production_model_mw": {
     "BIO": 445.0,
-    "GAS": 11666.6,
+    "GAS": 11557.5,
     "HYD": 4276.1,
     "NUC": 7118.0,
     "OTH": 9.0,
     "PSP": 1932.0,
     "ROR": 1310.0,
-    "SOL": 3200.2,
-    "WON": 5384.2,
+    "SOL": 3200.1,
+    "WON": 5384.1,
     "WST": 201.0
    },
    "net_export_observed_mw": 100.0,
-   "net_export_model_mw": -232.1
+   "net_export_model_mw": -350.6,
+   "metered_plants": 43,
+   "production_metered_mw": {
+    "COA": 358.0,
+    "GAS": 6863.6,
+    "NUC": 7099.2,
+    "PSP": 288.0,
+    "SOL": 224.0,
+    "WON": 49.2
+   }
   },
   "FR": {
    "source": "observed",
    "load_observed_mw": 86572.9,
    "load_balanced_mw": 86410.2,
-   "load_model_mw": 84908.4,
+   "load_model_mw": 84913.6,
    "production_observed_mw": {
     "BIO": 497.3,
     "COA": 585.8,
@@ -368,27 +430,39 @@
     "WST": 282.4
    },
    "production_model_mw": {
-    "BIO": 497.3,
+    "BIO": 463.0,
     "COA": 1482.0,
-    "GAS": 9666.8,
-    "HYD": 4949.0,
-    "NUC": 45539.1,
-    "OIL": 1872.8,
-    "PSP": 4214.2,
-    "ROR": 6996.3,
-    "SOL": 1249.3,
+    "GAS": 8680.6,
+    "HYD": 5024.0,
+    "NUC": 47124.6,
+    "OIL": 2439.8,
+    "PSP": 4141.4,
+    "ROR": 6848.0,
+    "SOL": 1247.2,
     "WOF": 89.7,
-    "WON": 2213.7,
-    "WST": 274.3
+    "WON": 2214.6,
+    "WST": 274.0
    },
    "net_export_observed_mw": -3700.0,
-   "net_export_model_mw": -7136.8
+   "net_export_model_mw": -6066.5,
+   "metered_plants": 93,
+   "production_metered_mw": {
+    "BIO": 0.0,
+    "COA": 588.1,
+    "GAS": 4730.7,
+    "HYD": 1516.2,
+    "NUC": 52975.7,
+    "OIL": 1258.1,
+    "PSP": 2857.9,
+    "ROR": 265.4,
+    "WOF": 33.9
+   }
   },
   "GR": {
    "source": "observed",
    "load_observed_mw": 7898.0,
    "load_balanced_mw": 7639.0,
-   "load_model_mw": 7506.2,
+   "load_model_mw": 7506.7,
    "production_observed_mw": {
     "GAS": 4181.0,
     "HYD": 353.0,
@@ -398,21 +472,29 @@
     "WON": 2482.0
    },
    "production_model_mw": {
-    "GAS": 6659.4,
+    "GAS": 6674.3,
     "HYD": 353.0,
-    "LIG": 2858.4,
+    "LIG": 2836.9,
     "PSP": 1.0,
-    "SOL": 441.1,
+    "SOL": 441.0,
     "WON": 2482.0
    },
    "net_export_observed_mw": 700.0,
-   "net_export_model_mw": 5126.2
+   "net_export_model_mw": 5117.8,
+   "metered_plants": 25,
+   "production_metered_mw": {
+    "GAS": 4096.0,
+    "HYD": 289.0,
+    "LIG": 881.0,
+    "PSP": 1.0,
+    "ROR": 0.0
+   }
   },
   "HR": {
    "source": "observed",
    "load_observed_mw": 2798.8,
    "load_balanced_mw": 2766.5,
-   "load_model_mw": 2718.4,
+   "load_model_mw": 2718.6,
    "production_observed_mw": {
     "BIO": 67.2,
     "GAS": 521.0,
@@ -425,7 +507,6 @@
    },
    "production_model_mw": {
     "BIO": 67.2,
-    "GAS": 71.8,
     "HYD": 658.3,
     "PSP": 225.2,
     "ROR": 163.1,
@@ -434,13 +515,13 @@
     "WST": 8.0
    },
    "net_export_observed_mw": -300.0,
-   "net_export_model_mw": -728.7
+   "net_export_model_mw": -800.3
   },
   "HU": {
    "source": "observed",
    "load_observed_mw": 6062.8,
    "load_balanced_mw": 6026.0,
-   "load_model_mw": 5921.3,
+   "load_model_mw": 5921.6,
    "production_observed_mw": {
     "BIO": 177.9,
     "COA": 38.6,
@@ -456,7 +537,7 @@
    "production_model_mw": {
     "BIO": 177.9,
     "COA": 36.6,
-    "GAS": 2373.5,
+    "GAS": 2374.3,
     "HYD": 14.3,
     "NUC": 1944.5,
     "OTH": 55.7,
@@ -465,13 +546,20 @@
     "WST": 19.4
    },
    "net_export_observed_mw": -400.0,
-   "net_export_model_mw": 404.9
+   "net_export_model_mw": 405.3,
+   "metered_plants": 13,
+   "production_metered_mw": {
+    "GAS": 927.6,
+    "LIG": 186.2,
+    "NUC": 1944.5,
+    "OIL": 0.1
+   }
   },
   "IT": {
    "source": "observed",
    "load_observed_mw": 45471.0,
    "load_balanced_mw": 43116.0,
-   "load_model_mw": 42366.7,
+   "load_model_mw": 42369.2,
    "production_observed_mw": {
     "BIO": 519.0,
     "COA": 852.0,
@@ -488,20 +576,27 @@
    },
    "production_model_mw": {
     "BIO": 376.8,
-    "COA": 5841.6,
-    "GAS": 17966.0,
-    "HYD": 959.6,
+    "COA": 5823.4,
+    "GAS": 18100.9,
+    "HYD": 969.2,
     "OIL": 61.2,
-    "OTH": 424.0,
-    "PSP": 785.1,
-    "ROR": 2716.3,
-    "SOL": 2445.1,
+    "OTH": 427.4,
+    "PSP": 1082.1,
+    "ROR": 2726.7,
+    "SOL": 2447.5,
     "WOF": 16.0,
     "WON": 5580.9,
     "WST": 4.0
    },
    "net_export_observed_mw": -5600.0,
-   "net_export_model_mw": -5911.2
+   "net_export_model_mw": -5463.5,
+   "metered_plants": 33,
+   "production_metered_mw": {
+    "GAS": 2077.2,
+    "HYD": 358.3,
+    "PSP": 1321.7,
+    "ROR": 868.5
+   }
   },
   "LT": {
    "source": "boundary",
@@ -511,7 +606,7 @@
    "production_observed_mw": {},
    "production_model_mw": {},
    "net_export_observed_mw": -600.0,
-   "net_export_model_mw": 0.0
+   "net_export_model_mw": -0.0
   },
   "LU": {
    "source": "observed",
@@ -529,7 +624,7 @@
    },
    "production_model_mw": {
     "BIO": 9.4,
-    "GAS": 49.5,
+    "GAS": 63.0,
     "HYD": 9.4,
     "ROR": 9.7,
     "SOL": 24.1,
@@ -537,7 +632,7 @@
     "WST": 12.8
    },
    "net_export_observed_mw": -600.0,
-   "net_export_model_mw": -564.3
+   "net_export_model_mw": -550.1
   },
   "MD": {
    "source": "observed",
@@ -553,13 +648,13 @@
    },
    "production_model_mw": {
     "BIO": 1.0,
-    "GAS": 973.5,
+    "GAS": 789.2,
     "ROR": 31.0,
     "SOL": 14.0,
     "WON": 1.0
    },
    "net_export_observed_mw": -400.0,
-   "net_export_model_mw": 234.3
+   "net_export_model_mw": 58.8
   },
   "ME": {
    "source": "observed",
@@ -577,13 +672,13 @@
     "WON": 102.6
    },
    "net_export_observed_mw": -100.0,
-   "net_export_model_mw": 62.2
+   "net_export_model_mw": 62.3
   },
   "MK": {
    "source": "observed",
    "load_observed_mw": 1118.1,
    "load_balanced_mw": 1162.1,
-   "load_model_mw": 1141.9,
+   "load_model_mw": 1142.0,
    "production_observed_mw": {
     "GAS": 211.3,
     "HYD": 261.8,
@@ -597,13 +692,19 @@
     "WON": 18.3
    },
    "net_export_observed_mw": -400.0,
-   "net_export_model_mw": 28.8
+   "net_export_model_mw": 28.7,
+   "metered_plants": 4,
+   "production_metered_mw": {
+    "HYD": 35.9,
+    "LIG": 270.7,
+    "OIL": 0.0
+   }
   },
   "NL": {
    "source": "observed",
    "load_observed_mw": 18389.6,
    "load_balanced_mw": 16920.4,
-   "load_model_mw": 16626.3,
+   "load_model_mw": 16627.3,
    "production_observed_mw": {
     "BIO": 15.1,
     "COA": 3702.4,
@@ -617,8 +718,8 @@
    },
    "production_model_mw": {
     "BIO": 15.1,
-    "COA": 3193.9,
-    "GAS": 6525.9,
+    "COA": 2341.3,
+    "GAS": 6993.4,
     "NUC": 486.5,
     "OTH": 3938.4,
     "SOL": 11.9,
@@ -627,13 +728,20 @@
     "WST": 306.5
    },
    "net_export_observed_mw": -400.0,
-   "net_export_model_mw": 1257.5
+   "net_export_model_mw": 885.0,
+   "metered_plants": 24,
+   "production_metered_mw": {
+    "BIO": 372.5,
+    "COA": 3327.3,
+    "GAS": 3196.9,
+    "NUC": 486.5
+   }
   },
   "PL": {
    "source": "observed",
    "load_observed_mw": 24509.5,
    "load_balanced_mw": 24602.3,
-   "load_model_mw": 24174.7,
+   "load_model_mw": 24176.2,
    "production_observed_mw": {
     "BIO": 396.3,
     "COA": 9223.9,
@@ -649,23 +757,31 @@
    },
    "production_model_mw": {
     "BIO": 396.3,
-    "COA": 5262.1,
+    "COA": 5099.7,
     "GAS": 3467.9,
     "HYD": 71.1,
     "LIG": 5828.4,
     "OTH": 717.9,
     "ROR": 88.0,
     "SOL": 1079.3,
-    "WON": 5785.0
+    "WON": 5784.9
    },
    "net_export_observed_mw": 1500.0,
-   "net_export_model_mw": -1878.5
+   "net_export_model_mw": -2046.8,
+   "metered_plants": 27,
+   "production_metered_mw": {
+    "BIO": 202.7,
+    "COA": 5428.8,
+    "GAS": 1978.4,
+    "LIG": 4157.7,
+    "PSP": 0.0
+   }
   },
   "PT": {
    "source": "observed",
    "load_observed_mw": 7535.7,
    "load_balanced_mw": 7306.1,
-   "load_model_mw": 7179.1,
+   "load_model_mw": 7179.6,
    "production_observed_mw": {
     "BIO": 342.7,
     "GAS": 1216.6,
@@ -679,7 +795,7 @@
    },
    "production_model_mw": {
     "BIO": 342.7,
-    "GAS": 2611.5,
+    "GAS": 1776.1,
     "HYD": 406.1,
     "OTH": 29.1,
     "PSP": 1101.5,
@@ -689,13 +805,20 @@
     "WON": 3361.3
    },
    "net_export_observed_mw": 1700.0,
-   "net_export_model_mw": 3164.8
+   "net_export_model_mw": 2338.7,
+   "metered_plants": 24,
+   "production_metered_mw": {
+    "GAS": 588.9,
+    "HYD": 222.4,
+    "PSP": 1048.2,
+    "ROR": 1919.1
+   }
   },
   "RO": {
    "source": "observed",
    "load_observed_mw": 7927.2,
    "load_balanced_mw": 7671.1,
-   "load_model_mw": 7537.8,
+   "load_model_mw": 7538.2,
    "production_observed_mw": {
     "BIO": 47.2,
     "COA": 76.0,
@@ -719,13 +842,20 @@
     "WON": 280.2
    },
    "net_export_observed_mw": -1600.0,
-   "net_export_model_mw": -2566.6
+   "net_export_model_mw": -2563.3,
+   "metered_plants": 9,
+   "production_metered_mw": {
+    "COA": 70.1,
+    "GAS": 1132.1,
+    "HYD": 23.1,
+    "LIG": 893.8
+   }
   },
   "RS": {
    "source": "observed",
    "load_observed_mw": 5404.0,
    "load_balanced_mw": 5056.0,
-   "load_model_mw": 4968.1,
+   "load_model_mw": 4968.4,
    "production_observed_mw": {
     "BIO": 30.0,
     "GAS": 343.0,
@@ -745,13 +875,19 @@
     "ROR": 1486.0
    },
    "net_export_observed_mw": 500.0,
-   "net_export_model_mw": -735.8
+   "net_export_model_mw": -734.6,
+   "metered_plants": 5,
+   "production_metered_mw": {
+    "GAS": 181.0,
+    "LIG": 1164.0,
+    "PSP": 0.0
+   }
   },
   "SI": {
    "source": "observed",
    "load_observed_mw": 1969.7,
    "load_balanced_mw": 2018.8,
-   "load_model_mw": 1983.7,
+   "load_model_mw": 1983.8,
    "production_observed_mw": {
     "BIO": 8.7,
     "GAS": 156.7,
@@ -764,7 +900,7 @@
    },
    "production_model_mw": {
     "BIO": 8.7,
-    "GAS": 415.7,
+    "GAS": 349.3,
     "NUC": 701.4,
     "ROR": 617.0,
     "SOL": 58.0,
@@ -772,13 +908,19 @@
     "WST": 6.1
    },
    "net_export_observed_mw": -200.0,
-   "net_export_model_mw": -186.5
+   "net_export_model_mw": -252.6,
+   "metered_plants": 3,
+   "production_metered_mw": {
+    "LIG": 233.2,
+    "NUC": 701.4,
+    "PSP": 0.1
+   }
   },
   "SK": {
    "source": "observed",
    "load_observed_mw": 4005.0,
    "load_balanced_mw": 3947.9,
-   "load_model_mw": 3879.3,
+   "load_model_mw": 3879.5,
    "production_observed_mw": {
     "BIO": 129.8,
     "GAS": 583.1,
@@ -804,13 +946,19 @@
     "SOL": 126.4
    },
    "net_export_observed_mw": 100.0,
-   "net_export_model_mw": 890.7
+   "net_export_model_mw": 886.9,
+   "metered_plants": 9,
+   "production_metered_mw": {
+    "GAS": 358.2,
+    "NUC": 2464.8,
+    "PSP": 0.0
+   }
   },
   "UA": {
    "source": "fallback",
    "load_observed_mw": 1957.6,
    "load_balanced_mw": 1957.6,
-   "load_model_mw": 1923.6,
+   "load_model_mw": 1923.7,
    "production_observed_mw": {
     "NUC": 1469.7,
     "SOL": 70.2,
@@ -834,7 +982,7 @@
    },
    "production_model_mw": {},
    "net_export_observed_mw": -500.0,
-   "net_export_model_mw": -1200.4
+   "net_export_model_mw": -1200.0
   }
  },
  "external": [
@@ -1015,6 +1163,12 @@
    "kind": "hvdc"
   }
  ],
+ "units": {
+  "units": 723,
+  "units_placed": 484,
+  "mw": 222204.4,
+  "mw_placed": 165576.1
+ },
  "limits": {
   "base": "osm",
   "lines": 7173
@@ -1022,64 +1176,69 @@
  "opf": {
   "status": "ok",
   "condition": "optimal",
-  "objective_eur": 25079914.868594162,
-  "shedding_mw": 1823.1,
+  "objective_eur": 25239843.880621724,
+  "shedding_mw": 1919.5,
   "shedding_buses": {
-   "VL_virtual_relation_6274465_a_1-220": 55.1,
-   "VL_virtual_relation_9142326_d_1-225": 52.5,
+   "VL_virtual_relation_6274465_a_1-220": 55.3,
+   "VL_virtual_relation_9142326_d_1-225": 79.5,
    "VL_virtual_relation_9158614_b_1-225": 53.0,
    "VL_virtual_relation_9158614_c_1-225": 53.0,
    "VL_virtual_way_117172072_1-220": 58.5,
    "VL_virtual_way_1234916162_1-225": 79.5,
    "VL_virtual_way_153494695_0-225": 79.5,
    "VL_virtual_way_203991560_0-225": 53.0,
-   "VL_virtual_way_211506265_0-220": 22.9,
-   "VL_virtual_way_86112994_0-220": 54.1,
+   "VL_virtual_way_211506265_0-220": 36.2,
+   "VL_virtual_way_645193278_0-225": 79.5,
+   "VL_virtual_way_86112994_0-220": 54.4,
    "VL_virtual_way_86112994_1-220": 58.5,
    "VL_way_105757795-220": 49.7,
    "VL_way_1117389049-225": 26.5,
    "VL_way_118204938-225": 53.0,
+   "VL_way_153495180-225": 26.5,
    "VL_way_22873838-225": 79.5,
    "VL_way_22873840-225": 106.0,
    "VL_way_27768969-225": 185.5,
    "VL_way_318195497-225": 106.0,
    "VL_way_32067290-225": 53.0,
    "VL_way_33113310-225": 53.0,
+   "VL_way_476639961-225": 26.5,
    "VL_way_490392953-225": 79.5,
-   "VL_way_549010403-225": 4.0,
+   "VL_way_549010403-225": 15.9,
+   "VL_way_625776445-225": 26.5,
    "VL_way_657433661-225": 26.5,
    "VL_way_658561191-225": 53.0,
    "VL_way_671113556-225": 53.0,
-   "VL_way_788298548-225": 185.5,
+   "VL_way_788298548-225": 54.6,
+   "VL_way_82741307-225": 26.0,
    "VL_way_83705700-225": 53.0,
-   "VL_way_92316708-225": 36.9
+   "VL_way_92316703-225": 26.5
   },
   "spill_mw": 61.2,
   "spill_buses": {
    "VL_way_74893659-380": 61.2
   },
-  "binding_lines": 65,
+  "binding_lines": 74,
   "most_loaded_lines": {
-   "relation_9509532_b-225": 1.0,
-   "way_117172072-220": 1.0,
-   "way_33814230-220": 1.0,
-   "merged_way_88801054-220_1": 1.0,
-   "merged_way_106620935-380_1": 1.0,
-   "merged_way_1024246754-400_2": 1.0,
-   "way_226153348-220": 1.0,
-   "relation_6026918_b-220": 1.0,
+   "relation_6274465_b-220": 1.0,
+   "merged_way_160991579-380_2": 1.0,
    "way_211506264-220": 1.0,
+   "way_169240672-380": 1.0,
+   "way_92017671-220": 1.0,
+   "relation_9509532_b-225": 1.0,
+   "relation_5598506_c-220": 1.0,
+   "way_211506271-220": 1.0,
+   "relation_10547433-225": 1.0,
+   "merged_way_375533488-220_1": 1.0,
+   "relation_16383923-220": 1.0,
+   "relation_16383928-220": 1.0,
+   "way_226153348-220": 1.0,
    "relation_10489104-225": 1.0,
-   "merged_way_592380611-220_5": 1.0,
-   "way_252077524-400": 1.0,
-   "relation_10012410_b-225": 1.0,
-   "way_1205463623_a-220": 1.0,
-   "way_24840438-380": 1.0,
-   "relation_3533527_b-380": 1.0,
-   "relation_15097913-380": 1.0,
-   "relation_14514476-225": 1.0,
-   "way_131292115-220": 1.0,
-   "relation_6433642-380": 1.0
+   "relation_6674721-400": 1.0,
+   "relation_6691717-225": 1.0,
+   "way_1474014917-225": 1.0,
+   "relation_6026918_b-220": 1.0,
+   "relation_6663381-400": 1.0,
+   "relation_6674720-400": 1.0
   }
  }
 }

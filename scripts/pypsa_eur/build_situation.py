@@ -17,13 +17,18 @@ names, limits, actions — untouched:
      generator; the other types by scaling their matched plants up, then over
      the country's largest load buses.
   3. DISPATCH — ``observed``: each country's observed production of each
-     fuel type, shared over its plants of that type by capacity. ``opf``: an
-     optimal dispatch solved with PyPSA on the same grid
-     (``dispatch_opf.py``).
+     fuel type, shared over its plants of that type by capacity — except, with
+     ``--units`` (``fetch_entsoe_units.py``), the plants whose units ENTSO-E
+     measures: each keeps its own output, the rest of the type's production
+     goes to the capacity they leave. ``opf``: an optimal dispatch solved with
+     PyPSA on the same grid (``dispatch_opf.py``), nuclear, hydro and
+     renewables capped at that observed output, plant by plant.
   4. EXCHANGES with what the bundle leaves out (Great Britain, the Nordics,
      Turkey…) and over its HVDC-only borders become fixed injections —
      fictitious loads ``X_<country>_<bus>`` — at the converter buses, from
-     the observed physical flows.
+     the observed physical flows. A country the bundle keeps alone (the
+     France-only bundle) exchanges where the AC lines it cut at each border
+     land, and over that border's HVDC links, by capacity.
   5. AC load flow (OpenLoadFlow, RTE parameters); loads are trimmed so the
      slack only covers the grid's own losses, and the flows are written to
      the file. ``caseDate`` becomes the hour; each line's permanent limit
@@ -43,6 +48,7 @@ Usage
     python scripts/pypsa_eur/build_situation.py \\
         --bundle data/pypsa_eur_eur220_225_380_400 \\
         --observed data/pypsa_eur_eur220_225_380_400/situations/energy_charts_2025-01-14T0800Z.json \\
+        --units data/pypsa_eur_eur220_225_380_400/situations/entsoe_units_2025-01-14T0800Z.json \\
         --dispatch observed --osm-dir data/pypsa_eur_osm \\
         --out data/pypsa_eur_eur220_225_380_400/situations/2025-01-14_0800Z_observed
 """
@@ -99,6 +105,13 @@ SERIES_CODE = {
     "biomass": "BIO", "waste": "WST", "geothermal": "OTH", "others": "OTH", "marine": "OTH",
     "renewable_other": "OTH", "non_renewable_other": "OTH",
     "battery_storage": "STO", "battery_storage_consumption": "STO",
+}
+#: ENTSO-E production types (``psrType`` of the per-unit data) → fuel type.
+PSR_CODE = {
+    "B01": "BIO", "B02": "LIG", "B03": "COA", "B04": "GAS", "B05": "COA", "B06": "OIL",
+    "B07": "OIL", "B08": "OTH", "B09": "OTH", "B10": "PSP", "B11": "ROR", "B12": "HYD",
+    "B13": "OTH", "B14": "NUC", "B15": "OTH", "B16": "SOL", "B17": "WST", "B18": "WOF",
+    "B19": "WON", "B20": "OTH", "B25": "STO",
 }
 #: Fuel types that can draw power (pumping, charging).
 BIDIRECTIONAL = ("PSP", "STO")
@@ -159,6 +172,13 @@ S_MAX_PU = 0.7
 SHEDDING_COST = 3000.0
 #: Rating of a line the OSM data give none for (MVA, by kV).
 DEFAULT_S_NOM = {220: 500.0, 225: 500.0, 380: 1700.0, 400: 1700.0}
+#: A 220 kV line belongs to a 225 kV grid, a 380 kV one to a 400 kV grid.
+KV_CLASS = {220: 225, 380: 400}
+#: A converter (or the end of a cut line) whose AC bus the bundle lacks lands
+#: on the nearest bus of its country — unless that bus is farther than this:
+#: an island's (SACOI's Corsican converter is no part of the mainland grid).
+SNAP_MAX_KM = 50.0
+KM_PER_DEGREE = 111.2
 
 
 def safe_id(raw: str) -> str:
@@ -183,8 +203,8 @@ class Grid:
 
 
 def read_grid(net, mapping: dict[str, str], osm_buses: pd.DataFrame | None) -> Grid:
-    """Buses from the network: country, name, voltage target, synthetic-load key."""
-    vls = net.get_voltage_levels(attributes=["substation_id", "name"])
+    """Buses from the network: country, name, kV, voltage target, synthetic-load key."""
+    vls = net.get_voltage_levels(attributes=["substation_id", "name", "nominal_v"])
     subs = net.get_substations(attributes=["country"])
     gens = net.get_generators(attributes=["voltage_level_id", "target_v"])
     loads = net.get_loads(attributes=["voltage_level_id", "p0"])
@@ -193,6 +213,7 @@ def read_grid(net, mapping: dict[str, str], osm_buses: pd.DataFrame | None) -> G
         "bus": vls.index.str[3:],
         "country": vls["substation_id"].map(subs["country"]).fillna("").astype(str),
         "name": vls["name"].fillna(pd.Series(vls.index, index=vls.index)),
+        "kv": vls["nominal_v"],
     }, index=vls.index)
     buses = buses[buses.index.str.startswith("VL_")]
     buses["target_v"] = synthetic.set_index("voltage_level_id")["target_v"].reindex(buses.index)
@@ -214,6 +235,20 @@ def read_observed(path: Path) -> dict:
     if record.get("schema") != "costudy4grid-observed-hour/1":
         raise ValueError(f"{path}: not an observed-hour file")
     return record
+
+
+def read_units(path: Path, at_utc: str) -> tuple[pd.DataFrame, dict]:
+    """The hour's unit outputs (``fetch_entsoe_units.py``): ``eic`` index,
+    ``country``, ``name``, ``code``, ``mw``; and the file's source."""
+    record = json.loads(Path(path).read_text(encoding="utf-8"))
+    if record.get("schema") != "costudy4grid-unit-hour/1":
+        raise ValueError(f"{path}: not a unit-hour file")
+    if record.get("at_utc") != at_utc:
+        raise ValueError(f"{path} holds {record.get('at_utc')}, not {at_utc}")
+    rows = [(u["eic"], c, u.get("name", ""), PSR_CODE.get(u.get("type"), "OTH"), float(u["mw"]))
+            for c, data in record.get("countries", {}).items() for u in data.get("units", [])]
+    units = pd.DataFrame(rows, columns=["eic", "country", "name", "code", "mw"])
+    return units.drop_duplicates("eic").set_index("eic"), record["source"]
 
 
 #: Variants of one quantity a country may report side by side: only the
@@ -422,23 +457,111 @@ def complete_capacity(table: pd.DataFrame, grid: Grid, targets: dict[str, Target
     return table
 
 
-def observed_dispatch(table: pd.DataFrame, targets: dict[str, Target]) -> pd.Series:
+METERED_COLUMNS = ["row", "plant", "capacity", "p", "units"]
+
+
+def metered_plants(table: pd.DataFrame, record: dict, units: pd.DataFrame, grid: Grid) -> pd.DataFrame:
+    """The plants whose units ENTSO-E measures this hour, through the EIC
+    codes ``match_power_plants.py`` records: ``row`` (their generator in
+    ``table``), ``plant``, ``capacity``, ``p`` (their units' output) and
+    ``units``. A unit counts for the plants of its own country and type that
+    list it, on one generator — several plants there share it by capacity.
+    A unit listed on several generators (the database gives one code to
+    plants far apart) or whose type none of its plants has is left to the
+    shared dispatch, as is a country modelled in part (``COVERAGE``,
+    ``BOUNDARY_ONLY``)."""
+    vl_of = {f"G_{b}": vl for vl, b in grid.buses["bus"].items()}
+    nuclear = table[table["code"] == "NUC"]
+    unit_row = {(vl, name): rid for rid, vl, name in zip(nuclear.index, nuclear["vl"], nuclear["name"])}
+    links = []
+    for gen, entry in record.get("generators", {}).items():
+        vl = vl_of.get(gen)
+        if vl is None:
+            continue
+        country = grid.buses.at[vl, "country"]
+        for carrier, plants in entry.get("eic", {}).items():
+            code = PPM_CODE.get(carrier, "OTH")
+            for name, cap, codes in plants:
+                row = (unit_row.get((vl, name)) if code == "NUC"
+                       else gen if code == "SOL" else f"G_{gen[2:]}_{code}")
+                links += [(eic, row, gen, str(name), float(cap), code, country) for eic in codes]
+    links = pd.DataFrame(links, columns=["eic", "row", "gen", "plant", "capacity", "code", "country"])
+    links = links[links["row"].isin(table.index) & ~links["country"].isin([*COVERAGE, *BOUNDARY_ONLY])]
+    links = links.join(units[["country", "code", "mw"]].add_prefix("unit_"), on="eic", how="inner")
+    links = links[(links["unit_code"] == links["code"]) & (links["unit_country"] == links["country"])]
+    links = links[links.groupby("eic")["gen"].transform("nunique") == 1]
+    if links.empty:
+        return pd.DataFrame(columns=METERED_COLUMNS)
+    links = links.assign(p=links["unit_mw"] * links["capacity"]
+                         / links.groupby("eic")["capacity"].transform("sum"))
+    plants = links.groupby(["row", "plant", "capacity"], as_index=False).agg(
+        p=("p", "sum"), units=("eic", "nunique"))[METERED_COLUMNS]
+    # One code for several reactors of a site (Paks, Mochovce, Beznau): an
+    # output beyond its unit is shared with the site's unmeasured units.
+    taken, shared = set(plants["row"]), []
+    for i, r in plants[plants["row"].isin(nuclear.index) & (plants["p"] > 1.05 * plants["capacity"])].iterrows():
+        site = nuclear[(nuclear["vl"] == nuclear.at[r["row"], "vl"]) & ~nuclear.index.isin(taken)]
+        if site.empty:
+            continue
+        pool = pd.concat([pd.Series({r["row"]: r["capacity"]}), site["capacity"]])
+        plants.at[i, "p"] = r["p"] * r["capacity"] / pool.sum()
+        shared += [(rid, str(site.at[rid, "name"]), float(cap), r["p"] * cap / pool.sum(), 0)
+                   for rid, cap in site["capacity"].items()]
+        taken |= set(site.index)
+    if shared:
+        plants = pd.concat([plants, pd.DataFrame(shared, columns=METERED_COLUMNS)], ignore_index=True)
+    plants.attrs["units"] = int(links["eic"].nunique())
+    return plants
+
+
+def _share(known: pd.Series, free: pd.Series, cap: pd.Series, mw: float, bidirectional: bool) -> pd.Series:
+    """One type's ``mw`` over its generators: what their units measure
+    (``known``), the rest over the capacity they leave (``free``) — what it
+    cannot hold over the measured plants' headroom, then by capacity."""
+    measured = float(known.sum())
+    rest = mw - measured
+    if not bidirectional and rest < 0 and measured > 0:
+        # The units produce more than the country reports: scaled onto it.
+        return known * max(mw, 0.0) / measured
+    if free.sum() < 1.0 and measured * mw > 0:
+        return known * mw / measured  # the units are the whole type
+    p = known.copy()
+    headroom = (cap - free - known.abs()).clip(lower=0.0)
+    for room in (free, headroom, cap):
+        if abs(rest) < 1e-9 or room.sum() <= 0:
+            continue
+        take = rest if room is cap else math.copysign(min(abs(rest), 0.98 * room.sum()), rest)
+        p += take * room / room.sum()
+        rest -= take
+    return p
+
+
+def observed_dispatch(table: pd.DataFrame, targets: dict[str, Target],
+                      metered: pd.DataFrame | None = None) -> pd.Series:
     """Each country's production of each type shared by capacity (a plant
     can draw power for pumping or charging); capacities stretched where the
-    observed output exceeds them."""
+    output exceeds them. A plant whose units ENTSO-E measures (``metered``,
+    ``metered_plants``) keeps its own output: the rest of the type's
+    production goes to the capacity the measured plants leave."""
     target_p = pd.Series(0.0, index=table.index)
+    by_row = (metered.groupby("row")[["p", "capacity"]].sum() if metered is not None and len(metered)
+              else pd.DataFrame(columns=["p", "capacity"], dtype=float))
     for c, t in targets.items():
         for code, mw in t.production.items():
-            mine = (table["country"] == c) & (table["code"] == code)
-            cap = float(table.loc[mine, "capacity"].sum())
-            if cap <= 0:
+            mine = table.index[(table["country"] == c) & (table["code"] == code)]
+            cap = table.loc[mine, "capacity"]
+            if cap.sum() <= 0:
                 if abs(mw) > 1.0:
                     log.warning("  %s %s: %.0f MW observed but no plant to carry it", c, code, mw)
                 continue
-            if abs(mw) > 0.98 * cap:
-                table.loc[mine, "capacity"] *= abs(mw) / (0.98 * cap)
-                cap = float(table.loc[mine, "capacity"].sum())
-            target_p[mine] = mw * table.loc[mine, "capacity"] / cap
+            known = by_row["p"].reindex(mine).fillna(0.0)
+            if code not in BIDIRECTIONAL:
+                known = known.clip(lower=0.0)  # a stopped unit draws its auxiliaries
+            free = (cap - by_row["capacity"].reindex(mine).fillna(0.0)).clip(lower=0.0)
+            p = _share(known, free, cap, mw, code in BIDIRECTIONAL)
+            target_p[mine] = p
+            over = p.abs() > 0.98 * cap
+            table.loc[mine[over.to_numpy()], "capacity"] = p[over].abs() / 0.98
     return target_p
 
 
@@ -552,28 +675,92 @@ def hvdc_landings(osm_dir: Path, mapping: dict[str, str], grid: Grid) -> pd.Data
             country = str(buses.at[ac, "country"]) if ac in buses.index else "?"
             vl = vl_of.get(ac)
             if vl is None and country in countries and ac in buses.index:
-                vl = _nearest(grid, country, float(buses.at[ac, "x"]), float(buses.at[ac, "y"]))
+                vl = _nearest(grid, country, float(buses.at[ac, "x"]), float(buses.at[ac, "y"]), SNAP_MAX_KM)
             ends.append((country, vl))
         if ends[0][0] != ends[1][0]:
             rows.append((link["link_id"], float(link["p_nom"]), ends[0][0], ends[0][1], ends[1][0], ends[1][1]))
     return pd.DataFrame(rows, columns=["link", "p_nom", "c0", "vl0", "c1", "vl1"])
 
 
-def _nearest(grid: Grid, country: str, lon: float, lat: float) -> str | None:
-    cand = grid.of(country)
+def _kv_class(kv: float) -> int:
+    k = int(round(kv))
+    return KV_CLASS.get(k, k)
+
+
+def cut_ties(osm_dir: Path, mapping: dict[str, str], grid: Grid, voltages) -> pd.DataFrame:
+    """AC lines of the OSM data the bundle cut at a border — one end in a
+    bundle country, the other in a country it leaves out — at the bundle's
+    ``voltages``, with the bus their inside end lands on: ``line``,
+    ``country``, ``neighbour``, ``vl``, ``s_nom`` (MVA, √3·U·I_nom·circuits)."""
+    q = {"quotechar": "'"}
+    buses = pd.read_csv(osm_dir / "buses.csv", index_col=0, usecols=["bus_id", "x", "y", "country"], **q)
+    lines = pd.read_csv(osm_dir / "lines.csv", quotechar="'",
+                        usecols=["line_id", "bus0", "bus1", "voltage", "i_nom", "circuits"])
+    countries = set(grid.buses["country"])
+    classes = {_kv_class(v) for v in voltages}
+    vl_of = {osm: f"VL_{s}" for s, osm in mapping.items()}
+    country_of = buses["country"].astype(str).to_dict()
+    rows = []
+    for line in lines.itertuples(index=False):
+        if _kv_class(line.voltage) not in classes:
+            continue
+        ends = [(b, country_of.get(b, "")) for b in (line.bus0, line.bus1)]
+        inside = [(b, c) for b, c in ends if c in countries]
+        outside = [c for _, c in ends if c and c not in countries]
+        if len(inside) != 1 or len(outside) != 1:
+            continue
+        bus, c = inside[0]
+        vl = vl_of.get(bus)
+        if vl is None:
+            vl = _nearest(grid, c, float(buses.at[bus, "x"]), float(buses.at[bus, "y"]), SNAP_MAX_KM,
+                          _kv_class(line.voltage))
+        if vl is None:
+            continue
+        circuits = line.circuits if line.circuits == line.circuits and line.circuits >= 1 else 1
+        s_nom = (math.sqrt(3) * line.voltage * line.i_nom * circuits
+                 if line.i_nom == line.i_nom and line.i_nom > 0
+                 else DEFAULT_S_NOM.get(_kv_class(line.voltage), 1000.0))
+        rows.append((safe_id(line.line_id), c, outside[0], vl, float(s_nom)))
+    return pd.DataFrame(rows, columns=["line", "country", "neighbour", "vl", "s_nom"])
+
+
+def _closest(cand: pd.DataFrame, lon: float, lat: float, max_km: float | None) -> str | None:
     if cand.empty or "lon" not in cand:
         return None
     d = ((cand["lon"] - lon) * math.cos(math.radians(lat))) ** 2 + (cand["lat"] - lat) ** 2
-    return str(d.idxmin())
+    best = d.idxmin()
+    if max_km is not None and math.sqrt(d[best]) * KM_PER_DEGREE > max_km:
+        return None
+    return str(best)
 
 
-def external_injections(grid: Grid, targets: dict[str, Target], links: pd.DataFrame) -> pd.DataFrame:
+def _nearest(grid: Grid, country: str, lon: float, lat: float, max_km: float | None = None,
+             kv: int | None = None) -> str | None:
+    """The bus of ``country`` nearest to (lon, lat) — at the ``kv`` class when
+    one lies within ``max_km`` — or None when none does."""
+    cand = grid.of(country)
+    if kv is not None and "kv" in cand:
+        same = _closest(cand[cand["kv"].map(_kv_class) == kv], lon, lat, max_km)
+        if same is not None:
+            return same
+    return _closest(cand, lon, lat, max_km)
+
+
+def external_injections(grid: Grid, targets: dict[str, Target], links: pd.DataFrame,
+                        ties: pd.DataFrame | None = None) -> pd.DataFrame:
     """Fixed injections for every observed exchange the bundle's AC grid does
     not carry: ``id``, ``vl``, ``country``, ``neighbour``, ``p0`` (MW, + = export,
-    a fictitious load)."""
+    a fictitious load).
+
+    A country the bundle keeps without any AC neighbour (France alone)
+    exchanges over the AC lines the bundle cut (``ties``, ``cut_ties``): each
+    flow is spread over where they land and over the same border's HVDC
+    converters, by capacity. Otherwise a flow comes in at the HVDC converters
+    of its border, else at the border point."""
     rows: list[tuple[str, str, str, float, str]] = []
     modelled = set(targets)
     done: set[frozenset] = set()
+    alone = {c for c in targets if not any(c in pair for pair in grid.ac_pairs)}
 
     def add(c: str, vl: str | None, n: str, export: float, how: str) -> None:
         if vl is not None and abs(export) >= 1.0:
@@ -599,6 +786,16 @@ def external_injections(grid: Grid, targets: dict[str, Target], links: pd.DataFr
                               bwd[["vl1", "p_nom"]].set_axis(["vl", "p_nom"], axis=1)]).dropna()
             theirs = pd.concat([fwd[["vl1", "p_nom"]].set_axis(["vl", "p_nom"], axis=1),
                                 bwd[["vl0", "p_nom"]].set_axis(["vl", "p_nom"], axis=1)]).dropna()
+            cut = (ties[(ties["country"] == c) & (ties["neighbour"] == n)]
+                   if ties is not None and c in alone else None)
+            if cut is not None and not cut.empty:
+                land = pd.concat([cut[["vl", "s_nom"]].set_axis(["vl", "cap"], axis=1).assign(how="tie"),
+                                  mine.set_axis(["vl", "cap"], axis=1).assign(how="hvdc")])
+                cap = float(land["cap"].sum())
+                flow = max(-cap, min(cap, imp))
+                for vl, p, how in zip(land["vl"], land["cap"], land["how"]):
+                    add(c, vl, n, -flow * p / cap, how)
+                continue
             if not mine.empty:
                 cap = float(mine["p_nom"].sum())
                 flow = max(-cap, min(cap, imp))
@@ -613,7 +810,9 @@ def external_injections(grid: Grid, targets: dict[str, Target], links: pd.DataFr
             vl = _nearest(grid, c, *point) if point else None
             add(c, vl or _top_buses(grid, c, 1)[0], n, -imp, "border")
     out = pd.DataFrame(rows, columns=["vl", "country", "neighbour", "p0", "how"])
-    out = out.groupby(["vl", "country", "neighbour", "how"], as_index=False)["p0"].sum()
+    # One load per neighbour and bus: a converter and a cut line may share one.
+    out = out.groupby(["vl", "country", "neighbour"], as_index=False).agg(
+        p0=("p0", "sum"), how=("how", lambda h: "+".join(sorted(set(h)))))
     out.index = [f"X_{n}_{vl[3:]}" for n, vl in zip(out["neighbour"], out["vl"])]
     return out
 
@@ -781,7 +980,8 @@ def reset_limits(net, path: Path, osm_dir: Path) -> int:
 
 
 def report(net, grid: Grid, targets: dict[str, Target], table: pd.DataFrame,
-           external: pd.DataFrame, observed: dict, dispatch: str, lf: dict) -> dict:
+           external: pd.DataFrame, observed: dict, dispatch: str, lf: dict,
+           metered: pd.DataFrame | None = None, units_source: dict | None = None) -> dict:
     gens = net.get_generators(attributes=["voltage_level_id", "p"])
     gens["country"] = gens["voltage_level_id"].map(grid.buses["country"])
     gens["code"] = table["code"].reindex(gens.index)
@@ -797,6 +997,13 @@ def report(net, grid: Grid, targets: dict[str, Target], table: pd.DataFrame,
         exports[a] = exports.get(a, 0.0) + f
         exports[b] = exports.get(b, 0.0) - f
     ext = external.groupby("country")["p0"].sum() if len(external) else pd.Series(dtype=float)
+    measured = None
+    if metered is not None and len(metered):
+        measured = metered.assign(country=metered["row"].map(table["country"]),
+                                  code=metered["row"].map(table["code"]))
+        # A stopped unit's auxiliaries are no negative production.
+        measured["p"] = measured["p"].where(measured["code"].isin(BIDIRECTIONAL),
+                                            measured["p"].clip(lower=0.0))
     countries = {}
     for c, t in sorted(targets.items()):
         mine = gens[gens["country"] == c]
@@ -813,12 +1020,18 @@ def report(net, grid: Grid, targets: dict[str, Target], table: pd.DataFrame,
             "net_export_observed_mw": round(-sum(obs_flows.values()), 1) if obs_flows else None,
             "net_export_model_mw": round(exports.get(c, 0.0) + float(ext.get(c, 0.0)), 1),
         }
+        mine_m = measured[measured["country"] == c] if measured is not None else None
+        if mine_m is not None and len(mine_m):
+            countries[c]["metered_plants"] = int(len(mine_m))
+            countries[c]["production_metered_mw"] = {
+                k: round(float(v), 1) for k, v in mine_m.groupby("code")["p"].sum().sort_index().items()}
     return {
         "schema": SCHEMA,
         "at_utc": observed["at_utc"],
         "dispatch": dispatch,
-        "sources": [observed["source"], {"name": "powerplantmatching", "licence": "CC BY 4.0",
-                                         "url": "https://github.com/PyPSA/powerplantmatching"}],
+        "sources": [observed["source"], *([units_source] if units_source else []),
+                    {"name": "powerplantmatching", "licence": "CC BY 4.0",
+                     "url": "https://github.com/PyPSA/powerplantmatching"}],
         "missing_countries": observed.get("missing", {}),
         "loadflow": lf,
         "totals": {
@@ -854,7 +1067,8 @@ def _network_path(bundle: Path, network: Path | None, workdir: Path) -> Path:
 
 
 def build(bundle: Path, observed_path: Path, dispatch: str, osm_dir: Path, out: Path,
-          network: Path | None = None, opf_python: str | None = None, limits: str = "osm") -> dict:
+          network: Path | None = None, opf_python: str | None = None, limits: str = "osm",
+          units_path: Path | None = None) -> dict:
     import pypowsybl as pp
     out.mkdir(parents=True, exist_ok=True)
     observed = read_observed(observed_path)
@@ -869,14 +1083,27 @@ def build(bundle: Path, observed_path: Path, dispatch: str, osm_dir: Path, out: 
     table = plant_table(grid, record)
     targets = country_targets(grid, observed, table)
     table = complete_capacity(table, grid, targets)
-    external = external_injections(grid, targets, hvdc_landings(osm_dir, mapping, grid))
+    metered, units_source, unit_stats = None, None, None
+    if units_path is not None:
+        units, units_source = read_units(units_path, observed["at_utc"])
+        metered = metered_plants(table, record, units, grid)
+        inside = units[units["country"].isin(set(grid.buses["country"]) - {*COVERAGE, *BOUNDARY_ONLY})]
+        unit_stats = {"units": int(len(inside)), "units_placed": metered.attrs.get("units", 0),
+                      "mw": round(float(inside["mw"].clip(lower=0).sum()), 1),
+                      "mw_placed": round(float(metered["p"].clip(lower=0).sum()), 1)}
+        log.info("Units: %d of %d measured placed (%.0f of %.0f MW) on %d plants",
+                 unit_stats["units_placed"], unit_stats["units"], unit_stats["mw_placed"],
+                 unit_stats["mw"], len(metered))
+    voltages = set(net.get_voltage_levels(attributes=["nominal_v"])["nominal_v"])
+    external = external_injections(grid, targets, hvdc_landings(osm_dir, mapping, grid),
+                                   cut_ties(osm_dir, mapping, grid, voltages))
     loads = pd.Series(0.0, index=grid.buses.index)
     for c, t in targets.items():
         key = grid.of(c)["key"]
         if t.load > 0 and key.sum() > 0:
             loads[key.index] = t.load * key / key.sum()
 
-    target_p = observed_dispatch(table, targets)
+    target_p = observed_dispatch(table, targets, metered)
     opf = None
     if dispatch == "opf":
         import sys
@@ -893,7 +1120,9 @@ def build(bundle: Path, observed_path: Path, dispatch: str, osm_dir: Path, out: 
     path = out / "network.xiidm"
     net.save(str(path), format="XIIDM")
     set_case_date(path, observed["at_utc"])
-    summary = report(net, grid, targets, table, external, observed, dispatch, lf)
+    summary = report(net, grid, targets, table, external, observed, dispatch, lf, metered, units_source)
+    if unit_stats is not None:
+        summary["units"] = unit_stats
     if limits == "osm":
         summary["limits"] = {"base": "osm", "lines": reset_limits(net, path, osm_dir)}
     if opf is not None:
@@ -914,6 +1143,8 @@ def main() -> None:
                         help="Network file to start from (default: the bundle's).")
     parser.add_argument("--observed", required=True, type=Path,
                         help="Observed hour (fetch_energy_charts.py output).")
+    parser.add_argument("--units", type=Path, default=None,
+                        help="The hour's unit outputs (fetch_entsoe_units.py output), optional.")
     parser.add_argument("--dispatch", choices=("observed", "opf"), default="observed")
     parser.add_argument("--osm-dir", type=Path, default=BASE_DIR / "data" / "pypsa_eur_osm",
                         help="OSM CSVs the bundle was built from (HVDC links, coordinates).")
@@ -924,7 +1155,7 @@ def main() -> None:
                         help="Line limits: restart from the OSM ratings (default) or keep the bundle's.")
     args = parser.parse_args()
     build(args.bundle, args.observed, args.dispatch, args.osm_dir, args.out, args.network,
-          args.opf_python, args.limits)
+          args.opf_python, args.limits, args.units)
 
 
 if __name__ == "__main__":

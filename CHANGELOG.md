@@ -169,29 +169,104 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   exchanges the grid leaves out (GB, the Nordics, Turkey, HVDC-only borders)
   as fictitious loads, balances an AC load flow and restarts the line limits
   from their OSM ratings.
-- **Two dispatches** per hour: `observed` (each country's real output of each
-  type) and `opf` — a **PyPSA** linear optimal power flow (`dispatch_opf.py`,
-  HiGHS, run in its own environment) with merit-order costs and line limits.
-  Four situations: **14 January 2025 9:00** (France's 2025 consumption peak,
-  386 GW of load) and **1 July 2025 13:00** (heatwave midday, 326 GW), each
-  observed and optimal. Every country's exchanges match the observed physical
-  flows (Germany exports 4.1 GW, France imports 3.6 GW in January).
+- **Dispatch**: `opf` — a **PyPSA** linear optimal power flow
+  (`dispatch_opf.py`, HiGHS, run in its own environment) with merit-order
+  costs and line limits, nuclear / hydro / renewables capped at their real
+  output. Two situations ship: **14 January 2025 9:00** (France's 2025
+  consumption peak, 386 GW of load) and **1 July 2025 13:00** (heatwave
+  midday, 326 GW). Every country's exchanges match the observed physical
+  flows. `--dispatch observed` (each country's real output of each type)
+  builds the observed dispatch for a comparison; it is not shipped — on a
+  grid no market shaped it loads lines far beyond their rating (258 % in N)
+  and nearly every contingency overloads.
 - The **Context tab** reads them as they are: fuel types from the generators'
   `carrier` tag, nuclear units at their real output grouped by plant, exchanges
   with countries outside the grid as named neighbour badges (not consumption),
-  and the hour, its dispatch and both sources credited on the situation card.
+  and the hour, its dispatch and its sources credited on the situation card.
 - Plant matching splits hydro (run-of-river / reservoir / pumped storage) and
   wind (onshore / offshore), records thermal efficiencies (the optimal
   dispatch's merit order) and lets offshore farms land up to 250 km away.
   `calibrate_thermal_limits.py` gains `--chunk-size` (a pan-European N-1 table
   exceeds the GraalVM heap).
-- **Game Mode's Medium tier plays the real hours**: one study per situation
-  (Carrières – Terrier on the January peak, Divača – Redipuglia on its optimal
-  dispatch, Les Attaques – Warande at the July midday, Diele – Meeden on its
-  optimal dispatch; 101–109 % overloads) instead of the three studies on the
-  synthetic situation (still described in the README). Each is remediable by
-  the expert model, checked by `e2e_game_session.py --grid custom` (new: any
-  network, any contingencies).
+- **Game Mode's Medium tier plays the real hours**: two studies per hour
+  (Échalas – Le Soleil n°2 and Saint-Avold – Vigy on the January peak,
+  Les Attaques – Warande and Meitingen – Oberbachern at the July midday;
+  102–110 % overloads) instead of the
+  three studies on the synthetic situation (still described in the README).
+  Each is remediable by the expert model, checked by `e2e_game_session.py
+  --grid custom` (new: any network, any contingencies).
+
+### PyPSA-EUR — the French grid on the same real hours
+
+- `pypsa_eur_fr225_400` (France 225 / 400 kV, synthetic too: 75 GW of load,
+  every substation producing 71 MW) is rebuilt on the same two hours, in their
+  optimal dispatch, under `data/pypsa_eur_fr225_400/situations/` — two
+  networks (0.6 MB zipped), their `situation.json` and N-1 tables. The bundle
+  gains its `power_plants.json` (3 110 plants, 99.6 % of their MW, 18 nuclear
+  plants unit by unit, Flamanville 3 included).
+- **Exchanges at the borders the bundle cuts**: France is alone in it, so
+  `build_situation.py` takes a lone country's exchanges in where the AC lines
+  the bundle cut at each border land (28 OSM lines to BE, DE, CH, IT, ES, LU;
+  an end that is no bundle bus lands on the nearest bus of its voltage class),
+  with the border's HVDC links (INELFE; IFA, IFA2, ElecLink), each
+  neighbour's observed flow spread by capacity. A converter more than 50 km
+  off the grid lands nowhere (SACOI's, in Corsica). The European situations
+  are unchanged (checked injection by injection).
+- January 2025 9:00: 84 GW of load, 3.7 GW imported, nuclear at 48 GW, 1.9 GW
+  shed in 225 kV pockets; 28 contingencies leave an overload (38 above 95 %),
+  at the outlets of Chooz B and Golfech, around Marseille, Lyon and Paris.
+  July 13:00: 58 GW, 2.7 GW exported; 8 contingencies, at Penly's outlet, in
+  the Maurienne valley towards Italy and at Calais – Dunkirk.
+- **Context tab for France alone**: the neighbours a rebuilt situation
+  exchanges with count toward the map's two zones, and a network covering
+  France alone keeps Carte-Front's France frame — France one pie, its six
+  exchanges at the neighbours' badges, net imports / exports on the card,
+  *Situation — France* (until its regions are inferred, next point).
+- **RTE regions for France alone**: a France-only network whose substations
+  carry no `regionCvg` — the PyPSA France grid, its real hours, the France
+  EHV Matpower cases — now draws Carte-Front's region mesh (seven pies, the
+  transfers between them, each region's exchanges with the neighbours)
+  instead of one pie, and the bundle's own situation gets a Context tab.
+  Each substation takes the region RTE tags its RTE substation with (the
+  France THT grids, `resources/rte_region_points.json`): named by the RTE
+  code of its lines (`CHOO2L72LONNY`) for 716 of 1 067, else that of the
+  nearest RTE substations. RTE's regions are its own — Boctois (Nogent's
+  outlet) is NANCY's, Gauglin (Belleville's) NANTES' — and the names get them
+  right. On 14 January 9:00, Paris region imports 12 GW, 6.4 from Nantes.
+
+### PyPSA-EUR — every large unit at its measured output (ENTSO-E)
+
+- A dispatch on observed figures shared each country's production of a type over its
+  plants by capacity — every reactor of France at the same 80 %. New
+  `fetch_entsoe_units.py` downloads the same hours **unit by unit** from the
+  **ENTSO-E Transparency Platform** (*Actual Generation per Generation Unit*,
+  art. 16.1.A: every unit of 100 MW or more), generation minus what it draws,
+  per control area (Germany's four TSOs). The API's free token is read from a
+  file or `ENTSOE_API_KEY` and travels in a request header — never in a URL,
+  a log or the output.
+- `match_power_plants.py` records the plants' **ENTSO-E codes** (`eic` in
+  `power_plants.json`; the matching itself is unchanged): 152 French plants
+  (94.5 GW), 755 in the European bundle (383 GW).
+- `build_situation.py --units`: a plant whose units ENTSO-E measures keeps its
+  **own output** — a reactor in outage stays off (14 January: Chinon 1,
+  Civaux 1, Cruas 3, Flamanville 1, Paluel 3, Penly 2), the others at what
+  they produced — and only the rest of each type's production is shared by
+  capacity, so national totals stay as observed. A unit counts for the plants
+  of its own country and type that list its code, on one bus: the few codes
+  the database gives to plants far apart place nothing, and one code for a
+  whole nuclear plant (Paks, Mochovce, Beznau) is shared among its reactors.
+  The optimal dispatch inherits it — each reactor and dam capped at its own
+  output.
+- The situations are rebuilt on them. The European networks place 484
+  of the 723 units ENTSO-E measures in January (166 of 222 GW) and 487 of 731
+  in July (86 of 123 GW) — all of France's reactors; most Italian, Czech and
+  Bulgarian plants have no code in the database. Real outputs put Chooz B,
+  Golfech and Penly at full power, and their outlets into the French N-1
+  tables; the European tables move by a few contingencies (107 in January,
+  33 in July). Game Mode's Medium studies are each checked winnable by
+  `e2e_game_session.py`.
+- The Context tab credits ENTSO-E beside Energy-Charts and powerplantmatching,
+  each licence after the sources it covers.
 
 ### Game Mode — Matpower dataset re-graded after `expert_op4grid_recommender@0.3.3.post1`
 

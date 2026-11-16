@@ -219,7 +219,7 @@ python3 scripts/game_mode/e2e_game_session.py --max-studies 3
 # Any network — one study per --contingency (how the Medium tier was checked):
 B=data/pypsa_eur_eur220_225_380_400
 python3 scripts/game_mode/e2e_game_session.py --grid custom \
-    --network $B/situations/2025-07-01_1100Z_observed/network.xiidm \
+    --network $B/situations/2025-07-01_1100Z_opf/network.xiidm \
     --actions $B/actions.json --layout $B/grid_layout.json \
     --contingency relation_5674507-400
 ```

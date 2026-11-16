@@ -22,20 +22,20 @@ describe('game difficulty presets', () => {
     expect(DEFAULT_SESSION_STUDIES).toBe(tier.studies);
   });
 
-  it('the default session plays one study per real-hour situation', () => {
+  it('the default session plays two studies per real hour, in its optimal dispatch', () => {
     const ids = DEFAULT_SESSION_STUDIES.map((s) => s.contingencyElementId);
-    // Carrières – Terrier, Divača – Redipuglia, Les Attaques – Warande, Diele – Meeden.
+    // Échalas – Le Soleil, Saint-Avold – Vigy, Les Attaques – Warande, Meitingen – Oberbachern.
     expect(ids).toEqual([
-      'relation_6630114-225',
-      'relation_13676255-400',
+      'way_130228930-225',
+      'way_192698906-400',
       'relation_5674507-400',
-      'relation_1637163-380',
+      'relation_3710278_b-380',
     ]);
     const situations = DEFAULT_SESSION_STUDIES.map((s) => s.networkPath.split('/situations/')[1]?.split('/')[0]);
     expect(situations).toEqual([
-      '2025-01-14_0800Z_observed',
       '2025-01-14_0800Z_opf',
-      '2025-07-01_1100Z_observed',
+      '2025-01-14_0800Z_opf',
+      '2025-07-01_1100Z_opf',
       '2025-07-01_1100Z_opf',
     ]);
   });

@@ -21,7 +21,7 @@ Usage:
     python3 scripts/game_mode/e2e_game_session.py --grid small
     # Any network: one study per --contingency (candidate presets)
     python3 scripts/game_mode/e2e_game_session.py --grid custom \\
-        --network data/pypsa_eur_eur220_225_380_400/situations/2025-01-14_0800Z_observed/network.xiidm \\
+        --network data/pypsa_eur_eur220_225_380_400/situations/2025-01-14_0800Z_opf/network.xiidm \\
         --actions data/pypsa_eur_eur220_225_380_400/actions.json \\
         --layout data/pypsa_eur_eur220_225_380_400/grid_layout.json \\
         --contingency way_123-400 --contingency way_456-225

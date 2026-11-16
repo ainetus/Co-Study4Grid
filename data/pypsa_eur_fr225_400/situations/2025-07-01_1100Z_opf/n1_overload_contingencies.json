@@ -1,0 +1,208 @@
+{
+  "description": "N-1 contingencies that produce >100.0% line overloads on the 2025-07-01_1100Z_opf network",
+  "network": "data/pypsa_eur_fr225_400/situations/2025-07-01_1100Z_opf/network.xiidm",
+  "total_contingencies_tested": 1861,
+  "total_non_converged": 0,
+  "total_with_overload": 8,
+  "peak_loading_pct": 130.0,
+  "threshold_pct": 100.0,
+  "loadflow_type": "AC",
+  "contingencies": [
+    {
+      "tripped_line": "way_85719387_a-400",
+      "tripped_line_name": "Liaison 400 kV n°1 Penly (poste centrale) - Penly (poste évacuation)",
+      "tripped_vl1": "VL_way_1330896577-400",
+      "tripped_vl1_name": "G.SOL 400kV",
+      "tripped_vl2": "VL_way_1328398132-400",
+      "tripped_vl2_name": "PENLY (POSTE CENTRALE) 400kV",
+      "max_loading_pct": 130.0,
+      "most_loaded_line": "way_85719383_a-400",
+      "most_loaded_line_name": "Liaison 400 kV n°2 Penly (poste centrale) - Penly (poste évacuation)",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "way_85719383_a-400",
+          "line_name": "Liaison 400 kV n°2 Penly (poste centrale) - Penly (poste évacuation)",
+          "loading_pct": 130.0,
+          "current_a": 3634.5,
+          "limit_a": 2795.8
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_85719383_a-400",
+      "tripped_line_name": "Liaison 400 kV n°2 Penly (poste centrale) - Penly (poste évacuation)",
+      "tripped_vl1": "VL_way_1330896577-400",
+      "tripped_vl1_name": "G.SOL 400kV",
+      "tripped_vl2": "VL_way_1328398132-400",
+      "tripped_vl2_name": "PENLY (POSTE CENTRALE) 400kV",
+      "max_loading_pct": 130.0,
+      "most_loaded_line": "way_85719387_a-400",
+      "most_loaded_line_name": "Liaison 400 kV n°1 Penly (poste centrale) - Penly (poste évacuation)",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "way_85719387_a-400",
+          "line_name": "Liaison 400 kV n°1 Penly (poste centrale) - Penly (poste évacuation)",
+          "loading_pct": 130.0,
+          "current_a": 3634.5,
+          "limit_a": 2795.8
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_5430194-400",
+      "tripped_line_name": "Albertville - La Coche 1",
+      "tripped_vl1": "VL_way_56998024-400",
+      "tripped_vl1_name": "ALBERTVILLE 400kV",
+      "tripped_vl2": "VL_way_147132685-400",
+      "tripped_vl2_name": "COCHE (LA) 400kV",
+      "max_loading_pct": 129.1,
+      "most_loaded_line": "relation_6359588_b-225",
+      "most_loaded_line_name": "ALBERL61LONG6",
+      "n_overloaded_lines": 3,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_6359588_b-225",
+          "line_name": "ALBERL61LONG6",
+          "loading_pct": 129.1,
+          "current_a": 1665.4,
+          "limit_a": 1290.0
+        },
+        {
+          "line_id": "relation_6310287-225",
+          "line_name": "P.ANDL61SAUS2",
+          "loading_pct": 113.3,
+          "current_a": 1462.2,
+          "limit_a": 1290.0
+        },
+        {
+          "line_id": "way_164311020-225",
+          "line_name": "SAUS2L61ZV.MO",
+          "loading_pct": 105.4,
+          "current_a": 1360.3,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_5430192_b-400",
+      "tripped_line_name": "La Praz - Villarodin 1",
+      "tripped_vl1": "VL_way_147132690-400",
+      "tripped_vl1_name": "PRAZ-ST-ANDRE 400kV",
+      "tripped_vl2": "VL_way_146449309-400",
+      "tripped_vl2_name": "AUSSOIS 400kV",
+      "max_loading_pct": 124.6,
+      "most_loaded_line": "relation_6310288-225",
+      "most_loaded_line_name": "AUSSOL61P.AND",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_6310288-225",
+          "line_name": "AUSSOL61P.AND",
+          "loading_pct": 124.6,
+          "current_a": 1607.1,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_5430193-400",
+      "tripped_line_name": "La Coche - La Praz 1",
+      "tripped_vl1": "VL_way_147132685-400",
+      "tripped_vl1_name": "COCHE (LA) 400kV",
+      "tripped_vl2": "VL_way_147132690-400",
+      "tripped_vl2_name": "PRAZ-ST-ANDRE 400kV",
+      "max_loading_pct": 122.4,
+      "most_loaded_line": "relation_6359588_b-225",
+      "most_loaded_line_name": "ALBERL61LONG6",
+      "n_overloaded_lines": 2,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_6359588_b-225",
+          "line_name": "ALBERL61LONG6",
+          "loading_pct": 122.4,
+          "current_a": 1578.5,
+          "limit_a": 1290.0
+        },
+        {
+          "line_id": "relation_6310287-225",
+          "line_name": "P.ANDL61SAUS2",
+          "loading_pct": 107.0,
+          "current_a": 1380.0,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_5674501-400",
+      "tripped_line_name": "MANDAL71WARAN",
+      "tripped_vl1": "VL_way_1271288345-400",
+      "tripped_vl1_name": "MANDARINS 400kV",
+      "tripped_vl2": "VL_way_85203486-400",
+      "tripped_vl2_name": "WARANDE 400kV",
+      "max_loading_pct": 119.4,
+      "most_loaded_line": "relation_5674507-400",
+      "most_loaded_line_name": "ATTAQL72WARAN",
+      "n_overloaded_lines": 2,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_5674507-400",
+          "line_name": "ATTAQL72WARAN",
+          "loading_pct": 119.4,
+          "current_a": 3080.5,
+          "limit_a": 2580.0
+        },
+        {
+          "line_id": "relation_5674508-400",
+          "line_name": "ATTAQL72MANDA",
+          "loading_pct": 106.7,
+          "current_a": 2752.7,
+          "limit_a": 2580.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_5674507-400",
+      "tripped_line_name": "ATTAQL72WARAN",
+      "tripped_vl1": "VL_way_85198005-400",
+      "tripped_vl1_name": "ATTAQUES (LES) 400kV",
+      "tripped_vl2": "VL_way_85203486-400",
+      "tripped_vl2_name": "WARANDE 400kV",
+      "max_loading_pct": 116.7,
+      "most_loaded_line": "relation_5674501-400",
+      "most_loaded_line_name": "MANDAL71WARAN",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_5674501-400",
+          "line_name": "MANDAL71WARAN",
+          "loading_pct": 116.7,
+          "current_a": 3010.7,
+          "limit_a": 2580.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_5674508-400",
+      "tripped_line_name": "ATTAQL72MANDA",
+      "tripped_vl1": "VL_way_1271288345-400",
+      "tripped_vl1_name": "MANDARINS 400kV",
+      "tripped_vl2": "VL_way_85198005-400",
+      "tripped_vl2_name": "ATTAQUES (LES) 400kV",
+      "max_loading_pct": 105.2,
+      "most_loaded_line": "relation_5674501-400",
+      "most_loaded_line_name": "MANDAL71WARAN",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_5674501-400",
+          "line_name": "MANDAL71WARAN",
+          "loading_pct": 105.2,
+          "current_a": 2714.9,
+          "limit_a": 2580.0
+        }
+      ]
+    }
+  ]
+}

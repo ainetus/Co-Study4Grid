@@ -479,16 +479,22 @@ onto the bundle's buses and writes `power_plants.json` beside the network:
   `Wind Onshore` / `Wind Offshore` — the types real-time production data tell
   apart), the thermal plants' capacity-weighted **efficiency** (the
   database's figure, else one estimated from the technology and the
-  commissioning year — the merit order of an optimal dispatch) and, for
+  commissioning year — the merit order of an optimal dispatch), for
   nuclear, the plant's site (name without unit number, units'
-  capacity-weighted centre, its units and their capacity).
+  capacity-weighted centre, its units and their capacity) and, per fuel
+  type, the plants the database knows the **ENTSO-E codes** (EIC) of — name,
+  capacity, codes (`eic`): what ties a plant to its measured output
+  (`fetch_entsoe_units.py`, below).
 
 Network, flows, limits, N-1 list and actions are unchanged — the matching
 only labels the existing dispatch. The Context tab
 (`docs/features/context-tab.md`) types each zone's production by the typical
 output of its matched fleet. On `pypsa_eur_eur220_225_380_400` (year 2025):
 53 884 / 54 898 plants matched (95 % of their MW) onto 3 437 / 5 247
-generators; 38 nuclear plants, 97 units.
+generators; 38 nuclear plants, 97 units; 755 plants with ENTSO-E codes
+(383 GW). On `pypsa_eur_fr225_400` (year 2025): 3 110 / 3 125 plants
+(99.6 % of their MW) onto 700 / 1 196 generators; 18 nuclear plants, 57
+units (Flamanville 3 included); 152 plants with ENTSO-E codes (94.5 GW).
 
 ```bash
 curl -L -o /tmp/powerplants.csv https://raw.githubusercontent.com/PyPSA/powerplantmatching/master/powerplants.csv
@@ -514,7 +520,16 @@ networks under `situations/` (the bundle's own network stays as it is):
    production per type (`total_power` — industrial self-supply included —
    where published, i.e. Germany; else `public_power`), cross-border
    physical flows (`cbpf`), installed capacity per type.
-2. **`build_situation.py`** rebuilds the network on it:
+2. **`fetch_entsoe_units.py`** downloads the same hour **unit by unit** from
+   the **ENTSO-E Transparency Platform** (RESTful API, *Actual Generation per
+   Generation Unit*, Regulation 543/2013 art. 16.1.A — every unit of 100 MW
+   or more): per production unit (EIC code), its generation minus what it
+   draws (pumping, a stopped unit's auxiliaries), averaged over the hour,
+   for each control area of the bundle's countries (Germany's four TSOs).
+   The API wants a free security token (on request to ENTSO-E):
+   `--token-file` or `ENTSOE_API_KEY`, sent as a request header — never in a
+   URL, a log or the output. Croatia, Luxembourg and Ukraine publish none.
+3. **`build_situation.py`** rebuilds the network on it:
    - **loads** — each country's load, spread over its buses with the
      synthetic load's own key (bus connectivity). A country's figures rarely
      close, so its load is the one its production and physical imports
@@ -530,18 +545,34 @@ networks under `situations/` (the bundle's own network stays as it is):
      matched for, such as the 13.7 GW a July noon's Dutch data leave untyped
      (*others*) — spread by load over the country's 20 % largest load buses;
    - **dispatch** — `--dispatch observed`: each country's observed output of
-     each type, shared over its plants of that type by capacity (one level
-     per type per country). `--dispatch opf`: a **PyPSA** linear optimal
-     power flow (`dispatch_opf.py`, HiGHS — the PyPSA-Eur way) on the same
-     grid: real loads, renewables / nuclear / hydro capped at the hour's
-     observed availability in their country, thermal plants in merit order
-     (2025 fuel and CO₂ prices over each plant's efficiency), lines limited
-     to 70 % of their OSM rating, penalised load shedding / spill;
+     each type. With `--units`, a plant whose units ENTSO-E measures keeps
+     its **own output** — a reactor in outage at zero, the others at what
+     they produced; the rest of the type's production (the units under
+     100 MW, the plants the database has no code for) is shared over the
+     capacity they leave, by capacity — what that capacity cannot hold goes
+     over the measured plants' headroom. A unit counts for the plants of its
+     own country and type that list its code, on one bus: the database gives
+     a few codes to plants far apart (they place nothing), and a unit whose
+     type none of its plants has is left to the shared part. A code covering
+     several reactors of a site (Paks, Mochovce, Bohunice, Beznau report one
+     per plant) is shared with the site's unmeasured units. Units measuring
+     a type whole, or more than the country reports, are scaled onto the
+     country's figure, so every national total stays as observed. Without
+     `--units`, one level per type per country. `--dispatch opf`: a **PyPSA**
+     linear optimal power flow (`dispatch_opf.py`, HiGHS — the PyPSA-Eur way)
+     on the same grid: real loads, renewables / nuclear / hydro capped at
+     their observed output (plant by plant: a reactor in outage stays off),
+     thermal plants in merit order (2025 fuel and CO₂ prices over each
+     plant's efficiency), lines limited to 70 % of their OSM rating,
+     penalised load shedding / spill;
    - **exchanges** with what the grid leaves out (Great Britain, the
      Nordics, Turkey…) and over its HVDC-only borders (BE–DE, DK–NL, IT–GR,
      IT–ME) — fixed injections, FICTITIOUS loads `X_<country>_<bus>` (tagged
      `neighbour`) at the converter buses of the OSM HVDC links, from the
-     observed physical flows;
+     observed physical flows. A country its bundle keeps **alone** (no AC
+     neighbour in it — the French bundle) takes each exchange in where the
+     AC lines the bundle cut at that border land, and over the border's HVDC
+     links, by capacity (see *The French bundle* below);
    - an **AC load flow** (OpenLoadFlow, RTE parameters); loads trimmed so
      the slack covers only the grid's own losses; `caseDate` = the hour;
      every line's limit restarts from its OSM rating (√3·U·I_nom·circuits).
@@ -549,53 +580,130 @@ networks under `situations/` (the bundle's own network stays as it is):
    level and produce it plus what their neighbours report importing from
    them (Albania, Ukraine; Montenegro in July). Denmark is DK1 alone (×0.6);
    Lithuania is its border bus, feeding the exchange Poland reports.
-3. `calibrate_thermal_limits.py --chunk-size 1000` then
+4. `calibrate_thermal_limits.py --chunk-size 1000` then
    `generate_n1_overloads.py --chunk-size 1000`, as for any bundle.
 
 ```bash
 B=data/pypsa_eur_eur220_225_380_400
 python scripts/pypsa_eur/fetch_energy_charts.py --network $B/network.xiidm \
     --at 2025-01-14T08:00Z --out $B/situations/energy_charts_2025-01-14T0800Z.json
+python scripts/pypsa_eur/fetch_entsoe_units.py --token-file ~/entsoe_token.txt \
+    --network $B/network.xiidm --at 2025-01-14T08:00Z \
+    --out $B/situations/entsoe_units_2025-01-14T0800Z.json
 python scripts/pypsa_eur/build_situation.py --bundle $B \
     --observed $B/situations/energy_charts_2025-01-14T0800Z.json \
-    --dispatch observed --osm-dir data/pypsa_eur_osm --out $B/situations/2025-01-14_0800Z_observed
-# The PyPSA dispatch runs in its own environment (PyPSA pulls pandas 3):
-python -m venv venv_opf && venv_opf/bin/pip install pypsa highspy
-python scripts/pypsa_eur/build_situation.py ... --dispatch opf --opf-python venv_opf/bin/python \
-    --out $B/situations/2025-01-14_0800Z_opf
+    --units $B/situations/entsoe_units_2025-01-14T0800Z.json \
+    --dispatch opf --opf-python venv_opf/bin/python \
+    --osm-dir data/pypsa_eur_osm --out $B/situations/2025-01-14_0800Z_opf
+# The PyPSA dispatch runs in its own environment (PyPSA pulls pandas 3),
+# made once: python -m venv venv_opf && venv_opf/bin/pip install pypsa highspy
 python scripts/pypsa_eur/calibrate_thermal_limits.py --network $B/situations/2025-01-14_0800Z_opf --chunk-size 1000
 python scripts/pypsa_eur/generate_n1_overloads.py --network $B/situations/2025-01-14_0800Z_opf --chunk-size 1000
 ```
 
+The bundles ship the **optimal dispatch** of each hour (see below why the
+observed one is not); `--dispatch observed` builds it for a comparison.
 Each situation folder ships `network.xiidm.zip` (2.7 MB; decompressed on
 load, and by the Docker build), `situation.json` (the hour, the dispatch, the
-sources, and per country the observed vs model load, production by type and
-net exports) and `n1_overload_contingencies.json`; the Energy-Charts hours
-they were built from sit beside them (`energy_charts_<hour>.json`). An `opf`
-build also leaves the PyPSA problem it solved in `opf_problem/` — local
-only, not shipped. The Context tab names the hour and credits both sources.
+sources, and per country the observed vs model load, production by type,
+the part ENTSO-E measures unit by unit and net exports; `units` sums up how
+many measured units the network places) and `n1_overload_contingencies.json`;
+the hours they were built from sit beside them (`energy_charts_<hour>.json`,
+`entsoe_units_<hour>.json`). An `opf` build also leaves the PyPSA problem it
+solved in `opf_problem/` — local only, not shipped. The Context tab names the
+hour and credits the sources.
 
 | Situation | Load | Losses | N-1 overloads | Notes |
 |---|---|---|---|---|
-| 14 Jan 2025 09:00 CET, observed | 386 GW | 5.3 GW | 139 (82 limits raised) | France's 2025 peak hour: FR nuclear 52.8 GW, DE exports 4.1 GW, FR imports 3.6 GW (3.7 observed) |
-| 14 Jan 2025, PyPSA dispatch | 386 GW | 5.1 GW | 109 (33) | DE lignite + coal 29.5 GW (16.2 observed, gas dearer); FR nuclear backed down to 45 GW where its 400 kV outlets reach 70 % of their rating; 1.8 GW shed in French 225 kV pockets |
-| 1 Jul 2025 13:00 CEST, observed | 326 GW | 4.7 GW | 74 (37) | Heatwave midday: DE solar 54.6 GW, FR nuclear 37.6 GW, FR exports 3.1 GW (2.7) |
-| 1 Jul 2025, PyPSA dispatch | 329 GW | 3.0 GW | 33 (10) | FR exports 8.6 GW, GR 5.1 GW; 66 MW shed |
+| 14 Jan 2025 09:00 CET (France's 2025 peak hour), PyPSA dispatch | 386 GW | 4.9 GW | 107 (36 limits raised) | DE lignite + coal 29.7 GW (16.2 observed, gas dearer); FR nuclear backed down to 47.1 GW where its 400 kV outlets reach 70 % of their rating; 1.9 GW shed in French 225 kV pockets |
+| 1 Jul 2025 13:00 CEST (heatwave midday), PyPSA dispatch | 329 GW | 2.9 GW | 33 (12) | FR exports 7.9 GW, GR 5.2 GW; 67 MW shed |
 
 *N-1 overloads*: contingencies, of the 7 173 tested, that leave a line above
 100 % once `calibrate_thermal_limits.py` has raised the limits in brackets
-(N-1 peak capped at 130 %). Before calibration the observed dispatches load
-some lines far beyond their OSM rating in N already (258 % in January, 286 %
-in July) — no limit constrained them, so every contingency overloads. The
-optimal dispatch respects 70 % of the ratings in DC, so its AC flows need
-fewer raises (115 % and 90 % N-state peaks) and leave fewer overloads.
+(N-1 peak capped at 130 %). The optimal dispatch respects 70 % of the
+ratings in DC, so its AC flows need few raises (117 % and 90 % N-state
+peaks). The observed dispatch is not shipped: placed on a synthetic grid
+that no market constrained, it loads some lines far beyond their OSM rating
+in N already (258 % in January, 286 % in July), so calibration has to raise
+many limits (93 and 44) and nearly every contingency overloads (139 and 79).
+
+ENTSO-E measures 723 units in the bundle's countries in January (222 GW,
+Denmark and Lithuania aside) and 731 in July (123 GW): the network places
+484 and 487 of them, 75 % and 70 % of their output — all of France's
+reactors, most of Germany's, Spain's, Belgium's, the Netherlands' and
+Poland's large plants. Most Italian, Czech and Bulgarian plants have no
+code in the plant database, so their units stay in the shared part.
+
+#### The French bundle on the same hours
+
+`pypsa_eur_fr225_400` — the same OSM grid cut to France at 225 / 400 kV,
+whose own situation is synthetic too (75 GW of load spread by connectivity,
+every substation producing 71 MW) — is rebuilt on the same two hours, in their
+optimal dispatch, under `data/pypsa_eur_fr225_400/situations/`. Step 7
+first gave it its `power_plants.json` (above); the Energy-Charts files hold
+France alone, the same figures as the European ones.
+
+France is alone in its bundle, so **every** exchange is a fixed injection,
+at the borders the bundle cut: the 28 AC lines the OSM data draw from France
+to Belgium, Germany, Switzerland, Italy, Spain and Luxembourg (a line whose
+French end is no bundle bus lands on the nearest bus of its voltage class),
+with INELFE for Spain and IFA, IFA2 and ElecLink for Great Britain. Each
+neighbour's observed physical flow is spread over its border by capacity —
+OSM rating for a line, `p_nom` for a link. SACOI's Corsican converter is left
+out (more than 50 km off the mainland grid), and the OSM data lack
+Savoie–Piémont, so Italy's exchange rides the AC lines alone; Luxembourg
+reports no flow. The optimal dispatch keeps the exchanges as observed and
+redispatches France alone.
+
+```bash
+B=data/pypsa_eur_fr225_400
+python scripts/pypsa_eur/match_power_plants.py --network $B --plants /tmp/powerplants.csv --year 2025
+python scripts/pypsa_eur/fetch_energy_charts.py --network $B/network.xiidm \
+    --at 2025-01-14T08:00Z --out $B/situations/energy_charts_2025-01-14T0800Z.json
+python scripts/pypsa_eur/fetch_entsoe_units.py --token-file ~/entsoe_token.txt \
+    --network $B/network.xiidm --at 2025-01-14T08:00Z \
+    --out $B/situations/entsoe_units_2025-01-14T0800Z.json
+python scripts/pypsa_eur/build_situation.py --bundle $B \
+    --observed $B/situations/energy_charts_2025-01-14T0800Z.json \
+    --units $B/situations/entsoe_units_2025-01-14T0800Z.json \
+    --dispatch opf --opf-python venv_opf/bin/python \
+    --osm-dir data/pypsa_eur_osm --out $B/situations/2025-01-14_0800Z_opf
+# … then calibrate + N-1 as above.
+```
+
+ENTSO-E measures 111 French units in January (64.9 GW) and 113 in July
+(39.7 GW); 103 and 106 of them land on the network, 99 % of their output —
+every reactor among them. The optimal dispatch caps each at its own
+output, so a reactor in outage stays off: six in January (Chinon 1, Civaux 1, Cruas 3, Flamanville 1, Paluel 3,
+Penly 2; Flamanville 3, commissioning, at 40 MW), fifteen in July (both
+Golfech units, Chooz 2, Cattenom 1 and 3…), where a uniform dispatch ran
+every unit at the national 80 % and 57 %.
+
+| Situation | Load | Losses | N-1 overloads | Notes |
+|---|---|---|---|---|
+| 14 Jan 2025 09:00 CET, PyPSA dispatch | 83.6 GW | 1.0 GW | 28 (10 limits raised) | Nuclear 48.4 GW (52.8 observed) with Chooz B and Golfech at full power, gas / coal / oil up 3.2 GW; 1.9 GW shed in 225 kV pockets; imports 3.7 GW — GB 1.9, ES 1.8, BE 1.7, CH 0.6 in, IT 2.1, DE 0.2 out |
+| 1 Jul 2025 13:00 CEST, PyPSA dispatch | 57.6 GW | 0.6 GW | 8 (2) | Nuclear 37.5 GW (15 reactors off) and solar serve the load, gas down to 0.2 GW, no pumping; exports 2.7 GW — GB 3.1, IT 1.8, ES 0.9 out, DE 2.5 in |
+
+Its overloads sit where the exchanges and the large plants meet the grid. In
+January: the outlets of Chooz B (Chooz – Lonny) and Golfech (Donzac –
+Golfech), both at full power, Tavel – Ponteau and the 225 kV ring of
+Marseille (Réaltor – Septèmes), Échalas, Bezaumont – Vigy and Saint-Avold –
+Vigy and, around Paris, Le Chesnoy – Tabarderie, Cirolliers – Les Loges and
+Courtry – Plessis. In July: the outlet of Penly (both units at full power),
+the Maurienne valley carrying the exports to Italy (Albertville – La Coche,
+La Praz – Villarodin) and Calais – Dunkirk (the GB links, Gravelines). The
+Context tab draws each situation at RTE's region mesh (regions inferred,
+see `docs/features/context-tab.md`), its six exchanges at the neighbours'
+badges.
 
 Limits of the method: loads follow connectivity within a country, not
-population; the observed dispatch gives all plants of one type in a country
-the same level (per-unit outputs need unit-level data the open sources do
-not give); the PyPSA dispatch follows its cost assumptions, not the hour's
-market; HVDC links on borders that also have AC lines (FR–ES, FR–IT) are
-left to the AC lines.
+population; the plants ENTSO-E does not measure — units under 100 MW (wind,
+solar, small hydro), plants the database has no code for (most of Italy's,
+Czechia's and Bulgaria's) — share what their type has left at one level per
+country;
+the PyPSA dispatch follows its cost assumptions, not the hour's market; in the European bundle, HVDC links on borders that also have AC
+lines (FR–ES, FR–IT) are left to the AC lines; in the French one, a border's
+flow is shared by rating, not by impedance.
 
 
 

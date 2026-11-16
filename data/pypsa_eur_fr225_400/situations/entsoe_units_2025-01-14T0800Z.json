@@ -1,0 +1,1054 @@
+{
+ "schema": "costudy4grid-unit-hour/1",
+ "at_utc": "2025-01-14T08:00Z",
+ "source": {
+  "name": "ENTSO-E Transparency Platform",
+  "url": "https://transparency.entsoe.eu",
+  "dataset": "Actual Generation per Generation Unit [16.1.A]"
+ },
+ "fetched_at": "2026-11-15T22:52Z",
+ "countries": {
+  "FR": {
+   "areas": [
+    "10YFR-RTE------C"
+   ],
+   "units": [
+    {
+     "eic": "17W000000989065O",
+     "name": "CPCU-StOuen-GP",
+     "type": "B04",
+     "mw": 102.4,
+     "parts": [
+      "17W0000014186456"
+     ]
+    },
+    {
+     "eic": "17W000000989066M",
+     "name": "CPCU-CogeVitry–GP",
+     "type": "B04",
+     "mw": 130.7,
+     "parts": [
+      "17W000001418626A"
+     ]
+    },
+    {
+     "eic": "17W000001023704Q",
+     "name": "FR_LANDIVISIAUGU",
+     "type": "B04",
+     "mw": 440.3,
+     "parts": [
+      "17W000001023725I"
+     ]
+    },
+    {
+     "eic": "17W000001345677Y",
+     "name": "BANC DE GUERANDE 1",
+     "type": "B18",
+     "mw": 37.5,
+     "parts": [
+      "17W0000014455651",
+      "17W000001445567Y"
+     ]
+    },
+    {
+     "eic": "17W000001445568W",
+     "name": "FECAMP 1",
+     "type": "B18",
+     "mw": 33.9,
+     "parts": [
+      "17W000001445569U",
+      "17W0000014455708"
+     ]
+    },
+    {
+     "eic": "17W000001521205J",
+     "name": "A1 DE PARC EOLIEN EN MER DE LA BAIE DE ST-BRIEUC",
+     "type": "B18",
+     "mw": -5.1,
+     "parts": [
+      "17W100P100P0842Y",
+      "17W100P100P3382R"
+     ]
+    },
+    {
+     "eic": "17W000001637625S",
+     "name": "BESS_AFD7_BARBAN_SAUCATS_1",
+     "type": "B20",
+     "mw": -1.6,
+     "parts": [
+      "17W000001637626Q"
+     ]
+    },
+    {
+     "eic": "17W100B100P0189S",
+     "name": "CATTENOM 3",
+     "type": "B14",
+     "mw": 1311.6,
+     "parts": [
+      "17W100P100P0104X"
+     ]
+    },
+    {
+     "eic": "17W100P100P01776",
+     "name": "BLAYAIS 1",
+     "type": "B14",
+     "mw": 918.9,
+     "parts": [
+      "17W100P100P0092E"
+     ]
+    },
+    {
+     "eic": "17W100P100P01784",
+     "name": "BLAYAIS 2",
+     "type": "B14",
+     "mw": 872.5,
+     "parts": [
+      "17W100P100P0093C"
+     ]
+    },
+    {
+     "eic": "17W100P100P01792",
+     "name": "BLAYAIS 3",
+     "type": "B14",
+     "mw": 863.3,
+     "parts": [
+      "17W100P100P0094A"
+     ]
+    },
+    {
+     "eic": "17W100P100P0180H",
+     "name": "BLAYAIS 4",
+     "type": "B14",
+     "mw": 907.1,
+     "parts": [
+      "17W100P100P00958"
+     ]
+    },
+    {
+     "eic": "17W100P100P0181F",
+     "name": "BUGEY 2",
+     "type": "B14",
+     "mw": 870.9,
+     "parts": [
+      "17W100P100P00966"
+     ]
+    },
+    {
+     "eic": "17W100P100P0182D",
+     "name": "BUGEY 3",
+     "type": "B14",
+     "mw": 904.3,
+     "parts": [
+      "17W100P100P00974"
+     ]
+    },
+    {
+     "eic": "17W100P100P0183B",
+     "name": "BUGEY 4",
+     "type": "B14",
+     "mw": 884.8,
+     "parts": [
+      "17W100P100P00982"
+     ]
+    },
+    {
+     "eic": "17W100P100P01849",
+     "name": "BUGEY 5",
+     "type": "B14",
+     "mw": 899.0,
+     "parts": [
+      "17W100P100P01004"
+     ]
+    },
+    {
+     "eic": "17W100P100P01857",
+     "name": "BELLEVILLE 1",
+     "type": "B14",
+     "mw": 1298.6,
+     "parts": [
+      "17W100P100P0090I"
+     ]
+    },
+    {
+     "eic": "17W100P100P01865",
+     "name": "BELLEVILLE 2",
+     "type": "B14",
+     "mw": 1316.5,
+     "parts": [
+      "17W100P100P0091G"
+     ]
+    },
+    {
+     "eic": "17W100P100P01873",
+     "name": "CATTENOM 1",
+     "type": "B14",
+     "mw": 1289.9,
+     "parts": [
+      "17W100P100P01012"
+     ]
+    },
+    {
+     "eic": "17W100P100P01881",
+     "name": "CATTENOM 2",
+     "type": "B14",
+     "mw": 1287.0,
+     "parts": [
+      "17W100P100P0103Z"
+     ]
+    },
+    {
+     "eic": "17W100P100P0190E",
+     "name": "CATTENOM 4",
+     "type": "B14",
+     "mw": 1310.5,
+     "parts": [
+      "17W100P100P0105V"
+     ]
+    },
+    {
+     "eic": "17W100P100P0191C",
+     "name": "CHINON 1",
+     "type": "B14",
+     "mw": 0.0,
+     "parts": [
+      "17W100P100P0106T"
+     ]
+    },
+    {
+     "eic": "17W100P100P0192A",
+     "name": "CHINON 2",
+     "type": "B14",
+     "mw": 953.1,
+     "parts": [
+      "17W100P100P0107R"
+     ]
+    },
+    {
+     "eic": "17W100P100P01938",
+     "name": "CHINON 3",
+     "type": "B14",
+     "mw": 968.4,
+     "parts": [
+      "17W100P100P0108P"
+     ]
+    },
+    {
+     "eic": "17W100P100P01946",
+     "name": "CHINON 4",
+     "type": "B14",
+     "mw": 915.4,
+     "parts": [
+      "17W100P100P0109N"
+     ]
+    },
+    {
+     "eic": "17W100P100P01954",
+     "name": "CHOOZ 1",
+     "type": "B14",
+     "mw": 1496.8,
+     "parts": [
+      "17W100P100P01101"
+     ]
+    },
+    {
+     "eic": "17W100P100P01962",
+     "name": "CHOOZ 2",
+     "type": "B14",
+     "mw": 1496.1,
+     "parts": [
+      "17W100P100P0112Y"
+     ]
+    },
+    {
+     "eic": "17W100P100P01970",
+     "name": "CIVAUX 1",
+     "type": "B14",
+     "mw": -51.2,
+     "parts": [
+      "17W100P100P0113W"
+     ]
+    },
+    {
+     "eic": "17W100P100P0198Z",
+     "name": "CIVAUX 2",
+     "type": "B14",
+     "mw": 1513.0,
+     "parts": [
+      "17W100P100P0114U"
+     ]
+    },
+    {
+     "eic": "17W100P100P0199X",
+     "name": "CRUAS 1",
+     "type": "B14",
+     "mw": 927.1,
+     "parts": [
+      "17W100P100P0115S"
+     ]
+    },
+    {
+     "eic": "17W100P100P02000",
+     "name": "CRUAS 2",
+     "type": "B14",
+     "mw": 804.4,
+     "parts": [
+      "17W100P100P0116Q"
+     ]
+    },
+    {
+     "eic": "17W100P100P0201Z",
+     "name": "CRUAS 3",
+     "type": "B14",
+     "mw": 0.0,
+     "parts": [
+      "17W100P100P0118M"
+     ]
+    },
+    {
+     "eic": "17W100P100P0202X",
+     "name": "CRUAS 4",
+     "type": "B14",
+     "mw": 916.8,
+     "parts": [
+      "17W100P100P0119K"
+     ]
+    },
+    {
+     "eic": "17W100P100P0203V",
+     "name": "DAMPIERRE 1",
+     "type": "B14",
+     "mw": 885.9,
+     "parts": [
+      "17W100P100P0120Z"
+     ]
+    },
+    {
+     "eic": "17W100P100P0204T",
+     "name": "DAMPIERRE 2",
+     "type": "B14",
+     "mw": 933.3,
+     "parts": [
+      "17W100P100P0121X"
+     ]
+    },
+    {
+     "eic": "17W100P100P0205R",
+     "name": "DAMPIERRE 3",
+     "type": "B14",
+     "mw": 920.0,
+     "parts": [
+      "17W100P100P0122V"
+     ]
+    },
+    {
+     "eic": "17W100P100P0206P",
+     "name": "DAMPIERRE 4",
+     "type": "B14",
+     "mw": 898.8,
+     "parts": [
+      "17W100P100P0123T"
+     ]
+    },
+    {
+     "eic": "17W100P100P0209J",
+     "name": "FLAMANVILLE 1",
+     "type": "B14",
+     "mw": -0.1,
+     "parts": [
+      "17W100P100P0126N"
+     ]
+    },
+    {
+     "eic": "17W100P100P0210Y",
+     "name": "FLAMANVILLE 2",
+     "type": "B14",
+     "mw": 1297.2,
+     "parts": [
+      "17W100P100P0127L"
+     ]
+    },
+    {
+     "eic": "17W100P100P0211W",
+     "name": "GOLFECH 1",
+     "type": "B14",
+     "mw": 1317.8,
+     "parts": [
+      "17W100P100P0128J"
+     ]
+    },
+    {
+     "eic": "17W100P100P0212U",
+     "name": "GOLFECH 2",
+     "type": "B14",
+     "mw": 1305.4,
+     "parts": [
+      "17W100P100P0129H"
+     ]
+    },
+    {
+     "eic": "17W100P100P0213S",
+     "name": "GRAVELINES 1",
+     "type": "B14",
+     "mw": 891.4,
+     "parts": [
+      "17W100P100P0130W"
+     ]
+    },
+    {
+     "eic": "17W100P100P0214Q",
+     "name": "GRAVELINES 2",
+     "type": "B14",
+     "mw": 857.3,
+     "parts": [
+      "17W100P100P0131U"
+     ]
+    },
+    {
+     "eic": "17W100P100P0215O",
+     "name": "GRAVELINES 3",
+     "type": "B14",
+     "mw": 196.4,
+     "parts": [
+      "17W100P100P0132S"
+     ]
+    },
+    {
+     "eic": "17W100P100P0216M",
+     "name": "GRAVELINES 4",
+     "type": "B14",
+     "mw": 945.2,
+     "parts": [
+      "17W100P100P0133Q"
+     ]
+    },
+    {
+     "eic": "17W100P100P0217K",
+     "name": "GRAVELINES 5",
+     "type": "B14",
+     "mw": 919.8,
+     "parts": [
+      "17W100P100P0135M"
+     ]
+    },
+    {
+     "eic": "17W100P100P0218I",
+     "name": "GRAVELINES 6",
+     "type": "B14",
+     "mw": 899.1,
+     "parts": [
+      "17W100P100P0136K"
+     ]
+    },
+    {
+     "eic": "17W100P100P0219G",
+     "name": "NOGENT 1",
+     "type": "B14",
+     "mw": 1312.1,
+     "parts": [
+      "17W100P100P0137I"
+     ]
+    },
+    {
+     "eic": "17W100P100P0220V",
+     "name": "NOGENT 2",
+     "type": "B14",
+     "mw": 1306.8,
+     "parts": [
+      "17W100P100P0138G"
+     ]
+    },
+    {
+     "eic": "17W100P100P0221T",
+     "name": "PALUEL 1",
+     "type": "B14",
+     "mw": 1293.7,
+     "parts": [
+      "17W100P100P0139E"
+     ]
+    },
+    {
+     "eic": "17W100P100P0222R",
+     "name": "PALUEL 2",
+     "type": "B14",
+     "mw": 1279.4,
+     "parts": [
+      "17W100P100P0140T"
+     ]
+    },
+    {
+     "eic": "17W100P100P0223P",
+     "name": "PALUEL 3",
+     "type": "B14",
+     "mw": -9.3,
+     "parts": [
+      "17W100P100P0141R"
+     ]
+    },
+    {
+     "eic": "17W100P100P0224N",
+     "name": "PALUEL 4",
+     "type": "B14",
+     "mw": 1291.5,
+     "parts": [
+      "17W100P100P0142P"
+     ]
+    },
+    {
+     "eic": "17W100P100P0225L",
+     "name": "PENLY 1",
+     "type": "B14",
+     "mw": 1321.8,
+     "parts": [
+      "17W100P100P0143N"
+     ]
+    },
+    {
+     "eic": "17W100P100P0226J",
+     "name": "PENLY 2",
+     "type": "B14",
+     "mw": -3.3,
+     "parts": [
+      "17W100P100P0144L"
+     ]
+    },
+    {
+     "eic": "17W100P100P0227H",
+     "name": "ST ALBAN 1",
+     "type": "B14",
+     "mw": 1317.8,
+     "parts": [
+      "17W100P100P0145J"
+     ]
+    },
+    {
+     "eic": "17W100P100P0228F",
+     "name": "ST ALBAN 2",
+     "type": "B14",
+     "mw": 1309.4,
+     "parts": [
+      "17W100P100P0146H"
+     ]
+    },
+    {
+     "eic": "17W100P100P0229D",
+     "name": "ST LAURENT 1",
+     "type": "B14",
+     "mw": 898.5,
+     "parts": [
+      "17W100P100P0147F"
+     ]
+    },
+    {
+     "eic": "17W100P100P0230S",
+     "name": "ST LAURENT 2",
+     "type": "B14",
+     "mw": 902.1,
+     "parts": [
+      "17W100P100P0148D"
+     ]
+    },
+    {
+     "eic": "17W100P100P0231Q",
+     "name": "TRICASTIN 1",
+     "type": "B14",
+     "mw": 743.5,
+     "parts": [
+      "17W100P100P0149B"
+     ]
+    },
+    {
+     "eic": "17W100P100P0232O",
+     "name": "TRICASTIN 2",
+     "type": "B14",
+     "mw": 904.7,
+     "parts": [
+      "17W100P100P0150Q"
+     ]
+    },
+    {
+     "eic": "17W100P100P0233M",
+     "name": "TRICASTIN 3",
+     "type": "B14",
+     "mw": 912.8,
+     "parts": [
+      "17W100P100P0152M"
+     ]
+    },
+    {
+     "eic": "17W100P100P0234K",
+     "name": "TRICASTIN 4",
+     "type": "B14",
+     "mw": 947.4,
+     "parts": [
+      "17W100P100P0153K"
+     ]
+    },
+    {
+     "eic": "17W100P100P0236G",
+     "name": "CORDEMAIS 4",
+     "type": "B05",
+     "mw": -0.3,
+     "parts": [
+      "17W100P100P0017S"
+     ]
+    },
+    {
+     "eic": "17W100P100P0237E",
+     "name": "CORDEMAIS 5",
+     "type": "B05",
+     "mw": -0.2,
+     "parts": [
+      "17W100P100P0018Q"
+     ]
+    },
+    {
+     "eic": "17W100P100P0243J",
+     "name": "BLENOD 5",
+     "type": "B04",
+     "mw": 439.4,
+     "parts": [
+      "17W100P100P0173E"
+     ]
+    },
+    {
+     "eic": "17W100P100P0244H",
+     "name": "BOUCHAIN 7",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "17W100P100P01768"
+     ]
+    },
+    {
+     "eic": "17W100P100P0245F",
+     "name": "MARTIGUES PONTEAU 5",
+     "type": "B04",
+     "mw": 448.6,
+     "parts": [
+      "17W100P100P0174C"
+     ]
+    },
+    {
+     "eic": "17W100P100P0246D",
+     "name": "MARTIGUES PONTEAU 6",
+     "type": "B04",
+     "mw": 450.6,
+     "parts": [
+      "17W100P100P0175A"
+     ]
+    },
+    {
+     "eic": "17W100P100P0255C",
+     "name": "ARRIGHI 1",
+     "type": "B06",
+     "mw": 131.8,
+     "parts": [
+      "17W100P100P0031Y"
+     ]
+    },
+    {
+     "eic": "17W100P100P0256A",
+     "name": "ARRIGHI 2",
+     "type": "B06",
+     "mw": 136.4,
+     "parts": [
+      "17W100P100P0032W"
+     ]
+    },
+    {
+     "eic": "17W100P100P02586",
+     "name": "BRENNILIS 1",
+     "type": "B06",
+     "mw": 72.7,
+     "parts": [
+      "17W100P100P02578"
+     ]
+    },
+    {
+     "eic": "17W100P100P0260J",
+     "name": "BRENNILIS 2",
+     "type": "B06",
+     "mw": 87.7,
+     "parts": [
+      "17W100P100P02594"
+     ]
+    },
+    {
+     "eic": "17W100P100P0261H",
+     "name": "BRENNILIS 3",
+     "type": "B06",
+     "mw": 122.6,
+     "parts": [
+      "17W100P100P0033U"
+     ]
+    },
+    {
+     "eic": "17W100P100P0263D",
+     "name": "DIRINON 1",
+     "type": "B06",
+     "mw": 70.8,
+     "parts": [
+      "17W100P100P0262F"
+     ]
+    },
+    {
+     "eic": "17W100P100P02659",
+     "name": "DIRINON 2",
+     "type": "B06",
+     "mw": 87.0,
+     "parts": [
+      "17W100P100P0264B"
+     ]
+    },
+    {
+     "eic": "17W100P100P02667",
+     "name": "GENNEVILLIERS 1",
+     "type": "B04",
+     "mw": 200.2,
+     "parts": [
+      "17W100P100P0037M"
+     ]
+    },
+    {
+     "eic": "17W100P100P02675",
+     "name": "VAIRES 1",
+     "type": "B06",
+     "mw": 189.4,
+     "parts": [
+      "17W100P100P0046L"
+     ]
+    },
+    {
+     "eic": "17W100P100P02683",
+     "name": "VAIRES 2",
+     "type": "B06",
+     "mw": 183.5,
+     "parts": [
+      "17W100P100P0047J"
+     ]
+    },
+    {
+     "eic": "17W100P100P02691",
+     "name": "VAIRES 3",
+     "type": "B06",
+     "mw": 176.2,
+     "parts": [
+      "17W100P100P0048H"
+     ]
+    },
+    {
+     "eic": "17W100P100P0270G",
+     "name": "MONTEREAU 5",
+     "type": "B06",
+     "mw": 165.4,
+     "parts": [
+      "17W100P100P0040X"
+     ]
+    },
+    {
+     "eic": "17W100P100P0271E",
+     "name": "MONTEREAU 6",
+     "type": "B06",
+     "mw": -0.4,
+     "parts": [
+      "17W100P100P0041V"
+     ]
+    },
+    {
+     "eic": "17W100P100P0273A",
+     "name": "CHEYLAS 1",
+     "type": "B10",
+     "mw": 202.7,
+     "parts": [
+      "17W100P100P0056I",
+      "17W100P100P0057G"
+     ]
+    },
+    {
+     "eic": "17W100P100P02748",
+     "name": "COCHE 5",
+     "type": "B10",
+     "mw": 141.2,
+     "parts": [
+      "17W100P100P20746"
+     ]
+    },
+    {
+     "eic": "17W100P100P02756",
+     "name": "GRAND MAISON 10",
+     "type": "B10",
+     "mw": 1040.2,
+     "parts": [
+      "17W100P100P0058E",
+      "17W100P100P0059C",
+      "17W100P100P0060R",
+      "17W100P100P0061P",
+      "17W100P100P0062N",
+      "17W100P100P0063L",
+      "17W100P100P0064J",
+      "17W100P100P0065H",
+      "17W100P100P0066F",
+      "17W100P100P0067D",
+      "17W100P100P0068B",
+      "17W100P100P00699"
+     ]
+    },
+    {
+     "eic": "17W100P100P02764",
+     "name": "SUPER BISSORTE 1",
+     "type": "B10",
+     "mw": 433.2,
+     "parts": [
+      "17W100P100P0082H",
+      "17W100P100P0083F",
+      "17W100P100P0084D",
+      "17W100P100P0085B",
+      "17W100P100P00869"
+     ]
+    },
+    {
+     "eic": "17W100P100P02772",
+     "name": "MONTEZIC 1",
+     "type": "B10",
+     "mw": 743.0,
+     "parts": [
+      "17W100P100P0071M",
+      "17W100P100P0072K",
+      "17W100P100P0073I",
+      "17W100P100P0074G"
+     ]
+    },
+    {
+     "eic": "17W100P100P02780",
+     "name": "REVIN 1",
+     "type": "B10",
+     "mw": 297.6,
+     "parts": [
+      "17W100P100P0076C",
+      "17W100P100P00796"
+     ]
+    },
+    {
+     "eic": "17W100P100P0279Z",
+     "name": "AIGLE 6",
+     "type": "B12",
+     "mw": 114.3,
+     "parts": [
+      "17W100P100P0051S"
+     ]
+    },
+    {
+     "eic": "17W100P100P0280D",
+     "name": "BATHIE 1",
+     "type": "B12",
+     "mw": 557.6,
+     "parts": [
+      "17W100P100P03566",
+      "17W100P100P03574",
+      "17W100P100P03582",
+      "17W100P100P03590",
+      "17W100P100P0360F",
+      "17W100P100P0361D"
+     ]
+    },
+    {
+     "eic": "17W100P100P0281B",
+     "name": "BORT 1",
+     "type": "B12",
+     "mw": 106.4,
+     "parts": [
+      "17W100P100P0052Q",
+      "17W100P100P0054M"
+     ]
+    },
+    {
+     "eic": "17W100P100P02829",
+     "name": "BROMMAT 7",
+     "type": "B12",
+     "mw": 215.7,
+     "parts": [
+      "17W100P100P0055K"
+     ]
+    },
+    {
+     "eic": "17W100P100P0290A",
+     "name": "POUGET 4",
+     "type": "B12",
+     "mw": 208.3,
+     "parts": [
+      "17W100P100P0075E"
+     ]
+    },
+    {
+     "eic": "17W100P100P02942",
+     "name": "SISTERON 1",
+     "type": "B12",
+     "mw": 227.9,
+     "parts": [
+      "17W100P100P0080L",
+      "17W100P100P0081J"
+     ]
+    },
+    {
+     "eic": "17W100P100P0300X",
+     "name": "VILLARODIN 1",
+     "type": "B12",
+     "mw": 294.3,
+     "parts": [
+      "17W100P100P00877",
+      "17W100P100P00885"
+     ]
+    },
+    {
+     "eic": "17W100P100P0302T",
+     "name": "CHASTANG 2",
+     "type": "B11",
+     "mw": 164.7,
+     "parts": [
+      "17W100P100P0049F",
+      "17W100P100P0050U"
+     ]
+    },
+    {
+     "eic": "17W100P100P0318E",
+     "name": "FR-GA-MORANT1",
+     "type": "B04",
+     "mw": 425.8,
+     "parts": [
+      "17W100P100P00122"
+     ]
+    },
+    {
+     "eic": "17W100P100P03299",
+     "name": "SAINT-PIERRE",
+     "type": "B11",
+     "mw": 100.7,
+     "parts": [
+      "17W100P100P0166B"
+     ]
+    },
+    {
+     "eic": "17W100P100P0334G",
+     "name": "SPEM CCG",
+     "type": "B04",
+     "mw": 453.0,
+     "parts": [
+      "17W100P100P0171I"
+     ]
+    },
+    {
+     "eic": "17W100P100P0337A",
+     "name": "COMBIGOLFE CCG",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "17W100P100P01679"
+     ]
+    },
+    {
+     "eic": "17W100P100P0340L",
+     "name": "Croix-de-Metz",
+     "type": "B04",
+     "mw": 443.6,
+     "parts": [
+      "17W100P100P00123"
+     ]
+    },
+    {
+     "eic": "17W100P100P0341J",
+     "name": "Pont-sur-Sambre",
+     "type": "B04",
+     "mw": -0.7,
+     "parts": [
+      "17W100P100P00016"
+     ]
+    },
+    {
+     "eic": "17W100P100P0343F",
+     "name": "EMILE HUCHET 6",
+     "type": "B05",
+     "mw": 588.1,
+     "parts": [
+      "17W100P100P0005Z"
+     ]
+    },
+    {
+     "eic": "17W100P100P0344D",
+     "name": "Saint_Avold_7",
+     "type": "B04",
+     "mw": 433.3,
+     "parts": [
+      "17W100P100P00105"
+     ]
+    },
+    {
+     "eic": "17W100P100P0345B",
+     "name": "Saint_Avold_8",
+     "type": "B04",
+     "mw": 433.7,
+     "parts": [
+      "17W100P100P00113"
+     ]
+    },
+    {
+     "eic": "17W100P100P03493",
+     "name": "AMFARD14",
+     "type": "B04",
+     "mw": 121.5,
+     "parts": [
+      "17W100P100P03477"
+     ]
+    },
+    {
+     "eic": "17W100P100P0350I",
+     "name": "DK6-TG2",
+     "type": "B04",
+     "mw": 314.7,
+     "parts": [
+      "17W100P100P0332K",
+      "17W100P100P0330O",
+      "17W100P100P0331M",
+      "17W100P100P0333I"
+     ]
+    },
+    {
+     "eic": "17W100P100P0352E",
+     "name": "CYCOFOS PL2",
+     "type": "B20",
+     "mw": 0.0,
+     "parts": [
+      "17W100P100P03396"
+     ]
+    },
+    {
+     "eic": "17W100P100P0353C",
+     "name": "AMFARD15",
+     "type": "B04",
+     "mw": 126.0,
+     "parts": [
+      "17W100P100P03485"
+     ]
+    },
+    {
+     "eic": "17W100P100P0362B",
+     "name": "FLAMANVILLE 3",
+     "type": "B14",
+     "mw": 40.6,
+     "parts": [
+      "17W100P100P03639"
+     ]
+    },
+    {
+     "eic": "17W100P100P03647",
+     "name": "PROVENCE 4",
+     "type": "B01",
+     "mw": 0.0,
+     "parts": [
+      "17W100P100P03655"
+     ]
+    }
+   ]
+  }
+ },
+ "missing": {}
+}
