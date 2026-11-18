@@ -41,7 +41,9 @@ expert_backend/
 │   │   ├── layout_cache.py        # - (path, mtime)-keyed grid_layout.json loader
 │   │   ├── layout_completion.py   # - positions for the VLs the layout misses
 │   │   │                          #   (substation siblings, else electrical
-│   │   │                          #   neighbours; isolated VLs parked), cached
+│   │   │                          #   neighbours; isolated VLs parked) and
+│   │   │                          #   spreads the VLs it stacks on one point,
+│   │   │                          #   one boosted disk + 30 % apart; cached
 │   │   │                          #   per layout version + network fingerprint
 │   │   ├── nad_params.py          # - default NadParameters factory
 │   │   ├── nad_render.py          # - NAD generation + NaN-element stripping
@@ -546,7 +548,8 @@ as `fixed_positions` for NAD generation. Two invariants:
 
 A layout is often older than the network: `_generate_diagram` passes
 `_load_layout_for(network)`, the layout plus a position for every voltage
-level it misses (`services/diagram/layout_completion.py`), cached on
+level it misses, with the voltage levels it stacks on one point spread apart
+(`services/diagram/layout_completion.py`), cached on
 `_completed_layout_cache` per layout frame + network fingerprint (cleared
 by `reset()` too). Without it pypowsybl's GEOGRAPHICAL layout puts those
 voltage levels on its own scale or at NaN, and the root viewBox turns NaN;

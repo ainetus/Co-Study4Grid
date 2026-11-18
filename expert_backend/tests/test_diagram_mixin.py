@@ -260,7 +260,10 @@ class TestLoadLayoutFor:
     def test_generate_diagram_uses_the_completed_layout(self, tmp_path):
         layout_file = tmp_path / "grid_layout.json"
         layout_file.write_text(json.dumps({"A": [0.0, 0.0], "B": [1000.0, 0.0]}))
-        vls = pd.DataFrame({"substation_id": ["SA", "SA", "SB"]}, index=["A", "NEW", "B"])
+        vls = pd.DataFrame(
+            {"substation_id": ["SA", "SA", "SB"], "nominal_v": [225.0, 63.0, 225.0]},
+            index=["A", "NEW", "B"],
+        )
         network = MagicMock()
         network.get_voltage_levels.side_effect = lambda attributes=None: vls[list(attributes or [])]
 

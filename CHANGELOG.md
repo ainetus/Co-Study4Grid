@@ -19,6 +19,12 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   no overload / action halos and zoom-to-VL off target. Seen on a 2026 France
   snapshot drawn with the 2024 RTE layout (60 of 5 888 voltage levels
   missing).
+- **Voltage levels the layout stacks on one point are spread apart**: the
+  highest voltage keeps the point, the others go round it, one frontend disk
+  diameter + 30 % away (the `separate_voltage_levels.py` convention, with a
+  checked mirror of the `svgBoost.ts` node boost). On the France snapshot
+  140 voltage levels moved; the 8 branches pypowsybl drew with NaN between
+  them are back, and the NaN-stripping pass (~0.25–0.3 s per NAD) is skipped.
 - **A NaN root viewBox is recomputed** from the finite nodes, the way
   pypowsybl computes it (`nad_render._strip_nan_elements`).
 - **Frontend guards**: `parseViewBox` rejects a non-finite viewBox and

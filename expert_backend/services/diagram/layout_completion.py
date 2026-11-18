@@ -4,24 +4,35 @@
 # you can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-"""Complete a fixed NAD layout with the voltage levels it does not position.
+"""Complete a fixed NAD layout for the network it draws.
 
-A ``grid_layout.json`` is often older than the network it is drawn for: the
-2024 RTE layout misses 60 of the 5,888 voltage levels of a 2026 France
-snapshot. Given such ``fixed_positions``, pypowsybl's GEOGRAPHICAL layout
-places the missing voltage levels on its own scale (~1.4 M units away from
-the grid) or at NaN, and a single NaN node turns the root viewBox into
-``NaN NaN NaN NaN``.
+A ``grid_layout.json`` is often older than the network it is drawn for. On a
+2026 France snapshot the 2024 RTE layout misses 60 of the 5,888 voltage
+levels and gives a single point to 244 others, in 104 groups (a substation's
+voltage levels, border nodes). Given such ``fixed_positions``, pypowsybl's
+GEOGRAPHICAL layout places the missing voltage levels on its own scale
+(~1.4 M units away from the grid) or at NaN, and one NaN node turns the root
+viewBox into ``NaN NaN NaN NaN``. A branch between two voltage levels at one
+point is drawn as a loop under overlapping disks and labels, or with NaN
+coordinates (and stripped).
 
-``complete_layout`` gives every missing voltage level a position on the
-layout's own scale before pypowsybl sees it: the mean of its positioned
-same-substation voltage levels, else of its positioned electrical neighbours
-(lines, 2- and 3-winding transformers, tie lines, HVDC lines), plus a small
-deterministic offset so no two voltage levels share a position (pypowsybl
-draws a zero-length edge with NaN coordinates). Passes repeat while they
-place something, so a chain of new voltage levels hangs off the grid one hop
-at a time. Isolated voltage levels are parked along the bottom edge of the
-grid's extent. See ``docs/data/grid-layout-coordinate-scale.md``.
+``complete_layout`` fixes both before pypowsybl sees the layout, keeping
+voltage levels ``spacing`` apart: one disk diameter as the frontend draws it
+(the ``svgBoost.ts`` node boost) plus 30 %, the convention of
+``scripts/pypsa_eur/separate_voltage_levels.py``.
+
+1. A missing voltage level goes ``spacing`` away from the mean of its
+   positioned same-substation voltage levels, else of its positioned
+   electrical neighbours (lines, 2- and 3-winding transformers, tie lines,
+   HVDC lines), in a direction hashed from its id. Passes repeat while they
+   place something, so a chain of new voltage levels hangs off the grid one
+   hop at a time. Isolated voltage levels are parked inside the grid's
+   bottom-left corner.
+2. Voltage levels sharing a point are spread: the highest voltage keeps the
+   point, the others go round it, evenly spaced, the first one towards its
+   own electrical neighbours.
+
+See ``docs/data/grid-layout-coordinate-scale.md``.
 """
 from __future__ import annotations
 
@@ -38,10 +49,20 @@ logger = logging.getLogger(__name__)
 
 Position = tuple[float, float]
 
-# Offset of a placed voltage level from its anchors' mean, as a share of the
-# grid's extent: ~1,600 units on the RTE layout (1.6 M units across France),
-# the order of the gap between neighbouring substations there.
-OFFSET_FRACTION = 1e-3
+# The disk the frontend draws for a voltage level: pypowsybl's r = 27.5 times
+# the node boost svgBoost.ts derives from the diagram's extent and voltage-level
+# count. The boost constants mirror svgBoost.ts (test_layout_completion.py
+# checks them against it), as separate_voltage_levels.py does.
+DISK_RADIUS = 27.5
+SPACING_MARGIN = 1.3  # one disk diameter + 30 % gap
+_BOOST_MIN_VL_COUNT = 500
+_BOOST_REFERENCE_SIZE = 1250.0
+_BOOST_THRESHOLD = 3.0
+_NODE_BOOST_FLOOR = 1.0
+_NODE_BOOST_OFFSET = 1.5
+_NODE_BOOST_GAIN = 10 / 3
+_NODE_BOOST_CEILING = 60.0
+_VL_DENSITY_REFERENCE = 6e-10
 
 # Branch tables tying voltage levels together, with the columns naming them.
 _BRANCH_TABLES: tuple[tuple[str, tuple[str, ...]], ...] = (
@@ -90,22 +111,23 @@ def complete_layout_cached(
 
 
 def complete_layout(df_layout: pd.DataFrame, network: Any) -> pd.DataFrame:
-    """Return ``df_layout`` with a row for every voltage level of ``network`` it misses.
+    """Return ``df_layout`` with every voltage level of ``network`` at a point of its own.
 
     ``df_layout`` is indexed by voltage-level id with ``x`` / ``y`` columns
     (``layout_cache.load_layout``); a row with a non-finite coordinate counts
-    as missing and is dropped. ``df_layout`` itself is returned when nothing
-    is missing, or when it positions none of the network's voltage levels (a
-    layout for another grid: there is no scale to complete it on).
+    as missing and is dropped. Rows for voltage levels outside the network are
+    kept as they are. ``df_layout`` itself is returned when no voltage level
+    of the network is missing or shares its point, or when it positions none
+    of them (a layout for another grid: there is no scale to complete it on).
     """
     import pandas as pd
 
-    vls = network.get_voltage_levels(attributes=["substation_id"])
+    vls = network.get_voltage_levels(attributes=["substation_id", "nominal_v"])
     positions = _finite_positions(df_layout)
     missing = sorted(vl for vl in vls.index if vl not in positions)
-    if not missing:
-        return df_layout
     grid = [positions[vl] for vl in vls.index if vl in positions]
+    if not missing and len(set(grid)) == len(grid):
+        return df_layout
     if not grid:
         logger.warning(
             "Warning: the layout positions none of the network's %d voltage "
@@ -113,28 +135,59 @@ def complete_layout(df_layout: pd.DataFrame, network: Any) -> pd.DataFrame:
         )
         return df_layout
 
-    radius = _offset_radius(grid)
+    spacing = _spacing(grid, len(vls))
+    adjacency = _adjacency(network)
     substation_of = {
         vl: sub for vl, sub in vls["substation_id"].items() if isinstance(sub, str) and sub
     }
-    placed, rule = _place_from_anchors(
-        missing, positions, substation_of, _adjacency(network), radius,
-    )
+    placed, rule = _place_from_anchors(missing, positions, substation_of, adjacency, spacing)
     isolated = [vl for vl in missing if vl not in placed]
-    placed.update(_park(isolated, grid, radius))
+    placed.update(_park(isolated, grid, spacing))
+    known = {**positions, **placed}
+    voltages = pd.to_numeric(vls["nominal_v"], errors="coerce")
+    nominal_v = {vl: float(v) for vl, v in voltages.items() if math.isfinite(v)}
+    spread = _spread_colocated(vls.index, known, nominal_v, adjacency, spacing)
 
-    counts = Counter(rule.values())
-    logger.info(
-        "[RECO] Layout completion: %d voltage level(s) missing from the layout; "
-        "placed %d by substation, %d by electrical neighbours, parked %d isolated.",
-        len(missing), counts["substation"], counts["neighbours"], len(isolated),
-    )
+    if missing:
+        counts = Counter(rule.values())
+        logger.info(
+            "[RECO] Layout completion: %d voltage level(s) missing from the layout; "
+            "placed %d by substation, %d by electrical neighbours, parked %d isolated.",
+            len(missing), counts["substation"], counts["neighbours"], len(isolated),
+        )
     if isolated:
         logger.info("[RECO] Isolated voltage levels parked: %s", isolated)
+    if spread:
+        logger.info(
+            "[RECO] Layout completion: spread %d voltage level(s) sharing a point "
+            "with another, %.0f units apart.", len(spread), spacing,
+        )
 
-    completed = pd.DataFrame.from_dict({**positions, **placed}, orient="index", columns=["x", "y"])
+    completed = pd.DataFrame.from_dict({**known, **spread}, orient="index", columns=["x", "y"])
     completed.index.name = df_layout.index.name
     return completed
+
+
+def node_boost(width: float, height: float, vl_count: int) -> float:
+    """svgBoost.ts's node boost for a diagram of that extent and voltage-level count."""
+    if vl_count < _BOOST_MIN_VL_COUNT:
+        return 1.0
+    ratio = max(width, height) / _BOOST_REFERENCE_SIZE
+    if ratio <= _BOOST_THRESHOLD:
+        return 1.0
+    boost = math.sqrt(ratio / _BOOST_THRESHOLD)
+    density = vl_count / max(1.0, width * height)
+    suppress = math.sqrt(max(1.0, density / _VL_DENSITY_REFERENCE))
+    raw = (boost - _NODE_BOOST_OFFSET) * _NODE_BOOST_GAIN + 1.0
+    return max(_NODE_BOOST_FLOOR, min(_NODE_BOOST_CEILING, raw / suppress))
+
+
+def _spacing(grid: list[Position], vl_count: int) -> float:
+    """One frontend disk diameter + 30 % for a diagram spanning ``grid``."""
+    xs = [p[0] for p in grid]
+    ys = [p[1] for p in grid]
+    boost = node_boost(max(xs) - min(xs), max(ys) - min(ys), vl_count)
+    return 2 * DISK_RADIUS * boost * SPACING_MARGIN
 
 
 def _finite_positions(df_layout: pd.DataFrame) -> dict[str, Position]:
@@ -150,18 +203,9 @@ def _finite_positions(df_layout: pd.DataFrame) -> dict[str, Position]:
     }
 
 
-def _offset_radius(grid: list[Position]) -> float:
-    """``OFFSET_FRACTION`` of the grid's extent (1.0 for a single point)."""
-    xs = [p[0] for p in grid]
-    ys = [p[1] for p in grid]
-    span = max(max(xs) - min(xs), max(ys) - min(ys))
-    return span * OFFSET_FRACTION if span > 0 else 1.0
-
-
-def _offset(vl: str, radius: float) -> Position:
-    """A ``radius``-long offset whose angle is a stable hash of ``vl``."""
-    angle = (zlib.crc32(vl.encode("utf-8")) % 3600) / 3600 * 2 * math.pi
-    return radius * math.cos(angle), radius * math.sin(angle)
+def _hashed_angle(vl: str) -> float:
+    """A direction that is a stable hash of ``vl``."""
+    return (zlib.crc32(vl.encode("utf-8")) % 3600) / 3600 * 2 * math.pi
 
 
 def _place_from_anchors(
@@ -169,9 +213,9 @@ def _place_from_anchors(
     positions: dict[str, Position],
     substation_of: dict[str, str],
     adjacency: dict[str, set[str]],
-    radius: float,
+    spacing: float,
 ) -> tuple[dict[str, Position], dict[str, str]]:
-    """Place each missing voltage level at its anchors' mean plus an offset.
+    """Place each missing voltage level ``spacing`` away from its anchors' mean.
 
     Anchors are the positioned voltage levels of its substation, else its
     positioned electrical neighbours. A voltage level placed in a pass is an
@@ -194,10 +238,10 @@ def _place_from_anchors(
                 anchors, how = [known[o] for o in adjacency.get(vl, ()) if o in known], "neighbours"
             if not anchors:
                 continue
-            dx, dy = _offset(vl, radius)
+            angle = _hashed_angle(vl)
             known[vl] = placed[vl] = (
-                sum(a[0] for a in anchors) / len(anchors) + dx,
-                sum(a[1] for a in anchors) / len(anchors) + dy,
+                sum(a[0] for a in anchors) / len(anchors) + spacing * math.cos(angle),
+                sum(a[1] for a in anchors) / len(anchors) + spacing * math.sin(angle),
             )
             rule[vl] = how
         left = [vl for vl in todo if vl not in placed]
@@ -207,7 +251,7 @@ def _place_from_anchors(
     return placed, rule
 
 
-def _park(isolated: list[str], grid: list[Position], radius: float) -> dict[str, Position]:
+def _park(isolated: list[str], grid: list[Position], spacing: float) -> dict[str, Position]:
     """Line the isolated voltage levels up inside the grid's bottom-left corner.
 
     Left to pypowsybl they land near its own origin, far from the grid, and
@@ -219,12 +263,52 @@ def _park(isolated: list[str], grid: list[Position], radius: float) -> dict[str,
     x0 = min(p[0] for p in grid)
     x1 = max(p[0] for p in grid)
     bottom = max(p[1] for p in grid)
-    step = 2 * radius
-    per_row = max(1, int((x1 - x0) // step) - 1)
+    per_row = max(1, int((x1 - x0) // spacing) - 1)
     return {
-        vl: (x0 + step * (1 + k % per_row), bottom - step * (1 + k // per_row))
+        vl: (x0 + spacing * (1 + k % per_row), bottom - spacing * (1 + k // per_row))
         for k, vl in enumerate(isolated)
     }
+
+
+def _spread_colocated(
+    vl_ids: Iterable[str],
+    known: dict[str, Position],
+    nominal_v: dict[str, float],
+    adjacency: dict[str, set[str]],
+    spacing: float,
+) -> dict[str, Position]:
+    """Move the voltage levels that share a point; returns their new positions.
+
+    The highest voltage (then the smallest id) keeps the point. The others go
+    on a ``spacing``-radius circle round it, evenly spaced, starting towards
+    the first one's electrical neighbours, so a pair fans out along its own
+    lines.
+    """
+    groups: dict[Position, list[str]] = defaultdict(list)
+    for vl in vl_ids:
+        if vl in known:
+            groups[known[vl]].append(vl)
+    moved: dict[str, Position] = {}
+    for point, members in groups.items():
+        if len(members) < 2:
+            continue
+        _, *others = sorted(members, key=lambda vl: (-nominal_v.get(vl, 0.0), vl))
+        start = _heading(others[0], point, known, adjacency)
+        for k, vl in enumerate(others):
+            angle = start + 2 * math.pi * k / len(others)
+            moved[vl] = (point[0] + spacing * math.cos(angle), point[1] + spacing * math.sin(angle))
+    return moved
+
+
+def _heading(vl: str, point: Position, known: dict[str, Position], adjacency: dict[str, set[str]]) -> float:
+    """Direction from ``point`` to ``vl``'s neighbours away from it, else hashed from ``vl``."""
+    away = [known[o] for o in adjacency.get(vl, ()) if o in known and known[o] != point]
+    if not away:
+        return _hashed_angle(vl)
+    return math.atan2(
+        sum(p[1] for p in away) / len(away) - point[1],
+        sum(p[0] for p in away) / len(away) - point[0],
+    )
 
 
 def _adjacency(network: Any) -> dict[str, set[str]]:
