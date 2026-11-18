@@ -84,7 +84,15 @@ expert_backend/
 │   ├── simulation_helpers.py      # PR #104 decomposition — stateless helpers
 │   │                              # (setpoint math incl. redispatch, PST parsing,
 │   │                              # care mask, metrics, result serialisation,
-│   │                              # is_injection_action for the GST path, …)
+│   │                              # is_injection_action for the GST path,
+│   │                              # split_target_mw: an action's MW total
+│   │                              # spread pro rata over its elements, …)
+│   ├── antenna_aggregates.py      # Evacuation-antenna aggregates (recommender
+│   │                              # 0.3.4+): curtail_/redispatch_<antenna_id>
+│   │                              # name their antenna, not a generator — rebuilt
+│   │                              # and described from the analysis' score params
+│   │                              # (docs/features/curtailment-loadshedding-pst-
+│   │                              # actions.md § 8)
 │   ├── model_selection_mixin.py   # Active recommender model + overflow-graph
 │   │                              # toggle. A regular base class of
 │   │                              # RecommenderService (explicit composition);

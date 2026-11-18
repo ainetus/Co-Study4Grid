@@ -194,6 +194,52 @@ def compute_redispatch_setpoint(
         return round(max(0.0, delta), 2)
 
 
+def _pro_rata_weight(name: str, element_type: str, obs_n1: Any, raising: bool) -> float:
+    """Weight of one load / generator in :func:`split_target_mw`: its current
+    active power, or its headroom up to ``gen_pmax`` when a redispatch raises
+    production. 0.0 when the observation can't tell."""
+    try:
+        if element_type == "load":
+            return abs(float(obs_n1.load_p[list(obs_n1.name_load).index(name)]))
+        idx = list(obs_n1.name_gen).index(name)
+        current = abs(float(obs_n1.gen_p[idx]))
+        gen_pmax = getattr(obs_n1, "gen_pmax", None) if raising else None
+        if gen_pmax is None:
+            return current
+        headroom = float(gen_pmax[idx]) - current
+        return headroom if math.isfinite(headroom) and headroom > 0 else 0.0
+    except (AttributeError, IndexError, TypeError, ValueError):
+        return 0.0
+
+
+def split_target_mw(
+    element_names: Any,
+    element_type: str,
+    target_mw: float,
+    obs_n1: Any,
+    raising: bool = False,
+) -> dict[str, float]:
+    """Spread an action-level MW target over the action's loads / generators.
+
+    The UI edits ONE value per action: the MW to shed / curtail, or the signed
+    redispatch delta. An action on several elements (an evacuation-antenna
+    aggregate ``curtail_<antenna_id>`` / ``redispatch_<antenna_id>``, a
+    multi-load shedding) splits it pro rata, the way the recommender sizes its
+    aggregates: by each element's current power, or by its headroom when a
+    redispatch raises production. A single element takes the whole target;
+    when no weight can be read the elements share it equally.
+    """
+    names = [str(name) for name in element_names]
+    target = float(target_mw)
+    if len(names) <= 1:
+        return {name: target for name in names}
+    weights = {name: _pro_rata_weight(name, element_type, obs_n1, raising) for name in names}
+    total = sum(weights.values())
+    if total <= 0:
+        return {name: target / len(names) for name in names}
+    return {name: target * weight / total for name, weight in weights.items()}
+
+
 _PST_TAP_PATTERN = re.compile(r"(pst(?:_tap)?_(.+))_(inc|dec)(\d+)$")
 
 

@@ -293,7 +293,69 @@ Redispatching gets its own `'redispatch'` filter token, an
 MW input + Re-simulate control (cloned from the curtailment editor but
 allowing negative values).
 
-## 8. PST (Phase Shifting Transformer) Actions
+## 8. Evacuation-Antenna Aggregates (recommender 0.3.4+)
+
+expert_op4grid_recommender 0.3.4 turns on its evacuation-antenna levers by
+default (`EVACUATION_ANTENNA_LEVERS`). An evacuation antenna is a part of the
+grid tied to the constrained path through one node, whose production leaves
+through that node. Its generators become curtailment / redispatch candidates
+(`curtail_<gen>`, `redispatch_<gen>`, unchanged), and each antenna also gets
+**one MW-sized option spread pro rata over its generators**:
+
+| Id | Generators | Direction |
+|----|------------|-----------|
+| `curtail_<antenna_id>` | the antenna's renewables | lowered |
+| `redispatch_<antenna_id>` | its dispatchable units | lowered upstream, raised downstream (within `Pmax`) |
+
+Their id names the antenna (e.g. `curtail_EVAC_SOULLP4_1`), not a generator,
+so — unlike every other dynamic action — they cannot be rebuilt from the id.
+The generators and their new setpoints are in the score params,
+`action_scores[<type>]["params"][<id>]`: `gen_names`, `target_p_MW` (a dict,
+a float for the per-generator candidates), `evacuation_antenna_id`,
+`substation` (the attachment node the change is sized on), `direction`
+(redispatch).
+
+### Backend (`services/antenna_aggregates.py`)
+
+- **Simulation of an unprioritized aggregate** (score table, pin, search by
+  id): `_create_dynamic_actions_if_needed` looks the id up in the last
+  analysis' `action_scores` (`antenna_aggregate_params`) and builds the entry
+  at the recommender's setpoints (`antenna_aggregate_entry`) — never a
+  generator parsed out of the antenna id.
+- **Description**: the library leaves it empty for the actions its discovery
+  creates. `_enrich_actions` and the simulation paths fill it in the style of
+  the per-generator actions: `Effacement antenne '<antenna>' ('<gen>', …)`,
+  `Redispatch hausse|baisse antenne '<antenna>' (…)`.
+- **MW at start**: `_compute_mw_start_for_scores` reads the generators from
+  the params, so the score table's `MW Start` is the antenna's total
+  production.
+- **Edited MW is the action's total**, spread over its elements by
+  `split_target_mw` (`simulation_helpers.py`) the way the recommender sizes
+  the aggregate: by current production (curtailment, load shedding, lowering
+  redispatch) or by headroom up to `obs.gen_pmax` (raising redispatch;
+  production when `Pmax` is unknown). A single-element action takes the whole
+  target, as before.
+
+### Frontend (`utils/injectionActions.ts`)
+
+- The action card shows **one** MW editor per injection family, named after
+  all its elements (per-element MW in the tooltip), on the **total**
+  (`totalReductionMw`, `redispatchTotal`: summed delta, headroom and bounds).
+  It used to render one input per element, all bound to the same value.
+- The score table and the Explore Pairs tab default their MW input to the
+  same totals (they read the first element only).
+- Simulating an aggregate before any card carries its topology sends its
+  generators as `action_content` (`antennaAggregateContent`, read from the
+  score params): after a session reload the backend no longer holds the
+  analysis that proposed it.
+
+The overflow graph draws the antennas themselves (expertop4grid 0.3.4: kept
+in the reduced view, in ochre, with an *Evacuation antennas* viewer layer —
+see [`interactive-overflow-analysis.md`](interactive-overflow-analysis.md)),
+and the `result` event forwards the detected antennas as
+`structural_antennas`.
+
+## 9. PST (Phase Shifting Transformer) Actions
 
 PST actions change the tap position of a phase-shifting transformer to redirect power flows and relieve overloads. Unlike topology actions (switching, coupling) or power reduction actions (curtailment, load shedding), PST actions modify a continuous parameter.
 
@@ -360,7 +422,7 @@ When a user manually simulates `pst_tap_<name>_inc<N>`, the backend:
 3. Computes `new_tap = current_tap + N` (clamped to valid range)
 4. Creates topology: `{"pst_tap": {"<name>": new_tap}}`
 
-## 9. PST Actions in Superposition Estimation
+## 10. PST Actions in Superposition Estimation
 
 PST tap changes require special handling in the superposition theorem because they don't disconnect/reconnect elements. The standard no-op detection (comparing line status arrays) fails for PSTs.
 
@@ -403,7 +465,7 @@ When a PST tap is re-simulated at a different position:
 2. All combined pairs containing this PST action are re-estimated via `refreshCombinedEstimations()`
 3. The superposition formula uses the updated observation for the new betas computation
 
-## 10. Monitoring Consistency (Estimation vs Simulation)
+## 11. Monitoring Consistency (Estimation vs Simulation)
 
 The superposition estimation (`compute_superposition`) and the full simulation (`simulate_manual_action`) must use the **same set of monitored lines** for `max_rho` computation. Inconsistency leads to the estimation and simulation reporting different worst-case lines.
 
@@ -462,7 +524,7 @@ The superposition formula `rho_combined = |(1-β₁-β₂)·ρ_N1 + β₁·ρ_ac
 
 Estimation picks CANTEY761 as worst; simulation picks .BIESL61PRAGN. Both are correct within the linear approximation error band.
 
-## 11. Testing
+## 12. Testing
 
 ### Backend (`expert_backend/tests/`)
 
@@ -473,6 +535,9 @@ Estimation picks CANTEY761 as worst; simulation picks .BIESL61PRAGN. Both are co
 - `test_dynamic_actions.py` — on-the-fly action creation
 - `test_mw_start.py` — MW start computation for all action types
 - `test_configurable_mw.py` — 8 tests for configurable MW reduction
+- `test_antenna_aggregates.py` — evacuation-antenna aggregates: params
+  lookup, descriptions, pro-rata `split_target_mw`, rebuild from the score
+  params, MW at start, card description
 
 #### PST & Superposition Tests
 - `test_superposition_service.py` — PST flag passing, element identification fallback, dict_action merge preservation
@@ -493,5 +558,8 @@ Estimation picks CANTEY761 as worst; simulation picks .BIESL61PRAGN. Both are co
 
 ### Frontend (`frontend/src/`)
 - `ActionFeed.test.tsx` — rendering of load shedding/curtailment/PST details
+- `ActionCard.test.tsx` / `utils/injectionActions.test.ts` — one MW editor on
+  the total of a multi-element action, summed redispatch headroom, aggregate
+  content from the score params
 - `CombinedActionsModal.test.tsx` — combined action pair computation modal
 - `svgUtils.test.ts` — target detection with all topology formats

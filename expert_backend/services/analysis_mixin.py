@@ -69,6 +69,11 @@ from expert_backend.services.analysis.mw_start_scoring import (
 from expert_backend.services.analysis.pdf_watcher import find_latest_pdf
 from typing import TYPE_CHECKING, Any
 
+from expert_backend.services.antenna_aggregates import (
+    antenna_aggregate_descriptions,
+    antenna_aggregate_setpoints,
+    is_antenna_aggregate_params,
+)
 from expert_backend.services.sanitize import sanitize_for_json
 from expert_backend.services.service_lock import (
     with_network_lock,
@@ -213,13 +218,15 @@ class AnalysisMixin(_Base):
     # adds presentation-layer fields for the frontend.
     # ------------------------------------------------------------------
 
-    def _enrich_actions(self, prioritized_actions_dict, lines_overloaded_names=None):
+    def _enrich_actions(self, prioritized_actions_dict, lines_overloaded_names=None, action_scores=None):
         """Convert raw prioritized actions into an enriched, JSON-ready dict.
 
         Scales raw rho values by ``monitoring_factor``, backfills
         ``lines_overloaded_after`` when the discovery engine leaves it
         empty, extracts action topology, and attaches load
         shedding / curtailment / PST details when applicable.
+        ``action_scores`` names the evacuation-antenna aggregates the
+        library leaves without a description.
         """
         monitoring_factor = getattr(config, "MONITORING_FACTOR_THERMAL_LIMITS", 0.95)
         enriched_actions = {}
@@ -244,7 +251,11 @@ class AnalysisMixin(_Base):
             )
 
             enriched = {
-                "description_unitaire": action_data.get("description_unitaire") or "No description available",
+                "description_unitaire": (
+                    action_data.get("description_unitaire")
+                    or antenna_aggregate_descriptions(action_scores, action_id).get("description_unitaire")
+                    or "No description available"
+                ),
                 "rho_before": sanitize_for_json(rho_before),
                 "rho_after": sanitize_for_json(rho_after),
                 "max_rho": sanitize_for_json(max_rho),
@@ -311,12 +322,16 @@ class AnalysisMixin(_Base):
             is_pst = classify_action_type(action_type) == "pst"
             mw_start: dict = {}
             tap_start: dict | None = {} if is_pst else None
+            params = type_data.get("params") or {}
 
             for action_id in scores:
                 if is_na_action_type(action_type):
                     mw_start[action_id] = None
                     continue
                 action_entry = self._dict_action.get(action_id) if self._dict_action else None
+                if action_entry is None and is_antenna_aggregate_params(params.get(action_id)):
+                    # Antenna aggregate: its generators are in the params, not in its id.
+                    action_entry = {"content": {"set_gen_p": antenna_aggregate_setpoints(params[action_id])}}
                 mw_start[action_id] = get_action_mw_start(
                     action_id, action_type, obs_n1, line_idx, load_idx, gen_idx, action_entry,
                     # Look up the module-level symbol at call time so tests
@@ -787,6 +802,10 @@ class AnalysisMixin(_Base):
                 # the disconnected radial zone + its net direction so the UI can
                 # flag that recommendations are injection-only. None otherwise.
                 "antenna_meta": results.get("antenna_meta"),
+                # Structural antennas detected off the constrained path
+                # (evacuation / consumption), as plain JSON dicts — [] when
+                # none or when the detection is disabled.
+                "structural_antennas": results.get("structural_antennas") or [],
                 "lines_we_care_about": list(lines_we_care_about) if lines_we_care_about is not None else None,
                 "active_model": recommender.name,
                 "compute_overflow_graph": needs_graph,
@@ -856,6 +875,7 @@ class AnalysisMixin(_Base):
         enriched_actions = self._enrich_actions(
             results["prioritized_actions"],
             lines_overloaded_names=results.get("lines_overloaded_names"),
+            action_scores=results.get("action_scores"),
         )
         # Never leak combined-action ids into the main actions feed —
         # those are estimations that live in `combined_actions`.
@@ -1071,7 +1091,7 @@ class AnalysisMixin(_Base):
             action_scores = sanitize_for_json(result.get("action_scores", {}))
             action_scores = self._compute_mw_start_for_scores(action_scores)
             enriched_actions = self._enrich_actions(
-                prioritized, lines_overloaded_names=lines_overloaded
+                prioritized, lines_overloaded_names=lines_overloaded, action_scores=action_scores
             )
 
         network_service = self._network_service()
@@ -1101,6 +1121,7 @@ class AnalysisMixin(_Base):
             "action_scores": action_scores,
             "lines_overloaded": lines_overloaded,
             "combined_actions": combined_actions,
+            "structural_antennas": (result.get("structural_antennas") if result else None) or [],
             "lines_we_care_about": list(care) if care is not None else None,
             "message": analysis_message,
             "dc_fallback": dc_fallback_used,

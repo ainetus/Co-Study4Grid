@@ -341,3 +341,80 @@ def test_result_event_restores_antenna_meta_from_discovery():
 
     result_event = next(e for e in events if e.get("type") == "result")
     assert result_event["antenna_meta"] == antenna
+
+
+def test_result_event_forwards_structural_antennas_from_discovery():
+    """Regression guard: the model-aware generator must forward the
+    structural antennas (evacuation / consumption components off the
+    constrained path) from the discovery results to the result event —
+    the same mirror-drift class of bug as antenna_meta."""
+    svc = RecommenderService()
+    svc._reset_model_settings()
+    svc._compute_overflow_graph = False
+    svc._last_disconnected_elements = ["LINE_C"]
+    svc._analysis_context = {
+        "lines_overloaded_names": ["L1"],
+        "lines_overloaded_ids": [0],
+        "lines_overloaded_ids_kept": [0],
+        "lines_we_care_about": None,
+    }
+    svc._narrow_context_to_selected_overloads = MagicMock(side_effect=lambda ctx, *a, **k: ctx)
+    svc._enrich_actions = MagicMock(return_value={})
+    svc._augment_combined_actions_with_target_max_rho = MagicMock()
+    svc._compute_mw_start_for_scores = MagicMock(return_value={})
+
+    no_graph_rec = MagicMock()
+    no_graph_rec.requires_overflow_graph = False
+    no_graph_rec.name = "random"
+    antennas = [
+        {"antenna_id": "EVAC_A1_1", "antenna_type": "evacuation",
+         "attachment_sub_name": "A1", "export_mw": 145.0},
+    ]
+
+    with patch(
+        "expert_backend.recommenders.registry.build_recommender",
+        return_value=no_graph_rec,
+    ), patch(
+        "expert_backend.services.analysis_mixin.run_analysis_step2_discovery",
+        return_value={**_DISCOVERY_RESULT, "structural_antennas": antennas},
+    ):
+        events = list(svc.run_analysis_step2(selected_overloads=["L1"]))
+
+    result_event = next(e for e in events if e.get("type") == "result")
+    assert result_event["structural_antennas"] == antennas
+
+
+@pytest.mark.parametrize("extra, expected", [
+    ({"structural_antennas": [{"antenna_id": "EVAC_A1_1", "antenna_type": "evacuation"}]},
+     [{"antenna_id": "EVAC_A1_1", "antenna_type": "evacuation"}]),
+    ({}, []),
+])
+def test_legacy_result_event_forwards_structural_antennas(extra, expected):
+    """The single-step ``run_analysis`` selects its result keys one by one
+    too: it must forward the structural antennas ([] when the library
+    returns none)."""
+    svc = RecommenderService()
+    svc._ensure_n_state_ready = MagicMock()
+    svc._enrich_actions = MagicMock(return_value={})
+    svc._compute_mw_start_for_scores = MagicMock(side_effect=lambda scores: scores)
+    network = MagicMock()
+    network.get_disconnectable_elements.return_value = []
+    network.get_monitored_elements.return_value = []
+    svc._network_service = MagicMock(return_value=network)
+    final = {
+        "_final": True,
+        "result": {**_DISCOVERY_RESULT, **extra},
+        "output": "",
+        "analysis_message": "",
+        "dc_fallback_used": False,
+        "latest_pdf": None,
+    }
+
+    with patch(
+        "expert_backend.services.analysis_mixin.run_with_pdf_polling",
+        return_value=iter([final]),
+    ):
+        events = list(svc.run_analysis(["LINE_C"]))
+
+    result_event = next(e for e in events if e.get("type") == "result")
+    assert result_event["structural_antennas"] == expected
