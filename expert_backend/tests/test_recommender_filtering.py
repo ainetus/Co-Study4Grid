@@ -39,7 +39,7 @@ def test_run_analysis_filtering_combined_actions(recommender):
         # `lines_overloaded_names` kwarg used by the production
         # implementation to compute lines_overloaded_after for
         # recommender-suggested actions.
-        def mock_enrich(actions_dict, lines_overloaded_names=None):  # noqa: ARG001
+        def mock_enrich(actions_dict, lines_overloaded_names=None, action_scores=None):  # noqa: ARG001
             return {aid: {"max_rho": d.get("max_rho", 0), "is_estimated": d.get("is_estimated", False)} for aid, d in actions_dict.items()}
         recommender._enrich_actions = MagicMock(side_effect=mock_enrich)
 

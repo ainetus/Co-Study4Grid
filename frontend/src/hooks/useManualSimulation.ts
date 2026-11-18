@@ -24,6 +24,7 @@ import { api } from '../api';
 import { parseNdjsonStream } from '../utils/ndjsonStream';
 import { interactionLogger } from '../utils/interactionLogger';
 import { apiErrorMessage } from '../utils/apiError';
+import { antennaAggregateContent } from '../utils/injectionActions';
 import { useSldTopologyEdit, type SldTopologyEditState } from './useSldTopologyEdit';
 import type { ActionDetail, AnalysisResult, DiagramData } from '../types';
 import type { DiagramsState } from './useDiagrams';
@@ -149,7 +150,10 @@ export function useManualSimulation(params: ManualSimulationParams): ManualSimul
                 await streamSimulateToCard({
                     action_id: actionId,
                     disconnected_elements: selectedContingency,
-                    action_content: null,
+                    // An evacuation-antenna aggregate names its antenna, not a
+                    // generator: send its generators so it still simulates
+                    // after a session reload. Null for any other action.
+                    action_content: antennaAggregateContent(result?.action_scores, actionId),
                     lines_overloaded: result?.lines_overloaded ?? null,
                     target_mw: null,
                     target_tap: null,
@@ -159,7 +163,7 @@ export function useManualSimulation(params: ManualSimulationParams): ManualSimul
                 setError(apiErrorMessage(e, 'Simulation failed'));
             }
         },
-        [selectedContingency, result?.lines_overloaded, result?.active_model, streamSimulateToCard, setError],
+        [selectedContingency, result?.lines_overloaded, result?.active_model, result?.action_scores, streamSimulateToCard, setError],
     );
 
     const handleSimulateLever = useCallback(

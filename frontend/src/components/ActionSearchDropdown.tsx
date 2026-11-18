@@ -9,6 +9,7 @@ import React, { type RefObject } from 'react';
 import type { ActionDetail, ActionOverviewFilters, AvailableAction } from '../types';
 import ActionFilterRings from './ActionFilterRings';
 import { colors } from '../styles/tokens';
+import { redispatchTotal, totalReductionMw } from '../utils/injectionActions';
 
 export interface ScoredActionItem {
     type: string;
@@ -439,11 +440,10 @@ const ScoreTable: React.FC<ScoreTableProps> = ({
                             <tbody>
                                 {scoredActionsList.filter(item => item.type === type).map(item => {
                                     const isComputed = !!actions[item.actionId];
-                                    // Stored MW from an already-simulated LS/RC action (used as default input value).
+                                    // Stored MW from an already-simulated LS/RC action (used as default input value),
+                                    // summed over its elements (an evacuation-antenna aggregate has several).
                                     const storedMw = isLsOrRcType && isComputed
-                                        ? (actions[item.actionId]?.load_shedding_details?.[0]?.shedded_mw
-                                            ?? actions[item.actionId]?.curtailment_details?.[0]?.curtailed_mw
-                                            ?? null)
+                                        ? totalReductionMw(actions[item.actionId])
                                         : null;
                                     // Displayed value: user edit takes precedence, otherwise the stored simulated MW.
                                     const mwEditVal = cardEditMw[item.actionId];
@@ -455,15 +455,15 @@ const ScoreTable: React.FC<ScoreTableProps> = ({
                                     const userEditedMw = mwEditVal !== undefined && (storedMw == null || parseFloat(mwEditVal) !== storedMw);
                                     const canResimulate = isLsOrRcType && isComputed && isValidTarget && userEditedMw;
                                     // Redispatch: the editable value is the SIGNED delta (raise > 0 /
-                                    // lower < 0), defaulting to the simulated delta_mw and bounded by
-                                    // the generator's headroom in its current direction — mirrors the
-                                    // action card's redispatch editor.
-                                    const rdDetail = isRedispatchType && isComputed ? actions[item.actionId]?.redispatch_details?.[0] : undefined;
-                                    const storedDelta = rdDetail?.delta_mw ?? null;
+                                    // lower < 0), defaulting to the simulated delta and bounded by
+                                    // the generators' headroom in their current direction — totals over
+                                    // the generators, mirroring the action card's redispatch editor.
+                                    const rdTotal = isRedispatchType && isComputed ? redispatchTotal(actions[item.actionId]?.redispatch_details) : null;
+                                    const storedDelta = rdTotal?.deltaMw ?? null;
                                     const effectiveDeltaStr = mwEditVal ?? (storedDelta != null ? storedDelta.toFixed(1) : '');
                                     const parsedDelta = effectiveDeltaStr !== '' ? parseFloat(effectiveDeltaStr) : null;
-                                    const rdMinDelta = rdDetail ? (rdDetail.direction === 'up' ? 0 : (rdDetail.max_lower_mw != null ? -rdDetail.max_lower_mw : undefined)) : undefined;
-                                    const rdMaxDelta = rdDetail ? (rdDetail.direction === 'up' ? (rdDetail.max_raise_mw ?? undefined) : 0) : undefined;
+                                    const rdMinDelta = rdTotal?.minDeltaMw;
+                                    const rdMaxDelta = rdTotal?.maxDeltaMw;
                                     const isValidDelta = parsedDelta !== null && !isNaN(parsedDelta)
                                         && (rdMinDelta == null || parsedDelta >= rdMinDelta)
                                         && (rdMaxDelta == null || parsedDelta <= rdMaxDelta);
@@ -622,7 +622,7 @@ const ScoreTable: React.FC<ScoreTableProps> = ({
                                                         placeholder="Δ"
                                                         value={effectiveDeltaStr}
                                                         onChange={(e) => onCardEditMwChange(item.actionId, e.target.value)}
-                                                        title={rdDetail ? `Max ${rdDetail.direction === 'up' ? 'raise' : 'lower'}: ${(rdDetail.direction === 'up' ? rdDetail.max_raise_mw : rdDetail.max_lower_mw)?.toFixed(0) ?? '—'} MW` : undefined}
+                                                        title={rdTotal ? `Max ${rdTotal.direction === 'up' ? 'raise' : 'lower'}: ${rdTotal.headroomMw?.toFixed(0) ?? '—'} MW` : undefined}
                                                         style={{
                                                             width: '60px',
                                                             fontSize: '11px',

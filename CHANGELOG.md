@@ -7,6 +7,50 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Evacuation antennas — expert_op4grid_recommender 0.3.4.post1, ExpertOp4Grid 0.3.4
+
+- **Dependencies**: `recommender-pin.txt` and `requirements_py310.txt` move
+  to `expert_op4grid_recommender==0.3.4.post1`; `ExpertOp4Grid` to `0.3.4`,
+  with a `>=0.3.4` floor in `pyproject.toml` (the recommender is installed
+  `--no-deps`, so this floor is the one that brings the antenna drawing).
+- **Lighter analyses on large grids** (0.3.4.post1): the per-action
+  reassessment no longer loads one copy of the network per worker when that
+  does not pay, and the worker count is capped by the available memory. On a
+  full-France RTE snapshot in slow mode, an analysis peaked at 9.2 GB and now
+  stays near 3.1 GB, and the reassessment runs faster.
+- **Default recommendations change where an evacuation antenna exists**
+  (an evacuation antenna is a part of the grid tied to the constrained path
+  through one node, whose production leaves through it). The recommender's
+  antenna levers are on by default: its generators become curtailment /
+  redispatch candidates, plus one MW-sized option per antenna spread pro
+  rata over them (`curtail_<antenna_id>`, `redispatch_<antenna_id>`). On the
+  Vendée case `MERLAL62SOULL` this brings the operator's parade (curtailing
+  half the Vent des Îles park, max ρ 0.91) that no action found before.
+- **Overflow graph**: the reduced view keeps the antennas, in ochre with
+  their report, and the viewer gains an *Evacuation antennas* layer
+  (Structural Paths) — no change needed here, the iframe shows it as is.
+- **`structural_antennas`** is forwarded by the step-2 and the single-step
+  `result` events (it was selected out, like `antenna_meta` once).
+- **Antenna aggregates work end to end** (`services/antenna_aggregates.py`).
+  Their id names the antenna, not a generator, so:
+  - simulating one that was not prioritized (score table, pin, search by
+    id) rebuilt a bogus `set_gen_p` on a generator named after the antenna;
+    it is now rebuilt from the analysis' score params (`gen_names`,
+    `target_p_MW`), and the frontend sends that content itself when the
+    backend no longer holds the analysis (session reload);
+  - `MW Start` was empty in the score table; it now sums the generators;
+  - they had no description: `Effacement antenne '<antenna>' (…)` /
+    `Redispatch hausse|baisse antenne '<antenna>' (…)`.
+- **One MW value per injection action**: the action card used to render one
+  MW input per element of a multi-element action, all bound to the same
+  value, and the backend applied it to every element. The card, the score
+  table and the Explore Pairs tab now edit the action's **total**, which the
+  backend spreads pro rata (`split_target_mw`: by current production, or by
+  headroom up to `Pmax` for a redispatch raise). Single-element actions
+  behave as before.
+- Docs: `curtailment-loadshedding-pst-actions.md` § 8 (new),
+  `interactive-overflow-analysis.md` (antenna attributes and layer).
+
 ### Fixed — network diagram drawn with a layout older than the network
 
 - **Voltage levels missing from `grid_layout.json` get a position** before

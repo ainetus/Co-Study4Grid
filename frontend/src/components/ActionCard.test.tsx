@@ -402,6 +402,47 @@ describe('ActionCard', () => {
         expect(onResimulate).toHaveBeenCalledWith('act_1', 25);
     });
 
+    // Evacuation-antenna aggregates (curtail_<antenna_id> / redispatch_<antenna_id>)
+    // act on several generators: ONE editor on the total, which the backend
+    // spreads pro rata — not one input per generator sharing a single value.
+    it('edits a multi-generator curtailment as one total', () => {
+        const onResimulate = vi.fn();
+        const details: ActionDetail = {
+            ...baseDetails,
+            curtailment_details: [
+                { gen_name: 'WIND_A', voltage_level_id: 'VL_A', curtailed_mw: 9.0 },
+                { gen_name: 'WIND_B', voltage_level_id: 'VL_B', curtailed_mw: 3.0 },
+            ],
+        };
+        render(<ActionCard {...defaultProps} details={details} isViewing={true} onResimulate={onResimulate} />);
+        expect(screen.getAllByText(/Curtailment on/)).toHaveLength(1);
+        expect(screen.getByText('WIND_A')).toBeInTheDocument();
+        expect(screen.getByText('WIND_B')).toBeInTheDocument();
+        expect(screen.getByTestId('edit-mw-act_1')).toHaveValue(12);
+        fireEvent.click(screen.getByTestId('resimulate-act_1'));
+        expect(onResimulate).toHaveBeenCalledWith('act_1', 12);
+    });
+
+    it('sums a multi-generator redispatch delta and its headroom', () => {
+        const onResimulate = vi.fn();
+        const details: ActionDetail = {
+            ...baseDetails,
+            redispatch_details: [
+                { gen_name: 'CCG_A', voltage_level_id: 'VL_A', delta_mw: 5.0, target_mw: 105.0,
+                  direction: 'up', max_raise_mw: 15, max_lower_mw: 100 },
+                { gen_name: 'CCG_B', voltage_level_id: 'VL_B', delta_mw: 15.0, target_mw: 65.0,
+                  direction: 'up', max_raise_mw: 45, max_lower_mw: 50 },
+            ],
+        };
+        render(<ActionCard {...defaultProps} details={details} isViewing={true}
+            onResimulate={onResimulate} cardEditMw={{ act_1: '999' }} />);
+        expect(screen.getAllByText(/Redispatch on/)).toHaveLength(1);
+        expect(screen.getByText(/max raise: 60 MW/)).toBeInTheDocument();
+        fireEvent.click(screen.getByTestId('resimulate-act_1'));
+        // Clamped to the generators' summed raise headroom.
+        expect(onResimulate).toHaveBeenCalledWith('act_1', 60);
+    });
+
     it('renders PST details with tap input and re-simulate button when viewing', () => {
         const details: ActionDetail = {
             ...baseDetails,

@@ -235,6 +235,11 @@ frontend/
         ├── actionTypes.ts             # classifyActionType + matchesActionTypeFilter
         │                              # + DEFAULT_ACTION_OVERVIEW_FILTERS — shared
         │                              # by every filter UI surface (PR #109)
+        ├── injectionActions.ts        # Multi-element injection actions (evacuation-
+        │                              # antenna aggregates, recommender 0.3.4+): MW
+        │                              # totals the editors show / send (the backend
+        │                              # spreads them pro rata) + an aggregate's
+        │                              # content from the score params
         ├── overloadHighlights.ts      # N-1 overload classification
         ├── popoverPlacement.ts        # Pin-popover positioning
         ├── inspectables.ts            # filterInspectables — match an element by its

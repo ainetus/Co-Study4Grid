@@ -19,6 +19,7 @@ import AdditionalLinesPicker from './AdditionalLinesPicker';
 import ActionSearchDropdown from './ActionSearchDropdown';
 import { colors } from '../styles/tokens';
 import { apiErrorMessage } from '../utils/apiError';
+import { antennaAggregateContent } from '../utils/injectionActions';
 
 /**
  * Per-stage analysis execution-time breakdown (seconds), grouped (D4)
@@ -423,6 +424,10 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                 const detail = actions[trimmedId];
                 if (detail?.action_topology) {
                     actionContent = detail.action_topology as unknown as Record<string, unknown>;
+                } else {
+                    // An evacuation-antenna aggregate names its antenna, not a generator:
+                    // send its generators so it still simulates after a session reload.
+                    actionContent = antennaAggregateContent(actionScores, trimmedId);
                 }
             }
 
