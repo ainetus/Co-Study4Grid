@@ -18,7 +18,11 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "ExpertOp4Grid>=0.3.2.post1",
+    # 0.3.4 draws the evacuation antennas in the reduced overflow graph and
+    # adds the viewer's "Evacuation antennas" layer. The recommender is
+    # installed with --no-deps (recommender-pin.txt), so this floor is the
+    # one that guarantees it.
+    "ExpertOp4Grid>=0.3.4",
     # No upper bound. The earlier `<1.15` cap assumed pypowsybl 1.15 shifted the
     # `test_independent_actions_simulation` deltas beyond the ±1 MW tolerance of
     # the committed baseline (`expert_backend/tests/baseline_scenario.json`, see
