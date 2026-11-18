@@ -69,7 +69,10 @@ get just over one *native* diameter. `--separation N` overrides the auto value.
 > **Keep in sync:** `BOOST_CEILING` and the boost constants in
 > `separate_voltage_levels.py` mirror `NODE_BOOST_CEILING` (and the rest of the
 > formula) in `svgBoost.ts`. If you change the frontend boost, the separation
-> auto-tracks it — but the mirrored constants must be updated together.
+> auto-tracks it — but the mirrored constants must be updated together. A
+> second mirror lives in `expert_backend/services/diagram/layout_completion.py`
+> (`node_boost`, the spacing of the draw-time layout completion), checked
+> against `svgBoost.ts` by `TestNodeBoostMirror`.
 
 ## Results
 
