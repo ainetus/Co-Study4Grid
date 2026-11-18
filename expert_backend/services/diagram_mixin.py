@@ -7,12 +7,14 @@
 
 """Diagram generation mixin for RecommenderService.
 
-Thin orchestrator around the seven focused modules under
-``services/diagram/``:
+Thin orchestrator around the focused modules under
+``services/diagram/``, among which:
 
  - ``layout_cache``   — `(path, mtime)`-keyed ``grid_layout.json`` loader
+ - ``layout_completion`` — positions for the voltage levels the layout misses
  - ``nad_params``     — default ``NadParameters`` factory
- - ``nad_render``     — ``generate_diagram`` + NaN element stripping
+ - ``nad_render``     — ``generate_diagram`` + NaN element stripping and
+   root viewBox repair
  - ``sld_render``     — SLD SVG + metadata extraction
  - ``overloads``      — overload filtering + per-element current scans
  - ``flows``          — branch + asset flow extractors
@@ -42,6 +44,7 @@ from expert_backend.services.diagram.flows import (
     get_network_flows,
 )
 from expert_backend.services.diagram.layout_cache import load_layout
+from expert_backend.services.diagram.layout_completion import complete_layout_cached
 from expert_backend.services.diagram.action_patch import (
     build_action_patch_payload,
     compute_vl_topology_diff,
@@ -86,6 +89,8 @@ class ActionResultUnavailableError(ValueError):
 
 
 if TYPE_CHECKING:
+    import pandas as pd
+
     from expert_backend.services._recommender_state import RecommenderState
 
     _Base = RecommenderState
@@ -115,11 +120,25 @@ class DiagramMixin(_Base):
         """Return default ``NadParameters`` for diagram generation."""
         return default_nad_parameters()
 
+    def _load_layout_for(self, network) -> "pd.DataFrame | None":
+        """``_load_layout()`` plus a position for every voltage level of
+        ``network`` it misses (see ``diagram/layout_completion.py``), cached
+        per layout file version and network on ``_completed_layout_cache``."""
+        df = self._load_layout()
+        if df is None:
+            return None
+        return complete_layout_cached(
+            df,
+            network,
+            get_cache=lambda: getattr(self, "_completed_layout_cache", None),
+            set_cache=lambda value: setattr(self, "_completed_layout_cache", value),
+        )
+
     def _generate_diagram(self, network, voltage_level_ids=None, depth=0):
         """Generate NAD and return svg + metadata dict."""
         return generate_diagram(
             network,
-            df_layout=self._load_layout(),
+            df_layout=self._load_layout_for(network),
             nad_parameters=self._default_nad_parameters(),
             voltage_level_ids=voltage_level_ids,
             depth=depth,

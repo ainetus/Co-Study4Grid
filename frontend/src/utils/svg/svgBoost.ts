@@ -14,6 +14,9 @@ import { declutterEdgeInfoLabels, parseRotateDeg, type EdgeInfoLabel } from './e
 // Grids below this rendered-viewBox / VL-density regime don't need the boost.
 const REFERENCE_SIZE = 1250;
 const BOOST_THRESHOLD = 3;
+// pypowsybl's default `diagramPadding`, around the content extent fallback.
+const CONTENT_PADDING = 200;
+const TRANSLATE_RE = /translate\(\s*([-0-9.eE+]+)\s*[, ]\s*([-0-9.eE+]+)\s*\)/;
 
 /**
  * Parse a raw pypowsybl SVG string into a live `SVGSVGElement`, applying the
@@ -32,7 +35,12 @@ const BOOST_THRESHOLD = 3;
  * re-parse downstream).
  */
 export const boostSvgToElement = (svgString: string, viewBox: ViewBox | null, vlCount: number): SVGSVGElement | null => {
-    let svgEl: SVGSVGElement;
+    const svgEl = parseSvgRoot(svgString);
+    return svgEl && boostParsedSvg(svgEl, viewBox, vlCount);
+};
+
+/** Parse a raw SVG string into its root `<svg>` element, or null when it can't be adopted. */
+const parseSvgRoot = (svgString: string): SVGSVGElement | null => {
     try {
         const parser = new DOMParser();
         const doc = parser.parseFromString(svgString, 'image/svg+xml');
@@ -50,18 +58,24 @@ export const boostSvgToElement = (svgString: string, viewBox: ViewBox | null, vl
         ) {
             return null;
         }
-        svgEl = root as unknown as SVGSVGElement;
+        return root as unknown as SVGSVGElement;
     } catch (err) {
         console.error('[SVG] Failed to parse SVG:', err);
         return null;
     }
+};
 
+/** Apply the large-grid boost to an already-parsed NAD root, in place. */
+const boostParsedSvg = (svgEl: SVGSVGElement, viewBox: ViewBox | null, vlCount: number): SVGSVGElement => {
     // Skip the boost for small grids / narrow viewBoxes — return the parsed
     // element as-is (unmutated, but still an element so ingestion adopts it).
     if (!viewBox || !vlCount || vlCount < 500) return svgEl;
 
     const start = Date.now();
     const diagramSize = Math.max(viewBox.w, viewBox.h);
+    // A non-finite size would make every scale below NaN (`NaNpx` fonts,
+    // `scale(NaN)` nodes): leave the diagram unboosted instead.
+    if (!Number.isFinite(diagramSize)) return svgEl;
     const ratio = diagramSize / REFERENCE_SIZE;
     if (ratio <= BOOST_THRESHOLD) return svgEl;
 
@@ -214,7 +228,7 @@ export const boostSvgToElement = (svgString: string, viewBox: ViewBox | null, vl
         const vlOuter: Array<{ cx: number; cy: number; r: number }> = [];
         const collectVlOuter = (groupEl: Element, circle: Element) => {
             const t = groupEl.getAttribute('transform') || '';
-            const m = /translate\(\s*([-0-9.eE+]+)\s*[, ]\s*([-0-9.eE+]+)\s*\)/.exec(t);
+            const m = TRANSLATE_RE.exec(t);
             if (!m) return;
             const cx = parseFloat(m[1]);
             const cy = parseFloat(m[2]);
@@ -684,19 +698,49 @@ export const boostSvgToElement = (svgString: string, viewBox: ViewBox | null, vl
  */
 export const boostSvgForLargeGrid = (svgString: string, viewBox: ViewBox | null, vlCount: number): string => {
     if (!viewBox || !vlCount || vlCount < 500) return svgString;
-    if (Math.max(viewBox.w, viewBox.h) / REFERENCE_SIZE <= BOOST_THRESHOLD) return svgString;
+    const diagramSize = Math.max(viewBox.w, viewBox.h);
+    if (!Number.isFinite(diagramSize) || diagramSize / REFERENCE_SIZE <= BOOST_THRESHOLD) return svgString;
     const el = boostSvgToElement(svgString, viewBox, vlCount);
     return el ? new XMLSerializer().serializeToString(el) : svgString;
 };
 
 /**
- * Parse the viewBox from a raw SVG string.
+ * Parse the root viewBox from a raw SVG string. Returns null when it is
+ * missing or unusable — a NaN / Infinity field or a non-positive size:
+ * pypowsybl writes `viewBox="NaN NaN NaN NaN"` once one node has no position.
  */
-const parseViewBox = (rawSvg: string): ViewBox | null => {
+export const parseViewBox = (rawSvg: string): ViewBox | null => {
     const match = rawSvg.match(/viewBox=["']([^"']+)["']/);
     if (!match) return null;
-    const parts = match[1].split(/\s+|,/).map(parseFloat);
-    return parts.length === 4 ? { x: parts[0], y: parts[1], w: parts[2], h: parts[3] } : null;
+    const parts = match[1].trim().split(/[\s,]+/).map(parseFloat);
+    if (parts.length !== 4 || !parts.every(Number.isFinite) || parts[2] <= 0 || parts[3] <= 0) return null;
+    return { x: parts[0], y: parts[1], w: parts[2], h: parts[3] };
+};
+
+/**
+ * Extent of a NAD's content: the bounding box of its voltage-level nodes
+ * (`.nad-vl-nodes > g` translations) padded by `CONTENT_PADDING`, or null when
+ * no node has a finite position. Stands in for an unusable root viewBox.
+ */
+export const contentExtent = (svgEl: SVGSVGElement): ViewBox | null => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    svgEl.querySelectorAll('.nad-vl-nodes > g[transform]').forEach(g => {
+        const m = TRANSLATE_RE.exec(g.getAttribute('transform') || '');
+        const x = m ? parseFloat(m[1]) : NaN;
+        const y = m ? parseFloat(m[2]) : NaN;
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+    });
+    if (!Number.isFinite(minX)) return null;
+    return {
+        x: minX - CONTENT_PADDING,
+        y: minY - CONTENT_PADDING,
+        w: maxX - minX + 2 * CONTENT_PADDING,
+        h: maxY - minY + 2 * CONTENT_PADDING,
+    };
 };
 
 /**
@@ -704,9 +748,26 @@ const parseViewBox = (rawSvg: string): ViewBox | null => {
  * ingestion (D6). Returns the parsed/boosted element on success; falls back
  * to the raw string on a parse failure so `MemoizedSvgContainer`'s
  * `innerHTML` path still renders it.
+ *
+ * An unusable root viewBox (NaN) gives way to the content extent, written
+ * onto the element with the root's non-finite width / height dropped (CSS
+ * sizes the diagram), so the pan/zoom extent, the boost and the halo width
+ * all start from finite numbers. The backend repairs the root first
+ * (`nad_render._strip_nan_elements`); this is the safety net.
  */
 export const processSvg = (rawSvg: string, vlCount: number): { svg: string | SVGSVGElement; viewBox: ViewBox | null } => {
-    const viewBox = parseViewBox(rawSvg);
-    const el = boostSvgToElement(rawSvg, viewBox, vlCount);
-    return { svg: el ?? rawSvg, viewBox };
+    let viewBox = parseViewBox(rawSvg);
+    const el = parseSvgRoot(rawSvg);
+    if (!el) return { svg: rawSvg, viewBox };
+    if (!viewBox) {
+        viewBox = contentExtent(el);
+        if (viewBox) {
+            el.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+            for (const attr of ['width', 'height']) {
+                const value = el.getAttribute(attr);
+                if (value !== null && !Number.isFinite(parseFloat(value))) el.removeAttribute(attr);
+            }
+        }
+    }
+    return { svg: boostParsedSvg(el, viewBox, vlCount), viewBox };
 };

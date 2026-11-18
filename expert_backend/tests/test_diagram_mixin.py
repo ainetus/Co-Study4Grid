@@ -250,6 +250,39 @@ class TestLoadLayoutCache:
         )
 
 
+class TestLoadLayoutFor:
+    """`_generate_diagram` hands pypowsybl the layout completed for the
+    network it draws: a voltage level the layout misses gets a position
+    (see ``services/diagram/layout_completion.py``), computed once per
+    layout version and network.
+    """
+
+    def test_generate_diagram_uses_the_completed_layout(self, tmp_path):
+        layout_file = tmp_path / "grid_layout.json"
+        layout_file.write_text(json.dumps({"A": [0.0, 0.0], "B": [1000.0, 0.0]}))
+        vls = pd.DataFrame({"substation_id": ["SA", "SA", "SB"]}, index=["A", "NEW", "B"])
+        network = MagicMock()
+        network.get_voltage_levels.side_effect = lambda attributes=None: vls[list(attributes or [])]
+
+        mixin = DiagramMixin()
+        with patch("expert_backend.services.diagram_mixin.config") as cfg, \
+                patch("expert_backend.services.diagram_mixin.generate_diagram") as gen:
+            cfg.LAYOUT_FILE_PATH = layout_file
+            mixin._generate_diagram(network)
+            mixin._generate_diagram(network)
+
+        first, second = (call.kwargs["df_layout"] for call in gen.call_args_list)
+        assert "NEW" in first.index, "the voltage level missing from the layout must be positioned"
+        assert second is first, "the completion must be cached"
+        assert mixin._completed_layout_cache[2] is first
+
+    def test_no_layout_file_means_no_fixed_positions(self):
+        mixin = DiagramMixin()
+        with patch("expert_backend.services.diagram_mixin.config") as cfg:
+            cfg.LAYOUT_FILE_PATH = None
+            assert mixin._load_layout_for(MagicMock()) is None
+
+
 class TestGetElementMaxCurrents:
     """`_get_element_max_currents` must return `max(|i1|, |i2|)` for every
     line and 2-winding transformer with both currents finite. Rows with

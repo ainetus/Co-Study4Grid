@@ -39,6 +39,7 @@ class RecommenderState:
     _cached_obs_n1_elements: tuple[str, ...] | None
     _cached_obs_n1_id: Any
     _cached_obs_n_id: Any
+    _completed_layout_cache: Any
     _dict_action: Any
     _generator: Any
     _initial_pst_taps: Any
