@@ -495,6 +495,7 @@ NAD/SLD payloads:
 - The two-step analysis flow (step1: detect overloads, step2: resolve) is the primary user workflow; the single-step `/api/run-analysis` is a legacy alternative
 - Session save/load is documented in `docs/features/save-results.md`
 - **`grid_layout.json` coordinate scale (2026-05-08)**: the on-disk layout MUST be in raw Mercator metres (span ≈ 1.4–1.6 M for the French grid). pypowsybl emits VL outer circles at a *fixed* `r = 27.5` user-space units, so any layout squashed below ~500 000 units forces overlap on dense regions (Paris/Lyon). `scripts/pypsa_eur/regenerate_grid_layout.py` defaults to raw metres; the legacy `--target-width 8000` flag is preserved but warns. Full rationale + operator-vs-PyPSA comparison in [`docs/data/grid-layout-coordinate-scale.md`](docs/data/grid-layout-coordinate-scale.md).
+- **Voltage levels missing from `grid_layout.json` (2026-11)**: a layout older than the network leaves voltage levels without a fixed position; pypowsybl's GEOGRAPHICAL layout then puts them on its own scale or at NaN, and the NAD root viewBox turns NaN. `services/diagram/layout_completion.py` positions them first (substation siblings, else electrical neighbours; cached on `_completed_layout_cache`), `nad_render` recomputes a NaN root viewBox, and the frontend (`processSvg`, boost, halo width) rejects non-finite values. See the same doc, § "Voltage levels the layout misses".
 
 ---
 

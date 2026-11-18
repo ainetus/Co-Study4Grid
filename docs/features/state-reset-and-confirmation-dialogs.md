@@ -138,7 +138,9 @@ The `RecommenderService.reset()` method clears, in order:
 4. `_layout_cache` — the cached `grid_layout.json` DataFrame used as
    `fixed_positions` for NAD generation. Must be cleared so a new
    study loaded from a different grid does not reuse the previous
-   grid's substation coordinates.
+   grid's substation coordinates. `_completed_layout_cache` — that
+   layout completed with positions for the voltage levels it misses
+   (`services/diagram/layout_completion.py`) — is cleared with it.
 5. NAD-prefetch state: `_prefetched_base_nad`,
    `_prefetched_base_nad_error`, `_prefetched_base_nad_event`,
    `_prefetched_base_nad_thread`.

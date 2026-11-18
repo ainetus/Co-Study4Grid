@@ -7,6 +7,24 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed — network diagram drawn with a layout older than the network
+
+- **Voltage levels missing from `grid_layout.json` get a position** before
+  pypowsybl draws the NAD: the mean of their substation's positioned voltage
+  levels, else of their electrical neighbours, plus a small deterministic
+  offset; isolated ones are parked inside the grid
+  (`services/diagram/layout_completion.py`, cached per layout version and
+  network). pypowsybl used to place them on its own scale or at NaN, which
+  turned the root viewBox into `NaN NaN NaN NaN`: microscopic substations,
+  no overload / action halos and zoom-to-VL off target. Seen on a 2026 France
+  snapshot drawn with the 2024 RTE layout (60 of 5 888 voltage levels
+  missing).
+- **A NaN root viewBox is recomputed** from the finite nodes, the way
+  pypowsybl computes it (`nad_render._strip_nan_elements`).
+- **Frontend guards**: `parseViewBox` rejects a non-finite viewBox and
+  `processSvg` falls back to the content extent; the large-grid boost and
+  the halo width ignore non-finite input.
+
 ### Frontend — large-grid pan/zoom: labels and flow values stay on screen
 
 - **The canvas proxy draws the flow values and VL labels**, once they are

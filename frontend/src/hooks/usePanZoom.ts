@@ -45,11 +45,13 @@ const computeZoomTier = (current: ViewBox, original: ViewBox): ZoomTier => {
 // and grow toward HALO_MAX_PX (a prominent marker) only once past the overview
 // boundary, so a contingency stays visible on the full-extent view. Continuous
 // at ratio = 0.5 — no jarring snap at a tier boundary.
+// A non-finite ratio (a NaN diagram extent) falls back to the thin width:
+// `NaNpx` would void the CSS var and the halos would vanish.
 const HALO_MIN_PX = 24;
 const HALO_MAX_PX = 50;
-const computeHaloWidthPx = (current: ViewBox, original: ViewBox): number => {
+export const computeHaloWidthPx = (current: ViewBox, original: ViewBox): number => {
     const ratio = current.w / original.w;
-    if (ratio <= 0.5) return HALO_MIN_PX;
+    if (!Number.isFinite(ratio) || ratio <= 0.5) return HALO_MIN_PX;
     const t = Math.min(1, (ratio - 0.5) / 0.5);
     return Math.round(HALO_MIN_PX + (HALO_MAX_PX - HALO_MIN_PX) * t);
 };

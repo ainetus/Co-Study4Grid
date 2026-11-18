@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+import re
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -114,6 +115,101 @@ class TestStripNanElements:
         out = nad_render._strip_nan_elements(svg)
         # Either stripped (if lxml is present) or unchanged.
         assert isinstance(out, str)
+
+
+# A NAD whose node "8" pypowsybl could not place: pypowsybl writes NaN in the
+# SVG (root included) but (0, 0) in the metadata.
+_NAN_ROOT_SVG = (
+    '<svg width="NaN" height="NaN" viewBox="NaN NaN NaN NaN" xmlns="http://www.w3.org/2000/svg">'
+    '<g class="nad-vl-nodes">'
+    '<g transform="translate(100.00,200.00)" id="0"><circle r="27.50"/></g>'
+    '<g transform="translate(1100.00,700.00)" id="4"><circle r="27.50"/></g>'
+    '<g transform="translate(NaN,NaN)" id="8"><circle r="27.50"/></g>'
+    '</g></svg>'
+)
+_NAN_ROOT_META = {
+    "svgParameters": {
+        "diagramPadding": {"left": 200.0, "top": 200.0, "right": 200.0, "bottom": 200.0},
+        "sizeConstraint": "FIXED_HEIGHT", "fixedWidth": 800, "fixedHeight": 600, "fixedScale": 0.2,
+    },
+    "nodes": [
+        {"svgId": "0", "equipmentId": "A", "x": 100.0, "y": 200.0},
+        {"svgId": "4", "equipmentId": "B", "x": 1100.0, "y": 700.0},
+        {"svgId": "8", "equipmentId": "C", "x": 0.0, "y": 0.0},
+    ],
+    "textNodes": [
+        {"svgId": "1", "vlNode": "0", "shiftX": 100.0, "shiftY": -40.0},
+        {"svgId": "5", "vlNode": "4", "shiftX": 100.0, "shiftY": -40.0},
+        {"svgId": "9", "vlNode": "8", "shiftX": 0.0, "shiftY": 0.0},
+    ],
+}
+
+
+def _root_attrs(svg: str) -> dict:
+    from lxml import etree
+    return dict(etree.fromstring(svg.encode()).attrib)
+
+
+def _real_pypowsybl_jupyter():
+    try:
+        import pypowsybl.network as pn
+        import pypowsybl_jupyter.util as pju
+    except ImportError:
+        return None
+    return None if isinstance(pn, MagicMock) or isinstance(pju, MagicMock) else pn
+
+
+@pytest.mark.skipif(not _lxml_available(), reason="lxml not installed")
+class TestNanRootRepair:
+    def test_recomputes_root_size_from_the_finite_nodes(self):
+        out = nad_render._strip_nan_elements(_NAN_ROOT_SVG, json.dumps(_NAN_ROOT_META))
+        # Nodes (100, 200), (1100, 700) and their labels (+100, -40), padded
+        # by 200; node "8" (metadata (0, 0)) was stripped, so it is left out.
+        assert _root_attrs(out) == {
+            "viewBox": "-100.00 -40.00 1500.00 940.00",
+            "height": "600.00",  # FIXED_HEIGHT
+            "width": "957.45",
+        }
+        assert "NaN" not in out
+
+    def test_default_padding_and_no_size_attributes(self):
+        meta = {**_NAN_ROOT_META, "svgParameters": {}}
+        svg = _NAN_ROOT_SVG.replace('width="NaN" height="NaN" ', "")
+        out = nad_render._strip_nan_elements(svg, json.dumps(meta))
+        assert _root_attrs(out) == {"viewBox": "-100.00 -40.00 1500.00 940.00"}
+
+    def test_size_constraints(self):
+        assert nad_render._size_scale({"sizeConstraint": "FIXED_WIDTH", "fixedWidth": 800}, 1600, 900) == 0.5
+        assert nad_render._size_scale({"sizeConstraint": "FIXED_SCALE", "fixedScale": 0.2}, 1600, 900) == 0.2
+        assert nad_render._size_scale({"sizeConstraint": "NONE"}, 1600, 900) == 1.0
+
+    def test_root_kept_without_metadata(self):
+        out = nad_render._strip_nan_elements(_NAN_ROOT_SVG)
+        assert _root_attrs(out)["viewBox"] == "NaN NaN NaN NaN"
+        assert 'id="8"' not in out  # the NaN node is still stripped
+
+    def test_finite_root_untouched(self):
+        svg = _NAN_ROOT_SVG.replace('width="NaN" height="NaN" viewBox="NaN NaN NaN NaN"', 'viewBox="1 2 3 4"')
+        out = nad_render._strip_nan_elements(svg, json.dumps(_NAN_ROOT_META))
+        assert _root_attrs(out) == {"viewBox": "1 2 3 4"}
+
+    @pytest.mark.skipif(_real_pypowsybl_jupyter() is None, reason="needs the real pypowsybl")
+    def test_matches_pypowsybl_own_root_size(self):
+        from pypowsybl_jupyter.util import _get_svg_metadata, _get_svg_string
+
+        from expert_backend.services.diagram.nad_params import default_nad_parameters
+
+        network = _real_pypowsybl_jupyter().create_ieee14()
+        diagram = network.get_network_area_diagram(nad_parameters=default_nad_parameters())
+        svg, meta = _get_svg_string(diagram), _get_svg_metadata(diagram)
+        broken = re.sub(r'(width|height|viewBox)="[^"]*"', lambda m: f'{m.group(1)}="NaN"', svg, count=3)
+
+        def numbers(text):
+            attrs = _root_attrs(text)
+            return [float(v) for k in ("viewBox", "width", "height") for v in attrs[k].split()]
+
+        # The metadata positions are rounded to 0.01, hence the tolerance.
+        assert numbers(nad_render._strip_nan_elements(broken, meta)) == pytest.approx(numbers(svg), abs=0.02)
 
 
 # ----------------------------------------------------------------------

@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { describe, expect, it } from 'vitest';
-import { boostSvgForLargeGrid, boostSvgToElement, processSvg } from './svgBoost';
+import { boostSvgForLargeGrid, boostSvgToElement, contentExtent, parseViewBox, processSvg } from './svgBoost';
 
 describe('boostSvgForLargeGrid', () => {
     const stableSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><circle cx="10" cy="10" r="5"/></svg>';
@@ -215,6 +215,71 @@ describe('processSvg', () => {
         const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0,0,100,100"/>';
         const { viewBox } = processSvg(svg, 100);
         expect(viewBox).toEqual({ x: 0, y: 0, w: 100, h: 100 });
+    });
+});
+
+// pypowsybl writes `viewBox="NaN NaN NaN NaN"` (and NaN width / height) once a
+// voltage level has no position — e.g. one the fixed layout misses. The
+// backend repairs the root; these guards keep the frontend finite regardless.
+describe('non-finite root viewBox', () => {
+    const vlNode = (x: string, y: string) => `<g transform="translate(${x},${y})"><circle r="27.5"/></g>`;
+    const nanRoot = (nodes: string, extra = '') =>
+        '<svg xmlns="http://www.w3.org/2000/svg" width="NaN" height="NaN" viewBox="NaN NaN NaN NaN">'
+        + `${extra}<g class="nad-vl-nodes">${nodes}</g></svg>`;
+
+    it('parseViewBox rejects NaN / Infinity fields and non-positive sizes', () => {
+        expect(parseViewBox('<svg viewBox="NaN NaN NaN NaN"/>')).toBeNull();
+        expect(parseViewBox('<svg viewBox="0 0 Infinity 10"/>')).toBeNull();
+        expect(parseViewBox('<svg viewBox="0 0 0 10"/>')).toBeNull();
+        expect(parseViewBox('<svg viewBox="0 0 -5 10"/>')).toBeNull();
+        expect(parseViewBox('<svg viewBox=" 1, 2, 3, 4 "/>')).toEqual({ x: 1, y: 2, w: 3, h: 4 });
+    });
+
+    it('contentExtent bounds the finite voltage-level nodes, padded', () => {
+        const el = new DOMParser().parseFromString(
+            nanRoot(vlNode('100', '200') + vlNode('1100', '700') + vlNode('NaN', 'NaN')),
+            'image/svg+xml',
+        ).documentElement as unknown as SVGSVGElement;
+        expect(contentExtent(el)).toEqual({ x: -100, y: 0, w: 1400, h: 900 });
+    });
+
+    it('contentExtent is null without a positioned node', () => {
+        const el = new DOMParser().parseFromString(nanRoot(vlNode('NaN', 'NaN')), 'image/svg+xml')
+            .documentElement as unknown as SVGSVGElement;
+        expect(contentExtent(el)).toBeNull();
+    });
+
+    it('processSvg falls back to the content extent and writes it on the root', () => {
+        const { viewBox, svg: out } = processSvg(nanRoot(vlNode('100', '200') + vlNode('1100', '700')), 100);
+        expect(viewBox).toEqual({ x: -100, y: 0, w: 1400, h: 900 });
+        const el = out as SVGSVGElement;
+        expect(el.getAttribute('viewBox')).toBe('-100 0 1400 900');
+        // NaN width / height are dropped: the container CSS sizes the diagram.
+        expect(el.hasAttribute('width')).toBe(false);
+        expect(el.hasAttribute('height')).toBe(false);
+    });
+
+    it('processSvg boosts a large grid from the fallback extent, never with NaN', () => {
+        // fr225_400-sized extent: without the fallback the boost computed a
+        // NaN diagram size, no node boost and a `NaNpx` VL font.
+        const style = '<style>.nad-text-nodes {font: 25px serif}</style>';
+        const { viewBox, svg: out } = processSvg(
+            nanRoot(vlNode('0', '0') + vlNode('1400000', '1390000'), style), 1196,
+        );
+        expect(viewBox!.w).toBe(1_400_400);
+        const serialized = new XMLSerializer().serializeToString(out as SVGSVGElement);
+        expect(serialized).not.toContain('NaN');
+        expect(serialized).toMatch(/font: \d+px serif/);
+        expect(serialized).toMatch(/scale\(\d+\.\d+\)/);
+    });
+
+    it('the boost leaves the diagram alone when handed a NaN viewBox', () => {
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">'
+            + '<style>.nad-text-nodes {font: 25px serif}</style><g><circle cx="1" cy="1" r="5"/></g></svg>';
+        const nanVb = { x: NaN, y: NaN, w: NaN, h: NaN };
+        expect(boostSvgForLargeGrid(svg, nanVb, 1000)).toBe(svg);
+        const el = boostSvgToElement(svg, nanVb, 1000)!;
+        expect(new XMLSerializer().serializeToString(el)).not.toContain('NaN');
     });
 });
 

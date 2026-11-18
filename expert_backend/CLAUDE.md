@@ -39,8 +39,14 @@ expert_backend/
 │   │                              # numerics to services/diagram/ helpers
 │   ├── diagram/                   # PR #104 decomposition (ex-diagram_mixin):
 │   │   ├── layout_cache.py        # - (path, mtime)-keyed grid_layout.json loader
+│   │   ├── layout_completion.py   # - positions for the VLs the layout misses
+│   │   │                          #   (substation siblings, else electrical
+│   │   │                          #   neighbours; isolated VLs parked), cached
+│   │   │                          #   per layout version + network fingerprint
 │   │   ├── nad_params.py          # - default NadParameters factory
 │   │   ├── nad_render.py          # - NAD generation + NaN-element stripping
+│   │   │                          #   + NaN root viewBox/size recomputed from
+│   │   │                          #   the finite metadata nodes
 │   │   ├── sld_render.py          # - SLD SVG + metadata with fallbacks
 │   │   │                          #   + extract_vl_switch_states (per-VL
 │   │   │                          #   operable-switch baseline) AND
@@ -340,7 +346,7 @@ follow-ups in
   `_simulation_env`, `_last_disconnected_element`, `_dict_action`,
   `_analysis_context`, `_saved_computed_pairs`, `_cached_obs_n*`,
   `_cached_env_context`, `_initial_pst_taps`,
-  `_lf_status_by_variant`, `_layout_cache`,
+  `_lf_status_by_variant`, `_layout_cache`, `_completed_layout_cache`,
   `_prefetched_base_nad*`, `_overflow_layout_mode` (back to
   `"hierarchical"`), `_overflow_layout_cache` (empty dict),
   `_last_step2_context`, `_last_step2_signature`. Adding a new instance-level cache?
@@ -537,6 +543,16 @@ as `fixed_positions` for NAD generation. Two invariants:
    grid's NAD.
 2. The `(path, mtime)` key auto-invalidates when the file changes,
    so warm-process workflow stays fast.
+
+A layout is often older than the network: `_generate_diagram` passes
+`_load_layout_for(network)`, the layout plus a position for every voltage
+level it misses (`services/diagram/layout_completion.py`), cached on
+`_completed_layout_cache` per layout frame + network fingerprint (cleared
+by `reset()` too). Without it pypowsybl's GEOGRAPHICAL layout puts those
+voltage levels on its own scale or at NaN, and the root viewBox turns NaN;
+`nad_render` also recomputes a NaN root viewBox from the finite nodes. See
+[`docs/data/grid-layout-coordinate-scale.md`](../docs/data/grid-layout-coordinate-scale.md)
+§ "Voltage levels the layout misses".
 
 ## NAD prefetch
 
