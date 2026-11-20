@@ -13,8 +13,9 @@ independently.
 
 Modules:
   - :mod:`layout_cache` — `(path, mtime)`-keyed layout DataFrame loader
+  - :mod:`layout_completion` — positions for the voltage levels the layout misses
   - :mod:`nad_params` — default ``NadParameters`` factory
-  - :mod:`nad_render` — ``generate_diagram`` + NaN stripping
+  - :mod:`nad_render` — ``generate_diagram`` + NaN stripping + root viewBox repair
   - :mod:`sld_render` — SLD SVG + metadata extraction
   - :mod:`overloads` — per-element current queries + overload filtering
   - :mod:`flows` — branch and asset flow extractors

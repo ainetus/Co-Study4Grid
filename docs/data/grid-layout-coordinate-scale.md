@@ -65,9 +65,109 @@ python scripts/pypsa_eur/regenerate_grid_layout.py --network data/pypsa_eur_fr22
 
 The branch's earlier work (`utils/svg/svgBoost.ts`) added several frontend SVG transforms — node-circle shrinking, edge-info downscale, polyline kink-drop, line-extension to the new circle edge, and flow-indicator projection. All of them were trying to compensate for the squashed coordinate scale. With the layout fixed at the source, those transforms are no-ops on the operator-clean default (median NN/r = 65–166 ×, well above the threshold the boost code triggers on). The boost code can stay as a safety net for any caller that *intentionally* uses a small `--target-width`, but the canonical path no longer needs it.
 
+## Voltage levels the layout misses (2026-11)
+
+A layout is drawn for one version of the network, and the network keeps
+changing. The 2024 RTE operator layout (`bare_env_20240828T0100Z`, 18 141
+entries) misses 60 of the 5 888 voltage levels of a 2026-05-06 France
+snapshot.
+
+### What pypowsybl does with them
+
+Given `fixed_positions` that skip a voltage level, the GEOGRAPHICAL NAD
+layout places it itself, on its own scale. On that snapshot 56 of them
+landed ~1.4 M units away from the grid (y ≈ −0.21 … −0.25 M, against −1.6 … −2.9 M
+for the grid), one (HURTEP1) near the origin, and three isolated ones
+(CORB7P1, E.HUCP1, F.BISP1) at NaN. One NaN node is enough to make
+pypowsybl's bounding box NaN: the root `<svg>` comes out with
+`width="NaN" height="NaN" viewBox="NaN NaN NaN NaN"`. The metadata JSON
+still lists that node, at (0, 0). `_strip_nan_elements` removed the NaN
+elements but could not remove the root.
+
+In the frontend, the NaN viewBox gave a NaN diagram size to `svgBoost`, so
+no node boost (microscopic substations) and `NaNpx` VL fonts; a NaN halo
+width (`computeHaloWidthPx`), so `--nad-halo-w` became invalid and the
+overload / action halos vanished; and a zoom to a voltage level (a VL chip
+on an action card) centred on the wrong substation.
+
+### Fix — three layers
+
+1. **Layout completion** (`expert_backend/services/diagram/layout_completion.py`,
+   called by `DiagramMixin._load_layout_for`). Before pypowsybl sees the
+   layout, each missing voltage level gets a position on the layout's own
+   scale, one *spacing* away from the mean of its positioned same-substation
+   voltage levels, else of its positioned electrical neighbours (lines, 2-
+   and 3-winding transformers, tie lines, HVDC lines), in a direction hashed
+   from its id (CRC32). Passes repeat while they place something, so a chain
+   of new voltage levels hangs off the grid one hop at a time. Isolated
+   voltage levels are parked inside the bottom-left corner of the grid's
+   extent, one spacing apart. A layout row with a non-finite coordinate
+   counts as missing. The same pass also spreads the voltage levels the
+   layout stacks (next section). The result is
+   cached on `_completed_layout_cache`, keyed by the layout frame (one per
+   file path + mtime) and a network fingerprint (network id + voltage-level
+   ids), so the per-worker network copies the action diagrams are drawn on
+   share one entry; `reset()` clears it. On the snapshot: 23 placed by
+   substation, 33 by neighbours, 4 isolated parked; ~70 ms once, then ~5 ms
+   per diagram for the fingerprint. The root viewBox comes out finite,
+   `-137870 -2916920 1643872 1304459`.
+
+   The spacing is one voltage-level disk as the frontend draws it, plus
+   30 %, the convention of `scripts/pypsa_eur/separate_voltage_levels.py`.
+   The disk is pypowsybl's `r = 27.5` times the node boost `svgBoost.ts`
+   derives from the diagram's extent and voltage-level count. `node_boost`
+   mirrors that formula, and `TestNodeBoostMirror` fails if its constants
+   drift from `svgBoost.ts`. On the snapshot the boost is 30.75 and the
+   spacing 2 198 units; below 500 voltage levels the disks are native and
+   the spacing is 71.5 units.
+2. **Root repair** (`nad_render._strip_nan_elements` → `_repair_root_size`).
+   When the root still carries NaN — a network drawn without a layout, or a
+   node the completion could not help — its `viewBox` / `width` / `height`
+   are recomputed the way pypowsybl computes them: the bounding box of the
+   metadata nodes and their text nodes (node + shift), leaving out the nodes
+   whose SVG element was stripped (their metadata says (0, 0)), padded by
+   `svgParameters.diagramPadding` and sized by its `sizeConstraint`. On a
+   finite diagram this matches pypowsybl's own root to the metadata's 0.01
+   rounding.
+3. **Frontend safety net** (`frontend/src/utils/svg/svgBoost.ts`,
+   `frontend/src/hooks/usePanZoom.ts`). `parseViewBox` rejects a viewBox
+   with a non-finite field or a non-positive size; `processSvg` then falls
+   back to the content extent (the voltage-level node translations, padded
+   by 200), writes it on the root and drops a NaN `width` / `height`. The
+   boost skips a non-finite diagram size, and `computeHaloWidthPx` returns
+   the thin width for a non-finite zoom ratio.
+
+### Voltage levels the layout stacks
+
+The 2024 layout also gives one point to 244 of the snapshot's voltage
+levels, in 104 groups: the voltage levels of one substation (a 400 kV level
+and its 20 kV generator step-up level…) and border nodes of neighbouring
+countries. pypowsybl draws them as one disk under overprinted labels. A
+branch between two of them is a zero-length edge: pypowsybl draws most of
+these as small loops, but 8 lines and transformers of the snapshot came out
+with NaN coordinates and were stripped.
+
+The completion now spreads them: in each group, the highest voltage (then
+the smallest id) keeps the point, and the others go round it one spacing
+away, evenly spaced, the first one towards its own electrical neighbours, so
+a pair fans out along its lines. Rows for voltage levels outside the network
+are not touched. On the snapshot 140 voltage levels move. pypowsybl's SVG
+then carries no NaN at all, so the NaN-stripping pass is skipped (~0.25–0.3 s
+of lxml parse and serialise saved per France NAD). The root viewBox is
+unchanged.
+
+Regression guards: `expert_backend/tests/test_layout_completion.py`
+(including real-pypowsybl IEEE 14 drawings: a missing voltage level, and
+substation S4's three voltage levels stacked on one point), `TestNanRootRepair` in
+`expert_backend/tests/test_diagram_helpers.py` (checked against pypowsybl's
+own root), `TestLoadLayoutFor` in `expert_backend/tests/test_diagram_mixin.py`,
+the "non-finite root viewBox" block of
+`frontend/src/utils/svg/svgBoost.test.ts` and the `computeHaloWidthPx`
+block of `frontend/src/hooks/usePanZoom.test.tsx`.
+
 ## Cross-references
 
 * `scripts/pypsa_eur/regenerate_grid_layout.py` — module docstring carries the same math summary.
 * `CHANGELOG.md` — `[Unreleased]` "Fixed" section.
 * `frontend/src/utils/svg/svgBoost.ts` — frontend mitigations that the layout fix retires.
-* [`voltage-level-separation.md`](voltage-level-separation.md) — the follow-on fix for substations whose **several voltage levels** share one location; run `separate_voltage_levels.py` *after* any regeneration here.
+* [`voltage-level-separation.md`](voltage-level-separation.md) — the follow-on fix for substations whose **several voltage levels** share one location; run `separate_voltage_levels.py` *after* any regeneration here. The in-app layout completion (§ "Voltage levels the layout stacks") only handles voltage levels at the very same point, at draw time.

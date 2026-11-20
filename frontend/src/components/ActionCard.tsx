@@ -10,6 +10,7 @@ import type { ActionDetail, NodeMeta, EdgeMeta } from '../types';
 import type { ModelDescriptor } from '../api';
 import { getActionTargetVoltageLevels, getActionTargetLines, isCouplingAction } from '../utils/svgUtils';
 import { colors } from '../styles/tokens';
+import { clampRedispatchDelta, redispatchTotal } from '../utils/injectionActions';
 import { SeverityIcon, type SeverityKind } from './SeverityIcon';
 
 interface ActionCardProps {
@@ -105,6 +106,20 @@ const ActionCard: React.FC<ActionCardProps> = ({
         : details.is_islanded
             ? { border: colors.danger, badgeBg: colors.danger, badgeText: colors.textOnBrand, label: 'islanded', kind: 'islanded' as SeverityKind }
             : severityColors[severity];
+
+    // An injection action may act on several loads / generators (an
+    // evacuation-antenna aggregate): its editor shows and sends the TOTAL,
+    // which the backend spreads pro rata — one input per action, not per element.
+    const sheddedMw = details.load_shedding_details?.reduce((sum, ls) => sum + ls.shedded_mw, 0) ?? 0;
+    const curtailedMw = details.curtailment_details?.reduce((sum, rc) => sum + rc.curtailed_mw, 0) ?? 0;
+    const redispatch = redispatchTotal(details.redispatch_details);
+    const renderElements = (rows: { name: string; mw: number }[]): React.ReactNode => (
+        <span title={rows.length > 1 ? rows.map(r => `${r.name}: ${r.mw.toFixed(1)} MW`).join(', ') : undefined}>
+            {rows.map((r, i) => (
+                <React.Fragment key={r.name}>{i > 0 && ', '}<strong>{r.name}</strong></React.Fragment>
+            ))}
+        </span>
+    );
 
     const renderRho = (arr: number[] | null, actionId: string, tab: 'action' | 'contingency' = 'action'): React.ReactNode => {
         if (!arr || arr.length === 0) return '—';
@@ -399,109 +414,93 @@ const ActionCard: React.FC<ActionCardProps> = ({
 
                     {details.load_shedding_details && details.load_shedding_details.length > 0 && (
                         <div style={{ ...editorRowStyle, background: colors.warningSoft, color: colors.warningText, border: `1px solid ${colors.warningBorder}` }}>
-                            {details.load_shedding_details.map((ls, i) => (
-                                <div key={ls.load_name} style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: i > 0 ? '4px' : 0 }}>
-                                    <span>Shedding on <strong>{ls.load_name}</strong> in MW:</span>
-                                    <input
-                                        data-testid={`edit-mw-${id}`}
-                                        type="number"
-                                        min={0}
-                                        step={0.1}
-                                        value={cardEditMw[id] ?? ls.shedded_mw.toFixed(1)}
-                                        onChange={(e) => onCardEditMwChange(id, e.target.value)}
-                                        style={{ width: '65px', fontSize: '11px', fontFamily: 'monospace', padding: '2px 4px', border: `1px solid ${colors.warningStrong}`, borderRadius: '3px', textAlign: 'right' }}
-                                    />
-                                    <button
-                                        data-testid={`resimulate-${id}`}
-                                        onClick={() => {
-                                            const mwVal = parseFloat(cardEditMw[id] ?? String(ls.shedded_mw));
-                                            if (!isNaN(mwVal) && mwVal >= 0) onResimulate(id, mwVal);
-                                        }}
-                                        disabled={resimulating === id}
-                                        style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.warningStrong}`, background: colors.warning, color: colors.textOnBright, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
-                                    >
-                                        {resimulating === id ? 'Simulating...' : 'Re-simulate'}
-                                    </button>
-                                </div>
-                            ))}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                <span>Shedding on {renderElements(details.load_shedding_details.map(ls => ({ name: ls.load_name, mw: ls.shedded_mw })))} in MW:</span>
+                                <input
+                                    data-testid={`edit-mw-${id}`}
+                                    type="number"
+                                    min={0}
+                                    step={0.1}
+                                    value={cardEditMw[id] ?? sheddedMw.toFixed(1)}
+                                    onChange={(e) => onCardEditMwChange(id, e.target.value)}
+                                    style={{ width: '65px', fontSize: '11px', fontFamily: 'monospace', padding: '2px 4px', border: `1px solid ${colors.warningStrong}`, borderRadius: '3px', textAlign: 'right' }}
+                                />
+                                <button
+                                    data-testid={`resimulate-${id}`}
+                                    onClick={() => {
+                                        const mwVal = parseFloat(cardEditMw[id] ?? String(sheddedMw));
+                                        if (!isNaN(mwVal) && mwVal >= 0) onResimulate(id, mwVal);
+                                    }}
+                                    disabled={resimulating === id}
+                                    style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.warningStrong}`, background: colors.warning, color: colors.textOnBright, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+                                >
+                                    {resimulating === id ? 'Simulating...' : 'Re-simulate'}
+                                </button>
+                            </div>
                         </div>
                     )}
 
                     {details.curtailment_details && details.curtailment_details.length > 0 && (
                         <div style={{ ...editorRowStyle, background: colors.infoSoft, color: colors.infoText, border: `1px solid ${colors.infoBorder}` }}>
-                            {details.curtailment_details.map((rc, i) => (
-                                <div key={rc.gen_name} style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: i > 0 ? '4px' : 0 }}>
-                                    <span>Curtailment on <strong>{rc.gen_name}</strong> in MW:</span>
-                                    <input
-                                        data-testid={`edit-mw-${id}`}
-                                        type="number"
-                                        min={0}
-                                        step={0.1}
-                                        value={cardEditMw[id] ?? rc.curtailed_mw.toFixed(1)}
-                                        onChange={(e) => onCardEditMwChange(id, e.target.value)}
-                                        style={{ width: '65px', fontSize: '11px', fontFamily: 'monospace', padding: '2px 4px', border: `1px solid ${colors.info}`, borderRadius: '3px', textAlign: 'right' }}
-                                    />
-                                    <button
-                                        data-testid={`resimulate-${id}`}
-                                        onClick={() => {
-                                            const mwVal = parseFloat(cardEditMw[id] ?? String(rc.curtailed_mw));
-                                            if (!isNaN(mwVal) && mwVal >= 0) onResimulate(id, mwVal);
-                                        }}
-                                        disabled={resimulating === id}
-                                        style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.info}`, background: colors.infoBorder, color: colors.infoText, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
-                                    >
-                                        {resimulating === id ? 'Simulating...' : 'Re-simulate'}
-                                    </button>
-                                </div>
-                            ))}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                <span>Curtailment on {renderElements(details.curtailment_details.map(rc => ({ name: rc.gen_name, mw: rc.curtailed_mw })))} in MW:</span>
+                                <input
+                                    data-testid={`edit-mw-${id}`}
+                                    type="number"
+                                    min={0}
+                                    step={0.1}
+                                    value={cardEditMw[id] ?? curtailedMw.toFixed(1)}
+                                    onChange={(e) => onCardEditMwChange(id, e.target.value)}
+                                    style={{ width: '65px', fontSize: '11px', fontFamily: 'monospace', padding: '2px 4px', border: `1px solid ${colors.info}`, borderRadius: '3px', textAlign: 'right' }}
+                                />
+                                <button
+                                    data-testid={`resimulate-${id}`}
+                                    onClick={() => {
+                                        const mwVal = parseFloat(cardEditMw[id] ?? String(curtailedMw));
+                                        if (!isNaN(mwVal) && mwVal >= 0) onResimulate(id, mwVal);
+                                    }}
+                                    disabled={resimulating === id}
+                                    style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.info}`, background: colors.infoBorder, color: colors.infoText, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+                                >
+                                    {resimulating === id ? 'Simulating...' : 'Re-simulate'}
+                                </button>
+                            </div>
                         </div>
                     )}
 
-                    {details.redispatch_details && details.redispatch_details.length > 0 && (
+                    {details.redispatch_details && redispatch && (
                         <div style={{ ...editorRowStyle, background: colors.infoSoft, color: colors.infoText, border: `1px solid ${colors.infoBorder}` }}>
-                            {details.redispatch_details.map((rd, i) => {
-                                // Signed-delta bounds from the generator's [min_p, max_p]:
-                                // a raise can go up to +max_raise_mw, a lower down to -max_lower_mw.
-                                const headroom = rd.direction === 'up' ? rd.max_raise_mw : rd.max_lower_mw;
-                                const minDelta = rd.direction === 'up' ? 0 : (rd.max_lower_mw != null ? -rd.max_lower_mw : undefined);
-                                const maxDelta = rd.direction === 'up' ? (rd.max_raise_mw ?? undefined) : 0;
-                                const clamp = (v: number) => {
-                                    if (minDelta != null) v = Math.max(minDelta, v);
-                                    if (maxDelta != null) v = Math.min(maxDelta, v);
-                                    return v;
-                                };
-                                return (
-                                <div key={rd.gen_name} style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: i > 0 ? '4px' : 0 }}>
-                                    <span>Redispatch on <strong>{rd.gen_name}</strong> ({rd.direction === 'up' ? 'raise' : 'lower'}) in MW:</span>
-                                    <input
-                                        data-testid={`edit-mw-${id}`}
-                                        type="number"
-                                        step={0.1}
-                                        min={minDelta}
-                                        max={maxDelta}
-                                        value={cardEditMw[id] ?? rd.delta_mw.toFixed(1)}
-                                        onChange={(e) => onCardEditMwChange(id, e.target.value)}
-                                        style={{ width: '65px', fontSize: '11px', fontFamily: 'monospace', padding: '2px 4px', border: `1px solid ${colors.info}`, borderRadius: '3px', textAlign: 'right' }}
-                                    />
-                                    {headroom != null && (
-                                        <span style={{ fontSize: '10px', color: colors.info }}>
-                                            max {rd.direction === 'up' ? 'raise' : 'lower'}: {headroom.toFixed(0)} MW
-                                        </span>
-                                    )}
-                                    <button
-                                        data-testid={`resimulate-${id}`}
-                                        onClick={() => {
-                                            const raw = parseFloat(cardEditMw[id] ?? String(rd.delta_mw));
-                                            if (!isNaN(raw)) onResimulate(id, clamp(raw));
-                                        }}
-                                        disabled={resimulating === id}
-                                        style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.info}`, background: colors.infoBorder, color: colors.infoText, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
-                                    >
-                                        {resimulating === id ? 'Simulating...' : 'Re-simulate'}
-                                    </button>
-                                </div>
-                                );
-                            })}
+                            {/* Signed-delta bounds from the generators' [min_p, max_p]:
+                                a raise can go up to +max raise, a lower down to -max lower. */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                <span>Redispatch on {renderElements(details.redispatch_details.map(rd => ({ name: rd.gen_name, mw: rd.delta_mw })))} ({redispatch.direction === 'up' ? 'raise' : 'lower'}) in MW:</span>
+                                <input
+                                    data-testid={`edit-mw-${id}`}
+                                    type="number"
+                                    step={0.1}
+                                    min={redispatch.minDeltaMw}
+                                    max={redispatch.maxDeltaMw}
+                                    value={cardEditMw[id] ?? redispatch.deltaMw.toFixed(1)}
+                                    onChange={(e) => onCardEditMwChange(id, e.target.value)}
+                                    style={{ width: '65px', fontSize: '11px', fontFamily: 'monospace', padding: '2px 4px', border: `1px solid ${colors.info}`, borderRadius: '3px', textAlign: 'right' }}
+                                />
+                                {redispatch.headroomMw != null && (
+                                    <span style={{ fontSize: '10px', color: colors.info }}>
+                                        max {redispatch.direction === 'up' ? 'raise' : 'lower'}: {redispatch.headroomMw.toFixed(0)} MW
+                                    </span>
+                                )}
+                                <button
+                                    data-testid={`resimulate-${id}`}
+                                    onClick={() => {
+                                        const raw = parseFloat(cardEditMw[id] ?? String(redispatch.deltaMw));
+                                        if (!isNaN(raw)) onResimulate(id, clampRedispatchDelta(redispatch, raw));
+                                    }}
+                                    disabled={resimulating === id}
+                                    style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.info}`, background: colors.infoBorder, color: colors.infoText, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+                                >
+                                    {resimulating === id ? 'Simulating...' : 'Re-simulate'}
+                                </button>
+                            </div>
                         </div>
                     )}
 

@@ -110,6 +110,33 @@ describe('useManualSimulation', () => {
 
             expect(setError).toHaveBeenCalledWith('boom');
         });
+
+        it('sends an antenna aggregate its generators, read from the score params', async () => {
+            // `curtail_<antenna_id>` names its antenna, not a generator: after a
+            // session reload the backend could not rebuild it from the id alone.
+            mockSimStream.mockResolvedValue(ndjson([]));
+            const scores = {
+                renewable_curtailment: {
+                    scores: { curtail_EVAC_A_1: 0.8, curtail_WIND_A: 0.9 },
+                    params: {
+                        curtail_EVAC_A_1: { gen_names: ['WIND_A', 'WIND_B'], target_p_MW: { WIND_A: 81, WIND_B: 27 } },
+                        curtail_WIND_A: { gen_name: 'WIND_A', target_p_MW: 0 },
+                    },
+                },
+            };
+            const { result } = renderHook(() => useManualSimulation(makeParams({
+                result: { action_scores: scores } as unknown as AnalysisResult,
+            })));
+
+            await act(async () => { await result.current.handleSimulateUnsimulatedAction('curtail_EVAC_A_1'); });
+            await act(async () => { await result.current.handleSimulateUnsimulatedAction('curtail_WIND_A'); });
+
+            expect(mockSimStream.mock.calls[0][0]).toMatchObject({
+                action_id: 'curtail_EVAC_A_1',
+                action_content: { gens_p: { WIND_A: 81, WIND_B: 27 } },
+            });
+            expect(mockSimStream.mock.calls[1][0].action_content).toBeNull();
+        });
     });
 
     describe('handleSimulateLever', () => {

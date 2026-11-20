@@ -73,6 +73,7 @@ Configuration in `frontend/vite.config.ts` (Vitest plugin).
 | `test_dynamic_actions.py` | On-the-fly action creation for `load_shedding_*`, `curtail_*`, `pst_*`, `reco_*` (PR #110) |
 | `test_mw_start.py` | MW Start computation for scoring (line disco, PST, load shedding, open coupling) |
 | `test_configurable_mw.py` | Configurable MW reduction thresholds |
+| `test_antenna_aggregates.py` | Evacuation-antenna aggregates (`curtail_` / `redispatch_<antenna_id>`, recommender 0.3.4+): params lookup, descriptions, pro-rata `split_target_mw` (production / headroom / equal fallback), rebuild from the score params instead of the id, MW at start summed over the generators, card description |
 
 #### Core Computation
 | File | Description |
@@ -118,7 +119,7 @@ package `__init__` imports the concrete model classes) and
 | File | Description |
 |------|-------------|
 | `test_recommenders_registry.py` | register / unregister / build_recommender / list_models shape + canonical three models + `params_spec()` failure resilience (a broken model degrades to an empty param list instead of 500-ing `/api/models`) |
-| `test_model_composition.py` | Explicit RecommenderService ⇄ registry composition: `ModelSelectionMixin` in the MRO, no import-time wrappers, `update_config`/`reset` delegate to the mixin, model-aware `run_analysis_step2` (unknown-model error event, overflow-graph cache fast path, `antenna_meta` pass-through regression) |
+| `test_model_composition.py` | Explicit RecommenderService ⇄ registry composition: `ModelSelectionMixin` in the MRO, no import-time wrappers, `update_config`/`reset` delegate to the mixin, model-aware `run_analysis_step2` (unknown-model error event, overflow-graph cache fast path, `antenna_meta` + `structural_antennas` pass-through regressions — step-2 and single-step `result` events) |
 | `test_model_selection_mixin.py` | `ModelSelectionMixin` state defaults + `_apply_model_settings` parsing edge cases |
 | `test_models_api.py` | `ConfigRequest` schema (model / compute_overflow_graph fields) + `GET /api/models` endpoint shape |
 | `test_random_recommenders.py` | RandomRecommender / RandomOverflowRecommender metadata, sampling, 3-layer filter chain |

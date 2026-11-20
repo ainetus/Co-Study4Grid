@@ -39,8 +39,16 @@ expert_backend/
 │   │                              # numerics to services/diagram/ helpers
 │   ├── diagram/                   # PR #104 decomposition (ex-diagram_mixin):
 │   │   ├── layout_cache.py        # - (path, mtime)-keyed grid_layout.json loader
+│   │   ├── layout_completion.py   # - positions for the VLs the layout misses
+│   │   │                          #   (substation siblings, else electrical
+│   │   │                          #   neighbours; isolated VLs parked) and
+│   │   │                          #   spreads the VLs it stacks on one point,
+│   │   │                          #   one boosted disk + 30 % apart; cached
+│   │   │                          #   per layout version + network fingerprint
 │   │   ├── nad_params.py          # - default NadParameters factory
 │   │   ├── nad_render.py          # - NAD generation + NaN-element stripping
+│   │   │                          #   + NaN root viewBox/size recomputed from
+│   │   │                          #   the finite metadata nodes
 │   │   ├── sld_render.py          # - SLD SVG + metadata with fallbacks
 │   │   │                          #   + extract_vl_switch_states (per-VL
 │   │   │                          #   operable-switch baseline) AND
@@ -78,7 +86,15 @@ expert_backend/
 │   ├── simulation_helpers.py      # PR #104 decomposition — stateless helpers
 │   │                              # (setpoint math incl. redispatch, PST parsing,
 │   │                              # care mask, metrics, result serialisation,
-│   │                              # is_injection_action for the GST path, …)
+│   │                              # is_injection_action for the GST path,
+│   │                              # split_target_mw: an action's MW total
+│   │                              # spread pro rata over its elements, …)
+│   ├── antenna_aggregates.py      # Evacuation-antenna aggregates (recommender
+│   │                              # 0.3.4+): curtail_/redispatch_<antenna_id>
+│   │                              # name their antenna, not a generator — rebuilt
+│   │                              # and described from the analysis' score params
+│   │                              # (docs/features/curtailment-loadshedding-pst-
+│   │                              # actions.md § 8)
 │   ├── model_selection_mixin.py   # Active recommender model + overflow-graph
 │   │                              # toggle. A regular base class of
 │   │                              # RecommenderService (explicit composition);
@@ -340,7 +356,7 @@ follow-ups in
   `_simulation_env`, `_last_disconnected_element`, `_dict_action`,
   `_analysis_context`, `_saved_computed_pairs`, `_cached_obs_n*`,
   `_cached_env_context`, `_initial_pst_taps`,
-  `_lf_status_by_variant`, `_layout_cache`,
+  `_lf_status_by_variant`, `_layout_cache`, `_completed_layout_cache`,
   `_prefetched_base_nad*`, `_overflow_layout_mode` (back to
   `"hierarchical"`), `_overflow_layout_cache` (empty dict),
   `_last_step2_context`, `_last_step2_signature`. Adding a new instance-level cache?
@@ -537,6 +553,17 @@ as `fixed_positions` for NAD generation. Two invariants:
    grid's NAD.
 2. The `(path, mtime)` key auto-invalidates when the file changes,
    so warm-process workflow stays fast.
+
+A layout is often older than the network: `_generate_diagram` passes
+`_load_layout_for(network)`, the layout plus a position for every voltage
+level it misses, with the voltage levels it stacks on one point spread apart
+(`services/diagram/layout_completion.py`), cached on
+`_completed_layout_cache` per layout frame + network fingerprint (cleared
+by `reset()` too). Without it pypowsybl's GEOGRAPHICAL layout puts those
+voltage levels on its own scale or at NaN, and the root viewBox turns NaN;
+`nad_render` also recomputes a NaN root viewBox from the finite nodes. See
+[`docs/data/grid-layout-coordinate-scale.md`](../docs/data/grid-layout-coordinate-scale.md)
+§ "Voltage levels the layout misses".
 
 ## NAD prefetch
 

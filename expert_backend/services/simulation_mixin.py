@@ -25,6 +25,11 @@ from expert_op4grid_recommender.utils.superposition import (
 
 from typing import TYPE_CHECKING
 
+from expert_backend.services.antenna_aggregates import (
+    antenna_aggregate_descriptions,
+    antenna_aggregate_entry,
+    antenna_aggregate_params,
+)
 from expert_backend.services.sanitize import sanitize_for_json
 from expert_backend.services.service_lock import with_network_lock
 from expert_backend.services.simulation_helpers import (
@@ -48,6 +53,7 @@ from expert_backend.services.simulation_helpers import (
     pst_fallback_line_idxs,
     resolve_lines_overloaded,
     serialize_action_result,
+    split_target_mw,
 )
 
 logger = logging.getLogger(__name__)
@@ -392,6 +398,7 @@ class SimulationMixin(_Base):
         if not action_content:
             return
         per_action = classify_action_content(action_content, action_ids)
+        action_scores = self._last_result.get("action_scores") if self._last_result else None
         for aid in action_ids:
             if aid in self._dict_action or aid in recent_actions:
                 continue
@@ -399,6 +406,7 @@ class SimulationMixin(_Base):
             if not topo:
                 continue
             entry = self._build_action_entry_from_topology(aid, topo)
+            entry.update(antenna_aggregate_descriptions(action_scores, aid))
             content = entry.get("content") or {}
             if aid.startswith("user_topo_") or is_switch_only_content(content):
                 desc = build_manual_action_description(
@@ -447,11 +455,18 @@ class SimulationMixin(_Base):
     def _create_dynamic_actions_if_needed(
         self, action_ids, recent_actions, obs_n1, nm, target_mw
     ) -> None:
-        """Auto-create heuristic actions for redispatch_ / curtail_ / load_shedding_ / pst_tap_ / reco_ prefixes."""
+        """Auto-create heuristic actions for redispatch_ / curtail_ / load_shedding_ / pst_tap_ / reco_ prefixes.
+
+        An evacuation-antenna aggregate names its antenna, not a generator:
+        it is rebuilt from the last analysis' score params instead."""
+        action_scores = self._last_result.get("action_scores") if self._last_result else None
         for aid in action_ids:
             if aid in self._dict_action or aid in recent_actions:
                 continue
-            if aid.startswith("redispatch_"):
+            aggregate = antenna_aggregate_params(action_scores, aid)
+            if aggregate is not None:
+                self._dict_action[aid] = antenna_aggregate_entry(aid, aggregate)
+            elif aid.startswith("redispatch_"):
                 self._create_dynamic_redispatch(aid, target_mw, obs_n1)
             elif aid.startswith("curtail_"):
                 self._create_dynamic_curtailment(aid, target_mw, obs_n1)
@@ -581,6 +596,7 @@ class SimulationMixin(_Base):
         """Promote heuristic actions found on `_last_result.prioritized_actions`
         into `_dict_action` so that target_mw updates can mutate their content.
         """
+        action_scores = self._last_result.get("action_scores") if self._last_result else None
         for aid in action_ids:
             if aid in self._dict_action or aid not in recent_actions:
                 continue
@@ -601,10 +617,10 @@ class SimulationMixin(_Base):
                 if val:
                     topo[field] = val  # _build_action_entry_from_topology sanitises
             entry = self._build_action_entry_from_topology(aid, topo)
-            if recent_actions[aid].get("description_unitaire"):
-                entry["description_unitaire"] = recent_actions[aid]["description_unitaire"]
-            if recent_actions[aid].get("description"):
-                entry["description"] = recent_actions[aid]["description"]
+            entry.update(antenna_aggregate_descriptions(action_scores, aid))
+            for key in ("description_unitaire", "description"):
+                if recent_actions[aid].get(key):
+                    entry[key] = recent_actions[aid][key]
             self._dict_action[aid] = entry
             logger.info(
                 "[simulate_manual_action] Promoted heuristic action '%s' to registry for target_mw update",
@@ -620,22 +636,25 @@ class SimulationMixin(_Base):
                 continue
             content = entry.get("content", {})
             is_redispatch = aid.startswith("redispatch_")
+            # target_mw is the action's total, spread pro rata when it acts
+            # on several loads / generators (antenna aggregates).
             if "set_load_p" in content:
-                for load_name in content["set_load_p"]:
-                    sp = compute_reduction_setpoint(load_name, "load", target_mw, obs_n1)
+                for load_name, share in split_target_mw(content["set_load_p"], "load", target_mw, obs_n1).items():
+                    sp = compute_reduction_setpoint(load_name, "load", share, obs_n1)
                     content["set_load_p"][load_name] = sp
                     logger.info(
                         "[simulate_manual_action] Updated set_load_p[%s] = %s MW",
                         load_name, sp,
                     )
             if "set_gen_p" in content:
-                for gen_name in content["set_gen_p"]:
+                raising = is_redispatch and float(target_mw) > 0
+                for gen_name, share in split_target_mw(content["set_gen_p"], "gen", target_mw, obs_n1, raising).items():
                     if is_redispatch:
                         # target_mw is the signed delta; setpoint = current + delta.
                         default_delta = getattr(config, "REDISPATCH_DEFAULT_DELTA_MW", 10.0)
-                        sp = compute_redispatch_setpoint(gen_name, target_mw, obs_n1, default_delta)
+                        sp = compute_redispatch_setpoint(gen_name, share, obs_n1, default_delta)
                     else:
-                        sp = compute_reduction_setpoint(gen_name, "gen", target_mw, obs_n1)
+                        sp = compute_reduction_setpoint(gen_name, "gen", share, obs_n1)
                     content["set_gen_p"][gen_name] = sp
                     logger.info(
                         "[simulate_manual_action] Updated set_gen_p[%s] = %s MW",

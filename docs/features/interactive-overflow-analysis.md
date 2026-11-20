@@ -83,6 +83,7 @@ heuristic re-derivation from colours / shapes.
 | `on_constrained_path=True` | `tag_constrained_path(lines, nodes)` | `Constrained path` layer     |
 | `prod_or_load="prod"` + `value`  | `build_nodes` (auto)              | `Production nodes` layer (≥ 1 MW floor) |
 | `prod_or_load="load"` + `value`  | `build_nodes` (auto)              | `Consumption nodes` layer (≥ 1 MW floor) |
+| `in_evacuation_antenna=True` (+ `antenna_id`, `antenna_type`, `is_antenna_attachment`) | `tag_structural_antennas` (recommender ≥ 0.3.4) | `Evacuation antennas` layer (expertop4grid ≥ 0.3.4) |
 
 Hubs are auto-tagged with `in_red_loop` AND `on_constrained_path`
 so they always show up under those layers regardless of how the
@@ -114,9 +115,23 @@ toggle. Bumping the floor is an
 | `is_monitored=True`    | `highlight_significant_line_loading`    | `Low margin lines` layer     |
 | `in_red_loop=True`     | `tag_red_loops(lines, nodes)`            | `Red-loop paths` layer       |
 | `on_constrained_path=True` | `tag_constrained_path(lines, nodes)` | `Constrained path` layer     |
+| `in_evacuation_antenna=True` | `tag_structural_antennas` (recommender ≥ 0.3.4) | `Evacuation antennas` layer |
 
 `is_overload` is a strict subset of `is_monitored` — every overload
 is also a low-margin line; the inverse is not true.
+
+**Evacuation antennas** (recommender 0.3.4 + expertop4grid 0.3.4) are
+parts of the grid tied to the constrained path through one node,
+whose production leaves through it. Their report is ~0, so their
+branches are gray and the reduced graph used to prune them: it now
+keeps them, drawn in ochre with their report, and the viewer lists
+them under *Structural Paths*. Nothing on the Co-Study4Grid side
+filters layers, so the new layer shows up as is. The analysis
+`result` event also forwards the detected antennas as
+`structural_antennas` (`antenna_id`, `antenna_type`,
+`attachment_sub_name`, `export_mw`, …), and their generators become
+curtailment / redispatch levers — see
+[`curtailment-loadshedding-pst-actions.md`](curtailment-loadshedding-pst-actions.md) § 8.
 
 ### 2.3 Recommender wiring
 
@@ -135,7 +150,7 @@ The viewer's sidebar groups layers into three labelled sections:
 
 | Section                          | Layers                                                                                                       |
 |----------------------------------|--------------------------------------------------------------------------------------------------------------|
-| **Structural Paths**             | Constrained path, Red-loop paths                                                                             |
+| **Structural Paths**             | Constrained path, Red-loop paths, Evacuation antennas (expertop4grid ≥ 0.3.4)                                |
 | **Individual entities properties** | Reconnectable, Non-reconnectable, Swapped flow, Overloads, Low margin lines, Hubs, Production nodes, Consumption nodes |
 | **Flow redispatch values**       | Positive, Negative, Null                                                                                     |
 

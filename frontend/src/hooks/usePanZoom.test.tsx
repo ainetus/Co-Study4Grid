@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { usePanZoom, wheelZoomFactor } from './usePanZoom';
+import { computeHaloWidthPx, usePanZoom, wheelZoomFactor } from './usePanZoom';
 import { setSmoothPanZoomMode } from '../utils/smoothPanZoom';
 import type { ViewBox } from '../types';
 
@@ -479,6 +479,31 @@ describe('usePanZoom', () => {
             }
         });
     });
+    describe('computeHaloWidthPx — zoom-adaptive halo width', () => {
+        const full: ViewBox = { x: 0, y: 0, w: 1000, h: 800 };
+
+        it('is thin when zoomed in and grows to the marker width at full extent', () => {
+            expect(computeHaloWidthPx({ x: 0, y: 0, w: 100, h: 80 }, full)).toBe(24);
+            expect(computeHaloWidthPx(full, full)).toBe(50);
+        });
+
+        it('falls back to the thin width for a non-finite extent (no `NaNpx`)', () => {
+            const nan: ViewBox = { x: NaN, y: NaN, w: NaN, h: NaN };
+            expect(computeHaloWidthPx(full, nan)).toBe(24);
+            expect(computeHaloWidthPx(nan, full)).toBe(24);
+            expect(computeHaloWidthPx(full, { ...full, w: 0 })).toBe(24);
+        });
+
+        it('never writes a NaN halo width on the container', () => {
+            const { container } = createMockSvgContainer('0 0 500 500');
+            const ref = { current: container };
+            // Stable identity: a new object per render would re-run the load effect forever.
+            const nanVB: ViewBox = { x: NaN, y: NaN, w: NaN, h: NaN };
+            renderHook(() => usePanZoom(ref, nanVB, true));
+            expect(container.style.getPropertyValue('--nad-halo-w')).toBe('24px');
+        });
+    });
+
     describe('wheelZoomFactor — delta magnitude', () => {
         it('zooms 10 % per mouse-wheel notch, in both directions', () => {
             expect(wheelZoomFactor(100, 0, 800)).toBeCloseTo(1.1);

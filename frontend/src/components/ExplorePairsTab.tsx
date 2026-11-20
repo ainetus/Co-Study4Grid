@@ -8,6 +8,7 @@
 import React, { useState } from 'react';
 import type { CombinedAction, AnalysisResult } from '../types';
 import { colors } from '../styles/tokens';
+import { redispatchTotal, totalReductionMw } from '../utils/injectionActions';
 
 interface SimulationFeedback {
     max_rho: number | null;
@@ -142,15 +143,14 @@ const ExplorePairsTab: React.FC<ExplorePairsTabProps> = ({
                                             // Injection rows (LS / curtailment / redispatch) expose an
                                             // editable MW setpoint: the target shed / curtail amount, or
                                             // the signed redispatch delta. Default to the simulated value
-                                            // when the action has already been computed.
+                                            // when the action has already been computed — its total over
+                                            // the elements (an evacuation-antenna aggregate has several).
                                             const injectionKind = classifyInjection(type);
                                             const computedDetail = analysisResult?.actions?.[actionId];
                                             const storedMw = injectionKind === 'redispatch'
-                                                ? (computedDetail?.redispatch_details?.[0]?.delta_mw ?? null)
+                                                ? (redispatchTotal(computedDetail?.redispatch_details)?.deltaMw ?? null)
                                                 : injectionKind === 'ls_rc'
-                                                    ? (computedDetail?.load_shedding_details?.[0]?.shedded_mw
-                                                        ?? computedDetail?.curtailment_details?.[0]?.curtailed_mw
-                                                        ?? null)
+                                                    ? totalReductionMw(computedDetail)
                                                     : null;
                                             const effectiveMwStr = editMw[actionId] ?? (storedMw != null ? storedMw.toFixed(1) : '');
                                             const resolveTargetMw = (): number | undefined => {

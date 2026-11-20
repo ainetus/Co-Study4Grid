@@ -624,6 +624,33 @@ describe('ActionFeed', () => {
         );
     });
 
+    it('sends an antenna aggregate its generators from the score params', async () => {
+        // `curtail_<antenna_id>` names its antenna, not a generator: the backend
+        // can't rebuild it from the id once its analysis is gone (session reload).
+        render(<ActionFeed {...defaultProps} actionScores={{
+            renewable_curtailment: {
+                scores: { curtail_EVAC_A_1: 0.8 },
+                params: { curtail_EVAC_A_1: { gen_names: ['WIND_A', 'WIND_B'], target_p_MW: { WIND_A: 81, WIND_B: 27 } } },
+            },
+        }} />);
+
+        fireEvent.click(screen.getByText('+ Manual Selection'));
+        fireEvent.change(screen.getByPlaceholderText(/Search action/), { target: { value: 'curtail_EVAC_A_1' } });
+        await waitFor(() => {
+            expect(screen.queryByText('Loading actions...')).not.toBeInTheDocument();
+        });
+        fireEvent.click(screen.getByText(/Simulate manual ID:/));
+
+        expect(api.simulateManualAction).toHaveBeenCalledWith(
+            'curtail_EVAC_A_1',
+            'LINE_1',
+            { gens_p: { WIND_A: 81, WIND_B: 27 } },
+            ['LINE_1'],
+            undefined,
+            undefined,
+        );
+    });
+
     // Operator-requested addition: chain several manual simulations
     // from the wide score-table modal without it auto-closing each
     // round. Mirrors the Combine Actions modal's contract — the
@@ -1073,7 +1100,7 @@ describe('ActionFeed', () => {
         expect(buttonBadges.length).toBeGreaterThan(0);
     });
 
-    it('displays multiple load shedding entries when action sheds multiple loads', () => {
+    it('displays a multi-load shedding as one editor on its total', () => {
         const actionId = 'load_shed_multi';
         const props = {
             ...defaultProps,
@@ -1097,12 +1124,12 @@ describe('ActionFeed', () => {
         };
         render(<ActionFeed {...props} />);
 
-        // Both load names should be shown in the simplified format
+        // Both loads are named in ONE editor whose value is the action's total:
+        // the backend spreads an edited total pro rata over them.
         expect(screen.getByText('LOAD_A')).toBeInTheDocument();
         expect(screen.getByText('LOAD_B')).toBeInTheDocument();
-        // Both entries should have "Load shedding on" text
-        const lsTexts = screen.getAllByText(/Shedding on/);
-        expect(lsTexts.length).toBe(2);
+        expect(screen.getAllByText(/Shedding on/)).toHaveLength(1);
+        expect(screen.getByTestId(`edit-mw-${actionId}`)).toHaveValue(35.3);
     });
 
     it('clicking VL button in load shedding description triggers onAssetClick', () => {
