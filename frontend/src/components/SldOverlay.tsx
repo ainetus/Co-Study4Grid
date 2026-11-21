@@ -9,6 +9,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import type { DiagramData, AnalysisResult, ActionDetail, VlOverlay, SldTab, SldFeederNode } from '../types';
 import { isCouplingAction } from '../utils/svgUtils';
 import { buildFriendlyToEquip, overloadCandidates } from '../utils/svg/feederLabels';
+import { computeActionOverloadHighlights, computeN1OverloadHighlights } from '../utils/overloadHighlights';
 import { useSldFeederRelabel } from '../hooks/useSldFeederRelabel';
 import { useSldFeederNav } from '../hooks/useSldFeederNav';
 import { useSldInjectionNameButtons } from '../hooks/useSldInjectionNameButtons';
@@ -27,6 +28,11 @@ export interface SldOverlayProps {
     /** Currently APPLIED contingency (list of element IDs disconnected). */
     selectedContingency: string[];
     result: AnalysisResult | null;
+    /**
+     * Overloads the operator kept in the Overloads panel. Narrows the
+     * N-1 overload halos exactly as on the N-1 NAD (empty = all).
+     */
+    selectedOverloads?: Set<string>;
     /**
      * User-configured monitoring-factor threshold (typically 0.95).
      * Used to gate the post-action overload highlight on the `action`
@@ -109,6 +115,7 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
     onOverlayClose, onOverlaySldTabChange,
     n1Diagram, actionDiagram,
     selectedContingency, result,
+    selectedOverloads,
     monitoringFactor = 0.95,
     editMode = false,
     pendingSwitches,
@@ -609,6 +616,21 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
         // them), re-apply.
         const actionDetailForSig: ActionDetail | undefined =
             (vlOverlay.actionId && result?.actions) ? result.actions[vlOverlay.actionId] : undefined;
+        // Overloaded lines to halo: the very lists the NAD halos read
+        // (utils/overloadHighlights), so the SLD and the NAD agree. N-1
+        // tab: the N-1 diagram's own overloads — known as soon as the
+        // contingency is applied, before any "Analyze & Suggest" —
+        // narrowed to the operator's selection. Action tab: what is
+        // still overloaded after the action (none when its card says
+        // "Solved"). Overloads the action resolved are NOT haloed.
+        let overloadedLinesToShow: string[] = [];
+        if (vlOverlay.tab === 'contingency') {
+            overloadedLinesToShow = computeN1OverloadHighlights(
+                result?.lines_overloaded, n1Diagram?.lines_overloaded, selectedOverloads ?? new Set<string>());
+        } else if (vlOverlay.tab === 'action') {
+            overloadedLinesToShow = computeActionOverloadHighlights(
+                actionDetailForSig, result?.lines_overloaded, monitoringFactor);
+        }
         // Include load-shedding / curtailment / PST identity AND
         // magnitudes in the signature so an in-place re-simulation
         // (which keeps `actionId` the same but bumps the MW / tap
@@ -626,8 +648,7 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
                 ? Object.keys(vlOverlay.changed_switches).sort()
                 : [],
             branch: selectedContingency.join('+'),
-            n1Overloads: result?.lines_overloaded ?? [],
-            actionOverloads: actionDetailForSig?.lines_overloaded_after ?? [],
+            overloads: overloadedLinesToShow,
             ls: ls.map(d => `${d.load_name}:${d.shedded_mw}`).sort(),
             cu: cu.map(d => `${d.gen_name}:${d.curtailed_mw}`).sort(),
             pst: pst.map(d => `${d.pst_name}:${d.tap_position}`).sort(),
@@ -794,21 +815,24 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
                     for (const id of Object.keys(topo.gens_p || {})) targetEquipIds.add(id);
                 }
                 // Detail-array fallback — covers LS / curtailment / PST
-                // actions whose topology was not round-tripped.
-                for (const d of actionDetail.load_shedding_details ?? []) {
-                    if (d?.load_name) targetEquipIds.add(d.load_name);
-                }
-                for (const d of actionDetail.curtailment_details ?? []) {
-                    if (d?.gen_name) targetEquipIds.add(d.gen_name);
-                }
-                for (const d of actionDetail.redispatch_details ?? []) {
-                    if (d?.gen_name) targetEquipIds.add(d.gen_name);
-                }
-                for (const d of actionDetail.pst_details ?? []) {
-                    if (d?.pst_name) targetEquipIds.add(d.pst_name);
-                }
+                // actions whose topology was not round-tripped. These
+                // details also name each target's voltage level: a target
+                // of ANOTHER VL is not on this SLD, so it is kept away from
+                // the look-alike lookups below (the 5-character label
+                // prefix of a PyPSA id, "L_way", matches almost any label).
+                const elsewhere = new Set<string>();
+                const addDetailTarget = (id: string | undefined, vlId: string | null | undefined) => {
+                    if (!id) return;
+                    if (vlId && vlId !== vlOverlay.vlName) elsewhere.add(id);
+                    else targetEquipIds.add(id);
+                };
+                for (const d of actionDetail.load_shedding_details ?? []) addDetailTarget(d?.load_name, d?.voltage_level_id);
+                for (const d of actionDetail.curtailment_details ?? []) addDetailTarget(d?.gen_name, d?.voltage_level_id);
+                for (const d of actionDetail.redispatch_details ?? []) addDetailTarget(d?.gen_name, d?.voltage_level_id);
+                for (const d of actionDetail.pst_details ?? []) addDetailTarget(d?.pst_name, null);
 
                 for (const equipId of targetEquipIds) {
+                    if (elsewhere.has(equipId)) continue;
                     let cell: Element | null = findCellForEquipment(equipId);
 
                     // Extreme fallback for load-shedding / curtailment:
@@ -831,8 +855,10 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
                         if (q) {
                             for (const txt of Array.from(texts)) {
                                 const content = (txt.textContent ?? '').toLowerCase();
-                                if (content.includes(q)) {
-                                    cell = walkUpToCell(txt);
+                                // Only a feeder cell's own label names its
+                                // equipment — never a bus-bar title or a clone.
+                                if (content.includes(q) && !txt.closest('.sld-highlight-clone')) {
+                                    cell = txt.closest('.sld-extern-cell, .sld-intern-cell, .sld-shunt-cell');
                                     if (cell) break;
                                 }
                             }
@@ -895,28 +921,8 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
             }
         }
 
-        // --- Overloaded lines ---
-        // N-1 tab: highlight overloads present in the N-1 state.
-        // Action tab: highlight post-action overloads (overloads that persist or new
-        // ones that emerged). Overloads solved by the action are NOT highlighted here.
-        //
-        // "Solved" = max_rho <= monitoringFactor — matches the ActionCard's
-        // orange/green severity classification. Suppressing the halo in
-        // this band aligns the SLD with the card's label and with the
-        // corresponding NAD gate in App.tsx. Without this, manually
-        // simulated actions in the low-margin band (raw rho in
-        // `[mf, 1.0)`) showed halos while suggested actions with the
-        // same displayed max_rho did not — the backend thresholds
-        // diverge (`simulation_mixin.py:536` vs `analysis_mixin.py:97`).
-        let overloadedLinesToShow: string[] | undefined;
-        if (vlOverlay.tab === 'contingency') {
-            overloadedLinesToShow = result?.lines_overloaded;
-        } else if (vlOverlay.tab === 'action' && actionDetail) {
-            const isSolved = actionDetail.max_rho != null
-                && actionDetail.max_rho <= monitoringFactor;
-            overloadedLinesToShow = isSolved ? [] : actionDetail.lines_overloaded_after;
-        }
-        if (overloadedLinesToShow && overloadedLinesToShow.length > 0) {
+        // --- Overloaded lines (list computed above, shared with the NAD) ---
+        if (overloadedLinesToShow.length > 0) {
             // Overload names arrive from the analysis result as grid2op /
             // operator FRIENDLY names (e.g. "MARSIL61PRAGN"), but the SLD cells
             // are keyed by IIDM id (e.g. "relation_8423569-225") — a direct

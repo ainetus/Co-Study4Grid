@@ -183,6 +183,8 @@ interface VisualizationPanelProps {
     hasBranches: boolean;
     /** Currently APPLIED contingency (list of element IDs disconnected). */
     selectedContingency: string[];
+    /** Overloads kept in the Overloads panel — narrows the SLD's N-1 halos as on the NAD. */
+    selectedOverloads?: Set<string>;
     vlOverlay: VlOverlay | null;
     onOverlayClose: () => void;
     onOverlaySldTabChange: (tab: SldTab) => void;
@@ -238,6 +240,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     onZoomOut,
     hasBranches,
     selectedContingency,
+    selectedOverloads,
     vlOverlay,
     onOverlayClose,
     onOverlaySldTabChange,
@@ -1400,6 +1403,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         actionDiagram={actionDiagram}
                         selectedContingency={selectedContingency}
                         result={result}
+                        selectedOverloads={selectedOverloads}
                         monitoringFactor={monitoringFactor}
                         editMode={sldEditMode}
                         onEditModeChange={onSldEditModeChange}

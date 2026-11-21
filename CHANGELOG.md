@@ -7,6 +7,25 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed — SLD halos match the network diagram
+
+- **Overloads haloed on the N-1 SLD before any analysis**: a single-line
+  diagram opened from the N-1 tab drew the contingency but no overload until
+  "Analyze & Suggest" had run — it read the analysis result only, while the
+  N-1 network diagram and the Context tab already halo the overloads the N-1
+  diagram reports. The SLD now reads the same list
+  (`computeN1OverloadHighlights`) and follows the overload selection of the
+  Overloads panel.
+- **Same post-action overloads as the action network diagram**: the list is
+  now shared (`computeActionOverloadHighlights`), including the fallback on
+  `max_rho_line` when a still-overloaded action carries no
+  `lines_overloaded_after`.
+- **No action halo on another substation's labels**: a load shed (or a
+  generator curtailed / redispatched) at another voltage level no longer
+  puts a pink halo on a look-alike label of the displayed one — every
+  PyPSA-EUR id starts with `L_way` / `VL_way`, and a load shed at Moisenay
+  lit up the Courtry bus-bar title. See `docs/features/sld-halos.md`.
+
 ### Game Mode — France 2025 set, studies picked at launch
 
 - **New default set, France 2025**: the French 225 / 400 kV grid on its two

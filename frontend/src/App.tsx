@@ -1759,6 +1759,7 @@ function App() {
             onZoomOut={handleManualZoomOut}
             hasBranches={branches.length > 0}
             selectedContingency={selectedContingency}
+            selectedOverloads={selectedOverloads}
             vlOverlay={vlOverlay}
             onOverlayClose={handleOverlayClose}
             onOverlaySldTabChange={handleOverlaySldTabChange}

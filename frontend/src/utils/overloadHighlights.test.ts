@@ -6,7 +6,8 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
 import { describe, it, expect } from 'vitest';
-import { computeN1OverloadHighlights } from './overloadHighlights';
+import { computeActionOverloadHighlights, computeN1OverloadHighlights } from './overloadHighlights';
+import type { ActionDetail } from '../types';
 
 describe('computeN1OverloadHighlights', () => {
     // Regression: N-1 overload halos must appear on the N-1 tab as
@@ -84,5 +85,54 @@ describe('computeN1OverloadHighlights', () => {
             new Set(['LINE_OL_A']),
         );
         expect(result).toEqual(['LINE_OL_A']);
+    });
+});
+
+describe('computeActionOverloadHighlights', () => {
+    // Shared by the action NAD (useDiagramHighlights) and the action SLD
+    // (SldOverlay), so both views halo the same post-action overloads.
+    const detail = (over: Partial<ActionDetail>): ActionDetail => ({
+        description_unitaire: 'action',
+        rho_before: null,
+        rho_after: null,
+        max_rho: 1.05,
+        max_rho_line: 'LINE_MAX',
+        is_rho_reduction: true,
+        ...over,
+    });
+
+    it('returns no line without an action', () => {
+        expect(computeActionOverloadHighlights(undefined, ['LINE_N1'], 0.95)).toEqual([]);
+        expect(computeActionOverloadHighlights(null, ['LINE_N1'], 0.95)).toEqual([]);
+    });
+
+    it('uses lines_overloaded_after when the action leaves overloads', () => {
+        const d = detail({ lines_overloaded_after: ['LINE_A', 'LINE_B'] });
+        expect(computeActionOverloadHighlights(d, ['LINE_N1'], 0.95)).toEqual(['LINE_A', 'LINE_B']);
+    });
+
+    it('returns nothing when the card says "Solved" (max_rho <= monitoring factor)', () => {
+        // Even with a non-empty list: the manual-simulation path flags
+        // lines from rho >= mf while the card already reads "Solved".
+        const d = detail({ max_rho: 0.96, lines_overloaded_after: ['LINE_A'] });
+        expect(computeActionOverloadHighlights(d, ['LINE_N1'], 0.97)).toEqual([]);
+    });
+
+    it('falls back to the N-1 overloads still above the factor after the action, plus max_rho_line', () => {
+        const d = detail({ rho_after: [1.02, 0.80], max_rho_line: 'LINE_OTHER' });
+        expect(computeActionOverloadHighlights(d, ['LINE_N1_A', 'LINE_N1_B'], 0.95))
+            .toEqual(['LINE_N1_A', 'LINE_OTHER']);
+    });
+
+    it('does not repeat max_rho_line when the fallback already holds it', () => {
+        const d = detail({ rho_after: [1.02], max_rho_line: 'LINE_N1_A' });
+        expect(computeActionOverloadHighlights(d, ['LINE_N1_A'], 0.95)).toEqual(['LINE_N1_A']);
+    });
+
+    it('returns a copy, never the action detail array itself', () => {
+        const after = ['LINE_A'];
+        const out = computeActionOverloadHighlights(detail({ lines_overloaded_after: after }), [], 0.95);
+        expect(out).toEqual(after);
+        expect(out).not.toBe(after);
     });
 });
