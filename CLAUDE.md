@@ -51,6 +51,11 @@ Co-Study4Grid/
 │   │   │                          # matched onto untyped PyPSA generators),
 │   │   │                          # situation (situation.json — the real hour
 │   │   │                          # a rebuilt PyPSA network reproduces),
+│   │   │                          # regions (RTE regions of a France-only
+│   │   │                          # network without regionCvg: RTE line codes,
+│   │   │                          # else nearest RTE substations —
+│   │   │                          # resources/rte_region_points.json, built by
+│   │   │                          # scripts/build_rte_region_points.py),
 │   │   │                          # georef (substationPosition, else layout),
 │   │   │                          # geography + Natural Earth basemap, builder,
 │   │   │                          # service. See docs/features/context-tab.md
@@ -59,6 +64,10 @@ Co-Study4Grid/
 │   │   │                          # JSON records, novelty/bonus + usage
 │   │   │                          # frequencies; root via COSTUDY4GRID_DATA_DIR)
 │   │   ├── sanitize.py            # NumPy → native-Python recursive coercion
+│   │   ├── element_names.py       # Display-name rule every view shares: a raw
+│   │   │                          # OSM id (way/…, merged_way/…) reads by its
+│   │   │                          # end substations — contingency list, SLD
+│   │   │                          # feeders, Context tab
 │   │   ├── analysis/              # PR #104 decomposition — action_enrichment,
 │   │   │                          # mw_start_scoring, analysis_runner, pdf_watcher,
 │   │   │                          # overflow_geo_transform (PR #116 — geo-layout SVG
@@ -489,7 +498,7 @@ NAD/SLD payloads:
 - **Binary assets via Git LFS + transparent network decompression (0.8.0)**: `.gitattributes` tracks `*.zip` / `*.png` / `*.jpg` via Git LFS (the HuggingFace Space git endpoint rejects non-LFS binaries); the large France 225/400 kV grid ships as `network.xiidm.zip` and `network_service._resolve_network_file` / `_extract_network_zip` decompress it transparently on load.
 - **CI pipelines**: GitHub Actions only (`.github/workflows/`: `code-quality.yml`, `parity.yml`, `test.yml`, `canary.yml`, `deploy-huggingface.yml`) run the code-quality gate, ruff, the pytest + Vitest suites, the data-pipeline + scorer-parity slice, and the parity scripts. CircleCI was removed (QW23 — GitHub Actions is a strict superset). The backend test + the `Dockerfile` install `expert_op4grid_recommender` from **`recommender-pin.txt`** — one pinned, exact version (QW8) so an upstream release can't silently break a PR or a rebuild; the weekly `canary.yml` floats to the latest release and flags regressions, so upgrades are a deliberate bump of that file.
 - Root `.gitignore` excludes `__pycache__/`, `*.pyc`, `*.pyo`; `frontend/.gitignore` handles frontend build artifacts
-- Integration helpers and parity scripts live under `scripts/`. They are NOT part of the pytest suite — invoke them directly. The PyPSA-EUR pipeline scripts under `scripts/pypsa_eur/` DO carry pytest coverage (`test_build_pipeline.py`, `test_calibrate_thermal_limits.py`, `test_generate_n1_overloads.py`, `test_regenerate_grid_layout.py`, `test_match_power_plants.py`). `match_power_plants.py` (pipeline step 7, `--plants`) writes `power_plants.json` beside a bundle's network — powerplantmatching plants (CC BY 4.0) matched onto its synthetic untyped generators, read by the Context tab; the network itself is untouched.
+- Integration helpers and parity scripts live under `scripts/`. They are NOT part of the pytest suite — invoke them directly. The PyPSA-EUR pipeline scripts under `scripts/pypsa_eur/` DO carry pytest coverage (`test_build_pipeline.py`, `test_calibrate_thermal_limits.py`, `test_generate_n1_overloads.py`, `test_regenerate_grid_layout.py`, `test_match_power_plants.py`, `test_build_situation.py` — which also covers `fetch_energy_charts.py` and `fetch_entsoe_units.py`). `match_power_plants.py` (pipeline step 7, `--plants`) writes `power_plants.json` beside a bundle's network — powerplantmatching plants (CC BY 4.0) matched onto its synthetic untyped generators, read by the Context tab; the network itself is untouched. `fetch_energy_charts.py` + `fetch_entsoe_units.py` + `build_situation.py` rebuild a bundle on a REAL hour (Energy-Charts data, CC BY 4.0; ENTSO-E unit-by-unit outputs — `--units`, matched through the EIC codes `power_plants.json` records; the API token comes from `--token-file` / `ENTSOE_API_KEY`, travels in a header and must never be committed) as extra networks under `<bundle>/situations/<hour>_<dispatch>/` — real loads, one generator per (bus, fuel) tagged `carrier`, nuclear unit by unit, each measured plant at its own output, exchanges the grid leaves out as FICTITIOUS loads tagged `neighbour` (a country alone in its bundle — `pypsa_eur_fr225_400` — takes them in where the AC lines it cut at each border land, by capacity), `situation.json` beside; both PyPSA bundles ship 14 Jan + 1 Jul 2025 in their optimal dispatch (`--dispatch observed` builds the observed one, not shipped: it overloads nearly every contingency); `--dispatch opf` solves a PyPSA optimal dispatch (`dispatch_opf.py`) in its OWN environment (`--opf-python`: PyPSA pulls pandas 3, never install it into the backend's env). Then `calibrate_thermal_limits.py --chunk-size 1000` + `generate_n1_overloads.py --chunk-size 1000` (a pan-European N-1 table exceeds the GraalVM heap). See `docs/data/pypsa-eur-osm-to-xiidm.md`.
 - `overrides.txt` contains pinned versions for transitive Python dependencies that need to be forced to specific versions
 - **Frontend unit tests** use Vitest + React Testing Library. Isolated component tests live as `*.test.tsx` files next to their component. Run with `cd frontend && npm run test`. No backend mocking is needed for component tests since they only use mocked props.
 - The two-step analysis flow (step1: detect overloads, step2: resolve) is the primary user workflow; the single-step `/api/run-analysis` is a legacy alternative

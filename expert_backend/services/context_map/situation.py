@@ -10,7 +10,8 @@
 ``scripts/pypsa_eur/build_situation.py`` rebuilds a bundle's loads and
 dispatch on an observed hour and writes, beside the network, the hour, the
 dispatch method (``observed`` or a PyPSA ``opf``) and the data it used. The
-Context tab names the hour and credits those sources (both CC BY 4.0).
+Context tab names the hour and credits those sources (Energy-Charts, ENTSO-E's
+unit outputs, powerplantmatching).
 """
 from __future__ import annotations
 

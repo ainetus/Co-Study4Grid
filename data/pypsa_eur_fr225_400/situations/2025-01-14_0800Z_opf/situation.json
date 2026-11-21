@@ -1,0 +1,388 @@
+{
+ "schema": "costudy4grid-situation/1",
+ "at_utc": "2025-01-14T08:00Z",
+ "dispatch": "opf",
+ "sources": [
+  {
+   "name": "Energy-Charts (Fraunhofer ISE)",
+   "url": "https://www.energy-charts.info",
+   "licence": "CC BY 4.0",
+   "attribution": "energy-charts.info"
+  },
+  {
+   "name": "ENTSO-E Transparency Platform",
+   "url": "https://transparency.entsoe.eu",
+   "dataset": "Actual Generation per Generation Unit [16.1.A]"
+  },
+  {
+   "name": "powerplantmatching",
+   "licence": "CC BY 4.0",
+   "url": "https://github.com/PyPSA/powerplantmatching"
+  }
+ ],
+ "missing_countries": {},
+ "loadflow": {
+  "status": "CONVERGED",
+  "iterations": [
+   {
+    "iteration": 0,
+    "status": "CONVERGED",
+    "slack_mw": 2876.9
+   },
+   {
+    "iteration": 1,
+    "status": "CONVERGED",
+    "slack_mw": -50.6
+   },
+   {
+    "iteration": 2,
+    "status": "CONVERGED",
+    "slack_mw": 0.0
+   }
+  ],
+  "losses_mw": 1042.4
+ },
+ "totals": {
+  "load_mw": 83583.9,
+  "production_mw": 80926.3,
+  "external_export_mw": -3700.0,
+  "generators": 2278,
+  "external_injections": 26
+ },
+ "countries": {
+  "FR": {
+   "source": "observed",
+   "load_observed_mw": 86572.9,
+   "load_balanced_mw": 86410.2,
+   "load_model_mw": 83583.9,
+   "production_observed_mw": {
+    "BIO": 497.3,
+    "COA": 585.8,
+    "GAS": 7230.6,
+    "HYD": 5042.6,
+    "NUC": 52759.7,
+    "OIL": 1376.6,
+    "PSP": 4214.2,
+    "ROR": 7099.0,
+    "SOL": 1292.5,
+    "WOF": 89.7,
+    "WON": 2239.8,
+    "WST": 282.4
+   },
+   "production_model_mw": {
+    "BIO": 463.0,
+    "COA": 1482.0,
+    "GAS": 8529.8,
+    "HYD": 5008.7,
+    "NUC": 48443.0,
+    "OIL": 2340.7,
+    "PSP": 4141.7,
+    "ROR": 6722.2,
+    "SOL": 1237.8,
+    "WOF": 89.7,
+    "WON": 2195.0,
+    "WST": 272.8
+   },
+   "net_export_observed_mw": -3700.0,
+   "net_export_model_mw": -3700.0,
+   "metered_plants": 93,
+   "production_metered_mw": {
+    "BIO": 0.0,
+    "COA": 588.1,
+    "GAS": 4730.7,
+    "HYD": 1516.2,
+    "NUC": 52975.7,
+    "OIL": 1258.1,
+    "PSP": 2857.9,
+    "ROR": 265.4,
+    "WOF": 33.9
+   }
+  }
+ },
+ "external": [
+  {
+   "id": "X_GB_virtual_relation_19874522_0-400",
+   "bus": "VL_virtual_relation_19874522_0-400",
+   "country": "FR",
+   "neighbour": "GB",
+   "export_mw": -475.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_CH_virtual_relation_3717716_a_1-400",
+   "bus": "VL_virtual_relation_3717716_a_1-400",
+   "country": "FR",
+   "neighbour": "CH",
+   "export_mw": -94.5,
+   "kind": "tie"
+  },
+  {
+   "id": "X_IT_virtual_relation_6897671_1-225",
+   "bus": "VL_virtual_relation_6897671_1-225",
+   "country": "FR",
+   "neighbour": "IT",
+   "export_mw": 180.0,
+   "kind": "tie"
+  },
+  {
+   "id": "X_CH_way_100500802-225",
+   "bus": "VL_way_100500802-225",
+   "country": "FR",
+   "neighbour": "CH",
+   "export_mw": -53.1,
+   "kind": "tie"
+  },
+  {
+   "id": "X_ES_way_111558550-225",
+   "bus": "VL_way_111558550-225",
+   "country": "FR",
+   "neighbour": "ES",
+   "export_mw": -137.5,
+   "kind": "tie"
+  },
+  {
+   "id": "X_ES_way_111558550-400",
+   "bus": "VL_way_111558550-400",
+   "country": "FR",
+   "neighbour": "ES",
+   "export_mw": -488.9,
+   "kind": "tie"
+  },
+  {
+   "id": "X_BE_way_118591672-225",
+   "bus": "VL_way_118591672-225",
+   "country": "FR",
+   "neighbour": "BE",
+   "export_mw": -124.4,
+   "kind": "tie"
+  },
+  {
+   "id": "X_BE_way_118655802-225",
+   "bus": "VL_way_118655802-225",
+   "country": "FR",
+   "neighbour": "BE",
+   "export_mw": -124.4,
+   "kind": "tie"
+  },
+  {
+   "id": "X_GB_way_1271288345-400",
+   "bus": "VL_way_1271288345-400",
+   "country": "FR",
+   "neighbour": "GB",
+   "export_mw": -950.0,
+   "kind": "hvdc"
+  },
+  {
+   "id": "X_DE_way_129378915-225",
+   "bus": "VL_way_129378915-225",
+   "country": "FR",
+   "neighbour": "DE",
+   "export_mw": 15.7,
+   "kind": "tie"
+  },
+  {
+   "id": "X_IT_way_146449309-400",
+   "bus": "VL_way_146449309-400",
+   "country": "FR",
+   "neighbour": "IT",
+   "export_mw": 640.0,
+   "kind": "tie"
+  },
+  {
+   "id": "X_ES_way_207479669-225",
+   "bus": "VL_way_207479669-225",
+   "country": "FR",
+   "neighbour": "ES",
+   "export_mw": -137.5,
+   "kind": "tie"
+  },
+  {
+   "id": "X_BE_way_225210595-225",
+   "bus": "VL_way_225210595-225",
+   "country": "FR",
+   "neighbour": "BE",
+   "export_mw": -124.4,
+   "kind": "tie"
+  },
+  {
+   "id": "X_CH_way_260211728-225",
+   "bus": "VL_way_260211728-225",
+   "country": "FR",
+   "neighbour": "CH",
+   "export_mw": -26.0,
+   "kind": "tie"
+  },
+  {
+   "id": "X_CH_way_26112209-400",
+   "bus": "VL_way_26112209-400",
+   "country": "FR",
+   "neighbour": "CH",
+   "export_mw": -189.0,
+   "kind": "tie"
+  },
+  {
+   "id": "X_ES_way_312728271-400",
+   "bus": "VL_way_312728271-400",
+   "country": "FR",
+   "neighbour": "ES",
+   "export_mw": -1036.0,
+   "kind": "hvdc+tie"
+  },
+  {
+   "id": "X_DE_way_32196554-400",
+   "bus": "VL_way_32196554-400",
+   "country": "FR",
+   "neighbour": "DE",
+   "export_mw": 57.1,
+   "kind": "tie"
+  },
+  {
+   "id": "X_CH_way_39389229-400",
+   "bus": "VL_way_39389229-400",
+   "country": "FR",
+   "neighbour": "CH",
+   "export_mw": -94.5,
+   "kind": "tie"
+  },
+  {
+   "id": "X_CH_way_49049745-400",
+   "bus": "VL_way_49049745-400",
+   "country": "FR",
+   "neighbour": "CH",
+   "export_mw": -89.8,
+   "kind": "tie"
+  },
+  {
+   "id": "X_IT_way_56998024-400",
+   "bus": "VL_way_56998024-400",
+   "country": "FR",
+   "neighbour": "IT",
+   "export_mw": 1280.0,
+   "kind": "tie"
+  },
+  {
+   "id": "X_DE_way_81638061-225",
+   "bus": "VL_way_81638061-225",
+   "country": "FR",
+   "neighbour": "DE",
+   "export_mw": 15.7,
+   "kind": "tie"
+  },
+  {
+   "id": "X_DE_way_81641090-400",
+   "bus": "VL_way_81641090-400",
+   "country": "FR",
+   "neighbour": "DE",
+   "export_mw": 111.4,
+   "kind": "tie"
+  },
+  {
+   "id": "X_BE_way_82825438-400",
+   "bus": "VL_way_82825438-400",
+   "country": "FR",
+   "neighbour": "BE",
+   "export_mw": -442.3,
+   "kind": "tie"
+  },
+  {
+   "id": "X_CH_way_83293593-225",
+   "bus": "VL_way_83293593-225",
+   "country": "FR",
+   "neighbour": "CH",
+   "export_mw": -53.1,
+   "kind": "tie"
+  },
+  {
+   "id": "X_BE_way_85605950-400",
+   "bus": "VL_way_85605950-400",
+   "country": "FR",
+   "neighbour": "BE",
+   "export_mw": -884.6,
+   "kind": "tie"
+  },
+  {
+   "id": "X_GB_way_85895367-400",
+   "bus": "VL_way_85895367-400",
+   "country": "FR",
+   "neighbour": "GB",
+   "export_mw": -475.0,
+   "kind": "hvdc"
+  }
+ ],
+ "units": {
+  "units": 111,
+  "units_placed": 103,
+  "mw": 64870.3,
+  "mw_placed": 64226.0
+ },
+ "limits": {
+  "base": "osm",
+  "lines": 1861
+ },
+ "opf": {
+  "status": "ok",
+  "condition": "optimal",
+  "objective_eur": 8566672.685046505,
+  "shedding_mw": 1908.6,
+  "shedding_buses": {
+   "VL_virtual_relation_9142326_d_1-225": 80.6,
+   "VL_virtual_relation_9158614_b_1-225": 53.7,
+   "VL_virtual_relation_9158614_c_1-225": 53.7,
+   "VL_virtual_way_1234916162_1-225": 80.6,
+   "VL_virtual_way_153494695_0-225": 80.6,
+   "VL_virtual_way_203991560_0-225": 53.7,
+   "VL_virtual_way_645193278_0-225": 80.6,
+   "VL_virtual_way_89034181_1-225": 80.6,
+   "VL_way_105652455-225": 20.5,
+   "VL_way_1117389049-225": 26.9,
+   "VL_way_118204938-225": 53.7,
+   "VL_way_1462440672-225": 53.7,
+   "VL_way_153495180-225": 26.9,
+   "VL_way_22873838-225": 80.6,
+   "VL_way_22873840-225": 107.4,
+   "VL_way_27768969-225": 188.0,
+   "VL_way_318195497-225": 107.4,
+   "VL_way_32067290-225": 53.7,
+   "VL_way_33113310-225": 53.7,
+   "VL_way_476639961-225": 26.9,
+   "VL_way_490392953-225": 80.6,
+   "VL_way_549010403-225": 9.4,
+   "VL_way_625776445-225": 26.9,
+   "VL_way_657433661-225": 26.9,
+   "VL_way_658561191-225": 53.7,
+   "VL_way_671113556-225": 53.7,
+   "VL_way_788298548-225": 188.0,
+   "VL_way_82741307-225": 44.6,
+   "VL_way_83705700-225": 53.7,
+   "VL_way_92316708-225": 8.2
+  },
+  "spill_mw": 124.9,
+  "spill_buses": {
+   "VL_way_118591672-225": 124.4,
+   "VL_way_225210595-225": 0.5
+  },
+  "binding_lines": 18,
+  "most_loaded_lines": {
+   "relation_19956188-225": 1.0,
+   "relation_19924080-225": 1.0,
+   "relation_9733613-225": 1.0,
+   "relation_5665483_c-225": 1.0,
+   "relation_9509532_b-225": 1.0,
+   "way_130228930-225": 1.0,
+   "relation_14514476-225": 1.0,
+   "relation_11026000-225": 1.0,
+   "way_1474014917-225": 1.0,
+   "relation_9142326_c-225": 1.0,
+   "relation_10547433-225": 1.0,
+   "relation_13529998-225": 1.0,
+   "relation_6684813-400": 1.0,
+   "relation_8890475-225": 1.0,
+   "relation_10489104-225": 1.0,
+   "relation_6663381-400": 1.0,
+   "relation_6691717-225": 1.0,
+   "merged_relation_6194778_b-225_4": 1.0,
+   "merged_way_117979290-400_2": 0.997,
+   "relation_9509533-225": 0.985
+  }
+ }
+}

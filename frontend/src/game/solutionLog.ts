@@ -113,16 +113,21 @@ function combinedBeatsUnderlying(
   return maxRho <= Math.min(...partRhos) - COMBINED_MIN_RHO_GAIN;
 }
 
-/** One starred action → the enriched record published to the game shell. */
+/**
+ * One starred action → the enriched record published to the game shell. It
+ * solves the study when the worst line ends below `monitoringFactor` (the
+ * study's resolution threshold) with no line left overloaded.
+ */
 export function buildChosenActionRecord(
   actionId: string,
   result: AnalysisResult | null,
   baselineMaxRho: number | null,
+  monitoringFactor = 1,
 ): ChosenActionRecord {
   const detail = result?.actions?.[actionId];
   const maxRho = detail?.max_rho ?? null;
   const after = detail?.lines_overloaded_after;
-  const solved = maxRho != null && maxRho < 1.0 && (!after || after.length === 0);
+  const solved = maxRho != null && maxRho < monitoringFactor && (!after || after.length === 0);
   const { actionType, levers } = buildActionLevers(
     actionId, detail, scoreTypeFor(result, actionId));
   // Effective = the action improves on the bare N-1 state (or outright

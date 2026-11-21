@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 
 import pandas as pd
 
-from expert_backend.services.diagram.sld_render import build_feeder_labels
+from expert_backend.services.diagram.sld_render import _is_real_name, build_feeder_labels
 
 
 def _df(rows: dict) -> pd.DataFrame:
@@ -131,3 +131,17 @@ class TestBuildFeederLabels:
         net.get_2_windings_transformers.side_effect = RuntimeError("boom")
         # Must not raise — relabelling is additive.
         assert build_feeder_labels(net, "VL_PRAGN") == {}
+
+
+class TestIsRealName:
+    """Raw OSM ids — plain, or merged by PyPSA from several ways — are not
+    names, as in ``network_service.get_element_names``."""
+
+    def test_raw_osm_ids_are_not_names(self):
+        for raw in ("way/426020732-400", "relation_9142329-225",
+                    "merged_way/214858102-400+4", "merged_relation/6221844_a-400+1"):
+            assert not _is_real_name(raw, "some_id")
+
+    def test_real_names_are_names(self):
+        assert _is_real_name("REALTL71TAVEL", "relation_5989317-400")
+        assert _is_real_name("Liaison 225 kV n°1 Courtry - Plison", "way_118340005-225")

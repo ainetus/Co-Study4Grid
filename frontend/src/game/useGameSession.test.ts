@@ -73,6 +73,7 @@ describe('useGameSession', () => {
     result: { current: ReturnType<typeof useGameSession> },
     rho: number,
     chosenActions?: ChosenActionRecord[],
+    monitoringFactor?: number,
   ) {
     act(() => {
       gameBridge.publishSnapshot({
@@ -80,6 +81,7 @@ describe('useGameSession', () => {
         baselineMaxRho: 1.3,
         chosenActions: chosenActions
           ?? [{ actionId: 'a', maxRho: rho, solved: rho < 1.0 }],
+        monitoringFactor,
       });
     });
     await act(async () => {
@@ -126,6 +128,29 @@ describe('useGameSession', () => {
     // And the per-study solved flags survive for all three.
     expect(log.studies.map((s) => s.solved)).toEqual([true, false, true]);
     expect(log.config.nStudies).toBe(3);
+  });
+
+  it('judges each study against the monitoring factor it ran with', async () => {
+    const { result } = renderHook(() => useGameSession());
+    await act(async () => {
+      result.current.startSession(CONFIG);
+    });
+    await waitFor(() => expect(result.current.phase).toBe('playing'));
+
+    // 97 %: under the thermal limit, past the 95 % monitoring factor → not won.
+    await playAndAdvance(result, 0.97, undefined, 0.95);
+    await waitFor(() => expect(result.current.currentIndex).toBe(1));
+    await waitFor(() => expect(result.current.phase).toBe('playing'));
+    await playAndAdvance(result, 0.94, undefined, 0.95);
+    await waitFor(() => expect(result.current.currentIndex).toBe(2));
+    await waitFor(() => expect(result.current.phase).toBe('playing'));
+    // No factor published → judged against the thermal limit, 1.0.
+    await playAndAdvance(result, 0.97);
+    await waitFor(() => expect(result.current.phase).toBe('results'));
+
+    const studies = result.current.sessionLog!.studies;
+    expect(studies.map((s) => s.solved)).toEqual([false, true, true]);
+    expect(studies.map((s) => s.monitoringFactor)).toEqual([0.95, 0.95, 1]);
   });
 
   it('capitalises the retained proposition at each study commit', async () => {

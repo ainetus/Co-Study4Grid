@@ -171,6 +171,10 @@ expert_backend/
 │   ├── game_solution_models.py    # Pydantic wire models of the two game
 │   │                              # endpoints — kept out of main.py so it
 │   │                              # stays under the module-size ceiling
+│   ├── element_names.py           # Display-name rule every view shares: a raw
+│   │                              # OSM id (way/…, merged_way/…) reads by its
+│   │                              # end substations (get_element_names, SLD
+│   │                              # feeder labels, Context tab snapshot)
 │   └── sanitize.py                # NumPy → native-Python recursive coercion
 │                                  # (`sanitize_for_json`)
 ├── recommenders/               # Pluggable recommendation-model subsystem:

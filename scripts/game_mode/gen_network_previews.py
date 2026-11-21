@@ -37,7 +37,8 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _OUT_DIR = _REPO_ROOT / "frontend" / "public" / "game"
 
 # (tier, grid directory, output filename). Mirrors DIFFICULTY_TIERS in
-# frontend/src/game/presets.ts.
+# frontend/src/game/presets.ts — France 2025 plays the High tier's grid and
+# shares its map.
 _GRIDS = [
     ("medium", "data/pypsa_eur_eur220_225_380_400", "preview-medium.svg"),
     ("high", "data/pypsa_eur_fr225_400", "preview-high.svg"),

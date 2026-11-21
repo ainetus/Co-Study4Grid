@@ -59,10 +59,11 @@ class FakeNetwork:
     """The pypowsybl tables the context map reads, as pandas frames."""
 
     def __init__(self, substations, vls, lines=None, generators=None, loads=None,
-                 hvdc=None, stations=None, positions=None):
+                 hvdc=None, stations=None, positions=None, vl_names=None):
         self.case_date = datetime(2026, 1, 10, 17, 30, tzinfo=timezone.utc)
         self._subs = _frame(substations, ["name", "country", "regionCvg"])
-        self._vls = _frame({k: {"substation_id": v} for k, v in vls.items()}, ["substation_id"])
+        self._vls = _frame({k: {"substation_id": v, "name": (vl_names or {}).get(k, "")}
+                            for k, v in vls.items()}, ["substation_id", "name"])
         self._lines = _frame(lines or {}, ["name", "voltage_level1_id", "voltage_level2_id",
                                            "p1", "p2", "connected1", "connected2"])
         self._gens = _frame(generators or {}, ["voltage_level_id", "p", "target_p",
@@ -305,6 +306,32 @@ class TestCountryMesh:
         payload = build_context_map(capture_snapshot(_country_network()), layout={}).payload
         assert payload["available"] is True and payload["frame"] == "geo"
 
+    def test_lines_named_by_a_raw_osm_id_read_by_their_ends(self):
+        """As in the contingency list: a raw OSM name, merged by PyPSA or not,
+        gives way to the names of the line's end voltage levels."""
+        net = FakeNetwork(
+            substations={"S_FR": {"name": "", "country": "FR", "regionCvg": None},
+                         "S_DE": {"name": "", "country": "DE", "regionCvg": None}},
+            vls={"V_FR": "S_FR", "V_DE": "S_DE"},
+            vl_names={"V_FR": "PONTEAU 400kV", "V_DE": "REALTOR 400kV"},
+            lines={
+                "merged_way_214858102-400_4": dict(_line("V_FR", "V_DE", -120.0, 121.0),
+                                                   name="merged_way/214858102-400+4"),
+                "way_1-400": dict(_line("V_DE", "V_FR", 60.0, -59.0), name="way/1-400"),
+                "relation_5989317-400": dict(_line("V_FR", "V_DE", 10.0, -10.0),
+                                             name="REALTL71TAVEL"),
+            },
+            generators={"G1": _gen("V_DE", -500.0)},
+            loads={"LD1": {"voltage_level_id": "V_FR", "p": 300.0, "p0": 300.0, "connected": True}},
+        )
+        snap = capture_snapshot(net)
+        cmap = build_context_map(snap, layout={})
+        names = {eid: element_geometry(cmap, snap, eid)["name"]
+                 for eid in ("merged_way_214858102-400_4", "way_1-400", "relation_5989317-400")}
+        assert names == {"merged_way_214858102-400_4": "PONTEAU \u2014 REALTOR",
+                         "way_1-400": "REALTOR \u2014 PONTEAU",
+                         "relation_5989317-400": "REALTL71TAVEL"}
+
 
 class TestPrerequisite:
     """No Context tab for a network that cannot place two zones on the map."""
@@ -331,6 +358,89 @@ class TestPrerequisite:
         )
         reason = build_context_map(capture_snapshot(net), layout={}).payload["unavailable_reason"]
         assert reason.startswith("it covers a single zone (France)") and "regionCvg" in reason
+
+    def test_france_alone_with_its_exchanges(self):
+        # A France-only grid rebuilt on a real hour: its exchanges with the
+        # neighbours it leaves out are fictitious loads at the borders.
+        net = FakeNetwork(
+            substations={"S1": {"name": "", "country": "FR", "regionCvg": None},
+                         "S2": {"name": "", "country": "FR", "regionCvg": None}},
+            vls={"V1": "S1", "V2": "S2"},
+            lines={"L1": _line("V1", "V2", 100.0, -99.0)},
+            generators={"G1": dict(_gen("V1", -5000.0, source="NUCLEAR"), carrier="Nuclear")},
+            loads={"L2": {"voltage_level_id": "V2", "p": 3600.0, "p0": 3600.0, "connected": True},
+                   "X_BE_V1": _exchange("V1", -1700.0, "BE"),
+                   "X_IT_V2": _exchange("V2", 2100.0, "IT"),
+                   "X_GB_V1": _exchange("V1", 1000.0, "GB")},
+        )
+        cmap = build_context_map(capture_snapshot(net), layout={})
+        payload = cmap.payload
+        assert payload["available"] is True
+        # One zone, drawn on Carte-Front's France frame with the neighbours'
+        # badges and names around it.
+        assert payload["mesh"] == "country" and payload["home"] == "FR"
+        assert cmap.lat0 == geography.FRANCE_LAT0 and payload["country_labels"]
+        zones = {z["id"]: z for z in payload["zones"]}
+        assert zones["FR"]["kind"] == "country" and zones["FR"]["placed"]
+        assert all(zones[n]["kind"] == "neighbor" and "badge" in zones[n] for n in ("BE", "IT", "GB"))
+        flows = {(f["from"], f["to"]): f["mw"] for f in payload["flows"]}
+        assert flows == {("FR", "IT"): 2100.0, ("BE", "FR"): 1700.0, ("FR", "GB"): 1000.0}
+        # France's net position headlines the summary.
+        assert payload["totals"]["net_export"] == pytest.approx(1400.0)
+
+    def test_france_alone_takes_the_rte_regions_where_it_lies(self):
+        # No regionCvg, but substations on the ground (the PyPSA France
+        # bundle): each takes the region of the nearest RTE substations.
+        sites = {"S_LIL": (3.06, 50.63), "S_DUN": (2.38, 51.03), "S_PAR": (2.35, 48.86),
+                 "S_MAR": (5.37, 43.30)}
+        net = FakeNetwork(
+            substations={s: {"name": "", "country": "FR", "regionCvg": None} for s in sites},
+            vls={f"V{s}": s for s in sites},
+            lines={"L1": _line("VS_LIL", "VS_PAR", 800.0, -790.0),
+                   "L2": _line("VS_DUN", "VS_LIL", 300.0, -299.0)},
+            generators={"G1": _gen("VS_DUN", -1500.0, source="NUCLEAR")},
+            loads={"LD": {"voltage_level_id": "VS_PAR", "p": 1400.0, "p0": 1400.0, "connected": True}},
+            positions={s: {"latitude": lat, "longitude": lon} for s, (lon, lat) in sites.items()},
+        )
+        payload = build_context_map(capture_snapshot(net), layout={}).payload
+        assert payload["available"] is True and payload["mesh"] == "region"
+        zones = {z["id"]: z["kind"] for z in payload["zones"]}
+        assert zones == {"LILLE": "region", "PARIS": "region", "MARSEILLE": "region"}
+        flows = {(f["from"], f["to"]): f["mw"] for f in payload["flows"]}
+        assert flows == {("LILLE", "PARIS"): pytest.approx(795.0)}
+
+    def test_rte_line_codes_name_the_region(self):
+        # Nogent-sur-Seine's nuclear plant lies nearer Paris' RTE substations,
+        # but its line code names Boctois – Méry-sur-Seine: NANCY's, as RTE
+        # tags them.
+        sites = {"S_NOG": (3.52, 48.52), "S_MERY": (3.89, 48.51), "S_PAR": (2.35, 48.86)}
+        net = FakeNetwork(
+            substations={s: {"name": "", "country": "FR", "regionCvg": None} for s in sites},
+            vls={f"V{s}": s for s in sites},
+            lines={"BOCTOL72M.SEI": dict(_line("VS_NOG", "VS_MERY", 900.0, -899.0),
+                                         name="BOCTOL72M.SEI"),
+                   "L2": _line("VS_MERY", "VS_PAR", 600.0, -598.0)},
+            positions={s: {"latitude": lat, "longitude": lon} for s, (lon, lat) in sites.items()},
+        )
+        snap = capture_snapshot(net)
+        payload = build_context_map(snap, layout={}).payload
+        assert snap.substation_region == {"S_NOG": "NANCY", "S_MERY": "NANCY", "S_PAR": "PARIS"}
+        flows = {(f["from"], f["to"]): f["mw"] for f in payload["flows"]}
+        assert flows == {("NANCY", "PARIS"): pytest.approx(599.0)}
+
+    def test_regions_are_inferred_for_france_alone_only(self):
+        # A grid spanning countries keeps the country mesh.
+        sites = {"S_LIL": ("FR", 3.06, 50.63), "S_PAR": ("FR", 2.35, 48.86),
+                 "S_DE": ("DE", 8.68, 50.11)}
+        net = FakeNetwork(
+            substations={s: {"name": "", "country": c, "regionCvg": None} for s, (c, _, _) in sites.items()},
+            vls={f"V{s}": s for s in sites},
+            lines={"L1": _line("VS_DE", "VS_LIL", 500.0, -499.0)},
+            positions={s: {"latitude": lat, "longitude": lon} for s, (_, lon, lat) in sites.items()},
+        )
+        payload = build_context_map(capture_snapshot(net), layout={}).payload
+        assert payload["mesh"] == "country"
+        assert {z["id"] for z in payload["zones"]} == {"FR", "DE"}
 
     def test_service_serves_the_reason_and_no_elements(self):
         svc = ContextMapService()

@@ -1114,6 +1114,8 @@ function App() {
   // Load a study: swap network + action catalogue, then arm its contingency.
   // Mirrors handleLoadConfig but builds the config request explicitly from
   // the study so it doesn't depend on not-yet-flushed settings state.
+  // Monitoring factor the current game study runs with: its resolution threshold.
+  const gameMonitoringFactorRef = useRef<number | undefined>(undefined);
   const loadGameStudy = useCallback(async (study: GameStudy) => {
     setConfigLoading(true);
     resetAllState();
@@ -1146,6 +1148,7 @@ function App() {
           ? { lines_monitoring_path: study.linesMonitoringPath }
           : {}),
       };
+      gameMonitoringFactorRef.current = configRequest.monitoring_factor;
       const configRes = await api.updateConfig(configRequest);
       applyConfigResponse(configRes as Record<string, unknown>);
 
@@ -1207,7 +1210,7 @@ function App() {
     const rhoArr = n1Diagram?.lines_overloaded_rho;
     const baselineMaxRho = rhoArr && rhoArr.length ? Math.max(...rhoArr) : null;
     const chosenActions = [...selectedActionIds].map(
-      (id) => buildChosenActionRecord(id, result, baselineMaxRho));
+      (id) => buildChosenActionRecord(id, result, baselineMaxRho, gameMonitoringFactorRef.current));
     gameBridge.publishSnapshot({
       contingencyElementIds: selectedContingency,
       baselineMaxRho,
@@ -1216,6 +1219,7 @@ function App() {
       // manually simulated, or lever-driven. The hints panel marks these
       // levers "simulated" and blocks a redundant re-run.
       simulatedActionIds: result?.actions ? Object.keys(result.actions) : [],
+      monitoringFactor: gameMonitoringFactorRef.current,
     });
   }, [result, selectedActionIds, selectedContingency, n1Diagram]);
 

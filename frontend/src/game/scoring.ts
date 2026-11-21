@@ -22,7 +22,8 @@ import type { GameSessionLog, GameStudyResult } from './types';
 //   time      = 15 * remediationFraction * timeEfficiency
 // where:
 //   remediationFraction = how much of the overload the player removed,
-//                         1.0 when the worst line is back under 100 %.
+//                         1.0 when the worst line is back under the study's
+//                         monitoring factor (95 % by default).
 //   actionEfficiency    = rewards using fewer of the allowed actions.
 //   timeEfficiency      = rewards finishing well within the time limit.
 // Session score = mean of per-study scores.
@@ -35,16 +36,26 @@ function clamp01(x: number): number {
 }
 
 /**
- * Fraction of the overload removed. 1.0 == worst line back under 100 %.
- * 0.0 == no improvement (or no action taken).
+ * Loading (per-unit) the worst line must get under for the study to be
+ * solved: the monitoring factor it ran with. Logs recorded before it existed
+ * carry none and are judged against the thermal limit, 1.0.
+ */
+export function resolutionThreshold(s: GameStudyResult): number {
+  return s.monitoringFactor ?? 1.0;
+}
+
+/**
+ * Fraction of the overload removed. 1.0 == worst line back under the study's
+ * resolution threshold. 0.0 == no improvement (or no action taken).
  */
 export function remediationFraction(s: GameStudyResult): number {
   if (s.finalMaxRho == null) return 0;
-  if (s.solved || s.finalMaxRho < 1.0) return 1;
+  const target = resolutionThreshold(s);
+  if (s.solved || s.finalMaxRho < target) return 1;
   const baseline = s.baselineMaxRho;
-  if (baseline == null || baseline <= 1.0) return s.solved ? 1 : 0;
-  // Linear credit for partial relief between baseline and the 100 % target.
-  return clamp01((baseline - s.finalMaxRho) / (baseline - 1.0));
+  if (baseline == null || baseline <= target) return s.solved ? 1 : 0;
+  // Linear credit for partial relief between baseline and the target.
+  return clamp01((baseline - s.finalMaxRho) / (baseline - target));
 }
 
 export function actionEfficiency(s: GameStudyResult): number {

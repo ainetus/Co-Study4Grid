@@ -9,28 +9,17 @@ from __future__ import annotations
 
 import logging
 import math
-import re
 from collections import defaultdict
 from typing import Any
 
+from expert_backend.services.element_names import is_real_name
+
 logger = logging.getLogger(__name__)
 
-# A pypowsybl ``name`` field is "not a real name" when it is missing, equal to
-# the element id, or still a raw OSM identifier (``way/...`` / ``relation_...``)
-# the PyPSA→IIDM conversion left in place. Mirrors ``network_service`` so the
-# feeder relabelling and the NAD composite-name logic agree on what counts as a
-# human-readable name.
-_RAW_OSM_RE = re.compile(r"^(way|relation)[/_]")
-
-
-def _is_real_name(name: Any, element_id: Any) -> bool:
-    """True when ``name`` is a human-readable label (not blank / id / raw OSM)."""
-    if name is None:
-        return False
-    s = str(name).strip()
-    if s == "" or s == "nan" or s == str(element_id):
-        return False
-    return not _RAW_OSM_RE.match(s)
+# A pypowsybl ``name`` is "not a real name" when it is missing, equal to the
+# element id, or still a raw OSM identifier: the rule every view shares, so
+# the feeder relabelling and the NAD composite names agree.
+_is_real_name = is_real_name
 
 
 def _finite_float(value: Any) -> float | None:

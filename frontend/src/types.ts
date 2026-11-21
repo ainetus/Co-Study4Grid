@@ -475,7 +475,8 @@ export interface ContextMapData {
     situation?: {
         at_utc: string;
         dispatch: 'observed' | 'opf' | string;
-        sources: { name: string; url: string; licence: string }[];
+        /** `licence` null where the source states none (ENTSO-E's unit outputs). */
+        sources: { name: string; url: string; licence: string | null }[];
     } | null;
     totals: { production: number; consumption: number; net_export: number | null };
 }

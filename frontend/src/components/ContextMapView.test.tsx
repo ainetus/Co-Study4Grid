@@ -94,6 +94,21 @@ describe('ContextMapView', () => {
         expect(badge).toHaveTextContent(/Imports.*1\s900 MW/);
     });
 
+    it('names the one country a map draws alone', () => {
+        // A France-only grid rebuilt on a real hour: France and its exchanges.
+        const data: ContextMapData = {
+            ...payload(), mesh: 'country',
+            zones: [
+                { id: 'FR', label: 'France', kind: 'country', country: 'FR', production: { nuclear: 52760 },
+                  production_total: 52760, consumption: 56000, net_export: -3240, label_side: 'below',
+                  placed: true, x: 2.4, y: -46.6 },
+                ...payload().zones.filter(z => z.kind === 'neighbor'),
+            ],
+        };
+        render(<ContextMapView state={state({ data })} />);
+        expect(screen.getByTestId('context-map-summary')).toHaveTextContent('Situation — France');
+    });
+
     it('summarises the situation and lists only the generation types present', () => {
         render(<ContextMapView state={state()} />);
         const summary = screen.getByTestId('context-map-summary');
@@ -211,6 +226,22 @@ describe('ContextMapView', () => {
         // A situation file says nothing when absent.
         render(<ContextMapView state={state()} />);
         expect(screen.getAllByTestId('context-map-situation')).toHaveLength(1);
+    });
+
+    it('puts each licence after the sources it covers', () => {
+        const cc = 'CC BY 4.0';
+        const situation = {
+            at_utc: '2025-01-14T08:00Z', dispatch: 'observed',
+            sources: [
+                { name: 'Energy-Charts (Fraunhofer ISE)', url: 'https://www.energy-charts.info', licence: cc },
+                // The unit outputs' source states no licence: none is claimed for it.
+                { name: 'ENTSO-E Transparency Platform', url: 'https://transparency.entsoe.eu', licence: null },
+                { name: 'powerplantmatching', url: 'https://github.com/PyPSA/powerplantmatching', licence: cc },
+            ],
+        };
+        render(<ContextMapView state={state({ data: { ...payload(), situation } })} />);
+        expect(screen.getByTestId('context-map-situation')).toHaveTextContent(
+            'Energy-Charts (Fraunhofer ISE), powerplantmatching (CC BY 4.0); ENTSO-E Transparency Platform');
     });
 
     it('says so instead of a one-colour mix bar when no generator is typed', () => {

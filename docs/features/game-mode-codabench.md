@@ -67,7 +67,7 @@ The whole feature is additive and inert unless `?game=1` is set.
 | `frontend/src/game/GameShell.tsx` | Entry point (mounted by `main.tsx`); state machine config → playing → results, hosts `<App/>` below a fixed HUD |
 | `frontend/src/game/useGameSession.ts` | Session state machine: load study, timer countdown, commit + advance, build log |
 | `frontend/src/game/gameBridge.ts` | Decoupling singleton (mirrors `interactionLogger`): App registers a study loader + publishes the physical snapshot; the shell drives loads + reads results + enforces the action cap |
-| `frontend/src/game/GameConfigScreen.tsx` | Landing (player name → auto session name → assistance → Start) + studies summary + per-network preview map; timer / action cap / difficulty / study editor behind a **⚙ Configure settings** toggle |
+| `frontend/src/game/GameConfigScreen.tsx` | Landing (player name → auto session name → assistance → Start) + studies checklist (untick to skip; the ticked ones play in list order) + per-network preview map; timer / action cap / difficulty / study editor behind a **⚙ Configure settings** toggle |
 | `frontend/src/game/GameHud.tsx` | Timer / action-counter / Next-study HUD bar |
 | `frontend/src/game/GameResults.tsx` | Results table + score preview (+ novelty bonus + usage-frequency feedback) + JSON/CSV export |
 | `frontend/src/game/GameNoveltyToast.tsx` | Transient 🌟 banner when a retained proposition is new in the shared base |
@@ -75,7 +75,7 @@ The whole feature is additive and inert unless `?game=1` is set.
 | `frontend/src/game/scoring.ts` | Shared scoring model (twin of the Python scorer) |
 | `frontend/src/game/gameLog.ts` | `GameSessionLog` assembly + CSV + download helpers |
 | `frontend/src/game/solutionLog.ts` | Solution capitalisation client: lever/signature computation + log payload + feedback mapping |
-| `frontend/src/game/presets.ts` | Curated **solvable** fr225_400 contingencies |
+| `frontend/src/game/presets.ts` | Curated **solvable** sets: France 2025 (default — the French grid on its real 2025 hours, a July starter then the January peak around Marseille, Paris and Lyon), Medium (the European grid on the same hours), High (French worst case) |
 | `frontend/src/game/types.ts` | Type contract for the whole module |
 
 ### App integration (3 touch points, all guarded by `gameBridge.isGameMode()`)
@@ -90,7 +90,9 @@ The whole feature is additive and inert unless `?game=1` is set.
 ## Scoring
 
 Per study (0–100): `60·R + 25·R·A + 15·R·T` where **R** is the remediation
-fraction (1.0 = worst line back under 100 %), **A** rewards using fewer of the
+fraction (1.0 = worst line back under the study's **monitoring factor**, the
+loading the workspace flags as an overload — 95 % by default; a log recorded
+before it carried one is judged at 100 %), **A** rewards using fewer of the
 allowed actions, **T** rewards speed. Session score = mean across studies.
 `frontend/src/game/scoring.ts` and the in-repo Codabench twin
 `scripts/game_mode/scoring_program/score.py` implement the **identical**
@@ -216,6 +218,12 @@ preset studies, plays a greedy operator (lowest-rho actions, ≤ cap), writes a
 ```bash
 python3 scripts/game_mode/e2e_game_session.py --max-studies 3
 # → writes test-results/e2e_*.json and prints the Codabench score
+# Any network — one study per --contingency (how the France 2025 and Medium sets were checked):
+B=data/pypsa_eur_eur220_225_380_400
+python3 scripts/game_mode/e2e_game_session.py --grid custom \
+    --network $B/situations/2025-07-01_1100Z_opf/network.xiidm \
+    --actions $B/actions.json --layout $B/grid_layout.json \
+    --contingency relation_5674507-400
 ```
 
 This requires pypowsybl + expert_op4grid_recommender in the environment (the

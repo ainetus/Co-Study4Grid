@@ -13,6 +13,8 @@ import os
 import tempfile
 import zipfile
 
+from expert_backend.services.element_names import branch_display_name
+
 logger = logging.getLogger(__name__)
 
 class NetworkService:
@@ -277,69 +279,33 @@ class NetworkService:
     def get_element_names(self) -> dict | None:
         """Return {element_id: display_name} for all lines and transformers.
 
-        The display name is the pypowsybl ``name`` field when it is set and
-        differs from the element ID; otherwise the ID itself.
-
-        For lines/transformers whose name is still a raw OSM identifier
-        (e.g. ``way/426020732-400``), a composite name is built from the
-        voltage-level names at each endpoint (e.g. ``CHARPENAY — ST-VULBAS-EST``).
+        The display name is the pypowsybl ``name`` field when it is a real
+        name. A missing name, or one that is still a raw OSM identifier
+        (``way/426020732-400``, or ``merged_way/214858102-400+4`` for a line
+        PyPSA merged from several OSM ways), gives way to the voltage-level
+        names at each endpoint (e.g. ``CHARPENAY — ST-VULBAS-EST``) — the
+        rule every view shares (``services/element_names.py``).
         """
         if not self.network:
             raise ValueError("Network not loaded")
 
-        import re
-        _RAW_OSM_RE = re.compile(r'^(way|relation)[/_]')
-
-        # Pre-load VL display names for fallback construction
-        vl_names: dict[str, str] = {}
+        vl_names: dict[str, object] = {}
         voltage_levels = self.network.get_voltage_levels()
         if voltage_levels is not None and not voltage_levels.empty and 'name' in voltage_levels.columns:
-            for vl_id, row in voltage_levels.iterrows():
-                n = row.get('name')
-                if n and str(n) != 'nan':
-                    # Strip trailing " 400kV" etc. for a cleaner composite name
-                    clean = re.sub(r'\s+\d+\s*kV$', '', str(n))
-                    vl_names[vl_id] = clean
-
-        def _display_name(eid: str, row, name_col_exists: bool, vl1_col: str, vl2_col: str) -> str | None:
-            """Return a human-readable name, or None to skip."""
-            n = row.get('name') if name_col_exists else None
-            if n and str(n) != str(eid) and str(n) != 'nan' and not _RAW_OSM_RE.match(str(n)):
-                return str(n)
-            # Name is missing or is a raw OSM ID → build from VL endpoint names
-            vl1 = row.get(vl1_col) if vl1_col in row.index else None
-            vl2 = row.get(vl2_col) if vl2_col in row.index else None
-            name1 = vl_names.get(str(vl1), '') if vl1 else ''
-            name2 = vl_names.get(str(vl2), '') if vl2 else ''
-            if name1 and name2 and name1 != name2:
-                return f"{name1} \u2014 {name2}"
-            if name1:
-                return name1
-            if name2:
-                return name2
-            # Fallback: use the raw name if it exists and differs from ID
-            if n and str(n) != str(eid) and str(n) != 'nan':
-                return str(n)
-            return None
+            vl_names = {str(vl_id): n for vl_id, n in voltage_levels['name'].items()}
 
         name_map: dict[str, str] = {}
-
-        lines = self.network.get_lines()
-        if lines is not None and not lines.empty:
-            has_name = 'name' in lines.columns
-            for eid, row in lines.iterrows():
-                display = _display_name(eid, row, has_name, 'voltage_level1_id', 'voltage_level2_id')
+        for table in (self.network.get_lines(), self.network.get_2_windings_transformers()):
+            if table is None or table.empty:
+                continue
+            for eid, row in table.iterrows():
+                display = branch_display_name(
+                    eid, row.get('name'),
+                    vl_names.get(str(row.get('voltage_level1_id'))),
+                    vl_names.get(str(row.get('voltage_level2_id'))),
+                )
                 if display:
                     name_map[eid] = display
-
-        transformers = self.network.get_2_windings_transformers()
-        if transformers is not None and not transformers.empty:
-            has_name = 'name' in transformers.columns
-            for eid, row in transformers.iterrows():
-                display = _display_name(eid, row, has_name, 'voltage_level1_id', 'voltage_level2_id')
-                if display:
-                    name_map[eid] = display
-
         return name_map
 
     def get_monitored_elements(self) -> list:

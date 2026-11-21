@@ -11,7 +11,8 @@ Python twin (scoring_program/score.py, via test_score.py) and the frontend
 scorer (scoring.ts, via scoring.test.ts) both assert their output against it.
 
 The INPUT studies below are hand-authored to cover the scorer branches (solved,
-partial relief, no improvement, null-final, time/action-efficiency clamps); the
+partial relief, no improvement, null-final, time/action-efficiency clamps, the
+monitoring-factor threshold and its 1.0 fallback); the
 EXPECTED values are computed by score.py so the two never drift. Run this after a
 deliberate scorer change, then review the diff and update scoring.ts to match.
 
@@ -56,6 +57,19 @@ STUDY_INPUTS = [
      {"studyId": "E", "label": "E", "finalMaxRho": 0.95, "solved": True,
       "baselineMaxRho": 1.3, "numActions": 3, "maxActions": 3,
       "timeLimitSeconds": 200, "durationMs": 250000}),
+    # Judged against the 0.95 monitoring factor: under 100 % is not enough.
+    ("monitoring-factor-solved",
+     {"studyId": "F", "label": "F", "finalMaxRho": 0.94, "solved": True,
+      "baselineMaxRho": 1.064, "monitoringFactor": 0.95, "numActions": 1, "maxActions": 3,
+      "timeLimitSeconds": 300, "durationMs": 60000}),
+    ("monitoring-factor-under-100-partial",
+     {"studyId": "G", "label": "G", "finalMaxRho": 0.97, "solved": False,
+      "baselineMaxRho": 1.064, "monitoringFactor": 0.95, "numActions": 1, "maxActions": 3,
+      "timeLimitSeconds": 300, "durationMs": 60000}),
+    ("monitoring-factor-baseline-in-band",
+     {"studyId": "H", "label": "H", "finalMaxRho": 0.96, "solved": False,
+      "baselineMaxRho": 0.975, "monitoringFactor": 0.95, "numActions": 2, "maxActions": 3,
+      "timeLimitSeconds": 300, "durationMs": 120000}),
 ]
 
 _STUDY_KEYS = ("physical", "actions", "time", "total", "remediationFraction", "solved")
