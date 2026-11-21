@@ -25,6 +25,12 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 - **Studies picked at launch**: the landing page lists the set's studies with
   a tick box each (all ticked, All / None shortcuts); Start plays the ticked
   ones in list order.
+- **Lines PyPSA merged from several OSM ways read by their ends**: their name
+  is still a raw `merged_way/…` id, which the display-name rule
+  (`get_element_names`) and the SLD feeder labels missed; like a plain `way/…`
+  id, it now gives way to the end substations — study 3 reads
+  `PONTEAU — REALTOR` instead of `merged_way/214858102-400+4`. 25 of the
+  French grid's 1,861 lines, 526 of the European grid's 7,173.
 
 ### Evacuation antennas — expert_op4grid_recommender 0.3.4.post1, ExpertOp4Grid 0.3.4
 

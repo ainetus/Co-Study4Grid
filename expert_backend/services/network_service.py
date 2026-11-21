@@ -281,14 +281,16 @@ class NetworkService:
         differs from the element ID; otherwise the ID itself.
 
         For lines/transformers whose name is still a raw OSM identifier
-        (e.g. ``way/426020732-400``), a composite name is built from the
-        voltage-level names at each endpoint (e.g. ``CHARPENAY — ST-VULBAS-EST``).
+        (e.g. ``way/426020732-400``, or ``merged_way/214858102-400+4`` for a
+        line PyPSA merged from several OSM ways), a composite name is built
+        from the voltage-level names at each endpoint (e.g.
+        ``CHARPENAY — ST-VULBAS-EST``).
         """
         if not self.network:
             raise ValueError("Network not loaded")
 
         import re
-        _RAW_OSM_RE = re.compile(r'^(way|relation)[/_]')
+        _RAW_OSM_RE = re.compile(r'^(merged_)?(way|relation)[/_]')
 
         # Pre-load VL display names for fallback construction
         vl_names: dict[str, str] = {}

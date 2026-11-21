@@ -16,11 +16,12 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # A pypowsybl ``name`` field is "not a real name" when it is missing, equal to
-# the element id, or still a raw OSM identifier (``way/...`` / ``relation_...``)
-# the PyPSA→IIDM conversion left in place. Mirrors ``network_service`` so the
+# the element id, or still a raw OSM identifier (``way/...`` / ``relation_...``,
+# ``merged_way/...`` when PyPSA merged several ways into one line) the
+# PyPSA→IIDM conversion left in place. Mirrors ``network_service`` so the
 # feeder relabelling and the NAD composite-name logic agree on what counts as a
 # human-readable name.
-_RAW_OSM_RE = re.compile(r"^(way|relation)[/_]")
+_RAW_OSM_RE = re.compile(r"^(merged_)?(way|relation)[/_]")
 
 
 def _is_real_name(name: Any, element_id: Any) -> bool:
