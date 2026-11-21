@@ -1,0 +1,7459 @@
+{
+ "schema": "costudy4grid-unit-hour/1",
+ "at_utc": "2025-01-14T08:00Z",
+ "source": {
+  "name": "ENTSO-E Transparency Platform",
+  "url": "https://transparency.entsoe.eu",
+  "dataset": "Actual Generation per Generation Unit [16.1.A]"
+ },
+ "fetched_at": "2026-11-15T22:24Z",
+ "countries": {
+  "AL": {
+   "areas": [
+    "10YAL-KESH-----5"
+   ],
+   "units": [
+    {
+     "eic": "54W-FIERZ000001A",
+     "name": "FIERZAG1",
+     "type": "B12",
+     "mw": 159.0,
+     "parts": [
+      "54W-FIERZ-G1002P",
+      "54W-FIERZ-G2003I",
+      "54W-FIERZ-G3004B",
+      "54W-FIERZ-G40054"
+     ]
+    },
+    {
+     "eic": "54W-KOMAN0000066",
+     "name": "KOMANG1",
+     "type": "B12",
+     "mw": 318.9,
+     "parts": [
+      "54W-KOMAN-G1007L",
+      "54W-KOMAN-G2008E",
+      "54W-KOMAN-G30097",
+      "54W-KOMAN-G4010H"
+     ]
+    }
+   ]
+  },
+  "AT": {
+   "areas": [
+    "10YAT-APG------L"
+   ],
+   "units": [
+    {
+     "eic": "14W-DMH-KW-----9",
+     "name": "Malta-Hauptstufe TU 1",
+     "type": "B10",
+     "mw": 512.5,
+     "parts": [
+      "14W-DMHKWTU1---U",
+      "14W-DMHKWTU2---P",
+      "14W-DMHKWTU3---K",
+      "14W-DMHKWTU4---F"
+     ]
+    },
+    {
+     "eic": "14W-DRP-KW-----M",
+     "name": "Reisseck 2 TU 1",
+     "type": "B10",
+     "mw": 1.1,
+     "parts": [
+      "14W-DRPKWTU1---6",
+      "14W-DRPKWTU2---1"
+     ]
+    },
+    {
+     "eic": "14W-KW-THE-EVN-7",
+     "name": "KW Theiß M3",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "14W-KW-THE--M3-U",
+      "14W-KW-THE--M5-O"
+     ]
+    },
+    {
+     "eic": "14W-PROD-DO----O",
+     "name": "DO3",
+     "type": "B04",
+     "mw": 352.8,
+     "parts": [
+      "14W-GEN-DO3----F"
+     ]
+    },
+    {
+     "eic": "14W-PROD-LAU---8",
+     "name": "Lau GuD",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "14W-GEN-LAU----Z"
+     ]
+    },
+    {
+     "eic": "14W-PROD-SIM---P",
+     "name": "Sim1_DT",
+     "type": "B04",
+     "mw": 933.0,
+     "parts": [
+      "14WGEN-SIM1DT--C",
+      "14WGEN-SIM1GT41F",
+      "14WGEN-SIM1GT42D",
+      "14WGEN-SIM3DT--0"
+     ]
+    },
+    {
+     "eic": "14W-TKP-KW-----I",
+     "name": "Limberg II TU 1",
+     "type": "B10",
+     "mw": 415.8,
+     "parts": [
+      "14W-TKPKWTU1---2",
+      "14W-TKPKWTU2---Y"
+     ]
+    },
+    {
+     "eic": "14W-TZG-KW-----H",
+     "name": "Gerlos TU 5",
+     "type": "B12",
+     "mw": 28.8,
+     "parts": [
+      "14W-TZG2KWTU5--1"
+     ]
+    },
+    {
+     "eic": "14W-TZH-KW-----7",
+     "name": "Haeusling TU 11",
+     "type": "B10",
+     "mw": 321.8,
+     "parts": [
+      "14W-TZHKWTU11--K",
+      "14W-TZHKWTU12--G"
+     ]
+    },
+    {
+     "eic": "14W-VOEST-KW---0",
+     "name": "Block 07 Linz",
+     "type": "B04",
+     "mw": 108.8,
+     "parts": [
+      "14W-BLOCK07-L--J"
+     ]
+    },
+    {
+     "eic": "14W-WGM-KW-----J",
+     "name": "GDK-Mellach Linie 10",
+     "type": "B04",
+     "mw": 789.4,
+     "parts": [
+      "14W-WGM1-M1----5",
+      "14W-WGM2-M1----X"
+     ]
+    },
+    {
+     "eic": "14W-WML-KW-----0",
+     "name": "FHKW Mellach",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "14W-WML-M1-----G"
+     ]
+    },
+    {
+     "eic": "14WENERGIE--WT02",
+     "name": "Kraftwerk Timelkam GUD",
+     "type": "B04",
+     "mw": 416.1,
+     "parts": [
+      "14WENERGIEAGWT4S"
+     ]
+    }
+   ]
+  },
+  "BA": {
+   "areas": [
+    "10YBA-JPCC-----D"
+   ],
+   "units": [
+    {
+     "eic": "36W-HE-DUBROV--K",
+     "name": "HE_DUBROVNIK_G2",
+     "type": "B12",
+     "mw": 94.6,
+     "parts": [
+      "36W-H-DUBR--G2-H"
+     ]
+    },
+    {
+     "eic": "36W-HE-VISEGRADJ",
+     "name": "HE_VISEGRAD_G1",
+     "type": "B12",
+     "mw": 143.9,
+     "parts": [
+      "36W-H-VISEG-G1-N",
+      "36W-H-VISEG-G2-K",
+      "36W-H-VISEG-G3-H"
+     ]
+    },
+    {
+     "eic": "36W-HECAPLJINA-1",
+     "name": "HE_CAPLJINA_G1",
+     "type": "B10",
+     "mw": 0.4,
+     "parts": [
+      "36W-H-CAPLJ-G1-K",
+      "36W-H-CAPLJ-G2-H"
+     ]
+    },
+    {
+     "eic": "36W-TE-GACKO---O",
+     "name": "TE_GACKO_G1",
+     "type": "B02",
+     "mw": 150.5,
+     "parts": [
+      "36W-TE-GACKO1--G"
+     ]
+    },
+    {
+     "eic": "36W-TE-KAKANJ--S",
+     "name": "TE_KAKANJ_G5",
+     "type": "B02",
+     "mw": 270.0,
+     "parts": [
+      "36W-TE-KAKANJ5-A",
+      "36W-TE-KAKANJ6-7",
+      "36W-TE-KAKANJ7-4"
+     ]
+    },
+    {
+     "eic": "36W-TE-STANARI-V",
+     "name": "TE_STANARI_G1",
+     "type": "B02",
+     "mw": 238.1,
+     "parts": [
+      "36W-TE-STANAG1-F"
+     ]
+    },
+    {
+     "eic": "36W-TE-TUZLA---K",
+     "name": "TE_TUZLA_G4",
+     "type": "B02",
+     "mw": 417.9,
+     "parts": [
+      "36W-TE-TUZLA4--0",
+      "36W-TE-TUZLA5--X",
+      "36W-TE-TUZLA6--T"
+     ]
+    },
+    {
+     "eic": "36W-TE-UGLJEVIKN",
+     "name": "TE_UGLJEVIK_G1",
+     "type": "B02",
+     "mw": 222.0,
+     "parts": [
+      "36W-TE-UGLJEV1-5"
+     ]
+    }
+   ]
+  },
+  "BE": {
+   "areas": [
+    "10YBE----------2"
+   ],
+   "units": [
+    {
+     "eic": "22W20161130----Z",
+     "name": "Nobelwind Offshore Windpark",
+     "type": "B18",
+     "mw": 48.6,
+     "parts": [
+      "22W20161115----Z"
+     ]
+    },
+    {
+     "eic": "22W201806271---D",
+     "name": "EDF Luminus Seraing GT1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "22W201806282---2",
+      "22W201806283---Y",
+      "22W201806284---T"
+     ]
+    },
+    {
+     "eic": "22W20180628----H",
+     "name": "Rentel Offshore WP",
+     "type": "B18",
+     "mw": 88.4,
+     "parts": [
+      "22W20180615----H"
+     ]
+    },
+    {
+     "eic": "22W20181005PU--J",
+     "name": "VILVOORDE GT",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "22W20181005GU--R",
+      "22W20220118GU--F"
+     ]
+    },
+    {
+     "eic": "22W201902131---T",
+     "name": "Norther Offshore WP",
+     "type": "B18",
+     "mw": 101.7,
+     "parts": [
+      "22W201902132---O"
+     ]
+    },
+    {
+     "eic": "22W201909111---M",
+     "name": "Northwester 2",
+     "type": "B18",
+     "mw": 58.5,
+     "parts": [
+      "22W201909151---M"
+     ]
+    },
+    {
+     "eic": "22W20200608A---8",
+     "name": "Mermaid Offshore WP",
+     "type": "B18",
+     "mw": 80.3,
+     "parts": [
+      "22W20200608B---3"
+     ]
+    },
+    {
+     "eic": "22W20200608C---Z",
+     "name": "Seastar Offshore WP",
+     "type": "B18",
+     "mw": 77.1,
+     "parts": [
+      "22W20200608D---U"
+     ]
+    },
+    {
+     "eic": "22WAMERCO000010Y",
+     "name": "Amercoeur 1 R GT",
+     "type": "B04",
+     "mw": 450.0,
+     "parts": [
+      "22WAMERCO000008L",
+      "22WAMERCO000009J"
+     ]
+    },
+    {
+     "eic": "22WBELWIN0000271",
+     "name": "Belwind Phase 1",
+     "type": "B18",
+     "mw": 42.6,
+     "parts": [
+      "22WBELWIN1500271"
+     ]
+    },
+    {
+     "eic": "22WCOOXII000070C",
+     "name": "COO 4 T",
+     "type": "B10",
+     "mw": 568.1,
+     "parts": [
+      "22WCOOX4X0000588",
+      "22WCOOX5X000061A",
+      "22WCOOX6X000064W"
+     ]
+    },
+    {
+     "eic": "22WCOOXIX000067T",
+     "name": "COO 1 T",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "22WCOOX1X0000481",
+      "22WCOOX2X0000521",
+      "22WCOOX3X000055N"
+     ]
+    },
+    {
+     "eic": "22WDOELX1000076X",
+     "name": "DOEL 1",
+     "type": "B14",
+     "mw": 455.2,
+     "parts": [
+      "22WDOELX1150076X"
+     ]
+    },
+    {
+     "eic": "22WDOELX2000077N",
+     "name": "DOEL 2",
+     "type": "B14",
+     "mw": 453.5,
+     "parts": [
+      "22WDOELX2150077N"
+     ]
+    },
+    {
+     "eic": "22WDOELX40000793",
+     "name": "DOEL 4",
+     "type": "B14",
+     "mw": 1035.8,
+     "parts": [
+      "22WDOELX41500793"
+     ]
+    },
+    {
+     "eic": "22WDROGEN0000863",
+     "name": "DROGENBOS GT1",
+     "type": "B04",
+     "mw": 485.1,
+     "parts": [
+      "22WDROGEN0000839",
+      "22WDROGEN0000847",
+      "22WDROGEN0000855"
+     ]
+    },
+    {
+     "eic": "22WHERDER0001288",
+     "name": "HERDERSBRUG GT1",
+     "type": "B04",
+     "mw": 496.9,
+     "parts": [
+      "22WHERDER000125E",
+      "22WHERDER000126C",
+      "22WHERDER000127A"
+     ]
+    },
+    {
+     "eic": "22WMARCIN000179H",
+     "name": "Marcinelle Energie (Carsid)",
+     "type": "B04",
+     "mw": 390.3,
+     "parts": [
+      "22WMARCIN150179H"
+     ]
+    },
+    {
+     "eic": "22WNORTHW000187B",
+     "name": "Northwind",
+     "type": "B18",
+     "mw": 63.0,
+     "parts": [
+      "22WNORTHW150187B"
+     ]
+    },
+    {
+     "eic": "22WPLATEX000208N",
+     "name": "PLATE-TAILLE T",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "22WPLATEX150208N"
+     ]
+    },
+    {
+     "eic": "22WRINGVA000209C",
+     "name": "RINGVAART STEG",
+     "type": "B04",
+     "mw": 378.9,
+     "parts": [
+      "22WRINGVA150209C"
+     ]
+    },
+    {
+     "eic": "22WRODENH000213L",
+     "name": "RODENHUIZE 4",
+     "type": "B01",
+     "mw": 0.0,
+     "parts": [
+      "22WRODENH150213L"
+     ]
+    },
+    {
+     "eic": "22WSAINT-000221B",
+     "name": "SAINT-GHISLAIN STEG",
+     "type": "B04",
+     "mw": 355.2,
+     "parts": [
+      "22WSAINT-150221B"
+     ]
+    },
+    {
+     "eic": "22WSCHELD0002261",
+     "name": "Scheldelaan Exxonmobil",
+     "type": "B04",
+     "mw": 88.1,
+     "parts": [
+      "22WSCHELD1502261"
+     ]
+    },
+    {
+     "eic": "22WT-POWE000244W",
+     "name": "T-power Beringen",
+     "type": "B04",
+     "mw": 419.7,
+     "parts": [
+      "22WT-POWE150244W"
+     ]
+    },
+    {
+     "eic": "22WTHORNT000237E",
+     "name": "Thorntonbank - C-Power - Area NE",
+     "type": "B18",
+     "mw": 23.9,
+     "parts": [
+      "22WTHORNT150237E"
+     ]
+    },
+    {
+     "eic": "22WTHORNT000238C",
+     "name": "Thorntonbank - C-Power - Area SW",
+     "type": "B18",
+     "mw": 39.0,
+     "parts": [
+      "22WTHORNT150238C"
+     ]
+    },
+    {
+     "eic": "22WTIHANG000239G",
+     "name": "TIHANGE 1N",
+     "type": "B14",
+     "mw": 486.9,
+     "parts": [
+      "22WTIHANG150239G"
+     ]
+    },
+    {
+     "eic": "22WTIHANG000240V",
+     "name": "TIHANGE 1S",
+     "type": "B14",
+     "mw": 490.5,
+     "parts": [
+      "22WTIHANG150240V"
+     ]
+    },
+    {
+     "eic": "22WTIHANG000242R",
+     "name": "TIHANGE 3",
+     "type": "B14",
+     "mw": 1034.5,
+     "parts": [
+      "22WTIHANG150242R"
+     ]
+    },
+    {
+     "eic": "22WZANDVL000255D",
+     "name": "Zandvliet Power",
+     "type": "B04",
+     "mw": 411.0,
+     "parts": [
+      "22WZANDVL150255D"
+     ]
+    },
+    {
+     "eic": "22WZELZAT0002618",
+     "name": "Zelzate 2 Knippegroen",
+     "type": "B20",
+     "mw": 300.7,
+     "parts": [
+      "22WZELZAT1502618"
+     ]
+    }
+   ]
+  },
+  "BG": {
+   "areas": [
+    "10YCA-BULGARIA-R"
+   ],
+   "units": [
+    {
+     "eic": "32W001100100063E",
+     "name": "TPP_MI3_G1",
+     "type": "B02",
+     "mw": 368.0,
+     "parts": [
+      "32W001100100037F",
+      "32W001100100038D",
+      "32W001100100039B",
+      "32W001100100040Q"
+     ]
+    },
+    {
+     "eic": "32W001100100088Z",
+     "name": "TPP_MARITSA_3_G1",
+     "type": "B02",
+     "mw": 77.0,
+     "parts": [
+      "32W0011001000498"
+     ]
+    },
+    {
+     "eic": "32W001100100089X",
+     "name": "TPP_RUSE_G4",
+     "type": "B05",
+     "mw": 0.0,
+     "parts": [
+      "32W001100100024O"
+     ]
+    },
+    {
+     "eic": "32W001100100153D",
+     "name": "TPP_MI2_G1",
+     "type": "B02",
+     "mw": 1298.0,
+     "parts": [
+      "32W001100100041O",
+      "32W001100100042M",
+      "32W001100100043K",
+      "32W001100100044I",
+      "32W001100100045G",
+      "32W001100100046E",
+      "32W001100100047C",
+      "32W001100100048A"
+     ]
+    },
+    {
+     "eic": "32W001100100217D",
+     "name": "NPP KZL G9",
+     "type": "B14",
+     "mw": 2080.0,
+     "parts": [
+      "32W001100100016N",
+      "32W001100100017L"
+     ]
+    },
+    {
+     "eic": "32W001100100218B",
+     "name": "TPP_BOBOV_DOL_G1",
+     "type": "B02",
+     "mw": 306.0,
+     "parts": [
+      "32W001100100007O",
+      "32W001100100008M",
+      "32W001100100009K"
+     ]
+    },
+    {
+     "eic": "32W001100100294W",
+     "name": "TPP_GALABOVO_G1",
+     "type": "B02",
+     "mw": 638.0,
+     "parts": [
+      "32W0011001000935",
+      "32W0011001000943"
+     ]
+    }
+   ]
+  },
+  "CH": {
+   "areas": [
+    "10YCH-SWISSGRIDZ"
+   ],
+   "units": [
+    {
+     "eic": "12W-0000000017-E",
+     "name": "Beznau 1",
+     "type": "B14",
+     "mw": 725.8,
+     "parts": [
+      "12W-0000000431-4",
+      "12W-0000000433-Z"
+     ]
+    },
+    {
+     "eic": "12W-0000000018-B",
+     "name": "Tierfehd - Limmern G1",
+     "type": "B10",
+     "mw": 602.8,
+     "parts": [
+      "12W-0000000441-0",
+      "12W-0000000442-Y",
+      "12W-0000000443-V",
+      "12W-0000000444-S",
+      "12W-0000000687-U",
+      "12W-0000000688-R",
+      "12W-0000000689-O",
+      "12W-0000000690-A"
+     ]
+    },
+    {
+     "eic": "12W-0000000026-D",
+     "name": "Centrale di Olivone",
+     "type": "B12",
+     "mw": 362.0,
+     "parts": [
+      "12W-0000000716-J",
+      "12W-0000000922-H"
+     ]
+    },
+    {
+     "eic": "12W-0000000031-O",
+     "name": "KWO Produktion",
+     "type": "B10",
+     "mw": 2.0,
+     "parts": [
+      "12W-0000000926-5"
+     ]
+    },
+    {
+     "eic": "12W-0000000052-D",
+     "name": "Leibstadt",
+     "type": "B14",
+     "mw": 1232.1,
+     "parts": [
+      "12W-0000000438-K"
+     ]
+    },
+    {
+     "eic": "12W-0000000056-1",
+     "name": "Kernkraftwerk Gösgen",
+     "type": "B14",
+     "mw": 1011.0,
+     "parts": [
+      "12W-0000000945-0"
+     ]
+    },
+    {
+     "eic": "12W-0000000060-F",
+     "name": "Usine de Vallorcine",
+     "type": "B12",
+     "mw": 404.0,
+     "parts": [
+      "12W-0000000719-A",
+      "12W-0000000720-X"
+     ]
+    },
+    {
+     "eic": "12W-0000000064-3",
+     "name": "AET Leventina",
+     "type": "B12",
+     "mw": 58.7,
+     "parts": [
+      "12W-0000000950-B"
+     ]
+    },
+    {
+     "eic": "12W-0000000065-0",
+     "name": "Verzasca",
+     "type": "B12",
+     "mw": 67.8,
+     "parts": [
+      "12W-0000000951-8"
+     ]
+    },
+    {
+     "eic": "12W-0000000080-7",
+     "name": "KW Rheinfelden CH",
+     "type": "B11",
+     "mw": 37.6,
+     "parts": [
+      "12W-0000000164-Z"
+     ]
+    },
+    {
+     "eic": "12W-0000000105-J",
+     "name": "Kraftwerk Bitsch",
+     "type": "B12",
+     "mw": 0.0,
+     "parts": [
+      "12W-0000000007-I"
+     ]
+    },
+    {
+     "eic": "12W-0000000116-C",
+     "name": "Usine de Veytaux",
+     "type": "B10",
+     "mw": 336.0,
+     "parts": [
+      "12W-0000000722-R"
+     ]
+    },
+    {
+     "eic": "12W-0000000241-A",
+     "name": "Usine de Nant de Drance",
+     "type": "B10",
+     "mw": 312.0,
+     "parts": [
+      "12W-0000000839-Y"
+     ]
+    },
+    {
+     "eic": "12W-0000000797-L",
+     "name": "Kraftwerk Lötschen",
+     "type": "B11",
+     "mw": 6.7,
+     "parts": [
+      "12W-0000000072-5"
+     ]
+    },
+    {
+     "eic": "12W-0000000846-2",
+     "name": "Göschenen",
+     "type": "B12",
+     "mw": 61.2,
+     "parts": [
+      "12W-0000000207-8"
+     ]
+    },
+    {
+     "eic": "12W-0000000849-U",
+     "name": "Amsteg",
+     "type": "B11",
+     "mw": 63.8,
+     "parts": [
+      "12W-0000000209-2"
+     ]
+    },
+    {
+     "eic": "12W-0000000850-G",
+     "name": "Etzel",
+     "type": "B10",
+     "mw": 62.7,
+     "parts": [
+      "12W-0000000210-P"
+     ]
+    },
+    {
+     "eic": "12W-0000000851-D",
+     "name": "Châtelard",
+     "type": "B10",
+     "mw": 17.8,
+     "parts": [
+      "12W-0000000211-M"
+     ]
+    },
+    {
+     "eic": "12W-0000000902-P",
+     "name": "Usine de Fionnay",
+     "type": "B12",
+     "mw": 411.0,
+     "parts": [
+      "12W-0000000723-O",
+      "12W-0000000724-L",
+      "12W-0000000725-I"
+     ]
+    },
+    {
+     "eic": "12W-0000000917-6",
+     "name": "Mapragg - Gigerwald G1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "12W-0000000456-I",
+      "12W-0000000457-F",
+      "12W-0000000458-C"
+     ]
+    },
+    {
+     "eic": "12W-0000000925-8",
+     "name": "Centrale di Robiei",
+     "type": "B12",
+     "mw": 0.0,
+     "parts": [
+      "12W-0000000730-T",
+      "12W-0000000731-Q",
+      "12W-0000000733-K",
+      "12W-0000000734-H"
+     ]
+    },
+    {
+     "eic": "12W-0000001565-6",
+     "name": "Bergell Turbinen",
+     "type": "B10",
+     "mw": 149.0,
+     "parts": [
+      "12W-0000001570-H"
+     ]
+    },
+    {
+     "eic": "12W-0000001567-0",
+     "name": "Mittelbünden Turbinen",
+     "type": "B12",
+     "mw": 128.0,
+     "parts": [
+      "12W-0000001572-B"
+     ]
+    },
+    {
+     "eic": "12W-0000001614-O",
+     "name": "Wägital Turbinen",
+     "type": "B10",
+     "mw": 48.0,
+     "parts": [
+      "12W-0000001616-I"
+     ]
+    },
+    {
+     "eic": "12W-0000001690-4",
+     "name": "KW Laufenburg CH",
+     "type": "B11",
+     "mw": 74.0,
+     "parts": [
+      "12W-0000001719-4"
+     ]
+    }
+   ]
+  },
+  "CZ": {
+   "areas": [
+    "10YCZ-CEPS-----N"
+   ],
+   "units": [
+    {
+     "eic": "27W-PU-ECHV----Y",
+     "name": "ECHV_G1____",
+     "type": "B02",
+     "mw": 476.7,
+     "parts": [
+      "27W-GU-ECHVG1--C",
+      "27W-GU-ECHVG2--8",
+      "27W-GU-ECHVG3--4",
+      "27W-GU-ECHVG4--0"
+     ]
+    },
+    {
+     "eic": "27W-PU-EDAL----O",
+     "name": "EDAL_G1____",
+     "type": "B10",
+     "mw": 68.8,
+     "parts": [
+      "27W-GU-EDALG1--2",
+      "27W-GU-EDALG2--Z",
+      "27W-GU-EDALG3--V",
+      "27W-GU-EDALG4--R"
+     ]
+    },
+    {
+     "eic": "27W-PU-EDET----M",
+     "name": "EDET_G2____",
+     "type": "B05",
+     "mw": 318.0,
+     "parts": [
+      "27W-GU-EDETG2--X",
+      "27W-GU-EDETG3--T",
+      "27W-GU-EDETG4--P"
+     ]
+    },
+    {
+     "eic": "27W-PU-EDST----Z",
+     "name": "EDST_G1____",
+     "type": "B10",
+     "mw": 48.9,
+     "parts": [
+      "27W-GU-EDSTG1--D",
+      "27W-GU-EDSTG2--9"
+     ]
+    },
+    {
+     "eic": "27W-PU-EDUK----1",
+     "name": "EDUK_B1____",
+     "type": "B14",
+     "mw": 1444.6,
+     "parts": [
+      "27W-GU-EDUKB1--4",
+      "27W-GU-EDUKB2--0",
+      "27W-GU-EDUKB3--X",
+      "27W-GU-EDUKB4--T"
+     ]
+    },
+    {
+     "eic": "27W-PU-EECK----8",
+     "name": "EECK_G4____",
+     "type": "B02",
+     "mw": 327.1,
+     "parts": [
+      "27W-GU-EECKG4--B",
+      "27W-GU-EECKG5--7",
+      "27WGU-EECKG7---A"
+     ]
+    },
+    {
+     "eic": "27W-PU-ELED----H",
+     "name": "ELED_G6____",
+     "type": "B02",
+     "mw": 537.4,
+     "parts": [
+      "27W-GU-ELEDG6--C"
+     ]
+    },
+    {
+     "eic": "27W-PU-EPC1----Y",
+     "name": "EPC1_G2____",
+     "type": "B02",
+     "mw": 943.1,
+     "parts": [
+      "27W-GU-EPC1G2--8",
+      "27W-GU-EPC1G3--4",
+      "27W-GU-EPC1G4--0",
+      "27W-GU-EPC1G5--X",
+      "27W-GU-EPC1G6--T"
+     ]
+    },
+    {
+     "eic": "27W-PU-EPC2----S",
+     "name": "EPC2_B21___",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "27W-GU-EPC2B21-L"
+     ]
+    },
+    {
+     "eic": "27W-PU-EPR2----Y",
+     "name": "EPR2_G23___",
+     "type": "B02",
+     "mw": 592.6,
+     "parts": [
+      "27W-GU-EPR2G23-X",
+      "27W-GU-EPR2G24-U",
+      "27W-GU-EPR2G25-R"
+     ]
+    },
+    {
+     "eic": "27W-PU-EPVR----4",
+     "name": "EPVR.B1",
+     "type": "B04",
+     "mw": 5.7,
+     "parts": [
+      "27W-GU-EPVR-B1-L",
+      "27W-GU-EPVR-B2-I"
+     ]
+    },
+    {
+     "eic": "27W-PU-ETEM----A",
+     "name": "ETEM_G1____",
+     "type": "B14",
+     "mw": 2084.0,
+     "parts": [
+      "27W-GU-ETEMG1--P",
+      "27W-GU-ETEMG2--L"
+     ]
+    },
+    {
+     "eic": "27W-PU-ETI2----S",
+     "name": "ETI2.G6",
+     "type": "B02",
+     "mw": 80.0,
+     "parts": [
+      "27W-GU-ETI2-G6-A"
+     ]
+    },
+    {
+     "eic": "27W-PU-ETU2----I",
+     "name": "ETU2_G21___",
+     "type": "B02",
+     "mw": 702.8,
+     "parts": [
+      "27W-GU-ETU2G21-N",
+      "27W-GU-ETU2G22-K",
+      "27W-GU-ETU2G23-H",
+      "27W-GU-ETU2G24-E"
+     ]
+    }
+   ]
+  },
+  "DE": {
+   "areas": [
+    "10YDE-VE-------2",
+    "10YDE-RWENET---I",
+    "10YDE-EON------1",
+    "10YDE-ENBW-----N"
+   ],
+   "units": [
+    {
+     "eic": "11W0-0000-0100-I",
+     "name": "GuD Marzahn",
+     "type": "B04",
+     "mw": 93.5,
+     "parts": [
+      "11W0-0000-0104-6"
+     ]
+    },
+    {
+     "eic": "11W0-0000-0340-T",
+     "name": "HKW Nord GuD Nord",
+     "type": "B04",
+     "mw": 169.7,
+     "parts": [
+      "11WD8LEIP5X----6"
+     ]
+    },
+    {
+     "eic": "11WD8BOXB1L----J",
+     "name": "KW Boxberg Block N",
+     "type": "B02",
+     "mw": 1372.2,
+     "parts": [
+      "11WD8BOXB1L---N8",
+      "11WD8BOXB1L---P4",
+      "11WD8BOXB1L---Q2",
+      "11WD8BOXB1L---R0"
+     ]
+    },
+    {
+     "eic": "11WD8DRES5X---PZ",
+     "name": "GTHKW Nossener Bruecke",
+     "type": "B04",
+     "mw": 262.7,
+     "parts": [
+      "11WD8DRES5X----D"
+     ]
+    },
+    {
+     "eic": "11WD8GOLD1H----6",
+     "name": "PSW Goldisthal PSS A",
+     "type": "B10",
+     "mw": 530.8,
+     "parts": [
+      "11WD8GOLD1H---AL",
+      "11WD8GOLD1H---BJ",
+      "11WD8GOLD1H---CH",
+      "11WD8GOLD1H---DF"
+     ]
+    },
+    {
+     "eic": "11WD8JAEN1L----Z",
+     "name": "KW Jänschwalde Block A",
+     "type": "B02",
+     "mw": 1344.2,
+     "parts": [
+      "11WD8JAEN1L---AD",
+      "11WD8JAEN1L---BB",
+      "11WD8JAEN1L---C9",
+      "11WD8JAEN1L---D7"
+     ]
+    },
+    {
+     "eic": "11WD8KLIN5X----0",
+     "name": "HKW Klingenberg 1-3",
+     "type": "B04",
+     "mw": 146.0,
+     "parts": [
+      "11WD8KLIN5G--13E"
+     ]
+    },
+    {
+     "eic": "11WD8LICH5G----1",
+     "name": "Lichterfelde GUD",
+     "type": "B04",
+     "mw": 199.8,
+     "parts": [
+      "11W0-0000-0103-9"
+     ]
+    },
+    {
+     "eic": "11WD8LIPD1L----P",
+     "name": "KW Lippendorf Block R",
+     "type": "B02",
+     "mw": 1575.8,
+     "parts": [
+      "11WD8LIPD1L---R6",
+      "11WD8LIPD1L---S4"
+     ]
+    },
+    {
+     "eic": "11WD8MARK1H----7",
+     "name": "PSW Markersbach PSS A",
+     "type": "B10",
+     "mw": 248.2,
+     "parts": [
+      "11WD8MARK1H---AM",
+      "11WD8MARK1H---BK",
+      "11WD8MARK1H---CI",
+      "11WD8MARK1H---DG",
+      "11WD8MARK1H---EE",
+      "11WD8MARK1H---FC"
+     ]
+    },
+    {
+     "eic": "11WD8MITT5G----0",
+     "name": "HKW Mitte GUD",
+     "type": "B04",
+     "mw": 247.8,
+     "parts": [
+      "11WD8MITT5GGUD-8"
+     ]
+    },
+    {
+     "eic": "11WD8REUW1C----4",
+     "name": "HKW Reuter West Block D",
+     "type": "B05",
+     "mw": 215.5,
+     "parts": [
+      "11WD8REUW1C---DD",
+      "11WD8REUW1C---EB"
+     ]
+    },
+    {
+     "eic": "11WD8ROST1C---P5",
+     "name": "Kraftwerk Rostock",
+     "type": "B05",
+     "mw": 267.9,
+     "parts": [
+      "11WD8ROST1C----K"
+     ]
+    },
+    {
+     "eic": "11WD8SCHK1L----O",
+     "name": "Schkopau A",
+     "type": "B02",
+     "mw": 685.8,
+     "parts": [
+      "11WD8SCHK1L---A2",
+      "11WD8SCHK1L---B0"
+     ]
+    },
+    {
+     "eic": "11WD8SCHW5X----D",
+     "name": "IKS Schwedt SE1 Block 1",
+     "type": "B06",
+     "mw": 156.0,
+     "parts": [
+      "11WD8SCHW5X---19",
+      "11WD8SCHW5X---27"
+     ]
+    },
+    {
+     "eic": "11WD8SWPU1L----5",
+     "name": "KW Schwarze Pumpe Block A",
+     "type": "B02",
+     "mw": 1245.8,
+     "parts": [
+      "11WD8SWPU1L---AK",
+      "11WD8SWPU1L---BI"
+     ]
+    },
+    {
+     "eic": "11WD8TIEF5X----V",
+     "name": "HKW Tiefstack Block 2",
+     "type": "B05",
+     "mw": 149.8,
+     "parts": [
+      "11WD8TIEF5C----9",
+      "11WD8TIEF5G-GUDI"
+     ]
+    },
+    {
+     "eic": "11WD8WED15C----Q",
+     "name": "HKW Wedel Block 1",
+     "type": "B05",
+     "mw": 126.8,
+     "parts": [
+      "11WD8WED15C---1M",
+      "11WD8WED15C---2K"
+     ]
+    },
+    {
+     "eic": "11W0-0000-0043-Z",
+     "name": "Datteln 4",
+     "type": "B05",
+     "mw": 0.0,
+     "parts": [
+      "11W0-0000-0044-W"
+     ]
+    },
+    {
+     "eic": "11W0-0000-0145-O",
+     "name": "Radag",
+     "type": "B11",
+     "mw": 82.6,
+     "parts": [
+      "11W0-0000-0146-L"
+     ]
+    },
+    {
+     "eic": "11W0-0000-0696-D",
+     "name": "KMW_KW2GT",
+     "type": "B04",
+     "mw": 436.0,
+     "parts": [
+      "11W0-0000-0196-1",
+      "11W0-0000-0197-Z",
+      "11W0-0000-0200-D",
+      "11WD7BISC5GKW3-T"
+     ]
+    },
+    {
+     "eic": "11WD4GKM-2CD7--7",
+     "name": "GKM AG Amprion",
+     "type": "B05",
+     "mw": 286.8,
+     "parts": [
+      "11W0-0000-0006-5"
+     ]
+    },
+    {
+     "eic": "11WD4SWSW5HD7--F",
+     "name": "Säckingen",
+     "type": "B10",
+     "mw": 199.7,
+     "parts": [
+      "11WD4SAEK2HD7--Y",
+      "11WD4WEHR1HD7--M",
+      "11WD4WITZ5H-SD76"
+     ]
+    },
+    {
+     "eic": "11WD72VIA2H-KW-0",
+     "name": "Vianden 10",
+     "type": "B10",
+     "mw": 212.9,
+     "parts": [
+      "11WD72VIA2H--10R",
+      "11WD72VIA2H--11P",
+      "11WD7VIAN2H-1-1O",
+      "11WD7VIAN2H-1-2M",
+      "11WD7VIAN2H-1-3K",
+      "11WD7VIAN2H-1-4I",
+      "11WD7VIAN2H-2-5C",
+      "11WD7VIAN2H-2-6A",
+      "11WD7VIAN2H-2-78",
+      "11WD7VIAN2H-2-86",
+      "11WD7VIAN2H-2-94"
+     ]
+    },
+    {
+     "eic": "11WD7BEEC5XHAKW5",
+     "name": "HAMBORN-4",
+     "type": "B03",
+     "mw": 190.2,
+     "parts": [
+      "11WD7BEEC5XHAM4I",
+      "11WD7BEEC5XHAM5G"
+     ]
+    },
+    {
+     "eic": "11WD7BEEC5XRUKWN",
+     "name": "RUHRORT-4",
+     "type": "B03",
+     "mw": 0.0,
+     "parts": [
+      "11WD7BEEC5XRUH4E"
+     ]
+    },
+    {
+     "eic": "11WD7BERG1S--KWB",
+     "name": "BERGKAMEN_A",
+     "type": "B05",
+     "mw": 0.0,
+     "parts": [
+      "11WD7BERG1S--A-X"
+     ]
+    },
+    {
+     "eic": "11WD7BOLA--KWNIK",
+     "name": "DT HKW-Niehl-2",
+     "type": "B04",
+     "mw": 459.0,
+     "parts": [
+      "11WD7BOLA5GDTN2T",
+      "11WD7BOLA5GGTN2E",
+      "11WD7OPLA1G--318"
+     ]
+    },
+    {
+     "eic": "11WD7BRAU5G-KW-N",
+     "name": "GuD Dormagen",
+     "type": "B04",
+     "mw": 250.4,
+     "parts": [
+      "11WD7BRAU5G-GUDH"
+     ]
+    },
+    {
+     "eic": "11WD7EMSL-G-KW-T",
+     "name": "Emsland B",
+     "type": "B04",
+     "mw": 1236.2,
+     "parts": [
+      "11WD7EMSL-G-BLB0",
+      "11WD7EMSL-G-BLCZ",
+      "11WD7EMSL1G-GUD9"
+     ]
+    },
+    {
+     "eic": "11WD7FUEH5GMEKW7",
+     "name": "GuD-Anlage-HKW-Merkenich",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "11WD7FUEH5GMERKA"
+     ]
+    },
+    {
+     "eic": "11WD7GARE5XHEKWQ",
+     "name": "HERDECKE_H6",
+     "type": "B04",
+     "mw": 416.2,
+     "parts": [
+      "11WD7HERD2G-H6-X"
+     ]
+    },
+    {
+     "eic": "11WD7GERS-X-KW-C",
+     "name": "Gersteinwerk I",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "11WD7GERS-G-BLIY"
+     ]
+    },
+    {
+     "eic": "11WD7HERN2S--KWU",
+     "name": "GUD_HERNE_6",
+     "type": "B04",
+     "mw": 555.5,
+     "parts": [
+      "11W0-0000-0245-J",
+      "11WD7HERN2S--4-X"
+     ]
+    },
+    {
+     "eic": "11WD7HUCK2G--KWR",
+     "name": "Huckingen A",
+     "type": "B03",
+     "mw": 157.3,
+     "parts": [
+      "11WD7HUCK2G--A-C",
+      "11WD7HUCK2G--B-9"
+     ]
+    },
+    {
+     "eic": "11WD7KOEP2P--KWG",
+     "name": "Koepchenwerk",
+     "type": "B10",
+     "mw": 27.0,
+     "parts": [
+      "11WD7KOEP2P--5-G"
+     ]
+    },
+    {
+     "eic": "11WD7KWHU----KW9",
+     "name": "KW Lünen Block 1",
+     "type": "B05",
+     "mw": 724.7,
+     "parts": [
+      "11WD7STUM1SBL10G"
+     ]
+    },
+    {
+     "eic": "11WD7KWKN----KW1",
+     "name": "Knapsack 1",
+     "type": "B04",
+     "mw": 876.1,
+     "parts": [
+      "11WD7KWKN-KW-EEN"
+     ]
+    },
+    {
+     "eic": "11WD7KWKN1GBL203",
+     "name": "Knapsack 2",
+     "type": "B04",
+     "mw": 437.1,
+     "parts": [
+      "11WD7KWKN-20-EEW"
+     ]
+    },
+    {
+     "eic": "11WD7LUDW2GA800M",
+     "name": "Block GT 11",
+     "type": "B04",
+     "mw": 225.3,
+     "parts": [
+      "11WD7LUDW2GGT11E",
+      "11WD7LUDW2GGT12C"
+     ]
+    },
+    {
+     "eic": "11WD7LUDW5GSUEDE",
+     "name": "Block GT1",
+     "type": "B04",
+     "mw": 331.8,
+     "parts": [
+      "11WD7LUDW5GSDG1Q",
+      "11WD7LUDW5GSDG2O"
+     ]
+    },
+    {
+     "eic": "11WD7MITB1C----N",
+     "name": "BEXBACH_A_GESAMT",
+     "type": "B05",
+     "mw": 382.8,
+     "parts": [
+      "11WD7MITB1C---A1"
+     ]
+    },
+    {
+     "eic": "11WD7NEUR-B-KW-B",
+     "name": "Neurath F",
+     "type": "B02",
+     "mw": 721.8,
+     "parts": [
+      "11WD7NEUR1B--F-L",
+      "11WD7NEUR1B--G-I"
+     ]
+    },
+    {
+     "eic": "11WD7NIED-B-KW-5",
+     "name": "Niederaußem G",
+     "type": "B02",
+     "mw": 1858.2,
+     "parts": [
+      "11WD7NIED1B--G-C",
+      "11WD7NIED1B--H-9",
+      "11WD7NIED1B--K-0"
+     ]
+    },
+    {
+     "eic": "11WD7NORF5G--KWG",
+     "name": "Block AGuD",
+     "type": "B04",
+     "mw": 635.2,
+     "parts": [
+      "11WD7NORF5GAGUDC",
+      "11WD7NORF5GGUDFA"
+     ]
+    },
+    {
+     "eic": "11WD7RHAU5G-3--3",
+     "name": "HKW IIIB",
+     "type": "B04",
+     "mw": 223.0,
+     "parts": [
+      "11WD7RHAU5GKW3B5"
+     ]
+    },
+    {
+     "eic": "11WD7SCHO-S--KWW",
+     "name": "Scholven 1",
+     "type": "B04",
+     "mw": 124.5,
+     "parts": [
+      "11W0-0000-0467-W"
+     ]
+    },
+    {
+     "eic": "11WD7STUM----KW9",
+     "name": "KW Hamm-Uentrop Block 10",
+     "type": "B04",
+     "mw": 828.2,
+     "parts": [
+      "11WD7KWHU1GBL10E",
+      "11WD7KWHU1GBL20B"
+     ]
+    },
+    {
+     "eic": "11WD7UCHT5XROSOK",
+     "name": "DESBR____CHP____",
+     "type": "B04",
+     "mw": 75.8,
+     "parts": [
+      "11WD7UCHT5XROEMT"
+     ]
+    },
+    {
+     "eic": "11WD7VOLK5S--KWI",
+     "name": "VOELKLINGEN_HKV",
+     "type": "B05",
+     "mw": 0.0,
+     "parts": [
+      "11WD7VOLK5S-HKVM",
+      "11WD7VOLK5S-MKV2"
+     ]
+    },
+    {
+     "eic": "11WD7WALS1S--KW0",
+     "name": "WALSUM_10",
+     "type": "B05",
+     "mw": 685.2,
+     "parts": [
+      "11WD7WALS1S--10A"
+     ]
+    },
+    {
+     "eic": "11WD7WEIH2S--KWV",
+     "name": "WEIHER_C",
+     "type": "B05",
+     "mw": 0.0,
+     "parts": [
+      "11WD7WEIH2S--C-A"
+     ]
+    },
+    {
+     "eic": "11WD7WEIS-B-KW-C",
+     "name": "Weisweiler G",
+     "type": "B02",
+     "mw": 1271.4,
+     "parts": [
+      "11WD7WEIS1B--G-J",
+      "11WD7WEIS1B--H-G",
+      "11WD7WEIS5GVGTGU",
+      "11WD7WEIS5GVGTHS"
+     ]
+    },
+    {
+     "eic": "11W0-0000-0162-P",
+     "name": "Küstenkraftwerk",
+     "type": "B04",
+     "mw": 182.7,
+     "parts": [
+      "11W0-0000-0163-M"
+     ]
+    },
+    {
+     "eic": "11W0-0000-0667-M",
+     "name": "Gasturbine 40",
+     "type": "B04",
+     "mw": 78.3,
+     "parts": [
+      "11W0-0000-0669-G"
+     ]
+    },
+    {
+     "eic": "11W0-0000-0668-J",
+     "name": "Gasturbine 50",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "11W0-0000-0670-2"
+     ]
+    },
+    {
+     "eic": "11WD2BHAS000271O",
+     "name": "KW Hastedt BHKW",
+     "type": "B04",
+     "mw": 81.0,
+     "parts": [
+      "11W0-0000-0494-T"
+     ]
+    },
+    {
+     "eic": "11WD2BMIT0002731",
+     "name": "KW Mittelsbueren Block 4",
+     "type": "B04",
+     "mw": 143.0,
+     "parts": [
+      "11WD2BRE4000115K"
+     ]
+    },
+    {
+     "eic": "11WD2BUKW000310A",
+     "name": "GuD-Block",
+     "type": "B04",
+     "mw": 33.5,
+     "parts": [
+      "11WD2BURG000145R"
+     ]
+    },
+    {
+     "eic": "11WD2FFW-000203E",
+     "name": "HKW West Block 4",
+     "type": "B04",
+     "mw": 53.3,
+     "parts": [
+      "11WD2FFW4000020J"
+     ]
+    },
+    {
+     "eic": "11WD2GEBE000177K",
+     "name": "Franken I Block 2 + GT",
+     "type": "B04",
+     "mw": 681.9,
+     "parts": [
+      "11WD2GE2D000056A",
+      "11WD2GEB1000055R"
+     ]
+    },
+    {
+     "eic": "11WD2GKBB000334V",
+     "name": "GKB Mittelsbueren GuD",
+     "type": "B04",
+     "mw": 149.0,
+     "parts": [
+      "11WD2GKBK000335V"
+     ]
+    },
+    {
+     "eic": "11WD2HANN5C----0",
+     "name": "Block 1",
+     "type": "B05",
+     "mw": 193.5,
+     "parts": [
+      "11WD2HANN5C---1X",
+      "11WD2HANN5C---2V"
+     ]
+    },
+    {
+     "eic": "11WD2HERR5GKW--1",
+     "name": "Block B",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "11WD2HERR5G----G"
+     ]
+    },
+    {
+     "eic": "11WD2HUKW000298J",
+     "name": "Huntorf GT",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "11WD2HUNT0000644"
+     ]
+    },
+    {
+     "eic": "11WD2IRSC000179N",
+     "name": "Irsching 4",
+     "type": "B04",
+     "mw": 1424.8,
+     "parts": [
+      "11WD2IRG4000061X",
+      "11WD2IRG5000062N"
+     ]
+    },
+    {
+     "eic": "11WD2KUET000160J",
+     "name": "Maschine 1",
+     "type": "B10",
+     "mw": 15.6,
+     "parts": [
+      "11WD2KUM1000161L",
+      "11WD2KUM2000162B"
+     ]
+    },
+    {
+     "eic": "11WD2MEHR2CSWH-O",
+     "name": "Block 3",
+     "type": "B05",
+     "mw": 0.0,
+     "parts": [
+      "11WD2MEHR2CSWHCZ"
+     ]
+    },
+    {
+     "eic": "11WD2NO2K000308Z",
+     "name": "Nord 2 T20",
+     "type": "B04",
+     "mw": 183.2,
+     "parts": [
+      "11WD2NOR20001055"
+     ]
+    },
+    {
+     "eic": "11WD2SILT000157E",
+     "name": "Maschine 1",
+     "type": "B12",
+     "mw": 148.0,
+     "parts": [
+      "11WD2SIM10001585",
+      "11WD2SIM2000159W"
+     ]
+    },
+    {
+     "eic": "11WD2SUE1000099L",
+     "name": "Sued GuD1 GT2",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "11WD2S1G2000097U",
+      "11WD2S1G3000098K"
+     ]
+    },
+    {
+     "eic": "11WD2SUE2000103B",
+     "name": "Sued GuD2 DT60",
+     "type": "B04",
+     "mw": 399.6,
+     "parts": [
+      "11WD2S260000100F",
+      "11WD2S2610001015",
+      "11WD2S262000102W"
+     ]
+    },
+    {
+     "eic": "11WD2W2--0002757",
+     "name": "Waldeck II M5",
+     "type": "B10",
+     "mw": 157.9,
+     "parts": [
+      "11WD2W2M1000073I",
+      "11WD2W2M20000748"
+     ]
+    },
+    {
+     "eic": "11WD2WBWK000317H",
+     "name": "HKW West Block 1",
+     "type": "B05",
+     "mw": 0.0,
+     "parts": [
+      "11WD2WBW1000039N",
+      "11WD2WBW2000040U"
+     ]
+    },
+    {
+     "eic": "11WD2WILK000286V",
+     "name": "DEWHV______1_____",
+     "type": "B05",
+     "mw": 0.0,
+     "parts": [
+      "11WD2WILH0001255"
+     ]
+    },
+    {
+     "eic": "11WD2ZOLL0002880",
+     "name": "DEZOLLI____1_____",
+     "type": "B05",
+     "mw": 270.9,
+     "parts": [
+      "11WD2ZOL50001274"
+     ]
+    },
+    {
+     "eic": "11WD43VIWXHOILLM",
+     "name": "Obervermuntwerk 2 M1",
+     "type": "B10",
+     "mw": 373.2,
+     "parts": [
+      "11W0-0000-0109-S",
+      "11W0-0000-0110-E",
+      "11WD43KOP2HM1--L",
+      "11WD43KOP2HM2--H",
+      "11WD43KOP2HM3--D",
+      "11WD43ROW2H----I"
+     ]
+    },
+    {
+     "eic": "11WD4AL1KU1-S--E",
+     "name": "HKW Altbach/Deizisau 2",
+     "type": "B05",
+     "mw": 0.0,
+     "parts": [
+      "11WD4AL1U1C2---O"
+     ]
+    },
+    {
+     "eic": "11WD4DAXLA-S---T",
+     "name": "RDK 8",
+     "type": "B05",
+     "mw": 788.5,
+     "parts": [
+      "11WD4RDK81C8---3"
+     ]
+    },
+    {
+     "eic": "11WD4GKM-2CD4--J",
+     "name": "GKM AG TNG",
+     "type": "B05",
+     "mw": 358.8,
+     "parts": [
+      "11W0-0000-0005-8"
+     ]
+    },
+    {
+     "eic": "11WD4GKM-XCD0--3",
+     "name": "GKM AG DBEnergie",
+     "type": "B05",
+     "mw": 104.7,
+     "parts": [
+      "11W0-0000-0004-B"
+     ]
+    },
+    {
+     "eic": "11WD4HLBR1CS---A",
+     "name": "HKW Heilbronn Block 7",
+     "type": "B05",
+     "mw": 653.3,
+     "parts": [
+      "11WD4HLBR1C7---4"
+     ]
+    },
+    {
+     "eic": "11WD4IFFE5G----Z",
+     "name": "Rheinkraftwerk Iffezheim",
+     "type": "B11",
+     "mw": 119.2,
+     "parts": [
+      "11WD4IFFE5H----T"
+     ]
+    },
+    {
+     "eic": "11WD4KWLFB5-S--M",
+     "name": "KW Laufenburg",
+     "type": "B11",
+     "mw": 9.3,
+     "parts": [
+      "11WD4KWLFB5M1107"
+     ]
+    },
+    {
+     "eic": "11WD4KWRHF5-S--Z",
+     "name": "KW Rheinfelden DE",
+     "type": "B11",
+     "mw": 37.8,
+     "parts": [
+      "11WD4KWRHF5M1-4I"
+     ]
+    },
+    {
+     "eic": "11WD4MUST5G----B",
+     "name": "Stuttgart-Münster DT",
+     "type": "B17",
+     "mw": 57.3,
+     "parts": [
+      "11WD4MUST5X-DT-M"
+     ]
+    },
+    {
+     "eic": "11WD4SAEK2HS---S",
+     "name": "Kraftwerk Säckingen",
+     "type": "B10",
+     "mw": 12.5,
+     "parts": [
+      "11WD4SAEK2HD4--9"
+     ]
+    },
+    {
+     "eic": "11WD4SWSW5HD4--R",
+     "name": "Kraftwerk Witznau",
+     "type": "B10",
+     "mw": 67.0,
+     "parts": [
+      "11WD4WITZ5H-SD4C"
+     ]
+    },
+    {
+     "eic": "11WD4WALK5G----E",
+     "name": "Kraftwerk Wahlheim GT D",
+     "type": "B06",
+     "mw": 17.5,
+     "parts": [
+      "11WD4WALK5OGTD-F"
+     ]
+    },
+    {
+     "eic": "11WD4WEHR1HS---G",
+     "name": "Kraftwerk Wehr",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "11WD4WEHR1HD4--Y"
+     ]
+    }
+   ]
+  },
+  "DK": {
+   "areas": [
+    "10Y1001A1001A796"
+   ],
+   "units": [
+    {
+     "eic": "45V0000000000083",
+     "name": "Kyndbyvaerket 21",
+     "type": "B06",
+     "mw": 0.6,
+     "parts": [
+      "45W000000000026O",
+      "45W000000000027M"
+     ]
+    },
+    {
+     "eic": "45V0000000000091",
+     "name": "Avedoerevaerket 1",
+     "type": "B04",
+     "mw": 419.3,
+     "parts": [
+      "45W000000000029I",
+      "45W000000000030X"
+     ]
+    },
+    {
+     "eic": "45V000000000010G",
+     "name": "Skaerbaekvaerket 3",
+     "type": "B04",
+     "mw": 0.2,
+     "parts": [
+      "45W000000000031V"
+     ]
+    },
+    {
+     "eic": "45V000000000013A",
+     "name": "Fynsvaerket 7",
+     "type": "B05",
+     "mw": 0.2,
+     "parts": [
+      "45W000000000035N"
+     ]
+    },
+    {
+     "eic": "45V0000000000148",
+     "name": "Studstrupvaerket 3",
+     "type": "B05",
+     "mw": 129.3,
+     "parts": [
+      "45W000000000036L"
+     ]
+    },
+    {
+     "eic": "45V0000000000156",
+     "name": "Nordjyllandsvaerket 3",
+     "type": "B05",
+     "mw": 2.7,
+     "parts": [
+      "45W000000000038H"
+     ]
+    },
+    {
+     "eic": "45V0000000000164",
+     "name": "Esbjergvaerket 3",
+     "type": "B05",
+     "mw": 0.9,
+     "parts": [
+      "45W000000000040U"
+     ]
+    },
+    {
+     "eic": "45V000000000020D",
+     "name": "Anholt",
+     "type": "B18",
+     "mw": 388.7,
+     "parts": [
+      "45W000000000046I"
+     ]
+    },
+    {
+     "eic": "45V000000000021B",
+     "name": "Horns Rev A",
+     "type": "B18",
+     "mw": 150.8,
+     "parts": [
+      "45W000000000047G"
+     ]
+    },
+    {
+     "eic": "45V0000000000229",
+     "name": "Horns Rev B",
+     "type": "B18",
+     "mw": 181.1,
+     "parts": [
+      "45W000000000048E"
+     ]
+    },
+    {
+     "eic": "45W000000000013X",
+     "name": "Amagervaerket 4",
+     "type": "B01",
+     "mw": 151.4,
+     "parts": [
+      "45W000000000113T"
+     ]
+    },
+    {
+     "eic": "45W000000000015T",
+     "name": "Studstrupvaerket 4",
+     "type": "B05",
+     "mw": 0.3,
+     "parts": [
+      "45W000000000037J"
+     ]
+    },
+    {
+     "eic": "45W000000000019L",
+     "name": "Roedsand 1",
+     "type": "B18",
+     "mw": 130.5,
+     "parts": [
+      "45W000000000044M"
+     ]
+    },
+    {
+     "eic": "45W000000000021Y",
+     "name": "Roedsand 2",
+     "type": "B18",
+     "mw": 174.0,
+     "parts": [
+      "45W000000000045K"
+     ]
+    },
+    {
+     "eic": "45W000000000112V",
+     "name": "Silkeborgvaerket",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "45W000000000099Y"
+     ]
+    },
+    {
+     "eic": "45W000000000114R",
+     "name": "Horns Rev C",
+     "type": "B18",
+     "mw": 354.9,
+     "parts": [
+      "45W000000000116N"
+     ]
+    },
+    {
+     "eic": "45W000000000125M",
+     "name": "DK_KF_AB_GU",
+     "type": "B18",
+     "mw": 552.8,
+     "parts": [
+      "45W000000000126K"
+     ]
+    },
+    {
+     "eic": "45W000000000153H",
+     "name": "Solar Park Kassoe",
+     "type": "B16",
+     "mw": 0.0,
+     "parts": [
+      "45W000000000209G"
+     ]
+    },
+    {
+     "eic": "45W000000000156B",
+     "name": "Solar Park Gedmosen",
+     "type": "B16",
+     "mw": 0.8,
+     "parts": [
+      "45W000000000210V"
+     ]
+    },
+    {
+     "eic": "45W000000000172D",
+     "name": "Vesterhav Nord",
+     "type": "B18",
+     "mw": 166.3,
+     "parts": [
+      "45W000000000208I"
+     ]
+    },
+    {
+     "eic": "45W000000000173B",
+     "name": "Vesterhav Syd",
+     "type": "B18",
+     "mw": 145.2,
+     "parts": [
+      "45W000000000207K"
+     ]
+    },
+    {
+     "eic": "45W000000000213P",
+     "name": "Solar Park Holsted",
+     "type": "B16",
+     "mw": 0.0,
+     "parts": [
+      "45W000000000214N"
+     ]
+    }
+   ]
+  },
+  "ES": {
+   "areas": [
+    "10YES-REE------0"
+   ],
+   "units": [
+    {
+     "eic": "18W000000000AI3J",
+     "name": "RODRI",
+     "type": "B16",
+     "mw": 16.8,
+     "parts": [
+      "18W000000000AI2L"
+     ]
+    },
+    {
+     "eic": "18W000000000C7QZ",
+     "name": "PE TICO",
+     "type": "B19",
+     "mw": 2.0,
+     "parts": [
+      "18W000000000KMDL"
+     ]
+    },
+    {
+     "eic": "18W000000000F3DO",
+     "name": "UF MULA",
+     "type": "B16",
+     "mw": 96.4,
+     "parts": [
+      "18W000000000F3CQ"
+     ]
+    },
+    {
+     "eic": "18W000000000H6OM",
+     "name": "PSFGUILLEN",
+     "type": "B16",
+     "mw": 19.2,
+     "parts": [
+      "18W000000000HBIJ"
+     ]
+    },
+    {
+     "eic": "18W000000000HM6A",
+     "name": "NBALBOA",
+     "type": "B16",
+     "mw": 54.8,
+     "parts": [
+      "18W000000000H02A"
+     ]
+    },
+    {
+     "eic": "18W000000000J1G8",
+     "name": "BVNIDA1",
+     "type": "B16",
+     "mw": 19.2,
+     "parts": [
+      "18W000000000J1FA"
+     ]
+    },
+    {
+     "eic": "18W000000000L44F",
+     "name": "VALDESOLAR",
+     "type": "B16",
+     "mw": 56.4,
+     "parts": [
+      "18W000000000L45D"
+     ]
+    },
+    {
+     "eic": "18W000000000LG2K",
+     "name": "FV1014",
+     "type": "B16",
+     "mw": 28.8,
+     "parts": [
+      "18W000000000K82B"
+     ]
+    },
+    {
+     "eic": "18W000000000MOY2",
+     "name": "TALASOL",
+     "type": "B16",
+     "mw": 37.2,
+     "parts": [
+      "18W000000000JQVE"
+     ]
+    },
+    {
+     "eic": "18W000000000N00R",
+     "name": "TALAYU",
+     "type": "B16",
+     "mw": 34.8,
+     "parts": [
+      "18W000000000JVZS"
+     ]
+    },
+    {
+     "eic": "18W000000000N3TY",
+     "name": "PECUEVA",
+     "type": "B19",
+     "mw": 1.6,
+     "parts": [
+      "18W000000000N3UW"
+     ]
+    },
+    {
+     "eic": "18W000000000NX7P",
+     "name": "OMLEDILLA",
+     "type": "B16",
+     "mw": 54.0,
+     "parts": [
+      "18W000000000NX5T"
+     ]
+    },
+    {
+     "eic": "18W000000000NXAJ",
+     "name": "GECAMA",
+     "type": "B19",
+     "mw": 0.0,
+     "parts": [
+      "18W000000000NXBH"
+     ]
+    },
+    {
+     "eic": "18W000000000O4HE",
+     "name": "UF SABINAR",
+     "type": "B16",
+     "mw": 73.6,
+     "parts": [
+      "18W000000000O4GG"
+     ]
+    },
+    {
+     "eic": "18W000000000QZQ6",
+     "name": "PV PUERTOR",
+     "type": "B16",
+     "mw": 18.8,
+     "parts": [
+      "18W000000000KBH9"
+     ]
+    },
+    {
+     "eic": "18W000000000R3SK",
+     "name": "PINGUIN",
+     "type": "B19",
+     "mw": 49.2,
+     "parts": [
+      "18W000000000R1RS"
+     ]
+    },
+    {
+     "eic": "18W000000000RATY",
+     "name": "FCENTUR",
+     "type": "B16",
+     "mw": 16.8,
+     "parts": [
+      "18W000000000Q3FD"
+     ]
+    },
+    {
+     "eic": "18W000000000RHV9",
+     "name": "PIZARRO",
+     "type": "B16",
+     "mw": 53.2,
+     "parts": [
+      "18W000000000N9F7"
+     ]
+    },
+    {
+     "eic": "18W000000000RHX5",
+     "name": "FVARENA",
+     "type": "B16",
+     "mw": 8.8,
+     "parts": [
+      "18W000000000MQ3L"
+     ]
+    },
+    {
+     "eic": "18W000000000RHY3",
+     "name": "FVORIOL",
+     "type": "B16",
+     "mw": 22.8,
+     "parts": [
+      "18W000000000LFHU"
+     ]
+    },
+    {
+     "eic": "18W000000000RHZ1",
+     "name": "FVCEDIL",
+     "type": "B16",
+     "mw": 34.8,
+     "parts": [
+      "18W000000000R1AP"
+     ]
+    },
+    {
+     "eic": "18W000000000RI0V",
+     "name": "BUNIEL",
+     "type": "B19",
+     "mw": 8.8,
+     "parts": [
+      "18W000000000RJ7E"
+     ]
+    },
+    {
+     "eic": "18W000000000RX3H",
+     "name": "FGST150",
+     "type": "B16",
+     "mw": 24.4,
+     "parts": [
+      "18W000000000RX4F"
+     ]
+    },
+    {
+     "eic": "18W000000000RX5D",
+     "name": "FGST151",
+     "type": "B16",
+     "mw": 28.0,
+     "parts": [
+      "18W000000000RX6B"
+     ]
+    },
+    {
+     "eic": "18W000000000RX79",
+     "name": "FGST152",
+     "type": "B16",
+     "mw": 27.6,
+     "parts": [
+      "18W000000000RX87"
+     ]
+    },
+    {
+     "eic": "18W000000000S8ET",
+     "name": "UFGARNACHA",
+     "type": "B16",
+     "mw": 16.4,
+     "parts": [
+      "18W000000000S8FR"
+     ]
+    },
+    {
+     "eic": "18W18WSRI4--123V",
+     "name": "SRI4",
+     "type": "B04",
+     "mw": 247.6,
+     "parts": [
+      "18WSRI4-123456-V"
+     ]
+    },
+    {
+     "eic": "18WABO1-12345-0X",
+     "name": "ABO¿O 1",
+     "type": "B05",
+     "mw": 0.0,
+     "parts": [
+      "18WABO1-12345-D7"
+     ]
+    },
+    {
+     "eic": "18WABO2-12345-0N",
+     "name": "ABO¿O 2",
+     "type": "B05",
+     "mw": 505.2,
+     "parts": [
+      "18WABO2-12345-DY"
+     ]
+    },
+    {
+     "eic": "18WACE3-12345-00",
+     "name": "ACECA 3",
+     "type": "B04",
+     "mw": 334.8,
+     "parts": [
+      "18WACE3-12345-CD"
+     ]
+    },
+    {
+     "eic": "18WACE4-12345-0R",
+     "name": "ACECA4",
+     "type": "B04",
+     "mw": 144.4,
+     "parts": [
+      "18WACE4-12345-C3"
+     ]
+    },
+    {
+     "eic": "18WALG3-12345--K",
+     "name": "ALG3TG1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "18WALG3TG1-123-9",
+      "18WALG3TG2-123-2",
+      "18WALG3TV1-123-0"
+     ]
+    },
+    {
+     "eic": "18WALZ1-12345-0E",
+     "name": "ALMARAZ 1",
+     "type": "B14",
+     "mw": 1004.8,
+     "parts": [
+      "18WALZ1-12345-BT"
+     ]
+    },
+    {
+     "eic": "18WALZ2-12345-04",
+     "name": "ALMARAZ 2",
+     "type": "B14",
+     "mw": 1004.0,
+     "parts": [
+      "18WALZ2-12345-BJ"
+     ]
+    },
+    {
+     "eic": "18WAMBIETA-12-0S",
+     "name": "AMBITG1",
+     "type": "B04",
+     "mw": 234.4,
+     "parts": [
+      "18WAMBITG1-12--P",
+      "18WAMBITG2-12-CT",
+      "18WAMBITV-123-CK"
+     ]
+    },
+    {
+     "eic": "18WARCOS1-123-0E",
+     "name": "ARCOS1",
+     "type": "B04",
+     "mw": 316.0,
+     "parts": [
+      "18WARCOS1-123-CR"
+     ]
+    },
+    {
+     "eic": "18WARCOS2-123-06",
+     "name": "ARCOS2",
+     "type": "B04",
+     "mw": 172.0,
+     "parts": [
+      "18WARCOS2-123-CJ"
+     ]
+    },
+    {
+     "eic": "18WARCOS3-123-0Z",
+     "name": "ARC3TG1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "18WARC3TG1-12-C4",
+      "18WARC3TG2-12-CY",
+      "18WARC3TV-123-CP"
+     ]
+    },
+    {
+     "eic": "18WARRU1-1234-0J",
+     "name": "UFARRU1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "18WARRU1-1234-CW"
+     ]
+    },
+    {
+     "eic": "18WARRU2-1234-0A",
+     "name": "UFARRU2",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "18WARRU2-1234-CN"
+     ]
+    },
+    {
+     "eic": "18WASC1-12345-0Z",
+     "name": "ASCO 1",
+     "type": "B14",
+     "mw": 1003.6,
+     "parts": [
+      "18WASC1-12345-BD"
+     ]
+    },
+    {
+     "eic": "18WASC2-12345-0P",
+     "name": "ASCO 2",
+     "type": "B14",
+     "mw": 1002.4,
+     "parts": [
+      "18WASC2-12345-B3"
+     ]
+    },
+    {
+     "eic": "18WBAHIAB-123-0X",
+     "name": "BAHITG1",
+     "type": "B04",
+     "mw": 622.8,
+     "parts": [
+      "18WBAHITG1-12-CR",
+      "18WBAHITG2-12-CK",
+      "18WBAHITV-123-CB"
+     ]
+    },
+    {
+     "eic": "18WBES3-12345-0V",
+     "name": "BESOS 3",
+     "type": "B04",
+     "mw": 228.8,
+     "parts": [
+      "18WBES3-12345-C7"
+     ]
+    },
+    {
+     "eic": "18WBES4-12345-0L",
+     "name": "BESOS 4",
+     "type": "B04",
+     "mw": 201.6,
+     "parts": [
+      "18WBES4-12345-CY"
+     ]
+    },
+    {
+     "eic": "18WBES5-123456-T",
+     "name": "BES5 TG1",
+     "type": "B04",
+     "mw": 366.4,
+     "parts": [
+      "18WBES5TG1-123-2",
+      "18WBES5TG2-123-W",
+      "18WBES5TV-1234-K"
+     ]
+    },
+    {
+     "eic": "18WBRR1-12345-0H",
+     "name": "BARRIOS",
+     "type": "B05",
+     "mw": 191.6,
+     "parts": [
+      "18WBRR1-12345-DS"
+     ]
+    },
+    {
+     "eic": "18WCAMGI10-12-07",
+     "name": "CAMPGIB1",
+     "type": "B04",
+     "mw": 204.4,
+     "parts": [
+      "18WCAMGI10-12-CK"
+     ]
+    },
+    {
+     "eic": "18WCAMGI20--1-0D",
+     "name": "CAMPGIB2",
+     "type": "B04",
+     "mw": 180.4,
+     "parts": [
+      "18WCAMGI20-12-CC"
+     ]
+    },
+    {
+     "eic": "18WCOF1-12345-0O",
+     "name": "COFRENTES",
+     "type": "B14",
+     "mw": 1055.6,
+     "parts": [
+      "18WCOF1-12345-B2"
+     ]
+    },
+    {
+     "eic": "18WCOL4-12345-02",
+     "name": "COLON 4",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "18WCOL4-12345-CF"
+     ]
+    },
+    {
+     "eic": "18WCTGN1-1234-0C",
+     "name": "CARTAGENA1",
+     "type": "B04",
+     "mw": 228.4,
+     "parts": [
+      "18WCTGN1-1234-CP"
+     ]
+    },
+    {
+     "eic": "18WCTGN2-1234-03",
+     "name": "CARTAGENA2",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "18WCTGN2-1234-CG"
+     ]
+    },
+    {
+     "eic": "18WCTGN3-1234-0V",
+     "name": "CARTAGENA3",
+     "type": "B04",
+     "mw": 228.0,
+     "parts": [
+      "18WCTGN3-1234-C7"
+     ]
+    },
+    {
+     "eic": "18WCTJON1-123-06",
+     "name": "CASTEJON 1",
+     "type": "B04",
+     "mw": 290.8,
+     "parts": [
+      "18WCTJON1-123-CJ"
+     ]
+    },
+    {
+     "eic": "18WCTJON2-123-0Z",
+     "name": "CASTEJON 2",
+     "type": "B04",
+     "mw": 88.0,
+     "parts": [
+      "18WCTJON2-123-CB"
+     ]
+    },
+    {
+     "eic": "18WCTJON3--1234S",
+     "name": "CTJON3",
+     "type": "B04",
+     "mw": 329.2,
+     "parts": [
+      "18WCTJON3-1234-E"
+     ]
+    },
+    {
+     "eic": "18WCTN3-12345-04",
+     "name": "CTN3TG1",
+     "type": "B04",
+     "mw": 306.0,
+     "parts": [
+      "18WCTN3TG1-12-CI",
+      "18WCTN3TG2-12-CB",
+      "18WCTN3TV-123-C2"
+     ]
+    },
+    {
+     "eic": "18WCTN4-123456-C",
+     "name": "CTN4TG1",
+     "type": "B04",
+     "mw": 255.2,
+     "parts": [
+      "18WCTN4TG1-123-M",
+      "18WCTN4TG2-123-F",
+      "18WCTN4TV-1234-3"
+     ]
+    },
+    {
+     "eic": "18WCTNU-12345-0U",
+     "name": "CTNUTG1",
+     "type": "B04",
+     "mw": 182.8,
+     "parts": [
+      "18WCTNUTG1-12-C7",
+      "18WCTNUTG2-12-C0",
+      "18WCTNUTV-123-CS"
+     ]
+    },
+    {
+     "eic": "18WDUEB-12345-0Z",
+     "name": "ALDEA IIB1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "18WAL21B-12345-W",
+      "18WAL22B-12345-M",
+      "18WVRN1B-12345-B",
+      "18WVRN2B-12345-1",
+      "18WVRN3B-12345-S",
+      "18WVRN4B-12345-I",
+      "18WVRN5B-12345-8",
+      "18WVRN6B-12345-Z"
+     ]
+    },
+    {
+     "eic": "18WDUER-12345-0N",
+     "name": "ALDEA I G1",
+     "type": "B12",
+     "mw": 1212.8,
+     "parts": [
+      "18WAL11-12345-AZ",
+      "18WAL12-12345-AP",
+      "18WAL13-12345-AF",
+      "18WAL14-12345-A5",
+      "18WAL15-12345-AW",
+      "18WAL16-12345-AM",
+      "18WAL21-12345-AO",
+      "18WAL22-12345-AE",
+      "18WCA21-12345-AJ",
+      "18WRIC21-1234-AZ",
+      "18WSA21-12345-AX",
+      "18WSA22-12345-AN",
+      "18WVC21-12345-A7",
+      "18WVRN1-12345-A3",
+      "18WVRN2-12345-AU",
+      "18WVRN3-12345-AK",
+      "18WVRN4-12345-AA",
+      "18WVRN5-12345-A0",
+      "18WVRN6-12345-AR"
+     ]
+    },
+    {
+     "eic": "18WECT3-123456-N",
+     "name": "ECT3TG1",
+     "type": "B04",
+     "mw": 426.4,
+     "parts": [
+      "18WECT3TG1-123-X",
+      "18WECT3TG2-123-Q",
+      "18WECT3TV1-123-O"
+     ]
+    },
+    {
+     "eic": "18WESC6-12345-07",
+     "name": "ESC6TG1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "18WESC6TG1-12-CL",
+      "18WESC6TG2-12-CE",
+      "18WESC6TV-123-C5"
+     ]
+    },
+    {
+     "eic": "18WESCCC1-123-0T",
+     "name": "ESCCC1",
+     "type": "B04",
+     "mw": 389.6,
+     "parts": [
+      "18WESCCC1-123-C5"
+     ]
+    },
+    {
+     "eic": "18WESCCC2-123-0L",
+     "name": "ESCCC2",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "18WESCCC2-123-CY"
+     ]
+    },
+    {
+     "eic": "18WESCCC3-123-0D",
+     "name": "ESCCC3",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "18WESCCC3-123-CQ"
+     ]
+    },
+    {
+     "eic": "18WJUCA-12345-0Q",
+     "name": "CORTES 1",
+     "type": "B12",
+     "mw": 0.0,
+     "parts": [
+      "18WCO21-12345--L",
+      "18WCO22-12345-AQ"
+     ]
+    },
+    {
+     "eic": "18WMALA1-12345-L",
+     "name": "MALA1",
+     "type": "B04",
+     "mw": 213.2,
+     "parts": [
+      "18WMALA1-1234567"
+     ]
+    },
+    {
+     "eic": "18WMUEB-12345-0T",
+     "name": "MUELA 1B",
+     "type": "B10",
+     "mw": -62.4,
+     "parts": [
+      "18WMUE1B-12345-6",
+      "18WMUE2B-12345-X",
+      "18WMUE3B-12345-N",
+      "18WMUE4B-12345-D",
+      "18WMUE5B-12345-3",
+      "18WMUE6B-12345-U",
+      "18WMUE7B-12345-K"
+     ]
+    },
+    {
+     "eic": "18WMUEL-12345-03",
+     "name": "MUELA 1G",
+     "type": "B10",
+     "mw": 276.4,
+     "parts": [
+      "18WMUE1-12345-FP",
+      "18WMUE2-12345-FF",
+      "18WMUE3-12345-F5",
+      "18WMUE4-123456-6",
+      "18WMUE5-123456-X",
+      "18WMUE6-123456-N",
+      "18WMUE7-123456-D"
+     ]
+    },
+    {
+     "eic": "18WPALOS1-123-0Z",
+     "name": "PALOS1",
+     "type": "B04",
+     "mw": 288.4,
+     "parts": [
+      "18WPALOS1-123-CB"
+     ]
+    },
+    {
+     "eic": "18WPALOS2-123-0R",
+     "name": "PALOS 2",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "18WPALOS2-123-C3"
+     ]
+    },
+    {
+     "eic": "18WPALOS3-123-0J",
+     "name": "PALOS 3",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "18WPALOS3-123-CW"
+     ]
+    },
+    {
+     "eic": "18WPBCN1-12345-D",
+     "name": "PBCN1",
+     "type": "B04",
+     "mw": 233.6,
+     "parts": [
+      "18WPBCN1-1234-PG"
+     ]
+    },
+    {
+     "eic": "18WPBCN2-12345-4",
+     "name": "PBCN2",
+     "type": "B04",
+     "mw": 230.0,
+     "parts": [
+      "18WPBCN2-1234-P7"
+     ]
+    },
+    {
+     "eic": "18WPGR5-123456-J",
+     "name": "PGR5TG1",
+     "type": "B04",
+     "mw": 374.0,
+     "parts": [
+      "18WPGR5TG1-123-T",
+      "18WPGR5TG2-123-M",
+      "18WPGR5TV-1234-A"
+     ]
+    },
+    {
+     "eic": "18WPVENT1--1234A",
+     "name": "PVENT1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "18WPVENT1-1234-X"
+     ]
+    },
+    {
+     "eic": "18WPVENT2--12342",
+     "name": "PdV2",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "18WPVENT2-1234-P"
+     ]
+    },
+    {
+     "eic": "18WSAGU1-123--0J",
+     "name": "SAGU1",
+     "type": "B04",
+     "mw": 236.8,
+     "parts": [
+      "18WSAGU1-1234-CC"
+     ]
+    },
+    {
+     "eic": "18WSAGU2-123--0A",
+     "name": "SAGU2",
+     "type": "B04",
+     "mw": 222.0,
+     "parts": [
+      "18WSAGU2-1234-C3"
+     ]
+    },
+    {
+     "eic": "18WSAGU3-123--01",
+     "name": "SAGU3",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "18WSAGU3-1234-CV"
+     ]
+    },
+    {
+     "eic": "18WSBO3-12345-01",
+     "name": "SBO3",
+     "type": "B04",
+     "mw": 198.8,
+     "parts": [
+      "18WSBO3-12345-CE"
+     ]
+    },
+    {
+     "eic": "18WSIL-123456-0G",
+     "name": "S.EST IIG1",
+     "type": "B12",
+     "mw": 222.4,
+     "parts": [
+      "18WEST21-12345-C",
+      "18WSOU1-12345-A1"
+     ]
+    },
+    {
+     "eic": "18WSLTB-12345-05",
+     "name": "SALLENT 1B",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "18WSLT1B-12345-J",
+      "18WSLT2B-12345-9",
+      "18WSLT3B--1234-V",
+      "18WSLT4B-12345-Q"
+     ]
+    },
+    {
+     "eic": "18WSLTG-12345-0T",
+     "name": "SALLENT 1G",
+     "type": "B10",
+     "mw": 74.0,
+     "parts": [
+      "18WSLT1-12345-F1",
+      "18WSLT2-12345-FS",
+      "18WSLT3-12345-FI",
+      "18WSLT4-12345-F8"
+     ]
+    },
+    {
+     "eic": "18WSRI3-12345-0N",
+     "name": "SOTO RIB 3",
+     "type": "B05",
+     "mw": 166.4,
+     "parts": [
+      "18WSRI3-12345-DY"
+     ]
+    },
+    {
+     "eic": "18WSRI5-123456-L",
+     "name": "SOTO 5",
+     "type": "B04",
+     "mw": 150.0,
+     "parts": [
+      "18WSRI5-12345--5"
+     ]
+    },
+    {
+     "eic": "18WSROQ1-1234-06",
+     "name": "S.ROQUE 1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "18WSROQ1-1234-CJ"
+     ]
+    },
+    {
+     "eic": "18WSROQ2-1234-0Y",
+     "name": "S.ROQUE 2",
+     "type": "B04",
+     "mw": 240.8,
+     "parts": [
+      "18WSROQ2-1234-CA"
+     ]
+    },
+    {
+     "eic": "18WSTC4-12345-0I",
+     "name": "SANTURCE 4",
+     "type": "B04",
+     "mw": 366.0,
+     "parts": [
+      "18WSTC4-12345-CV"
+     ]
+    },
+    {
+     "eic": "18WTAJO-12345-0U",
+     "name": "CEDILLO 1",
+     "type": "B12",
+     "mw": 528.4,
+     "parts": [
+      "18WCED1-12345-AZ",
+      "18WCED2-12345-AP",
+      "18WCED3-12345-AF",
+      "18WCED4-12345-A5",
+      "18WGYG1-12345-A6",
+      "18WJMO1-12345-AN",
+      "18WJMO2-12345-AD",
+      "18WJMO3-12345-A3",
+      "18WJMO4-12345-AU"
+     ]
+    },
+    {
+     "eic": "18WTAPOWER-12-0V",
+     "name": "TAPOWER",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "18WTAPOWER-12-C7"
+     ]
+    },
+    {
+     "eic": "18WTJEB-12345-0X",
+     "name": "TAJOENC 1B",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "18WTJE1B-12345-A",
+      "18WTJE2B-12345-0",
+      "18WTJE3B-12345-R",
+      "18WTJE4B-12345-H"
+     ]
+    },
+    {
+     "eic": "18WTRL1-12345-0Y",
+     "name": "TRILLO",
+     "type": "B14",
+     "mw": 986.0,
+     "parts": [
+      "18WTRL1-12345-BC"
+     ]
+    },
+    {
+     "eic": "18WUFMI-12345-0L",
+     "name": "BELESAR 1",
+     "type": "B12",
+     "mw": 79.2,
+     "parts": [
+      "18WBEL1-12345-AY",
+      "18WBEL2-12345-AO",
+      "18WBEL3-12345-AE"
+     ]
+    },
+    {
+     "eic": "18WVAN2-12345-0W",
+     "name": "VANDELLOS",
+     "type": "B14",
+     "mw": 1042.8,
+     "parts": [
+      "18WVAN2-12345-BA"
+     ]
+    }
+   ]
+  },
+  "FR": {
+   "areas": [
+    "10YFR-RTE------C"
+   ],
+   "units": [
+    {
+     "eic": "17W000000989065O",
+     "name": "CPCU-StOuen-GP",
+     "type": "B04",
+     "mw": 102.4,
+     "parts": [
+      "17W0000014186456"
+     ]
+    },
+    {
+     "eic": "17W000000989066M",
+     "name": "CPCU-CogeVitry–GP",
+     "type": "B04",
+     "mw": 130.7,
+     "parts": [
+      "17W000001418626A"
+     ]
+    },
+    {
+     "eic": "17W000001023704Q",
+     "name": "FR_LANDIVISIAUGU",
+     "type": "B04",
+     "mw": 440.3,
+     "parts": [
+      "17W000001023725I"
+     ]
+    },
+    {
+     "eic": "17W000001345677Y",
+     "name": "BANC DE GUERANDE 1",
+     "type": "B18",
+     "mw": 37.5,
+     "parts": [
+      "17W0000014455651",
+      "17W000001445567Y"
+     ]
+    },
+    {
+     "eic": "17W000001445568W",
+     "name": "FECAMP 1",
+     "type": "B18",
+     "mw": 33.9,
+     "parts": [
+      "17W000001445569U",
+      "17W0000014455708"
+     ]
+    },
+    {
+     "eic": "17W000001521205J",
+     "name": "A1 DE PARC EOLIEN EN MER DE LA BAIE DE ST-BRIEUC",
+     "type": "B18",
+     "mw": -5.1,
+     "parts": [
+      "17W100P100P0842Y",
+      "17W100P100P3382R"
+     ]
+    },
+    {
+     "eic": "17W000001637625S",
+     "name": "BESS_AFD7_BARBAN_SAUCATS_1",
+     "type": "B20",
+     "mw": -1.6,
+     "parts": [
+      "17W000001637626Q"
+     ]
+    },
+    {
+     "eic": "17W100B100P0189S",
+     "name": "CATTENOM 3",
+     "type": "B14",
+     "mw": 1311.6,
+     "parts": [
+      "17W100P100P0104X"
+     ]
+    },
+    {
+     "eic": "17W100P100P01776",
+     "name": "BLAYAIS 1",
+     "type": "B14",
+     "mw": 918.9,
+     "parts": [
+      "17W100P100P0092E"
+     ]
+    },
+    {
+     "eic": "17W100P100P01784",
+     "name": "BLAYAIS 2",
+     "type": "B14",
+     "mw": 872.5,
+     "parts": [
+      "17W100P100P0093C"
+     ]
+    },
+    {
+     "eic": "17W100P100P01792",
+     "name": "BLAYAIS 3",
+     "type": "B14",
+     "mw": 863.3,
+     "parts": [
+      "17W100P100P0094A"
+     ]
+    },
+    {
+     "eic": "17W100P100P0180H",
+     "name": "BLAYAIS 4",
+     "type": "B14",
+     "mw": 907.1,
+     "parts": [
+      "17W100P100P00958"
+     ]
+    },
+    {
+     "eic": "17W100P100P0181F",
+     "name": "BUGEY 2",
+     "type": "B14",
+     "mw": 870.9,
+     "parts": [
+      "17W100P100P00966"
+     ]
+    },
+    {
+     "eic": "17W100P100P0182D",
+     "name": "BUGEY 3",
+     "type": "B14",
+     "mw": 904.3,
+     "parts": [
+      "17W100P100P00974"
+     ]
+    },
+    {
+     "eic": "17W100P100P0183B",
+     "name": "BUGEY 4",
+     "type": "B14",
+     "mw": 884.8,
+     "parts": [
+      "17W100P100P00982"
+     ]
+    },
+    {
+     "eic": "17W100P100P01849",
+     "name": "BUGEY 5",
+     "type": "B14",
+     "mw": 899.0,
+     "parts": [
+      "17W100P100P01004"
+     ]
+    },
+    {
+     "eic": "17W100P100P01857",
+     "name": "BELLEVILLE 1",
+     "type": "B14",
+     "mw": 1298.6,
+     "parts": [
+      "17W100P100P0090I"
+     ]
+    },
+    {
+     "eic": "17W100P100P01865",
+     "name": "BELLEVILLE 2",
+     "type": "B14",
+     "mw": 1316.5,
+     "parts": [
+      "17W100P100P0091G"
+     ]
+    },
+    {
+     "eic": "17W100P100P01873",
+     "name": "CATTENOM 1",
+     "type": "B14",
+     "mw": 1289.9,
+     "parts": [
+      "17W100P100P01012"
+     ]
+    },
+    {
+     "eic": "17W100P100P01881",
+     "name": "CATTENOM 2",
+     "type": "B14",
+     "mw": 1287.0,
+     "parts": [
+      "17W100P100P0103Z"
+     ]
+    },
+    {
+     "eic": "17W100P100P0190E",
+     "name": "CATTENOM 4",
+     "type": "B14",
+     "mw": 1310.5,
+     "parts": [
+      "17W100P100P0105V"
+     ]
+    },
+    {
+     "eic": "17W100P100P0191C",
+     "name": "CHINON 1",
+     "type": "B14",
+     "mw": 0.0,
+     "parts": [
+      "17W100P100P0106T"
+     ]
+    },
+    {
+     "eic": "17W100P100P0192A",
+     "name": "CHINON 2",
+     "type": "B14",
+     "mw": 953.1,
+     "parts": [
+      "17W100P100P0107R"
+     ]
+    },
+    {
+     "eic": "17W100P100P01938",
+     "name": "CHINON 3",
+     "type": "B14",
+     "mw": 968.4,
+     "parts": [
+      "17W100P100P0108P"
+     ]
+    },
+    {
+     "eic": "17W100P100P01946",
+     "name": "CHINON 4",
+     "type": "B14",
+     "mw": 915.4,
+     "parts": [
+      "17W100P100P0109N"
+     ]
+    },
+    {
+     "eic": "17W100P100P01954",
+     "name": "CHOOZ 1",
+     "type": "B14",
+     "mw": 1496.8,
+     "parts": [
+      "17W100P100P01101"
+     ]
+    },
+    {
+     "eic": "17W100P100P01962",
+     "name": "CHOOZ 2",
+     "type": "B14",
+     "mw": 1496.1,
+     "parts": [
+      "17W100P100P0112Y"
+     ]
+    },
+    {
+     "eic": "17W100P100P01970",
+     "name": "CIVAUX 1",
+     "type": "B14",
+     "mw": -51.2,
+     "parts": [
+      "17W100P100P0113W"
+     ]
+    },
+    {
+     "eic": "17W100P100P0198Z",
+     "name": "CIVAUX 2",
+     "type": "B14",
+     "mw": 1513.0,
+     "parts": [
+      "17W100P100P0114U"
+     ]
+    },
+    {
+     "eic": "17W100P100P0199X",
+     "name": "CRUAS 1",
+     "type": "B14",
+     "mw": 927.1,
+     "parts": [
+      "17W100P100P0115S"
+     ]
+    },
+    {
+     "eic": "17W100P100P02000",
+     "name": "CRUAS 2",
+     "type": "B14",
+     "mw": 804.4,
+     "parts": [
+      "17W100P100P0116Q"
+     ]
+    },
+    {
+     "eic": "17W100P100P0201Z",
+     "name": "CRUAS 3",
+     "type": "B14",
+     "mw": 0.0,
+     "parts": [
+      "17W100P100P0118M"
+     ]
+    },
+    {
+     "eic": "17W100P100P0202X",
+     "name": "CRUAS 4",
+     "type": "B14",
+     "mw": 916.8,
+     "parts": [
+      "17W100P100P0119K"
+     ]
+    },
+    {
+     "eic": "17W100P100P0203V",
+     "name": "DAMPIERRE 1",
+     "type": "B14",
+     "mw": 885.9,
+     "parts": [
+      "17W100P100P0120Z"
+     ]
+    },
+    {
+     "eic": "17W100P100P0204T",
+     "name": "DAMPIERRE 2",
+     "type": "B14",
+     "mw": 933.3,
+     "parts": [
+      "17W100P100P0121X"
+     ]
+    },
+    {
+     "eic": "17W100P100P0205R",
+     "name": "DAMPIERRE 3",
+     "type": "B14",
+     "mw": 920.0,
+     "parts": [
+      "17W100P100P0122V"
+     ]
+    },
+    {
+     "eic": "17W100P100P0206P",
+     "name": "DAMPIERRE 4",
+     "type": "B14",
+     "mw": 898.8,
+     "parts": [
+      "17W100P100P0123T"
+     ]
+    },
+    {
+     "eic": "17W100P100P0209J",
+     "name": "FLAMANVILLE 1",
+     "type": "B14",
+     "mw": -0.1,
+     "parts": [
+      "17W100P100P0126N"
+     ]
+    },
+    {
+     "eic": "17W100P100P0210Y",
+     "name": "FLAMANVILLE 2",
+     "type": "B14",
+     "mw": 1297.2,
+     "parts": [
+      "17W100P100P0127L"
+     ]
+    },
+    {
+     "eic": "17W100P100P0211W",
+     "name": "GOLFECH 1",
+     "type": "B14",
+     "mw": 1317.8,
+     "parts": [
+      "17W100P100P0128J"
+     ]
+    },
+    {
+     "eic": "17W100P100P0212U",
+     "name": "GOLFECH 2",
+     "type": "B14",
+     "mw": 1305.4,
+     "parts": [
+      "17W100P100P0129H"
+     ]
+    },
+    {
+     "eic": "17W100P100P0213S",
+     "name": "GRAVELINES 1",
+     "type": "B14",
+     "mw": 891.4,
+     "parts": [
+      "17W100P100P0130W"
+     ]
+    },
+    {
+     "eic": "17W100P100P0214Q",
+     "name": "GRAVELINES 2",
+     "type": "B14",
+     "mw": 857.3,
+     "parts": [
+      "17W100P100P0131U"
+     ]
+    },
+    {
+     "eic": "17W100P100P0215O",
+     "name": "GRAVELINES 3",
+     "type": "B14",
+     "mw": 196.4,
+     "parts": [
+      "17W100P100P0132S"
+     ]
+    },
+    {
+     "eic": "17W100P100P0216M",
+     "name": "GRAVELINES 4",
+     "type": "B14",
+     "mw": 945.2,
+     "parts": [
+      "17W100P100P0133Q"
+     ]
+    },
+    {
+     "eic": "17W100P100P0217K",
+     "name": "GRAVELINES 5",
+     "type": "B14",
+     "mw": 919.8,
+     "parts": [
+      "17W100P100P0135M"
+     ]
+    },
+    {
+     "eic": "17W100P100P0218I",
+     "name": "GRAVELINES 6",
+     "type": "B14",
+     "mw": 899.1,
+     "parts": [
+      "17W100P100P0136K"
+     ]
+    },
+    {
+     "eic": "17W100P100P0219G",
+     "name": "NOGENT 1",
+     "type": "B14",
+     "mw": 1312.1,
+     "parts": [
+      "17W100P100P0137I"
+     ]
+    },
+    {
+     "eic": "17W100P100P0220V",
+     "name": "NOGENT 2",
+     "type": "B14",
+     "mw": 1306.8,
+     "parts": [
+      "17W100P100P0138G"
+     ]
+    },
+    {
+     "eic": "17W100P100P0221T",
+     "name": "PALUEL 1",
+     "type": "B14",
+     "mw": 1293.7,
+     "parts": [
+      "17W100P100P0139E"
+     ]
+    },
+    {
+     "eic": "17W100P100P0222R",
+     "name": "PALUEL 2",
+     "type": "B14",
+     "mw": 1279.4,
+     "parts": [
+      "17W100P100P0140T"
+     ]
+    },
+    {
+     "eic": "17W100P100P0223P",
+     "name": "PALUEL 3",
+     "type": "B14",
+     "mw": -9.3,
+     "parts": [
+      "17W100P100P0141R"
+     ]
+    },
+    {
+     "eic": "17W100P100P0224N",
+     "name": "PALUEL 4",
+     "type": "B14",
+     "mw": 1291.5,
+     "parts": [
+      "17W100P100P0142P"
+     ]
+    },
+    {
+     "eic": "17W100P100P0225L",
+     "name": "PENLY 1",
+     "type": "B14",
+     "mw": 1321.8,
+     "parts": [
+      "17W100P100P0143N"
+     ]
+    },
+    {
+     "eic": "17W100P100P0226J",
+     "name": "PENLY 2",
+     "type": "B14",
+     "mw": -3.3,
+     "parts": [
+      "17W100P100P0144L"
+     ]
+    },
+    {
+     "eic": "17W100P100P0227H",
+     "name": "ST ALBAN 1",
+     "type": "B14",
+     "mw": 1317.8,
+     "parts": [
+      "17W100P100P0145J"
+     ]
+    },
+    {
+     "eic": "17W100P100P0228F",
+     "name": "ST ALBAN 2",
+     "type": "B14",
+     "mw": 1309.4,
+     "parts": [
+      "17W100P100P0146H"
+     ]
+    },
+    {
+     "eic": "17W100P100P0229D",
+     "name": "ST LAURENT 1",
+     "type": "B14",
+     "mw": 898.5,
+     "parts": [
+      "17W100P100P0147F"
+     ]
+    },
+    {
+     "eic": "17W100P100P0230S",
+     "name": "ST LAURENT 2",
+     "type": "B14",
+     "mw": 902.1,
+     "parts": [
+      "17W100P100P0148D"
+     ]
+    },
+    {
+     "eic": "17W100P100P0231Q",
+     "name": "TRICASTIN 1",
+     "type": "B14",
+     "mw": 743.5,
+     "parts": [
+      "17W100P100P0149B"
+     ]
+    },
+    {
+     "eic": "17W100P100P0232O",
+     "name": "TRICASTIN 2",
+     "type": "B14",
+     "mw": 904.7,
+     "parts": [
+      "17W100P100P0150Q"
+     ]
+    },
+    {
+     "eic": "17W100P100P0233M",
+     "name": "TRICASTIN 3",
+     "type": "B14",
+     "mw": 912.8,
+     "parts": [
+      "17W100P100P0152M"
+     ]
+    },
+    {
+     "eic": "17W100P100P0234K",
+     "name": "TRICASTIN 4",
+     "type": "B14",
+     "mw": 947.4,
+     "parts": [
+      "17W100P100P0153K"
+     ]
+    },
+    {
+     "eic": "17W100P100P0236G",
+     "name": "CORDEMAIS 4",
+     "type": "B05",
+     "mw": -0.3,
+     "parts": [
+      "17W100P100P0017S"
+     ]
+    },
+    {
+     "eic": "17W100P100P0237E",
+     "name": "CORDEMAIS 5",
+     "type": "B05",
+     "mw": -0.2,
+     "parts": [
+      "17W100P100P0018Q"
+     ]
+    },
+    {
+     "eic": "17W100P100P0243J",
+     "name": "BLENOD 5",
+     "type": "B04",
+     "mw": 439.4,
+     "parts": [
+      "17W100P100P0173E"
+     ]
+    },
+    {
+     "eic": "17W100P100P0244H",
+     "name": "BOUCHAIN 7",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "17W100P100P01768"
+     ]
+    },
+    {
+     "eic": "17W100P100P0245F",
+     "name": "MARTIGUES PONTEAU 5",
+     "type": "B04",
+     "mw": 448.6,
+     "parts": [
+      "17W100P100P0174C"
+     ]
+    },
+    {
+     "eic": "17W100P100P0246D",
+     "name": "MARTIGUES PONTEAU 6",
+     "type": "B04",
+     "mw": 450.6,
+     "parts": [
+      "17W100P100P0175A"
+     ]
+    },
+    {
+     "eic": "17W100P100P0255C",
+     "name": "ARRIGHI 1",
+     "type": "B06",
+     "mw": 131.8,
+     "parts": [
+      "17W100P100P0031Y"
+     ]
+    },
+    {
+     "eic": "17W100P100P0256A",
+     "name": "ARRIGHI 2",
+     "type": "B06",
+     "mw": 136.4,
+     "parts": [
+      "17W100P100P0032W"
+     ]
+    },
+    {
+     "eic": "17W100P100P02586",
+     "name": "BRENNILIS 1",
+     "type": "B06",
+     "mw": 72.7,
+     "parts": [
+      "17W100P100P02578"
+     ]
+    },
+    {
+     "eic": "17W100P100P0260J",
+     "name": "BRENNILIS 2",
+     "type": "B06",
+     "mw": 87.7,
+     "parts": [
+      "17W100P100P02594"
+     ]
+    },
+    {
+     "eic": "17W100P100P0261H",
+     "name": "BRENNILIS 3",
+     "type": "B06",
+     "mw": 122.6,
+     "parts": [
+      "17W100P100P0033U"
+     ]
+    },
+    {
+     "eic": "17W100P100P0263D",
+     "name": "DIRINON 1",
+     "type": "B06",
+     "mw": 70.8,
+     "parts": [
+      "17W100P100P0262F"
+     ]
+    },
+    {
+     "eic": "17W100P100P02659",
+     "name": "DIRINON 2",
+     "type": "B06",
+     "mw": 87.0,
+     "parts": [
+      "17W100P100P0264B"
+     ]
+    },
+    {
+     "eic": "17W100P100P02667",
+     "name": "GENNEVILLIERS 1",
+     "type": "B04",
+     "mw": 200.2,
+     "parts": [
+      "17W100P100P0037M"
+     ]
+    },
+    {
+     "eic": "17W100P100P02675",
+     "name": "VAIRES 1",
+     "type": "B06",
+     "mw": 189.4,
+     "parts": [
+      "17W100P100P0046L"
+     ]
+    },
+    {
+     "eic": "17W100P100P02683",
+     "name": "VAIRES 2",
+     "type": "B06",
+     "mw": 183.5,
+     "parts": [
+      "17W100P100P0047J"
+     ]
+    },
+    {
+     "eic": "17W100P100P02691",
+     "name": "VAIRES 3",
+     "type": "B06",
+     "mw": 176.2,
+     "parts": [
+      "17W100P100P0048H"
+     ]
+    },
+    {
+     "eic": "17W100P100P0270G",
+     "name": "MONTEREAU 5",
+     "type": "B06",
+     "mw": 165.4,
+     "parts": [
+      "17W100P100P0040X"
+     ]
+    },
+    {
+     "eic": "17W100P100P0271E",
+     "name": "MONTEREAU 6",
+     "type": "B06",
+     "mw": -0.4,
+     "parts": [
+      "17W100P100P0041V"
+     ]
+    },
+    {
+     "eic": "17W100P100P0273A",
+     "name": "CHEYLAS 1",
+     "type": "B10",
+     "mw": 202.7,
+     "parts": [
+      "17W100P100P0056I",
+      "17W100P100P0057G"
+     ]
+    },
+    {
+     "eic": "17W100P100P02748",
+     "name": "COCHE 5",
+     "type": "B10",
+     "mw": 141.2,
+     "parts": [
+      "17W100P100P20746"
+     ]
+    },
+    {
+     "eic": "17W100P100P02756",
+     "name": "GRAND MAISON 10",
+     "type": "B10",
+     "mw": 1040.2,
+     "parts": [
+      "17W100P100P0058E",
+      "17W100P100P0059C",
+      "17W100P100P0060R",
+      "17W100P100P0061P",
+      "17W100P100P0062N",
+      "17W100P100P0063L",
+      "17W100P100P0064J",
+      "17W100P100P0065H",
+      "17W100P100P0066F",
+      "17W100P100P0067D",
+      "17W100P100P0068B",
+      "17W100P100P00699"
+     ]
+    },
+    {
+     "eic": "17W100P100P02764",
+     "name": "SUPER BISSORTE 2",
+     "type": "B10",
+     "mw": 433.2,
+     "parts": [
+      "17W100P100P0083F",
+      "17W100P100P0084D",
+      "17W100P100P0085B",
+      "17W100P100P00869",
+      "17W100P100P0082H"
+     ]
+    },
+    {
+     "eic": "17W100P100P02772",
+     "name": "MONTEZIC 1",
+     "type": "B10",
+     "mw": 743.0,
+     "parts": [
+      "17W100P100P0071M",
+      "17W100P100P0072K",
+      "17W100P100P0073I",
+      "17W100P100P0074G"
+     ]
+    },
+    {
+     "eic": "17W100P100P02780",
+     "name": "REVIN 1",
+     "type": "B10",
+     "mw": 297.6,
+     "parts": [
+      "17W100P100P0076C",
+      "17W100P100P00796"
+     ]
+    },
+    {
+     "eic": "17W100P100P0279Z",
+     "name": "AIGLE 6",
+     "type": "B12",
+     "mw": 114.3,
+     "parts": [
+      "17W100P100P0051S"
+     ]
+    },
+    {
+     "eic": "17W100P100P0280D",
+     "name": "BATHIE 1",
+     "type": "B12",
+     "mw": 557.6,
+     "parts": [
+      "17W100P100P03566",
+      "17W100P100P03574",
+      "17W100P100P03582",
+      "17W100P100P03590",
+      "17W100P100P0360F",
+      "17W100P100P0361D"
+     ]
+    },
+    {
+     "eic": "17W100P100P0281B",
+     "name": "BORT 1",
+     "type": "B12",
+     "mw": 106.4,
+     "parts": [
+      "17W100P100P0052Q",
+      "17W100P100P0054M"
+     ]
+    },
+    {
+     "eic": "17W100P100P02829",
+     "name": "BROMMAT 7",
+     "type": "B12",
+     "mw": 215.7,
+     "parts": [
+      "17W100P100P0055K"
+     ]
+    },
+    {
+     "eic": "17W100P100P0290A",
+     "name": "POUGET 4",
+     "type": "B12",
+     "mw": 208.3,
+     "parts": [
+      "17W100P100P0075E"
+     ]
+    },
+    {
+     "eic": "17W100P100P02942",
+     "name": "SISTERON 1",
+     "type": "B12",
+     "mw": 227.9,
+     "parts": [
+      "17W100P100P0080L",
+      "17W100P100P0081J"
+     ]
+    },
+    {
+     "eic": "17W100P100P0300X",
+     "name": "VILLARODIN 1",
+     "type": "B12",
+     "mw": 294.3,
+     "parts": [
+      "17W100P100P00877",
+      "17W100P100P00885"
+     ]
+    },
+    {
+     "eic": "17W100P100P0302T",
+     "name": "CHASTANG 2",
+     "type": "B11",
+     "mw": 164.7,
+     "parts": [
+      "17W100P100P0049F",
+      "17W100P100P0050U"
+     ]
+    },
+    {
+     "eic": "17W100P100P0318E",
+     "name": "FR-GA-MORANT1",
+     "type": "B04",
+     "mw": 425.8,
+     "parts": [
+      "17W100P100P00122"
+     ]
+    },
+    {
+     "eic": "17W100P100P03299",
+     "name": "SAINT-PIERRE",
+     "type": "B11",
+     "mw": 100.7,
+     "parts": [
+      "17W100P100P0166B"
+     ]
+    },
+    {
+     "eic": "17W100P100P0334G",
+     "name": "SPEM CCG",
+     "type": "B04",
+     "mw": 453.0,
+     "parts": [
+      "17W100P100P0171I"
+     ]
+    },
+    {
+     "eic": "17W100P100P0337A",
+     "name": "COMBIGOLFE CCG",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "17W100P100P01679"
+     ]
+    },
+    {
+     "eic": "17W100P100P0340L",
+     "name": "Croix-de-Metz",
+     "type": "B04",
+     "mw": 443.6,
+     "parts": [
+      "17W100P100P00123"
+     ]
+    },
+    {
+     "eic": "17W100P100P0341J",
+     "name": "Pont-sur-Sambre",
+     "type": "B04",
+     "mw": -0.7,
+     "parts": [
+      "17W100P100P00016"
+     ]
+    },
+    {
+     "eic": "17W100P100P0343F",
+     "name": "EMILE HUCHET 6",
+     "type": "B05",
+     "mw": 588.1,
+     "parts": [
+      "17W100P100P0005Z"
+     ]
+    },
+    {
+     "eic": "17W100P100P0344D",
+     "name": "Saint_Avold_7",
+     "type": "B04",
+     "mw": 433.3,
+     "parts": [
+      "17W100P100P00105"
+     ]
+    },
+    {
+     "eic": "17W100P100P0345B",
+     "name": "Saint_Avold_8",
+     "type": "B04",
+     "mw": 433.7,
+     "parts": [
+      "17W100P100P00113"
+     ]
+    },
+    {
+     "eic": "17W100P100P03493",
+     "name": "AMFARD14",
+     "type": "B04",
+     "mw": 121.5,
+     "parts": [
+      "17W100P100P03477"
+     ]
+    },
+    {
+     "eic": "17W100P100P0350I",
+     "name": "DK6-TG1",
+     "type": "B04",
+     "mw": 314.7,
+     "parts": [
+      "17W100P100P0330O",
+      "17W100P100P0331M",
+      "17W100P100P0333I",
+      "17W100P100P0332K"
+     ]
+    },
+    {
+     "eic": "17W100P100P0352E",
+     "name": "CYCOFOS PL2",
+     "type": "B20",
+     "mw": 0.0,
+     "parts": [
+      "17W100P100P03396"
+     ]
+    },
+    {
+     "eic": "17W100P100P0353C",
+     "name": "AMFARD15",
+     "type": "B04",
+     "mw": 126.0,
+     "parts": [
+      "17W100P100P03485"
+     ]
+    },
+    {
+     "eic": "17W100P100P0362B",
+     "name": "FLAMANVILLE 3",
+     "type": "B14",
+     "mw": 40.6,
+     "parts": [
+      "17W100P100P03639"
+     ]
+    },
+    {
+     "eic": "17W100P100P03647",
+     "name": "PROVENCE 4",
+     "type": "B01",
+     "mw": 0.0,
+     "parts": [
+      "17W100P100P03655"
+     ]
+    }
+   ]
+  },
+  "GR": {
+   "areas": [
+    "10YGR-HTSO-----Y"
+   ],
+   "units": [
+    {
+     "eic": "29WAGNIKOLAOSIIN",
+     "name": "AG_NIKOLAOS2",
+     "type": "B04",
+     "mw": 804.0,
+     "parts": [
+      "29WGU-AGNIKOLII6"
+     ]
+    },
+    {
+     "eic": "29WAISAGDIMI-I-M",
+     "name": "AGIOS DIMITRIOS I",
+     "type": "B02",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-AGDIMI-I-8"
+     ]
+    },
+    {
+     "eic": "29WAISAGDIMI-IIL",
+     "name": "AGIOS DIMITRIOS II",
+     "type": "B02",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-AGDIMI-II7"
+     ]
+    },
+    {
+     "eic": "29WAISAGDIMI-IVW",
+     "name": "AGIOS DIMITRIOS IV",
+     "type": "B02",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-AGDIMI-IVI"
+     ]
+    },
+    {
+     "eic": "29WAISAGDIMI-V-K",
+     "name": "AGIOS DIMITRIOS V",
+     "type": "B02",
+     "mw": 190.0,
+     "parts": [
+      "29WGU-AGDIMI-V-6"
+     ]
+    },
+    {
+     "eic": "29WAISAGDIMIIIIJ",
+     "name": "AGIOS DIMITRIOS III",
+     "type": "B02",
+     "mw": 182.0,
+     "parts": [
+      "29WGU-AGDIMIIII5"
+     ]
+    },
+    {
+     "eic": "29WAISALIVERI-53",
+     "name": "ALIVERI V",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-ALIVERI-5Q"
+     ]
+    },
+    {
+     "eic": "29WAISKOMOTIN-IO",
+     "name": "KOMOTINI G_2GTST",
+     "type": "B04",
+     "mw": 352.0,
+     "parts": [
+      "29WGU-KOMOTIN-IA"
+     ]
+    },
+    {
+     "eic": "29WAISLAVRIO-IVM",
+     "name": "LAVRIO IV G_3GTST",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-LAVRIO-IV8"
+     ]
+    },
+    {
+     "eic": "29WAISLAVRIO-V-A",
+     "name": "LAVRIO V",
+     "type": "B04",
+     "mw": 308.0,
+     "parts": [
+      "29WGU-LAVRIO-V-X"
+     ]
+    },
+    {
+     "eic": "29WAISMEGAL-IV-C",
+     "name": "MEGALOPOLI IV",
+     "type": "B02",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-MEGAL-IV-Z"
+     ]
+    },
+    {
+     "eic": "29WAISMEGAL-V--J",
+     "name": "MEGALOPOLI V_2GTST",
+     "type": "B04",
+     "mw": 811.0,
+     "parts": [
+      "29WGU-MEGAL-V--5"
+     ]
+    },
+    {
+     "eic": "29WAISMELITII--H",
+     "name": "MELITI",
+     "type": "B02",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-MELITII--3"
+     ]
+    },
+    {
+     "eic": "29WAISPTOLEM-V-5",
+     "name": "PTOLEMAIDA5",
+     "type": "B02",
+     "mw": 509.0,
+     "parts": [
+      "29WGU-PTOLEM--VN"
+     ]
+    },
+    {
+     "eic": "29WALOUMINIO---B",
+     "name": "ALOUMINIO",
+     "type": "B04",
+     "mw": 85.0,
+     "parts": [
+      "29WGU-ALOUMINIOF"
+     ]
+    },
+    {
+     "eic": "29WELPEDISONTHIM",
+     "name": "ELPEDISON_THISVI",
+     "type": "B04",
+     "mw": 400.0,
+     "parts": [
+      "29WGU-ELPEDISTHK"
+     ]
+    },
+    {
+     "eic": "29WENERGEIAKITHP",
+     "name": "ELPEDISON_THESS",
+     "type": "B04",
+     "mw": 298.0,
+     "parts": [
+      "29WGU-ENERGEITH4"
+     ]
+    },
+    {
+     "eic": "29WHERON-CC----5",
+     "name": "HERON_CC",
+     "type": "B04",
+     "mw": 302.0,
+     "parts": [
+      "29WGU-HERON-CC-5"
+     ]
+    },
+    {
+     "eic": "29WHERONTHE---ID",
+     "name": "HERON1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-HERON1---C"
+     ]
+    },
+    {
+     "eic": "29WHERONTHE--IIU",
+     "name": "HERON2",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-HERON2---7"
+     ]
+    },
+    {
+     "eic": "29WHERONTHE-IIIS",
+     "name": "HERON3",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-HERON3---2"
+     ]
+    },
+    {
+     "eic": "29WILARIONAS---X",
+     "name": "ILARIONAS",
+     "type": "B12",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-ILARIONAS4"
+     ]
+    },
+    {
+     "eic": "29WKORINTHOSPWR6",
+     "name": "KORINTHOS_POWER",
+     "type": "B04",
+     "mw": 408.0,
+     "parts": [
+      "29WGU-KORITHPWR3"
+     ]
+    },
+    {
+     "eic": "29WPROTERGIACC-4",
+     "name": "PROTERGIA_CC",
+     "type": "B04",
+     "mw": 413.0,
+     "parts": [
+      "29WGU-PROTERGCC2"
+     ]
+    },
+    {
+     "eic": "29WTHERMOKOMOTI4",
+     "name": "KOMOTINI_POWER",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-THERMOKOM4"
+     ]
+    },
+    {
+     "eic": "29WTHESAVROS1--2",
+     "name": "THESAVROS I_HYDRO",
+     "type": "B10",
+     "mw": 1.0,
+     "parts": [
+      "29WGU-THESAVRO1B"
+     ]
+    },
+    {
+     "eic": "29WTHESAVROS2--Z",
+     "name": "THESAVROS II_HYDRO",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-THESAVRO29"
+     ]
+    },
+    {
+     "eic": "29WTHESAVROS3--V",
+     "name": "THESAVROS III_HYDRO",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-THESAVRO37"
+     ]
+    },
+    {
+     "eic": "29WYISAGRA-----I",
+     "name": "AGRAS",
+     "type": "B11",
+     "mw": 18.0,
+     "parts": [
+      "29WGU-YISAGRA--N"
+     ]
+    },
+    {
+     "eic": "29WYISASOMATON-H",
+     "name": "ASOMATA",
+     "type": "B12",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-ASOMATON-J"
+     ]
+    },
+    {
+     "eic": "29WYISEDESSAIOUM",
+     "name": "EDESSAIOS",
+     "type": "B11",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-YISEDESS-U"
+     ]
+    },
+    {
+     "eic": "29WYISKASTRAKI-M",
+     "name": "KASTRAKI",
+     "type": "B12",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-KASTRAKI-O"
+     ]
+    },
+    {
+     "eic": "29WYISKREMASTONE",
+     "name": "KREMASTA",
+     "type": "B12",
+     "mw": 98.0,
+     "parts": [
+      "29WGU-KREMASTONG"
+     ]
+    },
+    {
+     "eic": "29WYISLADONAS--V",
+     "name": "LADONAS",
+     "type": "B12",
+     "mw": 60.0,
+     "parts": [
+      "29WGU-YISLADONAD"
+     ]
+    },
+    {
+     "eic": "29WYISNPLASTIRAF",
+     "name": "PLASTIRAS",
+     "type": "B12",
+     "mw": 38.0,
+     "parts": [
+      "29WGU-PLASTIRASN"
+     ]
+    },
+    {
+     "eic": "29WYISPIGONAOOUX",
+     "name": "AOOS",
+     "type": "B12",
+     "mw": 41.0,
+     "parts": [
+      "29WGU-YISPAOOU-5"
+     ]
+    },
+    {
+     "eic": "29WYISPLATANOVRH",
+     "name": "PLATANOVRYSI",
+     "type": "B12",
+     "mw": 33.0,
+     "parts": [
+      "29WGU-YISPLATAN1"
+     ]
+    },
+    {
+     "eic": "29WYISPOLYFYTO-O",
+     "name": "POLYFYTO",
+     "type": "B12",
+     "mw": 60.0,
+     "parts": [
+      "29WGU-POLYFYTO-Q"
+     ]
+    },
+    {
+     "eic": "29WYISPOURNARI-P",
+     "name": "POURNARI I",
+     "type": "B12",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-YISPOURN17"
+     ]
+    },
+    {
+     "eic": "29WYISPOURNARIIO",
+     "name": "POURNARI2",
+     "type": "B12",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-YISPOURN25"
+     ]
+    },
+    {
+     "eic": "29WYISSFIKIAS--8",
+     "name": "SFIKIA",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-YISSFIKIAE"
+     ]
+    },
+    {
+     "eic": "29WYISSTRATOU-IV",
+     "name": "STRATOS1",
+     "type": "B12",
+     "mw": 0.0,
+     "parts": [
+      "29WGU-YISSTRAT1L"
+     ]
+    }
+   ]
+  },
+  "HU": {
+   "areas": [
+    "10YHU-MAVIR----U"
+   ],
+   "units": [
+    {
+     "eic": "15WCSEPEL----PPI",
+     "name": "CSP_GT1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "15WCSEPELG1--GTH",
+      "15WCSEPELG2--GTB",
+      "15WCSEPELG3--ST6"
+     ]
+    },
+    {
+     "eic": "15WDUME------PPI",
+     "name": "DG2_gép14",
+     "type": "B04",
+     "mw": 336.5,
+     "parts": [
+      "15WDUMEG14---GTI",
+      "15WDUMEG15---GTB",
+      "15WDUMEG7----GT5",
+      "15WDUMEG8----GTY"
+     ]
+    },
+    {
+     "eic": "15WGONYU-----PP5",
+     "name": "GÖNYÜ_gép1",
+     "type": "B04",
+     "mw": 358.5,
+     "parts": [
+      "15WGONYUG1-CCGTG"
+     ]
+    },
+    {
+     "eic": "15WKELENF----PP8",
+     "name": "KF_GT",
+     "type": "B04",
+     "mw": 129.8,
+     "parts": [
+      "15WKFGT------GT5"
+     ]
+    },
+    {
+     "eic": "15WKISP------PP6",
+     "name": "KI_GTST",
+     "type": "B04",
+     "mw": 102.8,
+     "parts": [
+      "15WKISPEST-CCGTY"
+     ]
+    },
+    {
+     "eic": "15WLITER-----PPP",
+     "name": "Litér_GT",
+     "type": "B06",
+     "mw": 0.1,
+     "parts": [
+      "15WLITERG----GTJ"
+     ]
+    },
+    {
+     "eic": "15WLORINC----PPF",
+     "name": "LORIGTae",
+     "type": "B06",
+     "mw": -0.0,
+     "parts": [
+      "15WLORINCG---GTQ"
+     ]
+    },
+    {
+     "eic": "15WMATRA-----PPK",
+     "name": "MÁ2_gép3",
+     "type": "B02",
+     "mw": 186.2,
+     "parts": [
+      "15WMATRAG3---STO",
+      "15WMATRAG4---STH",
+      "15WMATRAG5---STA"
+     ]
+    },
+    {
+     "eic": "15WPAKS------PPL",
+     "name": "PA_gép1",
+     "type": "B14",
+     "mw": 1944.5,
+     "parts": [
+      "15WPAKSG1----STK",
+      "15WPAKSG2----STC",
+      "15WPAKSG3----ST4",
+      "15WPAKSG4----STX",
+      "15WPAKSG5----STP",
+      "15WPAKSG6----STH",
+      "15WPAKSG7----ST9",
+      "15WPAKSG8----ST1"
+     ]
+    },
+    {
+     "eic": "15WSAJSZOGED-PP4",
+     "name": "Sajó_GT",
+     "type": "B06",
+     "mw": -0.3,
+     "parts": [
+      "15WSAJOSZG---GTD"
+     ]
+    }
+   ]
+  },
+  "IT": {
+   "areas": [
+    "10YIT-GRTN-----B"
+   ],
+   "units": [
+    {
+     "eic": "26W-1315094PNDLV",
+     "name": "UP_PNDLLMRINA_1",
+     "type": "B16",
+     "mw": 32.0,
+     "parts": [
+      "26WPNDLLMRINA10O"
+     ]
+    },
+    {
+     "eic": "26W-1382671TRINS",
+     "name": "UP_TRINOBESS2_1",
+     "type": "B20",
+     "mw": -0.7,
+     "parts": [
+      "26WTRINOBESS210M"
+     ]
+    },
+    {
+     "eic": "26W-1438864DCS1T",
+     "name": "UP_DCS_1",
+     "type": "B16",
+     "mw": 22.0,
+     "parts": [
+      "26WDCS100000000K"
+     ]
+    },
+    {
+     "eic": "26W-S01MNCLMONCJ",
+     "name": "UP_MONCALIERI_3",
+     "type": "B04",
+     "mw": 302.2,
+     "parts": [
+      "26WUMONCALIERI36"
+     ]
+    },
+    {
+     "eic": "26W-S03ACMNCASSO",
+     "name": "UP_CASSANO_2",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUUUUCASSANO2I"
+     ]
+    },
+    {
+     "eic": "26W-S03TRBGTURBK",
+     "name": "UP_TURBIGO_3",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUUUUTURBIGO3M"
+     ]
+    },
+    {
+     "eic": "26W-S03TVZZ1159W",
+     "name": "UP_TAVAZZANO_1",
+     "type": "B04",
+     "mw": 726.5,
+     "parts": [
+      "26W115980315710U"
+     ]
+    },
+    {
+     "eic": "26W-S19TCRMTRMNZ",
+     "name": "UP_TRMNMRSCLE_43",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WTRMNMRSCLE43N"
+     ]
+    },
+    {
+     "eic": "26W-SY8ERNPNPWR3",
+     "name": "UP_NPWRRVENNA_10",
+     "type": "B04",
+     "mw": 340.5,
+     "parts": [
+      "26WNPWRRVENNA10P"
+     ]
+    },
+    {
+     "eic": "26W-SZ1MNCLMONC4",
+     "name": "UP_MONCALRPW_2",
+     "type": "B04",
+     "mw": 320.8,
+     "parts": [
+      "26WUUMONCALRPW2S"
+     ]
+    },
+    {
+     "eic": "26W-SZ2MCNTMNTAL",
+     "name": "UP_MNTALTOCLE_2",
+     "type": "B04",
+     "mw": 103.0,
+     "parts": [
+      "26WMNTALTOCLE20Q"
+     ]
+    },
+    {
+     "eic": "26W-SZ3TVZZTAVAK",
+     "name": "UP_TAVAZZANO_5",
+     "type": "B04",
+     "mw": 387.2,
+     "parts": [
+      "26WUUTAVAZZANO5Z"
+     ]
+    },
+    {
+     "eic": "26W-SZ9PCRLPRIOT",
+     "name": "UP_PRIOLO_C_2",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUUUPRIOLO-C21"
+     ]
+    },
+    {
+     "eic": "26W-SZ9TCRMTRMNV",
+     "name": "UP_TRMNMRSCLE_53",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WTRMNMRSCLE53K"
+     ]
+    },
+    {
+     "eic": "26WBESS-UDINESU6",
+     "name": "UP_DNESUDBESS_1",
+     "type": "B20",
+     "mw": -1.0,
+     "parts": [
+      "26WOEEPSNL31779J"
+     ]
+    },
+    {
+     "eic": "26WCASSANO-OEAE5",
+     "name": "UP_CASSANO_3",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WOEAEMAE316250"
+     ]
+    },
+    {
+     "eic": "26WIMPI-0066050X",
+     "name": "UP_TORINONORD_1",
+     "type": "B04",
+     "mw": 317.0,
+     "parts": [
+      "26WUTORINONORD1C"
+     ]
+    },
+    {
+     "eic": "26WIMPI-0111491E",
+     "name": "UP_BDDSLDSRDI_1",
+     "type": "B19",
+     "mw": 36.8,
+     "parts": [
+      "26WUBDDSLDSRDI17"
+     ]
+    },
+    {
+     "eic": "26WIMPI-0300653B",
+     "name": "UP_CCGTPRILIA_1",
+     "type": "B04",
+     "mw": 519.0,
+     "parts": [
+      "26WUCCGTPRILIA15"
+     ]
+    },
+    {
+     "eic": "26WIMPI-0420910Z",
+     "name": "UP_LVTRNTCET3_1",
+     "type": "B03",
+     "mw": 0.0,
+     "parts": [
+      "26WULVTRNTCET31X"
+     ]
+    },
+    {
+     "eic": "26WIMPI-0693236B",
+     "name": "UP_CET2_1",
+     "type": "B03",
+     "mw": 24.0,
+     "parts": [
+      "26WUUUUUUUCET21O"
+     ]
+    },
+    {
+     "eic": "26WIMPI-1129698C",
+     "name": "UP_CNTRLFLVCR_7",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUCNTRLFLVCR73"
+     ]
+    },
+    {
+     "eic": "26WIMPI-12169602",
+     "name": "UP_CETSERVOLA_1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUCETSERVOLA1U"
+     ]
+    },
+    {
+     "eic": "26WIMPI-M03SFRN0",
+     "name": "UP_SFRNGNRZNE_2",
+     "type": "B12",
+     "mw": 93.8,
+     "parts": [
+      "26WUSZRNGNRZNE21"
+     ]
+    },
+    {
+     "eic": "26WIMPI-R01ENTRX",
+     "name": "UP_ETQ_ROVINA_1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "26WUETQ-ROVINA1Y"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S01CHVSE",
+     "name": "UP_CHIVASSO_1",
+     "type": "B04",
+     "mw": 829.2,
+     "parts": [
+      "26WUUUCHIVASSO1V",
+      "26WUUUCHIVASSO2T"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S01ECLF6",
+     "name": "UP_NCTLVRNFRR_1",
+     "type": "B04",
+     "mw": 744.8,
+     "parts": [
+      "26WUNCTLVRNFRR1D"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S01ENTRP",
+     "name": "UP_ETQCHIOTAS_1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "26WUETQCHIOTAS1O"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S01LNEIG",
+     "name": "UP_LEINI_1",
+     "type": "B04",
+     "mw": 383.8,
+     "parts": [
+      "26WUUUUUULEINI1V"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S01RASNN",
+     "name": "UP_ROSONE_1",
+     "type": "B12",
+     "mw": 115.0,
+     "parts": [
+      "26WUUUUUROSONE16"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S01VNSE6",
+     "name": "UP_VENAUS_1",
+     "type": "B12",
+     "mw": 69.5,
+     "parts": [
+      "26WUUUUUVENAUS10"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S02AVSIS",
+     "name": "UP_AVISE_1",
+     "type": "B11",
+     "mw": 50.0,
+     "parts": [
+      "26WUUUUUUAVISE1Z"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S02VLPL3",
+     "name": "UP_VALPELLIN_1",
+     "type": "B12",
+     "mw": 64.5,
+     "parts": [
+      "26WUUVALPELLIN15"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S03ACMSM",
+     "name": "UP_CTE_DEL_M_2",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUUCTE-DEL-M2E"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S03CDTL1",
+     "name": "UP_CNTRLDTRNL_1",
+     "type": "B04",
+     "mw": 724.0,
+     "parts": [
+      "26WUCNTRLDTRNL1C"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S03DBLMQ",
+     "name": "UP_TNRSDLMNSP_1",
+     "type": "B04",
+     "mw": 35.2,
+     "parts": [
+      "26WUTNRSDLMNSP15"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S03EDLO9",
+     "name": "UP_EDOLO_1",
+     "type": "B10",
+     "mw": 711.0,
+     "parts": [
+      "26WUUUUUUEDOLO19"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S03EMC43",
+     "name": "UP_NPWRMNTOVA_2",
+     "type": "B04",
+     "mw": 624.5,
+     "parts": [
+      "26WUNPWRMNTOVA2N",
+      "26WUNPWRMNTOVA3L"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S03FERRD",
+     "name": "UP_NPWRFRRRRB_10",
+     "type": "B04",
+     "mw": 682.2,
+     "parts": [
+      "26WNPWRFRRRRB10Q",
+      "26WUNPWRFRRRRB8C",
+      "26WUNPWRFRRRRB9A"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S03GRGNY",
+     "name": "UP_GARGNANO_1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "26WUUUGARGNANO18"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S03OSTG2",
+     "name": "UP_OSTIGLIA_12",
+     "type": "B04",
+     "mw": 777.5,
+     "parts": [
+      "26WUUOSTIGLIA12K",
+      "26WUUUOSTIGLIA33"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S03RNCVS",
+     "name": "UP_RONCOVALG_1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "26WUURONCOVALG13"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S03SFRNQ",
+     "name": "UP_S.FIORANO_1",
+     "type": "B10",
+     "mw": 136.5,
+     "parts": [
+      "26WUUZ-FIORANO1X"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S03SRMDD",
+     "name": "UP_SERMIDE_3",
+     "type": "B04",
+     "mw": 635.2,
+     "parts": [
+      "26WUUUUSERMIDE3O",
+      "26WUUUUSERMIDE4M"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S03TRBGZ",
+     "name": "UP_TURBIGO_4",
+     "type": "B04",
+     "mw": 712.5,
+     "parts": [
+      "26WUUUUTURBIGO4K"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S03TVZZK",
+     "name": "UP_TAVAZZANO_C_6",
+     "type": "B04",
+     "mw": 382.0,
+     "parts": [
+      "26WTAVAZZANO-C64"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S03VEGHN",
+     "name": "UP_VOGHERA_1",
+     "type": "B04",
+     "mw": 390.8,
+     "parts": [
+      "26WUUUUVOGHERA14"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S04CRDA9",
+     "name": "UP_CARDANO_1",
+     "type": "B11",
+     "mw": 32.5,
+     "parts": [
+      "26WUUUUCARDANO16"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S04NATRE",
+     "name": "UP_CNTRLNTRNO_11",
+     "type": "B12",
+     "mw": 64.5,
+     "parts": [
+      "26WCNTRLNTRNO118"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S04RDGLX",
+     "name": "UP_RIVADEL_3",
+     "type": "B10",
+     "mw": 76.0,
+     "parts": [
+      "26WUUUURIVADEL38"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S04SFLVM",
+     "name": "UP_SFLORIANO_2",
+     "type": "B11",
+     "mw": 48.2,
+     "parts": [
+      "26WUUSFLORIANO2R"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S05AZTT6",
+     "name": "UP_AZOTATI_5",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUUUUAZOTATI5V"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S05FDLTJ",
+     "name": "UP_FADALTO_1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "26WUUUUFADALTO1G"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S05PMAR7",
+     "name": "UP_LEVANTE_3",
+     "type": "B04",
+     "mw": 766.8,
+     "parts": [
+      "26WUUUULEVANTE35",
+      "26WUUUULEVANTE51"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S05SVRZ0",
+     "name": "UP_SOVERZENE_1",
+     "type": "B12",
+     "mw": 44.8,
+     "parts": [
+      "26WUUSOVERZENE1M"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S06SDDT9",
+     "name": "UP_DUINO_1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUUUUUUDUINO1A"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S06TRVC2",
+     "name": "UP_TORVISCOSA_1",
+     "type": "B04",
+     "mw": 790.0,
+     "parts": [
+      "26WUTORVISCOSA1F"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S07VTDR2",
+     "name": "UP_VADOTERM_5",
+     "type": "B04",
+     "mw": 679.8,
+     "parts": [
+      "26WUUUVADOTERM5P"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S08BCRGX",
+     "name": "UP_BARGI_CEN_1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "26WUUBARGI-CEN11"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S08EFNP0",
+     "name": "UP_SCTNPWPFRR_2",
+     "type": "B04",
+     "mw": 743.5,
+     "parts": [
+      "26WUSCTNPWPFRR28",
+      "26WUSCTNPWPFRR36"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S08ERNPQ",
+     "name": "UP_NPWRRVENNA_11",
+     "type": "B04",
+     "mw": 362.2,
+     "parts": [
+      "26WNPWRRVENNA11N"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S08LCCS4",
+     "name": "UP_LA_CASELL_1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUULA-CASELL1P",
+      "26WUULA-CASELL2N",
+      "26WUULA-CASELL3L",
+      "26WUULA-CASELL4J"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S08PCRTB",
+     "name": "UP_PORTO_COR_3",
+     "type": "B04",
+     "mw": 155.0,
+     "parts": [
+      "26WUUPORTO-COR3N",
+      "26WUUPORTO-COR4L"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S08PLCNW",
+     "name": "UP_PIACENZA_4",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUUUPIACENZA4O"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S09AGPP4",
+     "name": "UP_NPWRLVORNO_7",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUNPWRLVORNO77"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S09CPLR3",
+     "name": "UP_PORCARI_1",
+     "type": "B04",
+     "mw": 56.0,
+     "parts": [
+      "26WUUUUPORCARI17"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S09RSLCK",
+     "name": "UP_ROSELECTRA_1",
+     "type": "B04",
+     "mw": 394.8,
+     "parts": [
+      "26WUROSELECTRA1D"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S09RSNOR",
+     "name": "UP_ROSEN_1",
+     "type": "B04",
+     "mw": 178.0,
+     "parts": [
+      "26WUUUUUUROSEN1B"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S09SBRBU",
+     "name": "UP_SBARBARA_3",
+     "type": "B04",
+     "mw": 297.8,
+     "parts": [
+      "26WUUUSBARBARA3W"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S09VSLLJ",
+     "name": "UP_VALLE_SEC_1",
+     "type": "B09",
+     "mw": 87.0,
+     "parts": [
+      "26WUUVALLE-SEC1Z"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S10GLLT5",
+     "name": "UP_GALLETO_2",
+     "type": "B11",
+     "mw": 0.0,
+     "parts": [
+      "26WUUUUGALLETO2T"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S10PTRFC",
+     "name": "UP_PIETRAFIT_5",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUUPIETRAFIT51"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S12TRRLD",
+     "name": "UP_TORREVALN_2",
+     "type": "B05",
+     "mw": 0.0,
+     "parts": [
+      "26WUUTORREVALN2K",
+      "26WUUTORREVALN3I",
+      "26WUUTORREVALN4G"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S12TRRVU",
+     "name": "UP_TRRVLDLIGA_5",
+     "type": "B04",
+     "mw": 693.5,
+     "parts": [
+      "26WUTRRVLDLIGA55",
+      "26WUTRRVLDLIGA63"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S13BSSUZ",
+     "name": "UP_BUSSI_1",
+     "type": "B04",
+     "mw": 100.2,
+     "parts": [
+      "26WUUUUUUBUSSI19"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S13CDGNT",
+     "name": "UP_GISSI_1",
+     "type": "B04",
+     "mw": 394.8,
+     "parts": [
+      "26WUUUUUUGISSI19",
+      "26WUUUUUUGISSI27"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S13CTTM2",
+     "name": "UP_CTTAMARETE_1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUCTTAMARETE11"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S13MNTR3",
+     "name": "UP_MONTORIO_1",
+     "type": "B11",
+     "mw": 29.8,
+     "parts": [
+      "26WUUUMONTORIO1P"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S13PRVVW",
+     "name": "UP_PROVVIDEN_1",
+     "type": "B10",
+     "mw": 1.5,
+     "parts": [
+      "26WUUPROVVIDEN13"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S13S2GCF",
+     "name": "UP_SGIACOMO_3",
+     "type": "B10",
+     "mw": 99.2,
+     "parts": [
+      "26WUUUSGIACOMO3I"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S14LTRNT",
+     "name": "UP_LARINO_TG_1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUULARINO-TG1C",
+      "26WUULARINO-TG2A"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S14TERME",
+     "name": "UP_NRGAMOLISE_1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUNRGAMOLISE1H"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S15CPRTZ",
+     "name": "UP_CAPRIATI_1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "26WUUUCAPRIATI1B"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S15NLPLI",
+     "name": "UP_NAPOLIL_4",
+     "type": "B04",
+     "mw": 355.8,
+     "parts": [
+      "26WUUUUNAPOLIL48"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S15PRSN8",
+     "name": "UP_PRESENZAN_1",
+     "type": "B10",
+     "mw": -1.0,
+     "parts": [
+      "26WUUPRESENZAN11"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S15SCPRH",
+     "name": "UP_SPARANISE_1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUUSPARANISE1Q",
+      "26WUUSPARANISE2O"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S15SGTL1",
+     "name": "UP_PMGLNDARCO_1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUPZGLNDARCO14"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S15STTV3",
+     "name": "UP_CNTRLDTVRL_1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUCNTRLDTVRL1D"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S16BSCRY",
+     "name": "UP_BRNDSSUDCE_1",
+     "type": "B05",
+     "mw": 0.0,
+     "parts": [
+      "26WUBRNDSSUDCE1N",
+      "26WUBRNDSSUDCE3J",
+      "26WUBRNDSSUDCE4H"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S16CDMNU",
+     "name": "UP_SRGNPGLCNT_1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUSRGNPGLCNT1P"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S16CNDLL",
+     "name": "UP_CANDELA_1",
+     "type": "B04",
+     "mw": 389.8,
+     "parts": [
+      "26WUUUUCANDELA1R"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S16CSSCB",
+     "name": "UP_RATINO_1",
+     "type": "B04",
+     "mw": 382.8,
+     "parts": [
+      "26WUUUUURATINO1O"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S16EBNPL",
+     "name": "UP_NPWRBRNDSI_10",
+     "type": "B04",
+     "mw": 690.5,
+     "parts": [
+      "26WNPWRBRNDSI10U",
+      "26WUNPWRBRNDSI82",
+      "26WUNPWRBRNDSI90"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S18EADS0",
+     "name": "UP_ALTOMONTE_1",
+     "type": "B04",
+     "mw": 732.8,
+     "parts": [
+      "26WUUALTOMONTE1Z"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S18RCZZW",
+     "name": "UP_RIZZICONI_1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUURIZZICONI1S",
+      "26WUURIZZICONI2Q"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S18RTSN9",
+     "name": "UP_ROSSANO_T_1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUUROSSANO-T1T",
+      "26WUUROSSANO-T3P"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S18SCMR8",
+     "name": "UP_SMRICRICHI_1",
+     "type": "B04",
+     "mw": 775.8,
+     "parts": [
+      "26WUSMRICRICHI16"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S18SCNDX",
+     "name": "UP_CNTRLDSCND_1",
+     "type": "B04",
+     "mw": 378.2,
+     "parts": [
+      "26WUCNTRLDSCND16",
+      "26WUCNTRLDSCND24"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S19APGPP",
+     "name": "UP_CTNUCENORD_2",
+     "type": "B04",
+     "mw": 160.0,
+     "parts": [
+      "26WUCTNUCENORD2R",
+      "26WUCTNUCENORD3P"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S19IESBL",
+     "name": "UP_ISABENERGY_2",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUISABENERGY2N",
+      "26WUISABENERGY3L"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S19PCRLE",
+     "name": "UP_PRIOLO_C_1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUUUPRIOLO-C13"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S19SDMCS",
+     "name": "UP_S.F._DEL_1",
+     "type": "B06",
+     "mw": 0.0,
+     "parts": [
+      "26WUUUS-F--DEL16",
+      "26WUUUS-F--DEL24",
+      "26WUUUS-F--DEL5Z",
+      "26WUUUS-F--DEL6X"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S19TCRMT",
+     "name": "UP_TERMINI_I_6",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUUTERMINI-I6D"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S19TCRPN",
+     "name": "UP_TRAPANI_C_1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WUUTRAPANI-C1M",
+      "26WUUTRAPANI-C2K"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S19TMRC9",
+     "name": "UP_MILAZZO_1",
+     "type": "B04",
+     "mw": 65.0,
+     "parts": [
+      "26WUUUUMILAZZO1Z"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S20FOMSR",
+     "name": "UP_FIUMESANT_3",
+     "type": "B05",
+     "mw": 331.8,
+     "parts": [
+      "26WUUFIUMESANT3F",
+      "26WUUFIUMESANT4D"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S20SCLC8",
+     "name": "UP_SULCIS_CEN_2",
+     "type": "B05",
+     "mw": 0.0,
+     "parts": [
+      "26WUSULCIS-CEN2C",
+      "26WUUSULCIS-CE3T"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S20SRLXH",
+     "name": "UP_SARLUX_1",
+     "type": "B03",
+     "mw": 471.2,
+     "parts": [
+      "26WUUUUUSARLUX1W"
+     ]
+    },
+    {
+     "eic": "26WIMPI-S20UELSW",
+     "name": "UP_PRCLCDLSSI_1",
+     "type": "B19",
+     "mw": 89.0,
+     "parts": [
+      "26WUPRCLCDLSSI1T"
+     ]
+    },
+    {
+     "eic": "26WIMPI-T20TLRAJ",
+     "name": "UP_TALORO1_1",
+     "type": "B10",
+     "mw": 28.8,
+     "parts": [
+      "26WUUUUTALORO11V"
+     ]
+    },
+    {
+     "eic": "26WIMPIALENCO-1B",
+     "name": "UP_VALMALENCO_1",
+     "type": "B11",
+     "mw": 0.0,
+     "parts": [
+      "26WUVALMALENCO17"
+     ]
+    },
+    {
+     "eic": "26WIMPIAMENTO-1T",
+     "name": "UP_TAGLIAMENTO_1",
+     "type": "B11",
+     "mw": 169.8,
+     "parts": [
+      "26WTAGLIAMENTO1J"
+     ]
+    },
+    {
+     "eic": "26WIMPIASS-CL-1D",
+     "name": "UP_S.MASS.CL_1",
+     "type": "B10",
+     "mw": 83.5,
+     "parts": [
+      "26WUUS-MASS-CL10"
+     ]
+    },
+    {
+     "eic": "26WIMPICHIESE-1B",
+     "name": "UP_CHIESE_1",
+     "type": "B11",
+     "mw": 251.8,
+     "parts": [
+      "26WUUUUUCHIESE16"
+     ]
+    },
+    {
+     "eic": "26WIMPIENTOUX-1I",
+     "name": "UP_PONTVENTOUX_1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "26WPONTVENTOUX1J"
+     ]
+    },
+    {
+     "eic": "26WIMPIGROSIO-11",
+     "name": "UP_PREM-GROSIO_1",
+     "type": "B11",
+     "mw": 406.2,
+     "parts": [
+      "26WPREM-GROSIO10"
+     ]
+    },
+    {
+     "eic": "26WIMPII-LIRO-1L",
+     "name": "UP_LIRO_1",
+     "type": "B11",
+     "mw": 108.2,
+     "parts": [
+      "26WUUUUUUULIRO13"
+     ]
+    },
+    {
+     "eic": "26WIMPII-NOCE-1C",
+     "name": "UP_NOCE_1",
+     "type": "B11",
+     "mw": 132.0,
+     "parts": [
+      "26WUUUUUUUNOCE1E"
+     ]
+    },
+    {
+     "eic": "26WIMPILTOCLE-1O",
+     "name": "UP_MNTALTOCLE_1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "26WMNTALTOCLE10T"
+     ]
+    },
+    {
+     "eic": "26WIMPIMONICA-1D",
+     "name": "UP_VALCAMONICA_1",
+     "type": "B11",
+     "mw": 30.2,
+     "parts": [
+      "26WVALCAMONICA1Y"
+     ]
+    },
+    {
+     "eic": "26WIMPIMUCONE-19",
+     "name": "UP_MUCONE_1",
+     "type": "B11",
+     "mw": 3.0,
+     "parts": [
+      "26WUUUUUMUCONE1Q"
+     ]
+    },
+    {
+     "eic": "26WIMPIORTICA-13",
+     "name": "UP_ORTICA_1",
+     "type": "B11",
+     "mw": 108.8,
+     "parts": [
+      "26WUUUUUORTICA1F"
+     ]
+    },
+    {
+     "eic": "26WIMPITOADDA-1T",
+     "name": "UP_ALTOADDA_1",
+     "type": "B10",
+     "mw": 215.0,
+     "parts": [
+      "26WUUUALTOADDA15"
+     ]
+    },
+    {
+     "eic": "26WIMPIVELINO-1Q",
+     "name": "UP_NERAVELINO_1",
+     "type": "B11",
+     "mw": 128.5,
+     "parts": [
+      "26WUNERAVELINO11"
+     ]
+    },
+    {
+     "eic": "26WIMYI-S19ANPAB",
+     "name": "UP_ANAPO_C.L_1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "26WUUANAPO-C-L1O"
+     ]
+    },
+    {
+     "eic": "26WIMZI-S01BVRG0",
+     "name": "UP_VERZUOLO_2",
+     "type": "B04",
+     "mw": 15.8,
+     "parts": [
+      "26WUUUVERZUOLO2R"
+     ]
+    }
+   ]
+  },
+  "LT": {
+   "areas": [
+    "10YLT-1001A0008Q"
+   ],
+   "units": [
+    {
+     "eic": "41W1023600243EL3",
+     "name": "LE TG-7",
+     "type": "B04",
+     "mw": 287.2,
+     "parts": [
+      "41WLE-------TG7K",
+      "41WLE-------TG8I",
+      "41WLE-------TG9G"
+     ]
+    },
+    {
+     "eic": "41W2128003453ELI",
+     "name": "KHAE HA1",
+     "type": "B10",
+     "mw": -2.0,
+     "parts": [
+      "41WKHAE-----HA1Q",
+      "41WKHAE-----HA2O",
+      "41WKHAE-----HA3M",
+      "41WKHAE-----HA4K"
+     ]
+    },
+    {
+     "eic": "41W8538227475ELN",
+     "name": "KTE",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "41WKTE------TG2V"
+     ]
+    }
+   ]
+  },
+  "MD": {
+   "areas": [
+    "10Y1001A1001A990"
+   ],
+   "units": [
+    {
+     "eic": "64WMGRES-----07L",
+     "name": "MGRES U4",
+     "type": "B05",
+     "mw": 140.0,
+     "parts": [
+      "64WMGRES--1G4T72",
+      "64WMGRES--1G5T7Z",
+      "64WMGRES--1G7T7R",
+      "64WMGRES--1G8T7N",
+      "64WMGRES--1G9T7J",
+      "64WMGRES-1G10T7Q",
+      "64WMGRES-1G11T7M",
+      "64WMGRES-1G12T7I"
+     ]
+    }
+   ]
+  },
+  "ME": {
+   "areas": [
+    "10YCS-CG-TSO---S"
+   ],
+   "units": [
+    {
+     "eic": "21W0000000000PVY",
+     "name": "Pljevlja G0PVS",
+     "type": "B02",
+     "mw": 198.2,
+     "parts": [
+      "21W00000000G0PVS"
+     ]
+    },
+    {
+     "eic": "21W00000000PIVA9",
+     "name": "Piva_G1",
+     "type": "B12",
+     "mw": 84.2,
+     "parts": [
+      "21W00000G10PIVAM",
+      "21W00000G20PIVAF",
+      "21W00000G30PIVA8"
+     ]
+    }
+   ]
+  },
+  "MK": {
+   "areas": [
+    "10YMK-MEPSO----8"
+   ],
+   "units": [
+    {
+     "eic": "33W--TEC-TE-TO-B",
+     "name": "TE-TO G1",
+     "type": "B04",
+     "mw": 211.3,
+     "parts": [
+      "33W-TE-TO-GEN1-E"
+     ]
+    },
+    {
+     "eic": "33W-HEC-TIKVES-8",
+     "name": "TIKVES G1",
+     "type": "B12",
+     "mw": 35.9,
+     "parts": [
+      "33WHECTIKVESG1-3",
+      "33WHECTIKVESG2-0",
+      "33WHECTIKVESG3-Y",
+      "33WHECTIKVESG4-V"
+     ]
+    },
+    {
+     "eic": "33W-HEC-VRUTOK-B",
+     "name": "VRUTOK G1",
+     "type": "B12",
+     "mw": 126.5,
+     "parts": [
+      "33W-HECVRUTOKG1B",
+      "33W-HECVRUTOKG29",
+      "33W-HECVRUTOKG37",
+      "33W-HECVRUTOKG45"
+     ]
+    },
+    {
+     "eic": "33W-TEC-BITOLA-F",
+     "name": "BITOLA G1",
+     "type": "B02",
+     "mw": 270.7,
+     "parts": [
+      "33W-TECBITOLAG1Q",
+      "33W-TECBITOLAG2O",
+      "33W-TECBITOLAG3M"
+     ]
+    },
+    {
+     "eic": "33W-TECOSLOMEJ-7",
+     "name": "OSLOMEJ G1",
+     "type": "B02",
+     "mw": 0.0,
+     "parts": [
+      "33WTECOSLOMEJG1V"
+     ]
+    },
+    {
+     "eic": "33WTEC-NEGOTINOT",
+     "name": "Negotino_G1",
+     "type": "B06",
+     "mw": 0.0,
+     "parts": [
+      "33W-TECNEGOTINOD"
+     ]
+    }
+   ]
+  },
+  "NL": {
+   "areas": [
+    "10YNL----------L"
+   ],
+   "units": [
+    {
+     "eic": "49W0000000000342",
+     "name": "EDH",
+     "type": "B04",
+     "mw": 91.3,
+     "parts": [
+      "49W0000000000342"
+     ]
+    },
+    {
+     "eic": "49W0000000000431",
+     "name": "Diemen 33",
+     "type": "B04",
+     "mw": 596.0,
+     "parts": [
+      "49W0000000000164",
+      "49W0000000000172"
+     ]
+    },
+    {
+     "eic": "49W000000000044-",
+     "name": "Eemshaven 30",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "49W000000000020D"
+     ]
+    },
+    {
+     "eic": "49W000000000045Y",
+     "name": "Hemweg 9",
+     "type": "B04",
+     "mw": 403.8,
+     "parts": [
+      "49W000000000039T"
+     ]
+    },
+    {
+     "eic": "49W000000000046W",
+     "name": "IJmond",
+     "type": "B04",
+     "mw": 78.0,
+     "parts": [
+      "49W000000000021B",
+      "49W0000000000229",
+      "49W0000000000237"
+     ]
+    },
+    {
+     "eic": "49W000000000047U",
+     "name": "Lage Weide 6",
+     "type": "B04",
+     "mw": 214.6,
+     "parts": [
+      "49W0000000000245"
+     ]
+    },
+    {
+     "eic": "49W000000000048S",
+     "name": "Elsta 1",
+     "type": "B04",
+     "mw": 200.2,
+     "parts": [
+      "49W000000000049Q"
+     ]
+    },
+    {
+     "eic": "49W0000000000504",
+     "name": "NAM Schoonebeek",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "49W0000000000407"
+     ]
+    },
+    {
+     "eic": "49W0000000000512",
+     "name": "Unit 10",
+     "type": "B04",
+     "mw": 349.5,
+     "parts": [
+      "49W0000000000415"
+     ]
+    },
+    {
+     "eic": "49W000000000054X",
+     "name": "Borssele 30",
+     "type": "B14",
+     "mw": 486.5,
+     "parts": [
+      "49W000000000055V"
+     ]
+    },
+    {
+     "eic": "49W000000000058P",
+     "name": "ENECOGEN-U10",
+     "type": "B04",
+     "mw": 896.5,
+     "parts": [
+      "49W000000000059N"
+     ]
+    },
+    {
+     "eic": "49W000000000063W",
+     "name": "Moerdijk 1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "49W000000000013A",
+      "49W0000000000148"
+     ]
+    },
+    {
+     "eic": "49W000000000066Q",
+     "name": "Eemshaven A",
+     "type": "B05",
+     "mw": 1566.9,
+     "parts": [
+      "49W0000000000075",
+      "49W0000000000083"
+     ]
+    },
+    {
+     "eic": "49W000000000069K",
+     "name": "Claus C",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "49W0000000000059"
+     ]
+    },
+    {
+     "eic": "49W000000000070Z",
+     "name": "Amer 9",
+     "type": "B01",
+     "mw": 372.5,
+     "parts": [
+      "49W000000000002F"
+     ]
+    },
+    {
+     "eic": "49W000000000072V",
+     "name": "FLEVO 4",
+     "type": "B04",
+     "mw": 372.0,
+     "parts": [
+      "49W000000000073T"
+     ]
+    },
+    {
+     "eic": "49W000000000074R",
+     "name": "FLEVO 5",
+     "type": "B04",
+     "mw": 454.7,
+     "parts": [
+      "49W000000000075P"
+     ]
+    },
+    {
+     "eic": "49W000000000078J",
+     "name": "NLROTTETH__1",
+     "type": "B05",
+     "mw": 724.2,
+     "parts": [
+      "49W000000000079H"
+     ]
+    },
+    {
+     "eic": "49W000000000080W",
+     "name": "Eems 7",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "49W000000000081U"
+     ]
+    },
+    {
+     "eic": "49W000000000082S",
+     "name": "Eems 6",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "49W000000000083Q"
+     ]
+    },
+    {
+     "eic": "49W000000000084O",
+     "name": "Eems 5",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "49W000000000085M"
+     ]
+    },
+    {
+     "eic": "49W000000000086K",
+     "name": "Eems 4",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "49W000000000087I"
+     ]
+    },
+    {
+     "eic": "49W000000000088G",
+     "name": "Eems 3",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "49W000000000089E"
+     ]
+    },
+    {
+     "eic": "49W000000000090T",
+     "name": "Merwedekanaal 12",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "49W0000000000261"
+     ]
+    },
+    {
+     "eic": "49W000000000092P",
+     "name": "Pergen 1",
+     "type": "B04",
+     "mw": 79.9,
+     "parts": [
+      "49W000000000093N"
+     ]
+    },
+    {
+     "eic": "49W000000000094L",
+     "name": "Pergen 2",
+     "type": "B04",
+     "mw": 80.4,
+     "parts": [
+      "49W000000000095J"
+     ]
+    },
+    {
+     "eic": "49W000000000096H",
+     "name": "Eems 20",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "49W000000000097F"
+     ]
+    },
+    {
+     "eic": "49W000000000102B",
+     "name": "Maasvlakte 3",
+     "type": "B05",
+     "mw": 1036.2,
+     "parts": [
+      "49W0000000000326"
+     ]
+    },
+    {
+     "eic": "49W0000000001047",
+     "name": "RoCa 3",
+     "type": "B04",
+     "mw": 138.3,
+     "parts": [
+      "49W000000000037X"
+     ]
+    },
+    {
+     "eic": "49W0000000001128",
+     "name": "REC-A",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "49W0000000001136",
+      "49W0000000001144",
+      "49W0000000001152"
+     ]
+    },
+    {
+     "eic": "49W000000000117Z",
+     "name": "Unit 20",
+     "type": "B04",
+     "mw": 472.2,
+     "parts": [
+      "49W0000000000423"
+     ]
+    },
+    {
+     "eic": "49W000000000119V",
+     "name": "Eemshaven 10",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "49W0000000000180",
+      "49W000000000019Z"
+     ]
+    },
+    {
+     "eic": "49W0000000001225",
+     "name": "Maasstroom Energie",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "49W000000000109Y"
+     ]
+    },
+    {
+     "eic": "49W000000000152X",
+     "name": "Delesto 2",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "49W000000000153V"
+     ]
+    }
+   ]
+  },
+  "PL": {
+   "areas": [
+    "10YPL-AREA-----S"
+   ],
+   "units": [
+    {
+     "eic": "19W000000000016F",
+     "name": "Bełchatów B02",
+     "type": "B02",
+     "mw": 3886.5,
+     "parts": [
+      "19W000000000020O",
+      "19W000000000021M",
+      "19W000000000022K",
+      "19W000000000023I",
+      "19W000000000024G",
+      "19W000000000025E",
+      "19W000000000026C",
+      "19W000000000027A",
+      "19W0000000000288",
+      "19W0000000000296",
+      "19W000000000030L",
+      "19W000000000032H"
+     ]
+    },
+    {
+     "eic": "19W0000000000369",
+     "name": "Chorzów B1",
+     "type": "B05",
+     "mw": 119.9,
+     "parts": [
+      "19W0000000000377",
+      "19W0000000000385"
+     ]
+    },
+    {
+     "eic": "19W000000000043C",
+     "name": "Dolna Odra B5",
+     "type": "B05",
+     "mw": 152.1,
+     "parts": [
+      "19W0000000000490",
+      "19W000000000051D",
+      "19W0000000000539",
+      "19W0000000000555"
+     ]
+    },
+    {
+     "eic": "19W0000000000636",
+     "name": "Jaworzno 3 B3",
+     "type": "B05",
+     "mw": 267.8,
+     "parts": [
+      "19W0000000000644",
+      "19W0000000000652",
+      "19W0000000000660",
+      "19W000000000067Z",
+      "19W000000000068X",
+      "19W000000000069V"
+     ]
+    },
+    {
+     "eic": "19W0000000000741",
+     "name": "Karolin B2",
+     "type": "B05",
+     "mw": 42.2,
+     "parts": [
+      "19W0000000000709",
+      "19W0000000000717"
+     ]
+    },
+    {
+     "eic": "19W000000000076Y",
+     "name": "Katowice B1",
+     "type": "B05",
+     "mw": 100.4,
+     "parts": [
+      "19W000000000077W"
+     ]
+    },
+    {
+     "eic": "19W0000000000806",
+     "name": "Kraków Łęg B1",
+     "type": "B05",
+     "mw": 270.4,
+     "parts": [
+      "19W0000000000830",
+      "19W000000000086V",
+      "19W000000000089P",
+      "19W000000000093Y"
+     ]
+    },
+    {
+     "eic": "19W000000000095U",
+     "name": "Kozienice 1 B2",
+     "type": "B05",
+     "mw": 965.1,
+     "parts": [
+      "19W000000000096S",
+      "19W000000000097Q",
+      "19W000000000098O",
+      "19W000000000099M",
+      "19W000000000100Q",
+      "19W000000000101O",
+      "19W000000000102M",
+      "19W000000000103K"
+     ]
+    },
+    {
+     "eic": "19W000000000104I",
+     "name": "Kozienice 2 B10",
+     "type": "B05",
+     "mw": 1854.0,
+     "parts": [
+      "19W000000000105G",
+      "19W0000000002329",
+      "19W000000000278M"
+     ]
+    },
+    {
+     "eic": "19W000000000107C",
+     "name": "Łódź-4 B03",
+     "type": "B05",
+     "mw": 76.8,
+     "parts": [
+      "19W000000000108A"
+     ]
+    },
+    {
+     "eic": "19W0000000001098",
+     "name": "EC Wrotków B1",
+     "type": "B04",
+     "mw": 214.2,
+     "parts": [
+      "19W000000000110N"
+     ]
+    },
+    {
+     "eic": "19W000000000111L",
+     "name": "Łagisza B10",
+     "type": "B05",
+     "mw": 0.0,
+     "parts": [
+      "19W000000000115D"
+     ]
+    },
+    {
+     "eic": "19W0000000001195",
+     "name": "Łaziska 3 B09",
+     "type": "B05",
+     "mw": 294.2,
+     "parts": [
+      "19W000000000121I",
+      "19W000000000122G",
+      "19W000000000124C",
+      "19W0000000001268"
+     ]
+    },
+    {
+     "eic": "19W0000000001292",
+     "name": "Opole B1",
+     "type": "B05",
+     "mw": 1106.2,
+     "parts": [
+      "19W000000000130H",
+      "19W000000000131F",
+      "19W000000000132D",
+      "19W000000000133B",
+      "19W000000000285P",
+      "19W000000000286N"
+     ]
+    },
+    {
+     "eic": "19W0000000001349",
+     "name": "Ostrołęka B B03",
+     "type": "B05",
+     "mw": 134.8,
+     "parts": [
+      "19W0000000001365",
+      "19W0000000001381",
+      "19W000000000141C"
+     ]
+    },
+    {
+     "eic": "19W000000000149X",
+     "name": "Pątnów 2 B9",
+     "type": "B02",
+     "mw": 271.2,
+     "parts": [
+      "19W000000000150B"
+     ]
+    },
+    {
+     "eic": "19W0000000001519",
+     "name": "Połaniec B2",
+     "type": "B05",
+     "mw": 829.7,
+     "parts": [
+      "19W0000000001551",
+      "19W000000000157Y",
+      "19W000000000158W",
+      "19W0000000001616",
+      "19W0000000001624",
+      "19W0000000001640"
+     ]
+    },
+    {
+     "eic": "19W000000000165Z",
+     "name": "Połaniec 2 blok 9",
+     "type": "B01",
+     "mw": 202.7,
+     "parts": [
+      "19W000000000166X"
+     ]
+    },
+    {
+     "eic": "19W000000000169R",
+     "name": "EC Rzeszów B1",
+     "type": "B04",
+     "mw": 89.9,
+     "parts": [
+      "19W0000000001705"
+     ]
+    },
+    {
+     "eic": "19W0000000001713",
+     "name": "Rybnik B5",
+     "type": "B05",
+     "mw": 399.4,
+     "parts": [
+      "19W000000000177S",
+      "19W000000000178Q",
+      "19W000000000179O",
+      "19W0000000001802"
+     ]
+    },
+    {
+     "eic": "19W000000000186R",
+     "name": "Skawina Tg3",
+     "type": "B05",
+     "mw": 74.7,
+     "parts": [
+      "19W000000000187P",
+      "19W000000000191Y",
+      "19W000000000192W"
+     ]
+    },
+    {
+     "eic": "19W000000000199I",
+     "name": "Turów B01",
+     "type": "B02",
+     "mw": 1195.2,
+     "parts": [
+      "19W000000000201K",
+      "19W000000000203G",
+      "19W000000000205C",
+      "19W0000000002078",
+      "19W0000000002094",
+      "19W000000000211H",
+      "19W000000000282V"
+     ]
+    },
+    {
+     "eic": "19W000000000213D",
+     "name": "Wrocław Bl2",
+     "type": "B05",
+     "mw": 164.2,
+     "parts": [
+      "19W0000000002159",
+      "19W0000000002175"
+     ]
+    },
+    {
+     "eic": "19W0000000002191",
+     "name": "Siekierki B07",
+     "type": "B05",
+     "mw": 314.8,
+     "parts": [
+      "19W000000000221E",
+      "19W000000000223A",
+      "19W0000000002256",
+      "19W0000000002272"
+     ]
+    },
+    {
+     "eic": "19W000000000230D",
+     "name": "Zielona Góra BGP",
+     "type": "B04",
+     "mw": 185.6,
+     "parts": [
+      "19W000000000231B"
+     ]
+    },
+    {
+     "eic": "19W0000000002361",
+     "name": "Siersza B1",
+     "type": "B05",
+     "mw": 76.8,
+     "parts": [
+      "19W0000000001810",
+      "19W000000000182Z"
+     ]
+    },
+    {
+     "eic": "19W0000000002418",
+     "name": "ESP Żarnowiec H1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "19W0000000002434",
+      "19W0000000002442",
+      "19W0000000002450",
+      "19W000000000246Z"
+     ]
+    },
+    {
+     "eic": "19W000000000247X",
+     "name": "Porąbka Żar H1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "19W000000000248V",
+      "19W000000000249T",
+      "19W0000000002507",
+      "19W0000000002523"
+     ]
+    },
+    {
+     "eic": "19W000000000256W",
+     "name": "BGP Włocławek",
+     "type": "B04",
+     "mw": 399.0,
+     "parts": [
+      "19W000000000257U"
+     ]
+    },
+    {
+     "eic": "19W000000000283T",
+     "name": "Płock B01",
+     "type": "B04",
+     "mw": 516.0,
+     "parts": [
+      "19W000000000279K"
+     ]
+    },
+    {
+     "eic": "19W000000000284R",
+     "name": "EC Stalowa Wola  B12",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "19W000000000277O"
+     ]
+    },
+    {
+     "eic": "19W000000000290W",
+     "name": "EC Żerań BGP",
+     "type": "B04",
+     "mw": 481.9,
+     "parts": [
+      "19W000000000291U"
+     ]
+    },
+    {
+     "eic": "19W000000000296K",
+     "name": "Jaworzno 2 B7",
+     "type": "B05",
+     "mw": 330.7,
+     "parts": [
+      "19W000000000288J"
+     ]
+    },
+    {
+     "eic": "19W110000000313L",
+     "name": "Gryfino Blok 9",
+     "type": "B04",
+     "mw": 670.1,
+     "parts": [
+      "19W110000000308E",
+      "19W110000000309C"
+     ]
+    },
+    {
+     "eic": "19W111100000001J",
+     "name": "EC Czechnica-2",
+     "type": "B04",
+     "mw": 91.8,
+     "parts": [
+      "19W1100000003482"
+     ]
+    }
+   ]
+  },
+  "PT": {
+   "areas": [
+    "10YPT-REN------W"
+   ],
+   "units": [
+    {
+     "eic": "16W-FRATEL-----A",
+     "name": "Fratel - G1",
+     "type": "B11",
+     "mw": 102.2,
+     "parts": [
+      "16WFRATEL1-----M",
+      "16WFRATEL2-----F",
+      "16WFRATEL3-----8"
+     ]
+    },
+    {
+     "eic": "16W-MIRANDA----I",
+     "name": "Miranda - G1",
+     "type": "B11",
+     "mw": 163.6,
+     "parts": [
+      "16WMIRAN1------O",
+      "16WMIRAN2------G",
+      "16WMIRAN3------8"
+     ]
+    },
+    {
+     "eic": "16WAGUIE-------3",
+     "name": "Aguieira - G1",
+     "type": "B10",
+     "mw": 57.5,
+     "parts": [
+      "16WAGUIE1------O",
+      "16WAGUIE2------G",
+      "16WAGUIE3------8"
+     ]
+    },
+    {
+     "eic": "16WALINDO------J",
+     "name": "Alto Lindoso - G1",
+     "type": "B12",
+     "mw": 204.5,
+     "parts": [
+      "16WALINDO1-----5",
+      "16WALINDO2-----Z"
+     ]
+    },
+    {
+     "eic": "16WALQUE-------F",
+     "name": "Alqueva - G1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "16W-ALQUE1-----X",
+      "16W-ALQUE2-----Q",
+      "16W-ALQUE4-----C"
+     ]
+    },
+    {
+     "eic": "16WALQUEII-----Q",
+     "name": "Alqueva - G3",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "16W-ALQUE3-----J"
+     ]
+    },
+    {
+     "eic": "16WBASBM-------8",
+     "name": "Baixo Sabor Montante - G1",
+     "type": "B10",
+     "mw": 56.3,
+     "parts": [
+      "16WBASBM1------T",
+      "16WBASBM2------L"
+     ]
+    },
+    {
+     "eic": "16WBEMPOII-----R",
+     "name": "Bemposta II - G1",
+     "type": "B11",
+     "mw": 113.0,
+     "parts": [
+      "16WBEMPOS4-----8"
+     ]
+    },
+    {
+     "eic": "16WBEMPOS------6",
+     "name": "Bemposta - G1",
+     "type": "B11",
+     "mw": 221.6,
+     "parts": [
+      "16WBEMPOS1-----T",
+      "16WBEMPOS2-----M",
+      "16WBEMPOS3-----F"
+     ]
+    },
+    {
+     "eic": "16WCABRIL------U",
+     "name": "Cabril - G1",
+     "type": "B12",
+     "mw": 0.0,
+     "parts": [
+      "16WCABRIL1-----G",
+      "16WCABRIL2-----9"
+     ]
+    },
+    {
+     "eic": "16WCARRAPA-----2",
+     "name": "Carrapatelo - G1",
+     "type": "B11",
+     "mw": 199.2,
+     "parts": [
+      "16WCARRA1------C",
+      "16WCARRA2------4",
+      "16WCARRA3------X"
+     ]
+    },
+    {
+     "eic": "16WCBODE-------5",
+     "name": "Castelo Bode - G1",
+     "type": "B12",
+     "mw": 17.9,
+     "parts": [
+      "16WCBODE1------Q",
+      "16WCBODE2------I",
+      "16WCBODE3------A"
+     ]
+    },
+    {
+     "eic": "16WCRESTUM-----6",
+     "name": "Crestuma - G1",
+     "type": "B11",
+     "mw": 72.0,
+     "parts": [
+      "16WCRESTU1-----5",
+      "16WCRESTU2-----Z",
+      "16WCRESTU3-----S"
+     ]
+    },
+    {
+     "eic": "16WDVOES-------N",
+     "name": "Daivões - G1",
+     "type": "B12",
+     "mw": 0.0,
+     "parts": [
+      "18W000000000MKPW",
+      "18W000000000MKQU"
+     ]
+    },
+    {
+     "eic": "16WFOZT--------Y",
+     "name": "Foz Tua - G1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "16WFOZTG1------D",
+      "16WFOZTG2------5"
+     ]
+    },
+    {
+     "eic": "16WFRADE2------F",
+     "name": "Frades II - G1",
+     "type": "B10",
+     "mw": 383.4,
+     "parts": [
+      "16WFRADEG3-----N",
+      "16WFRADEG4-----G"
+     ]
+    },
+    {
+     "eic": "16WFRADES------T",
+     "name": "V.Nova II(Frades) - G1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "16WFRADES1-----F",
+      "16WFRADES2-----8"
+     ]
+    },
+    {
+     "eic": "16WGVAES-------R",
+     "name": "Gouvães - G1",
+     "type": "B10",
+     "mw": 351.3,
+     "parts": [
+      "18W000000000MKI9",
+      "18W000000000MKJ7",
+      "18W000000000MKK5",
+      "18W000000000MKL3"
+     ]
+    },
+    {
+     "eic": "16WLARES-------R",
+     "name": "Lares - G1",
+     "type": "B04",
+     "mw": 588.9,
+     "parts": [
+      "16WLARES1------B",
+      "16WLARES2------3"
+     ]
+    },
+    {
+     "eic": "16WMIRANII-----E",
+     "name": "Miranda II - G1",
+     "type": "B11",
+     "mw": 170.9,
+     "parts": [
+      "16WMIRAN4------0"
+     ]
+    },
+    {
+     "eic": "16WPEGO--------O",
+     "name": "Pego C.C. - G3",
+     "type": "B04",
+     "mw": 410.8,
+     "parts": [
+      "16WPEGO3-------P",
+      "16WPEGO4-------G"
+     ]
+    },
+    {
+     "eic": "16WPICOTE------0",
+     "name": "Picote - G1",
+     "type": "B11",
+     "mw": 158.0,
+     "parts": [
+      "16WPICOTE1-----N",
+      "16WPICOTE2-----G",
+      "16WPICOTE3-----9"
+     ]
+    },
+    {
+     "eic": "16WPICOTII-----K",
+     "name": "Picote II - G1",
+     "type": "B11",
+     "mw": 235.2,
+     "parts": [
+      "16WPICOTE4-----3"
+     ]
+    },
+    {
+     "eic": "16WPOCINHO-----S",
+     "name": "Pocinho - G1",
+     "type": "B11",
+     "mw": 123.1,
+     "parts": [
+      "16WPOCIN1------Z",
+      "16WPOCIN2------R",
+      "16WPOCIN3------J"
+     ]
+    },
+    {
+     "eic": "16WREGUA-------O",
+     "name": "Régua - G1",
+     "type": "B11",
+     "mw": 160.5,
+     "parts": [
+      "16WREGUA1------8",
+      "16WREGUA2------0",
+      "16WREGUA3------T"
+     ]
+    },
+    {
+     "eic": "16WRIBATE------E",
+     "name": "Ribatejo - G1",
+     "type": "B04",
+     "mw": -2.7,
+     "parts": [
+      "16WRIBATE1-----0",
+      "16WRIBATE2-----U",
+      "16WRIBATE3-----N"
+     ]
+    },
+    {
+     "eic": "16WRTG---------V",
+     "name": "T.Outeiro C.C. - G1",
+     "type": "B04",
+     "mw": -2.5,
+     "parts": [
+      "16WRTG01-------3",
+      "16WRTG02-------V",
+      "16WRTG03-------M"
+     ]
+    },
+    {
+     "eic": "16WSALAM2------Z",
+     "name": "Salamonde II - G3",
+     "type": "B10",
+     "mw": 199.7,
+     "parts": [
+      "16WSALAMG3-----6"
+     ]
+    },
+    {
+     "eic": "16WTORRAO------V",
+     "name": "Torrão - G1",
+     "type": "B11",
+     "mw": 60.4,
+     "parts": [
+      "16WTORRA1------U",
+      "16WTORRA2------M"
+     ]
+    },
+    {
+     "eic": "16WVALEIRA-----B",
+     "name": "Valeira - G1",
+     "type": "B11",
+     "mw": 199.8,
+     "parts": [
+      "16WVALEIR1-----0",
+      "16WVALEIR2-----U",
+      "16WVALEIR3-----N"
+     ]
+    },
+    {
+     "eic": "16WVFURNA------1",
+     "name": "Vilarinho Furnas - G1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "16WVFURNA1-----O",
+      "16WVFURNA2-----H"
+     ]
+    }
+   ]
+  },
+  "RO": {
+   "areas": [
+    "10YRO-TEL------P"
+   ],
+   "units": [
+    {
+     "eic": "30W-CERNAVODA--E",
+     "name": "CNE__U1_RET_CA",
+     "type": "B14",
+     "mw": 1218.4,
+     "parts": [
+      "30WCERNCERN1---Y",
+      "30WCERNCERN2---T"
+     ]
+    },
+    {
+     "eic": "30W-CET-BRAZ---Q",
+     "name": "CETBrazi__BRAZ5_CA",
+     "type": "B04",
+     "mw": 59.5,
+     "parts": [
+      "30WBRAZBRAZ5---1",
+      "30WBRAZBRAZ6---X"
+     ]
+    },
+    {
+     "eic": "30W-CET-BUCS---S",
+     "name": "BucurestiSud_BUCS3_CA",
+     "type": "B04",
+     "mw": 154.5,
+     "parts": [
+      "30WELCEBUCU3---2",
+      "30WELCEBUCU4---Y"
+     ]
+    },
+    {
+     "eic": "30W-CET-BUCV---D",
+     "name": "BucurestiVest_BUCV3+4_CA",
+     "type": "B04",
+     "mw": 3.5,
+     "parts": [
+      "30WELCEBUCV3---X"
+     ]
+    },
+    {
+     "eic": "30W-CET-CRAI---T",
+     "name": "CetCraiova2_CRAI1_CA",
+     "type": "B02",
+     "mw": 85.4,
+     "parts": [
+      "30WCRAICRA21---Y",
+      "30WCRAICRA22---T"
+     ]
+    },
+    {
+     "eic": "30W-CET-IERN---J",
+     "name": "Iernut_IERN5_CA",
+     "type": "B04",
+     "mw": 142.6,
+     "parts": [
+      "30WELCEIERN5---V",
+      "30WELCENIERN4--M"
+     ]
+    },
+    {
+     "eic": "30W-CET-ISAL---X",
+     "name": "Isalnita_ISAL7_CA",
+     "type": "B02",
+     "mw": 0.0,
+     "parts": [
+      "30WCRAIISAL7---D"
+     ]
+    },
+    {
+     "eic": "30W-CET-PARO---N",
+     "name": "CET_Paroseni_CA",
+     "type": "B05",
+     "mw": 70.1,
+     "parts": [
+      "30WTE-PARO124--W"
+     ]
+    },
+    {
+     "eic": "30W-CET-PETROM-L",
+     "name": "CCCCBrazi_BraziST_CA",
+     "type": "B04",
+     "mw": 775.5,
+     "parts": [
+      "30W-PETR-BRAZ1-W"
+     ]
+    },
+    {
+     "eic": "30W-CET-ROVI---Q",
+     "name": "CTE_Rovinari_ROVI4_CA",
+     "type": "B02",
+     "mw": 479.6,
+     "parts": [
+      "30WROVIROVI4---F",
+      "30WROVIROVI5---A",
+      "30WROVIROVI6---5"
+     ]
+    },
+    {
+     "eic": "30W-CET-TURC---M",
+     "name": "CteTurceni_TURC4_CA",
+     "type": "B02",
+     "mw": 328.8,
+     "parts": [
+      "30WTURCTURC4---J",
+      "30WTURCTURC5---E",
+      "30WTURCTURC7---4"
+     ]
+    },
+    {
+     "eic": "30W-CHE-LOTR---A",
+     "name": "CHE_Lotru_LOTR1_CA",
+     "type": "B12",
+     "mw": 23.1,
+     "parts": [
+      "30WHIDRLOTR1---C",
+      "30WHIDRLOTR2---G",
+      "30WHIDRLOTR3---B"
+     ]
+    },
+    {
+     "eic": "30W-CHE-PDF1---A",
+     "name": "ChePortileDeFier_PFIERI1_CA",
+     "type": "B11",
+     "mw": 777.9,
+     "parts": [
+      "30WHIDRPDFE1---R",
+      "30WHIDRPDFE2---M",
+      "30WHIDRPDFE3---H",
+      "30WHIDRPDFE4---C",
+      "30WHIDRPDFE5---7",
+      "30WHIDRPDFE6---2"
+     ]
+    },
+    {
+     "eic": "30W-CHE-RUIM---B",
+     "name": "CheRetezat_RIUM1_CA",
+     "type": "B12",
+     "mw": 0.0,
+     "parts": [
+      "30WHIDRRIUM1---1",
+      "30WHIDRRIUM2---W"
+     ]
+    }
+   ]
+  },
+  "RS": {
+   "areas": [
+    "10YCS-SERBIATSOV"
+   ],
+   "units": [
+    {
+     "eic": "34WEHP-BBASH---V",
+     "name": "HE Bajina Bašta G1",
+     "type": "B11",
+     "mw": 388.0,
+     "parts": [
+      "34WEHP-BBASHG1-V",
+      "34WEHP-BBASHG2-S",
+      "34WEHP-BBASHG3-P",
+      "34WEHP-BBASHG4-M"
+     ]
+    },
+    {
+     "eic": "34WEHP-DJE-1---R",
+     "name": "HE Đerdap 1 G1",
+     "type": "B11",
+     "mw": 143.0,
+     "parts": [
+      "34WEHP-DJE-1G1-R",
+      "34WEHP-DJE-1G2-O",
+      "34WEHP-DJE-1G3-L",
+      "34WEHP-DJE-1G4-I",
+      "34WEHP-DJE-1G5-F",
+      "34WEHP-DJE-1G6-C"
+     ]
+    },
+    {
+     "eic": "34WEHR-BBASR---X",
+     "name": "RHE Bajina Bašta G1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "34WEHR-BBASRG1-X",
+      "34WEHR-BBASRG2-U"
+     ]
+    },
+    {
+     "eic": "34WETG-NOSAD---Z",
+     "name": "TETO Novi Sad G1",
+     "type": "B04",
+     "mw": 181.0,
+     "parts": [
+      "34WETG-NOSADG1-Z",
+      "34WETG-NOSADG2-W"
+     ]
+    },
+    {
+     "eic": "34WETL-KOLUA---P",
+     "name": "TE Kolubara G5",
+     "type": "B02",
+     "mw": 0.0,
+     "parts": [
+      "34WETL-KOLUAG5-D"
+     ]
+    },
+    {
+     "eic": "34WETL-KOSTA---J",
+     "name": "TE Kostolac A G1",
+     "type": "B02",
+     "mw": 225.0,
+     "parts": [
+      "34WETL-KOSTAG1-J",
+      "34WETL-KOSTAG2-G"
+     ]
+    },
+    {
+     "eic": "34WETL-KOSTB---E",
+     "name": "TE Kostolac B G1",
+     "type": "B02",
+     "mw": 846.0,
+     "parts": [
+      "34WETL-KOSTBG1-E",
+      "34WETL-KOSTBG2-B",
+      "34WETL-KOSTBG3-8"
+     ]
+    },
+    {
+     "eic": "34WETL-MORAV---H",
+     "name": "TE Morava G1",
+     "type": "B02",
+     "mw": 93.0,
+     "parts": [
+      "34WETL-MORAVG1-H"
+     ]
+    },
+    {
+     "eic": "34WETL-TENTA---G",
+     "name": "TENT A G1",
+     "type": "B02",
+     "mw": 781.0,
+     "parts": [
+      "34WETL-TENTAG1-G",
+      "34WETL-TENTAG2-D",
+      "34WETL-TENTAG3-A",
+      "34WETL-TENTAG4-7",
+      "34WETL-TENTAG5-4",
+      "34WETL-TENTAG6-1"
+     ]
+    },
+    {
+     "eic": "34WETL-TENTB---B",
+     "name": "TENT B G1",
+     "type": "B02",
+     "mw": 999.0,
+     "parts": [
+      "34WETL-TENTBG1-B",
+      "34WETL-TENTBG2-8"
+     ]
+    }
+   ]
+  },
+  "SI": {
+   "areas": [
+    "10YSI-ELES-----O"
+   ],
+   "units": [
+    {
+     "eic": "28W-G-0000000009",
+     "name": "ČHE Avče elektrarna - generator",
+     "type": "B10",
+     "mw": 0.1,
+     "parts": [
+      "28W-G-000000123U"
+     ]
+    },
+    {
+     "eic": "28W-G-000000080M",
+     "name": "TE Šoštanj 5",
+     "type": "B02",
+     "mw": 233.2,
+     "parts": [
+      "28W-G-000000055L",
+      "28W-G-000000121Y"
+     ]
+    },
+    {
+     "eic": "28W-G-000000119L",
+     "name": "NE Krško SLO",
+     "type": "B14",
+     "mw": 701.4,
+     "parts": [
+      "28W-G-000000041W"
+     ]
+    },
+    {
+     "eic": "28W-G-000000122W",
+     "name": "Plinski blok Brestanica 4",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "28W-G-0000000130",
+      "28W-G-000000014Z"
+     ]
+    }
+   ]
+  },
+  "SK": {
+   "areas": [
+    "10YSK-SEPS-----K"
+   ],
+   "units": [
+    {
+     "eic": "24WV--EBO------8",
+     "name": "Bohunice TG31",
+     "type": "B14",
+     "mw": 983.5,
+     "parts": [
+      "24WG--EBOG31---D",
+      "24WG--EBOG32---8",
+      "24WG--EBOG41---7",
+      "24WG--EBOG42---2"
+     ]
+    },
+    {
+     "eic": "24WV--EMO------K",
+     "name": "Mochovce TG11",
+     "type": "B14",
+     "mw": 1481.3,
+     "parts": [
+      "24WG--EMOG11---0",
+      "24WG--EMOG12---W",
+      "24WG--EMOG21---V",
+      "24WG--EMOG22---Q",
+      "24WG--EMOG31---P",
+      "24WG--EMOG32---K"
+     ]
+    },
+    {
+     "eic": "24WV--ENO------B",
+     "name": "Nováky TG1",
+     "type": "B02",
+     "mw": 0.0,
+     "parts": [
+      "24WG--ENOG01---Y",
+      "24WG--ENOG02---T",
+      "24WG--ENOG03---O"
+     ]
+    },
+    {
+     "eic": "24WV--EOK------Y",
+     "name": "Malženice TG1",
+     "type": "B04",
+     "mw": 358.2,
+     "parts": [
+      "24WG--EOKG11---E"
+     ]
+    },
+    {
+     "eic": "24WV--EVO------D",
+     "name": "Vojany TG5",
+     "type": "B05",
+     "mw": 0.0,
+     "parts": [
+      "24WG--EVOG15---A",
+      "24WG--EVOG16---5"
+     ]
+    },
+    {
+     "eic": "24WV--HCV------O",
+     "name": "Čierny Váh TG1",
+     "type": "B10",
+     "mw": 0.0,
+     "parts": [
+      "24WG--HCVG01---A",
+      "24WG--HCVG02---5",
+      "24WG--HCVG03---0",
+      "24WG--HCVG04---W",
+      "24WG--HCVG05---R",
+      "24WG--HCVG06---M"
+     ]
+    },
+    {
+     "eic": "24WV--PBA------A",
+     "name": "PPC Bratislava TG1",
+     "type": "B04",
+     "mw": 0.0,
+     "parts": [
+      "24WG--PBAG01---X"
+     ]
+    }
+   ]
+  },
+  "XK": {
+   "areas": [
+    "10Y1001C--00100H"
+   ],
+   "units": [
+    {
+     "eic": "54W-T-KSA101010L",
+     "name": "KS_TGA3",
+     "type": "B02",
+     "mw": 236.2,
+     "parts": [
+      "54W-T-KSA1110G15",
+      "54W-T-KSA1110G23",
+      "54W-T-KSA1110G31"
+     ]
+    },
+    {
+     "eic": "54W-T-KSB1101027",
+     "name": "KS_TGB1",
+     "type": "B02",
+     "mw": 468.4,
+     "parts": [
+      "54W-T-KSB1110G1Y",
+      "54W-T-KSB1110G2W"
+     ]
+    }
+   ]
+  }
+ },
+ "missing": {
+  "HR": "no data for this hour",
+  "LU": "no data for this hour",
+  "UA": "no data for this hour"
+ }
+}

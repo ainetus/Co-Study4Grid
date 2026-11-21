@@ -9,18 +9,20 @@
 
 Places every zone (RTE region at its pivot city, neighbour at its badge
 anchor, country at its mainland centroid), frames the view (Carte-Front's
-France frame on the region mesh, the zones' extent otherwise), and
-projects everything — basemap, zones, transfers, voltage levels — into
-the planar drawing frame (``geography.project``). The frontend only
-draws: sizes (pies, arrows) follow Carte-Front's point scale relative to
-the view width.
+France frame around France — its regions, or France alone — the zones'
+extent otherwise), and projects everything — basemap, zones, transfers,
+voltage levels — into the planar drawing frame (``geography.project``).
+The frontend only draws: sizes (pies, arrows) follow Carte-Front's point
+scale relative to the view width.
 
 PREREQUISITE — a situation map compares zones on the ground: the network
 must place at least ``MIN_ZONES`` of them on the basemap, i.e. its
 substations carry their country (IIDM ``country``) — a grid spanning
 countries, or French substations tagged with their RTE region
-(``regionCvg``). Otherwise the payload only says why (``available``
-False, ``unavailable_reason``) and the frontend shows no Context tab.
+(``regionCvg``) — counting the neighbours a situation rebuilt on a real
+hour exchanges with (France alone and its borders). Otherwise the payload
+only says why (``available`` False, ``unavailable_reason``) and the
+frontend shows no Context tab.
 """
 from __future__ import annotations
 
@@ -40,6 +42,7 @@ from expert_backend.services.context_map.aggregate import (
 )
 from expert_backend.services.context_map.georef import Georef, georeference
 from expert_backend.services.context_map.nuclear import nuclear_layer
+from expert_backend.services.context_map.regions import infer_regions
 from expert_backend.services.context_map.snapshot import NetworkSnapshot
 
 #: Margin around the zones of a country-mesh view (share of its span).
@@ -109,7 +112,7 @@ def place_zones(zones: list[str], zoning: Zoning, georef: Georef
     out: dict[str, tuple[float, float]] = {}
     for zone in zones:
         kind = zoning.kind(zone)
-        if zoning.mesh == "region":
+        if zoning.home is not None:
             pos = _region_mesh_position(zone, kind, vl_points)
         else:
             pos = geography.label_point(zone) or _centroid(vl_points.get(zone, []))
@@ -120,7 +123,7 @@ def place_zones(zones: list[str], zoning: Zoning, georef: Georef
 
 def _view(zoning: Zoning, zone_pos: dict, georef: Georef) -> tuple[float, float, float, float]:
     """(lon_min, lon_max, lat_min, lat_max) the map opens on."""
-    if zoning.mesh == "region" and zoning.home == "FR":
+    if zoning.home == "FR":
         return geography.FRANCE_VIEW
     pts = list(zone_pos.values())
     if georef.vl_lonlat:
@@ -197,15 +200,15 @@ def _zone_entries(zones: list[str], zoning: Zoning, zone_pos: dict, lat0: float,
         if zone in zone_pos:
             lon, lat = zone_pos[zone]
             entry["x"], entry["y"] = geography.project(lon, lat, lat0)
-        if entry["kind"] == "neighbor" and zoning.mesh == "region" and zone in geography.COUNTRY_BOX:
+        if entry["kind"] == "neighbor" and zoning.home is not None and zone in geography.COUNTRY_BOX:
             entry["badge"] = list(geography.project(*geography.country_badge_pos(zone), lat0))
         out.append(entry)
     return out
 
 
 def _country_labels(zoning: Zoning, lat0: float) -> list[dict]:
-    """Neighbour names around France (region mesh), as Carte-Front writes them."""
-    if zoning.mesh != "region":
+    """Neighbour names around France (France frame), as Carte-Front writes them."""
+    if zoning.home is None:
         return []
     basemap = geography.load_basemap()
     out = []
@@ -223,21 +226,31 @@ def unavailability(zones: list[str], zoning: Zoning, zone_pos: dict) -> str | No
     if not placed:
         return ("its substations carry no country (IIDM `country`) the map can place on the "
                 "ground")
-    if len(placed) < MIN_ZONES:
+    # The neighbours a rebuilt situation exchanges with count: France alone
+    # and its borders compare.
+    partners = [z for z in zoning.outside if z in zone_pos]
+    if len(placed) + len(partners) < MIN_ZONES:
         return (f"it covers a single zone ({_zone_label(placed[0], zoning)}): the map compares at "
-                f"least {MIN_ZONES} — a grid spanning countries, or French substations tagged "
-                "with their RTE region (`regionCvg`)")
+                f"least {MIN_ZONES} — a grid spanning countries, French substations tagged "
+                "with their RTE region (`regionCvg`), or a situation rebuilt on a real hour, "
+                "with its exchanges")
     return None
 
 
 def build_context_map(snap: NetworkSnapshot, layout: dict[str, tuple[float, float]]) -> ContextMap:
     """The Context-tab map of a captured network (see module)."""
     zoning = build_zoning(snap)
+    georef = georeference(snap, zoning, layout)
+    # France alone without regions: each substation takes the RTE region of
+    # the nearest RTE substations, and the map its region mesh.
+    inferred = infer_regions(snap, zoning, georef)
+    if inferred:
+        snap.substation_region.update(inferred)
+        zoning = build_zoning(snap)
     production, consumption = production_and_consumption(snap, zoning)
     flows, flows_available = zone_transfers(snap, zoning)
     exports = net_exports(flows)
     zones = sorted(set(zoning.vl_zone.values()) | set(production) | set(consumption) | zoning.outside)
-    georef = georeference(snap, zoning, layout)
     zone_pos = place_zones(zones, zoning, georef)
     reason = unavailability(zones, zoning, zone_pos)
     if reason:
@@ -258,7 +271,7 @@ def build_context_map(snap: NetworkSnapshot, layout: dict[str, tuple[float, floa
     # grids): "0 MW" would read as a balanced day.
     neighbours = len(inside) < len(zones)
     home_export = (-sum(v for z, v in exports.items() if zoning.kind(z) == "neighbor")
-                   if zoning.mesh == "region" and neighbours else None)
+                   if zoning.home is not None and neighbours else None)
     payload = {
         "available": True,
         "mesh": zoning.mesh,

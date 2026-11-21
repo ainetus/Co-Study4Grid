@@ -268,6 +268,39 @@ class TestGetDisconnectableElements:
         assert service.get_disconnectable_elements() == ["A_LINE", "B_LINE"]
 
 
+class TestGetElementNames:
+    """A raw OSM id — plain, or merged by PyPSA from several ways — gives way
+    to the names of the line's end substations."""
+
+    @staticmethod
+    def _service(name: str) -> NetworkService:
+        service = NetworkService()
+        service.network = MagicMock()
+        service.network.get_voltage_levels.return_value = pd.DataFrame(
+            {"name": ["PONTEAU 400kV", "REALTOR 400kV"]},
+            index=["VL_PONTEAU", "VL_REALTOR"],
+        )
+        service.network.get_lines.return_value = pd.DataFrame(
+            {"name": [name], "voltage_level1_id": ["VL_PONTEAU"],
+             "voltage_level2_id": ["VL_REALTOR"]},
+            index=["L1"],
+        )
+        service.network.get_2_windings_transformers.return_value = pd.DataFrame()
+        return service
+
+    @pytest.mark.parametrize("raw", [
+        "way/426020732-400",
+        "relation_9142329-225",
+        "merged_way/214858102-400+4",
+        "merged_relation/6221844_a-400+1",
+    ])
+    def test_raw_osm_name_becomes_the_end_substations(self, raw):
+        assert self._service(raw).get_element_names() == {"L1": "PONTEAU — REALTOR"}
+
+    def test_real_name_is_kept(self):
+        assert self._service("REALTL71TAVEL").get_element_names() == {"L1": "REALTL71TAVEL"}
+
+
 class TestGetVoltageLevels:
     def test_network_not_loaded(self):
         service = NetworkService()

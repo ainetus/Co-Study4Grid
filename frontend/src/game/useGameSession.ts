@@ -187,7 +187,10 @@ export function useGameSession(): GameSessionState {
     const study = cfg.studies[idx];
     const snap = snapshotRef.current;
     const finalMaxRho = bestFinalRho(snap);
-    const solved = finalMaxRho != null && finalMaxRho < 1.0;
+    // Solved below the monitoring factor the study ran with — where the
+    // workspace stops flagging an overload (1.0 when App published none).
+    const monitoringFactor = snap.monitoringFactor ?? 1;
+    const solved = finalMaxRho != null && finalMaxRho < monitoringFactor;
 
     const result: GameStudyResult = {
       studyId: study.id,
@@ -205,6 +208,7 @@ export function useGameSession(): GameSessionState {
       baselineMaxRho: snap.baselineMaxRho,
       finalMaxRho,
       solved,
+      monitoringFactor,
     };
 
     // Update resultsRef SYNCHRONOUSLY here, not inside the setResults updater:

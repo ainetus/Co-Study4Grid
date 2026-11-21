@@ -53,6 +53,7 @@ export default function GameShell() {
         numActions={game.snapshot.chosenActions.length}
         maxActions={cfg.maxActions}
         finalMaxRho={finalMaxRho}
+        monitoringFactor={game.snapshot.monitoringFactor}
         onNext={game.advance}
         onQuit={game.quit}
       />

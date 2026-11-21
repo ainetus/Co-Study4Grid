@@ -19,7 +19,9 @@ Per study (0..100), mirroring scoring.ts::
     actions  = 25 * remediationFraction * actionEfficiency
     time     = 15 * remediationFraction * timeEfficiency
 
-Session score = mean of per-study totals.
+Session score = mean of per-study totals. A study is solved when its worst
+line gets under its ``monitoringFactor`` (the loading the workspace flags as an
+overload, 0.95 by default); a log without one is judged against 1.0.
 
 Codabench entry points consumed by ``scripts/game_mode/e2e_game_session.py``:
 ``apply_reference(session, reference)`` and ``score_study(study)``.
@@ -32,18 +34,28 @@ def _clamp01(x):
     return max(0.0, min(1.0, x))
 
 
+def resolution_threshold(s):
+    """Loading (per-unit) the worst line must get under for the study to be
+    solved: the monitoring factor it ran with. Logs recorded before it existed
+    carry none and are judged against the thermal limit, 1.0."""
+    factor = s.get("monitoringFactor")
+    return 1.0 if factor is None else float(factor)
+
+
 def remediation_fraction(s):
-    """Fraction of the overload removed. 1.0 == worst line back under 100 %."""
+    """Fraction of the overload removed. 1.0 == worst line back under the
+    study's resolution threshold."""
     final = s.get("finalMaxRho")
     if final is None:
         return 0.0
-    if s.get("solved") or final < 1.0:
+    target = resolution_threshold(s)
+    if s.get("solved") or final < target:
         return 1.0
     baseline = s.get("baselineMaxRho")
-    if baseline is None or baseline <= 1.0:
+    if baseline is None or baseline <= target:
         return 1.0 if s.get("solved") else 0.0
-    # Linear credit for partial relief between baseline and the 100 % target.
-    return _clamp01((baseline - final) / (baseline - 1.0))
+    # Linear credit for partial relief between baseline and the target.
+    return _clamp01((baseline - final) / (baseline - target))
 
 
 def action_efficiency(s):

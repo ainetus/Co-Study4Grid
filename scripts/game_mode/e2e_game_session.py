@@ -19,6 +19,12 @@ Usage:
     python3 scripts/game_mode/e2e_game_session.py
     python3 scripts/game_mode/e2e_game_session.py --max-studies 1 --out /tmp/sess.json
     python3 scripts/game_mode/e2e_game_session.py --grid small
+    # Any network: one study per --contingency (candidate presets)
+    python3 scripts/game_mode/e2e_game_session.py --grid custom \\
+        --network data/pypsa_eur_eur220_225_380_400/situations/2025-01-14_0800Z_opf/network.xiidm \\
+        --actions data/pypsa_eur_eur220_225_380_400/actions.json \\
+        --layout data/pypsa_eur_eur220_225_380_400/grid_layout.json \\
+        --contingency way_123-400 --contingency way_456-225
 """
 import argparse
 import importlib.util
@@ -45,23 +51,25 @@ DEFAULT_REFERENCE = os.path.expanduser(
 FR_NETWORK = "data/pypsa_eur_fr225_400/network.xiidm"
 FR_ACTIONS = "data/pypsa_eur_fr225_400/actions.json"
 FR_LAYOUT = "data/pypsa_eur_fr225_400/grid_layout.json"
-# Curated solvable contingencies (can_proceed=True under the expert model) —
-# kept in sync with frontend/src/game/presets.ts and the Codabench reference.
+# Curated contingencies, each winnable below the 95 % monitoring factor with
+# the expert model's suggestions — kept in sync with the High set of
+# frontend/src/game/presets.ts (a Codabench reference keyed by the retired ids
+# s1, s2, s3, s6 and s7 no longer applies).
 PRESET_STUDIES = [
-    {"id": "s1", "label": "Toulouse 225 kV — Saint-Orens - Verfeil",
-     "contingencyElementId": "way_109818602-225", "contingencyLabel": "Saint-Orens - Verfeil"},
-    {"id": "s2", "label": "Biancon 225 kV — way/121500507",
-     "contingencyElementId": "way_121500507-225", "contingencyLabel": "way/121500507"},
-    {"id": "s3", "label": "Valence 225 kV — B.MONL61VALE8",
-     "contingencyElementId": "relation_6028666_c-225", "contingencyLabel": "B.MONL61VALE8"},
+    {"id": "s9", "label": "Toulouse 225 kV — Portet-Saint-Simon – Tarascon",
+     "contingencyElementId": "relation_8417719_a-225", "contingencyLabel": "Portet-Saint-Simon – Tarascon"},
+    {"id": "s10", "label": "Toulon 225 kV — Néoules – Rocbaron",
+     "contingencyElementId": "merged_way_1458387157-225_1", "contingencyLabel": "Néoules – Rocbaron"},
+    {"id": "s11", "label": "Clermont-Ferrand 225 kV — Bayet – Volvic",
+     "contingencyElementId": "relation_7013974-225", "contingencyLabel": "Bayet – Volvic"},
     {"id": "s4", "label": "Breuil 225 kV — BREUIL63CHAST",
      "contingencyElementId": "relation_8307566_d-225", "contingencyLabel": "BREUIL63CHAST"},
-    {"id": "s5", "label": "way/1463717755 225 kV",
-     "contingencyElementId": "way_1463717755-225", "contingencyLabel": "way/1463717755"},
-    {"id": "s6", "label": "Échalas 225 kV — Échalas - Le Soleil",
-     "contingencyElementId": "way_130969307-225", "contingencyLabel": "Échalas - Le Soleil"},
-    {"id": "s7", "label": "Génissiat 400 kV — Cornier - Génissiat",
-     "contingencyElementId": "merged_way_100497456-400_1", "contingencyLabel": "Cornier - Génissiat"},
+    {"id": "s5", "label": "Paris east 225 kV — Génitoy – Villevaudé",
+     "contingencyElementId": "way_1463717755-225", "contingencyLabel": "Génitoy – Villevaudé"},
+    {"id": "s12", "label": "Rennes 225 kV — Belle-Épine – Domloup",
+     "contingencyElementId": "relation_8384686_g-225", "contingencyLabel": "Belle-Épine – Domloup"},
+    {"id": "s13", "label": "Grenoble 400 kV — Le Cheylas – Grande Île",
+     "contingencyElementId": "merged_relation_6757413_b-400_2", "contingencyLabel": "Le Cheylas – Grande Île"},
     {"id": "s8", "label": "Villejust 225 kV — Liers - Villejust",
      "contingencyElementId": "way_204035714-225", "contingencyLabel": "Liers - Villejust"},
 ]
@@ -83,7 +91,13 @@ def parse_ndjson(text):
             yield json.loads(line)
 
 
-def configure_backend(client, network, actions, layout):
+# A study is solved when its worst line gets under the monitoring factor it
+# runs with — the loading the workspace flags as an overload (the backend's
+# default, which the game ships with).
+MONITORING_FACTOR = 0.95
+
+
+def configure_backend(client, network, actions, layout, monitoring_factor=MONITORING_FACTOR):
     """POST /api/config to load the network + action catalogue for a study."""
     r = client.post("/api/config", json={
         "network_path": network,
@@ -93,6 +107,7 @@ def configure_backend(client, network, actions, layout):
         "pypowsybl_fast_mode": True,
         "model": "expert",
         "compute_overflow_graph": True,
+        "monitoring_factor": monitoring_factor,
     })
     r.raise_for_status()
 
@@ -153,7 +168,7 @@ def play_study(client, study, network, actions, layout, time_limit, max_actions)
     for aid, d in ranked[:max_actions]:
         after = d.get("lines_overloaded_after") or []
         mr = d.get("max_rho")
-        solved = mr is not None and mr < 1.0 and len(after) == 0
+        solved = mr is not None and mr < MONITORING_FACTOR and len(after) == 0
         chosen.append({
             "actionId": aid,
             "description": d.get("description_unitaire"),
@@ -164,7 +179,7 @@ def play_study(client, study, network, actions, layout, time_limit, max_actions)
         final_max_rho = mr if final_max_rho is None else min(final_max_rho, mr)
 
     duration_ms = int((time.time() - t0) * 1000)
-    solved = final_max_rho is not None and final_max_rho < 1.0
+    solved = final_max_rho is not None and final_max_rho < MONITORING_FACTOR
     started = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(t0))
     return {
         "studyId": study["id"],
@@ -182,6 +197,7 @@ def play_study(client, study, network, actions, layout, time_limit, max_actions)
         "baselineMaxRho": baseline_max_rho,
         "finalMaxRho": final_max_rho,
         "solved": solved,
+        "monitoringFactor": MONITORING_FACTOR,
     }
 
 
@@ -223,7 +239,11 @@ def replay_study(client, recorded, network, actions, layout, tolerance):
     ``tolerance`` (tamper / drift detection) and lists any action id the backend
     could no longer reproduce.
     """
-    configure_backend(client, network, actions, layout)
+    # Judged against the threshold the study was played with; a log recorded
+    # before it existed carries none and is judged against 1.0.
+    threshold = recorded.get("monitoringFactor") or 1.0
+    configure_backend(client, network, actions, layout,
+                      recorded.get("monitoringFactor") or MONITORING_FACTOR)
     contingency = recorded["contingencyElementId"]
     overloads, can_proceed, actions_dict, baseline_max_rho = analyze_contingency(client, contingency)
 
@@ -238,7 +258,7 @@ def replay_study(client, recorded, network, actions, layout, tolerance):
         if mr is not None:
             trusted_final = mr if trusted_final is None else min(trusted_final, mr)
 
-    trusted_solved = trusted_final is not None and trusted_final < 1.0
+    trusted_solved = trusted_final is not None and trusted_final < threshold
     reference_entry = {
         "studyId": recorded["studyId"],
         "baselineMaxRho": baseline_max_rho,
@@ -334,7 +354,12 @@ def run_replay(args):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--grid", choices=["fr", "small"], default="fr")
+    ap.add_argument("--grid", choices=["fr", "small", "custom"], default="fr")
+    ap.add_argument("--network", help="--grid custom: network file")
+    ap.add_argument("--actions", help="--grid custom: action catalogue")
+    ap.add_argument("--layout", default="", help="--grid custom: grid_layout.json")
+    ap.add_argument("--contingency", action="append", default=[],
+                    help="--grid custom: a contingency to play (repeatable, all are played)")
     ap.add_argument("--max-studies", type=int, default=1)
     ap.add_argument("--max-actions", type=int, default=3)
     ap.add_argument("--time-limit", type=int, default=300)
@@ -361,6 +386,12 @@ def main():
     if args.grid == "fr":
         network, actions, layout = FR_NETWORK, FR_ACTIONS, FR_LAYOUT
         studies = PRESET_STUDIES[: args.max_studies]
+    elif args.grid == "custom":
+        if not (args.network and args.actions and args.contingency):
+            ap.error("--grid custom needs --network, --actions and at least one --contingency")
+        network, actions, layout = args.network, args.actions, args.layout
+        studies = [{"id": f"c{i + 1}", "label": cid, "contingencyElementId": cid, "contingencyLabel": cid}
+                   for i, cid in enumerate(args.contingency)]
     else:
         network = "data/bare_env_small_grid_test/grid.xiidm"
         actions = "data/action_space/reduced_model_actions_test.json"

@@ -1,0 +1,62 @@
+{
+ "schema": "costudy4grid-observed-hour/1",
+ "at_utc": "2025-07-01T11:00Z",
+ "source": {
+  "name": "Energy-Charts (Fraunhofer ISE)",
+  "url": "https://www.energy-charts.info",
+  "licence": "CC BY 4.0",
+  "attribution": "energy-charts.info"
+ },
+ "fetched_at": "2026-11-15T19:34Z",
+ "countries": {
+  "FR": {
+   "basis": "public",
+   "load": 58518.3,
+   "production": {
+    "hydro_pumped_storage_consumption": -2196.7,
+    "battery_consumption": -6.1,
+    "nuclear": 37637.5,
+    "hydro_run_of_river": 2786.7,
+    "biomass": 368.5,
+    "fossil_oil": 69.4,
+    "fossil_gas": 1516.2,
+    "hydro_water_reservoir": 636.0,
+    "hydro_pumped_storage": 160.9,
+    "battery": 2.3,
+    "waste": 370.4,
+    "wind_offshore": 63.6,
+    "wind_onshore": 1028.0,
+    "solar": 18480.5
+   },
+   "trading": -2398.3,
+   "flows": {
+    "BE": 300.0,
+    "DE": 2500.0,
+    "IT": -1800.0,
+    "ES": -900.0,
+    "CH": 300.0,
+    "GB": -3100.0
+   },
+   "installed": {
+    "nuclear": 62990.0,
+    "hydro_run_of_river": 11740.0,
+    "biomass": 1410.0,
+    "fossil_hard_coal": 1810.0,
+    "fossil_oil": 2980.0,
+    "fossil_gas": 12790.0,
+    "geothermal": 0.0,
+    "hydro_water_reservoir": 8790.0,
+    "hydro_pumped_storage": 5060.0,
+    "marine": 240.0,
+    "others": 1020.0,
+    "waste": 1060.0,
+    "wind_offshore": 1030.0,
+    "wind_onshore": 22910.0,
+    "solar_ac": 22860.0
+   },
+   "installed_year": 2024,
+   "intervals": 1
+  }
+ },
+ "missing": {}
+}

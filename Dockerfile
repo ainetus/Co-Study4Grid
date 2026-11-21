@@ -72,6 +72,11 @@ COPY --chown=user scripts/ ./scripts/
 # The helper FAILS LOUDLY on an un-smudged LFS pointer or a corrupt archive
 # (QW25) instead of silently baking a broken grid into the image.
 RUN python scripts/extract_network_zip.py data/pypsa_eur_eur220_225_380_400/network.xiidm.zip
+# The same grid rebuilt on real 2025 hours (Game Mode "Medium" studies),
+# one zipped network per situation.
+RUN python scripts/extract_network_zip.py data/pypsa_eur_eur220_225_380_400/situations/*/network.xiidm.zip
+# The French grid on the same hours — the default "France 2025" game set.
+RUN python scripts/extract_network_zip.py data/pypsa_eur_fr225_400/situations/*/network.xiidm.zip
 # The 4 France THT grids (Game Mode "France THT" tiers) ship each ~8.8 MB
 # network.xiidm compressed + text-encoded as network.xiidm.gz.b64 (gzip+base64) —
 # small, and pushes without Git-LFS. Decode them all back to network.xiidm.

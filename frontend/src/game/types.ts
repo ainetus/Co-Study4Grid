@@ -156,8 +156,14 @@ export interface GameStudyResult {
   baselineMaxRho: number | null;
   /** Best (lowest) worst-loading the player achieved with their actions. */
   finalMaxRho: number | null;
-  /** True when the player's best chosen action clears the overload. */
+  /** True when the player's best chosen action gets the worst line under `monitoringFactor`. */
   solved: boolean;
+  /**
+   * Resolution threshold (per-unit): the monitoring factor the study ran
+   * with — the loading the workspace flags as an overload, 0.95 by default.
+   * Absent in logs recorded before it existed, which are judged against 1.0.
+   */
+  monitoringFactor?: number;
   /**
    * Solution-capitalisation feedback (novelty bonus + usage frequencies),
    * merged in once the async POST /api/game/log-solution response lands.

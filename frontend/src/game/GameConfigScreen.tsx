@@ -28,7 +28,9 @@ interface GameConfigScreenProps {
 // Per-tier network map shown on the landing page (generated from each grid's
 // grid_layout.json by scripts/game_mode/gen_network_previews.py). Served from
 // public/ so it ships with the same-origin SPA on the HuggingFace Space.
+// France 2025 plays the High tier's fr225_400 grid, so it shares its map.
 const PREVIEW_SRC: Record<Difficulty, string> = {
+  'france-2025': '/game/preview-high.svg',
   medium: '/game/preview-medium.svg',
   high: '/game/preview-high.svg',
 };
@@ -112,6 +114,10 @@ const btn = (bg: string, fg: string): React.CSSProperties => ({
   padding: `${space[1]} ${space[3]}`, borderRadius: radius.md, border: 'none',
   background: bg, color: fg, fontSize: text.sm, fontWeight: 600, cursor: 'pointer',
 });
+const smallBtn: React.CSSProperties = {
+  ...btn(colors.surfaceMuted, colors.textSecondary),
+  border: `1px solid ${colors.border}`, padding: `0 ${space[2]}`, fontSize: text.xs,
+};
 
 let customSeq = 0;
 
@@ -152,13 +158,17 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
   const [difficulty, setDifficulty] = useState<Difficulty>(DEFAULT_DIFFICULTY);
   const tier = difficultyTier(difficulty);
   const [studies, setStudies] = useState<GameStudy[]>(tier.studies);
+  // Studies the player unticked on the landing page: left out of the session
+  // but kept in the list, so they can be ticked back. Keyed by study id.
+  const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set());
+  const playStudies = studies.filter((s) => !skipped.has(s.id));
   const [presetToAdd, setPresetToAdd] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [previewError, setPreviewError] = useState(false);
 
-  // Top-level mode: the European demo grid (curated reference studies) vs one
-  // of the difficulty-graded scenario databases (sampled by level). The demo
-  // grid is the only mode a participant sees by default — France THT and
+  // Top-level mode: the curated PyPSA-EUR sets (France 2025 by default) vs one
+  // of the difficulty-graded scenario databases (sampled by level). The curated
+  // sets are the only mode a participant sees by default — France THT and
   // France EHV (Matpower) stay hidden behind this toggle inside Configure
   // settings so the landing page doesn't ask newcomers to choose a dataset
   // family they don't yet have context for.
@@ -214,9 +224,18 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
   const changeDifficulty = (d: Difficulty) => {
     setDifficulty(d);
     setStudies(difficultyTier(d).studies);
+    setSkipped(new Set());
     setPresetToAdd('');
     setPreviewError(false);
   };
+
+  const toggleStudy = (id: string) =>
+    setSkipped((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const updateStudy = (i: number, patch: Partial<GameStudy>) =>
     setStudies((prev) => prev.map((s, j) => (j === i ? { ...s, ...patch } : s)));
@@ -254,8 +273,9 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
   const needPlayer = player.trim().length === 0;
   const studiesValid = graded
     ? numCases >= 1 && thtPoolSize > 0
-    : studies.length > 0 &&
-      studies.every((s) => s.networkPath && s.actionFilePath && s.contingencyElementId);
+    : playStudies.length > 0 &&
+      playStudies.every((s) => s.networkPath && s.actionFilePath && s.contingencyElementId);
+  const noneTicked = !graded && studies.length > 0 && playStudies.length === 0;
   const timerValid = timerSeconds >= 10;
   // A session name the player already recorded blocks Start — the shared
   // solution base keys retentions by session name, so a duplicate would
@@ -268,9 +288,10 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
     if (!canStart) return;
     // Graded family: draw `numCases` scenarios of the chosen level across the
     // available graded cases (round-robined over the distinct grid snapshots).
+    // Curated set: the ticked studies, in list order.
     const finalStudies = graded
       ? graded.sample(thtDifficulty, numCases)
-      : studies;
+      : playStudies;
     if (finalStudies.length === 0) return;
     onStart({
       sessionName: sessionName.trim() || `${player.trim()} — session 1`,
@@ -286,9 +307,11 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
     ? 'Enter your player name to start.'
     : duplicateSession
       ? 'You already played a session with this name — pick another.'
-      : (!studiesValid || !timerValid)
-        ? 'Some studies need attention — open ⚙ Configure settings below to fix them.'
-        : '';
+      : noneTicked
+        ? 'Tick at least one study to play.'
+        : (!studiesValid || !timerValid)
+          ? 'Some studies need attention — open ⚙ Configure settings below to fix them.'
+          : '';
 
   return (
     <div style={{
@@ -302,8 +325,8 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
         </h1>
         <p style={{ color: colors.textSecondary, fontSize: text.sm, marginTop: space[1] }}>
           Solve a series of grid contingencies against the clock. Enter your
-          name and press start — you can tune the timer, difficulty and studies
-          under settings.
+          name, untick any study you'd rather skip and press start — you can
+          tune the timer, difficulty and studies under settings.
         </p>
 
         {/* Landing — the only things a participant needs to start. */}
@@ -391,7 +414,9 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
             <h2 style={{ margin: 0, fontSize: text.lg }}>
               This session — {graded
                 ? `${thtCases} case${thtCases === 1 ? '' : 's'}`
-                : `${studies.length} stud${studies.length === 1 ? 'y' : 'ies'}`}
+                : playStudies.length < studies.length
+                  ? `${playStudies.length} of ${studies.length} studies`
+                  : `${studies.length} stud${studies.length === 1 ? 'y' : 'ies'}`}
             </h2>
             <span style={{ fontSize: text.xs, color: colors.textTertiary }}>
               {graded ? `${graded.short} · ${thtDifficulty}` : tier.label}
@@ -429,20 +454,53 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
                   No studies yet — add some under ⚙ Configure settings below.
                 </p>
               ) : (
-                <ol data-testid="game-studies-summary" style={{
-                  margin: 0, paddingLeft: space[4], display: 'grid', gap: space.half,
-                }}>
-                  {studies.map((s) => (
-                    <li key={s.id} style={{ fontSize: text.sm }}>
-                      <span style={{ fontWeight: 600 }}>{s.label}</span>
-                      {(s.contingencyLabel || s.contingencyElementId) && (
-                        <span style={{ color: colors.textTertiary }}>
-                          {' · '}{s.contingencyLabel || s.contingencyElementId}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ol>
+                <>
+                  {/* Played in list order; an unticked study is skipped. */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: space[2],
+                    marginBottom: space[1], fontSize: text.xs, color: colors.textTertiary,
+                  }}>
+                    <span style={{ flex: 1 }}>Untick a study to leave it out of this session.</span>
+                    <button data-testid="game-studies-all" style={smallBtn}
+                      onClick={() => setSkipped(new Set())}>
+                      All
+                    </button>
+                    <button data-testid="game-studies-none" style={smallBtn}
+                      onClick={() => setSkipped(new Set(studies.map((s) => s.id)))}>
+                      None
+                    </button>
+                  </div>
+                  <ul data-testid="game-studies-summary" style={{
+                    margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: space.half,
+                  }}>
+                    {studies.map((s) => {
+                      const picked = !skipped.has(s.id);
+                      const element = s.contingencyLabel || s.contingencyElementId;
+                      return (
+                        <li key={s.id} style={{ fontSize: text.sm }}>
+                          <label style={{
+                            display: 'flex', alignItems: 'baseline', gap: space[1],
+                            cursor: 'pointer', opacity: picked ? 1 : 0.55,
+                          }}>
+                            <input type="checkbox" data-testid={`game-study-pick-${s.id}`}
+                              checked={picked} onChange={() => toggleStudy(s.id)} />
+                            <span>
+                              <span style={{ fontWeight: 600 }}>{s.label}</span>
+                              {element && !s.label.includes(element) && (
+                                <span style={{ color: colors.textTertiary }}>{' · '}{element}</span>
+                              )}
+                              {s.baselineMaxLoadingPct != null && (
+                                <span style={{ color: colors.textTertiary }}>
+                                  {' · '}worst line {s.baselineMaxLoadingPct} %
+                                </span>
+                              )}
+                            </span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
               )}
 
               {!previewError && (
@@ -526,9 +584,9 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
                         flex: 1, padding: `${space[2]} ${space[3]}`, textAlign: 'left',
                       }}
                       onClick={() => setMode('demo')}>
-                      🌍 European grid — demo
+                      🌍 PyPSA-EUR — curated sets
                       <div style={{ fontSize: text.xs, fontWeight: 400, marginTop: space.half, opacity: 0.85 }}>
-                        The pan-European reference studies (and the French worst-case set).
+                        France and Europe on real 2025 hours, and the French worst-case set.
                       </div>
                     </button>
                     {Object.values(GRADED).map((fam) => (

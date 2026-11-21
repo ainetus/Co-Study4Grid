@@ -126,6 +126,18 @@ def _recorded(action_ids, *, final, baseline=1.4, solved=True):
     }
 
 
+def test_replay_judges_against_the_recorded_monitoring_factor(e2e):
+    # a_manual replays at 0.95: a win against the thermal limit (a log with no
+    # factor), not against a 0.95 monitoring factor.
+    legacy = _recorded(["a_manual"], final=0.95, solved=True)
+    ref, _ = e2e.replay_study(FakeClient(), legacy, "net", "act", "", 0.05)
+    assert ref["solved"] is True
+    judged = dict(_recorded(["a_manual"], final=0.95, solved=True), monitoringFactor=0.95)
+    ref, div = e2e.replay_study(FakeClient(), judged, "net", "act", "", 0.05)
+    assert ref["solved"] is False
+    assert div["fields"]["solved"]["match"] is False
+
+
 def test_replay_matches_faithful_report(e2e):
     # Player reported the solve action's true number → replay agrees.
     recorded = _recorded(["a_solve"], final=0.85, baseline=1.4, solved=True)

@@ -17,6 +17,11 @@ const FILIERE_LABELS: Record<ContextFiliere, string> = {
     solar: 'Solar', biomass: 'Bioenergy', storage: 'Storage (pumping)', other: 'Other',
 };
 const MESH_LABELS = { region: 'RTE regions', country: 'Countries' } as const;
+
+/** What the map shows: RTE regions, countries — or one country alone. */
+const meshLabel = (data: ContextMapData): string =>
+    (data.mesh === 'country' && data.home && data.zones.find(z => z.id === data.home)?.label)
+    || MESH_LABELS[data.mesh];
 const ZOOM_MIN = 0.05;
 const ZOOM_MAX = 3;
 const WHEEL_SENSITIVITY = 0.0015;
@@ -174,19 +179,26 @@ const DISPATCH_LABELS: Record<string, string> = {
     opf: 'optimal dispatch (PyPSA)',
 };
 
-/** A real hour rebuilt on the grid: how it was dispatched, whose data (CC BY). */
+/** A real hour rebuilt on the grid: how it was dispatched, whose data — each
+ *  licence after the sources it covers (a source may state none). */
 const SituationCredit: React.FC<{ situation: NonNullable<ContextMapData['situation']> }> = ({ situation }) => {
-    const licences = [...new Set(situation.sources.map(s => s.licence).filter(Boolean))].join(', ');
+    const byLicence = new Map<string, typeof situation.sources>();
+    for (const s of situation.sources) byLicence.set(s.licence ?? '', [...(byLicence.get(s.licence ?? '') ?? []), s]);
     return (
         <div data-testid="context-map-situation" style={{ color: colors.textSecondary, fontSize: text.xs }}>
             Real hour, {DISPATCH_LABELS[situation.dispatch] ?? situation.dispatch} — data:{' '}
-            {situation.sources.map((s, i) => (
-                <React.Fragment key={s.name}>
-                    {i > 0 && ', '}
-                    <a href={s.url} target="_blank" rel="noreferrer" style={{ color: 'inherit' }}>{s.name}</a>
+            {[...byLicence].map(([licence, sources], g) => (
+                <React.Fragment key={licence}>
+                    {g > 0 && '; '}
+                    {sources.map((s, i) => (
+                        <React.Fragment key={s.name}>
+                            {i > 0 && ', '}
+                            <a href={s.url} target="_blank" rel="noreferrer" style={{ color: 'inherit' }}>{s.name}</a>
+                        </React.Fragment>
+                    ))}
+                    {licence && ` (${licence})`}
                 </React.Fragment>
             ))}
-            {licences && ` (${licences})`}
         </div>
     );
 };
@@ -197,7 +209,7 @@ const Summary: React.FC<{ data: ContextMapData }> = ({ data }) => {
     const total = mix.reduce((sum, m) => sum + m.mw, 0);
     return (
         <div data-testid="context-map-summary" style={{ ...panel, width: SUMMARY_WIDTH, boxSizing: 'border-box' }}>
-            <div style={{ fontWeight: 700 }}>Situation — {MESH_LABELS[data.mesh]}</div>
+            <div style={{ fontWeight: 700 }}>Situation — {meshLabel(data)}</div>
             {data.case_date && <div style={{ color: colors.textSecondary }}>{data.case_date.replace('T', ' ').slice(0, 16)}</div>}
             <div>Production: <b>{formatMw(data.totals.production)}</b></div>
             {untyped(mix) ? (
@@ -408,7 +420,7 @@ const ContextMapView: React.FC<ContextMapViewProps> = ({ state }) => {
             <svg
                 ref={svgRef}
                 role="img"
-                aria-label={`Situation map — ${MESH_LABELS[data.mesh]}`}
+                aria-label={`Situation map — ${meshLabel(data)}`}
                 viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
                 preserveAspectRatio="xMidYMid meet"
                 style={{ width: '100%', height: '100%', display: 'block', cursor: dragging ? 'grabbing' : 'grab', touchAction: 'none' }}
