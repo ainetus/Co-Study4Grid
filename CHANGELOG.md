@@ -30,8 +30,16 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   study against the monitoring factor it runs with, which the session log
   records (`monitoringFactor`); a log without it is still judged at 100 %. The
   HUD shows the target and the loading to a tenth of a percent. The European
-  set stays winnable with one action; the expert model's suggestions clear 3
-  of the High set's 8 studies below 95 % (5 under 100 %).
+  set stays winnable with one action.
+- **The High set, winnable at 95 %**: the expert model's suggestions cleared
+  only 3 of its 8 studies below 95 % (5 under 100 %). Saint-Orens – Verfeil,
+  Biancon, Valence, Échalas – Le Soleil and Cornier – Génissiat give way to
+  five they clear, still at ~130 %: Portet-Saint-Simon – Tarascon (Toulouse),
+  Néoules – Rocbaron (Toulon), Bayet – Volvic (Clermont-Ferrand), Belle-Épine –
+  Domloup (Rennes) and Le Cheylas – Grande Île (Grenoble, 400 kV). Four of the
+  eight take a pair. New study ids (`s9`–`s13`), so a Codabench reference
+  keyed by the retired ones no longer applies; `way/1463717755` reads
+  Génitoy – Villevaudé.
 - **Studies picked at launch**: the landing page lists the set's studies with
   a tick box each (all ticked, All / None shortcuts); Start plays the ticked
   ones in list order.

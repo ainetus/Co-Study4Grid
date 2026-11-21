@@ -51,23 +51,25 @@ DEFAULT_REFERENCE = os.path.expanduser(
 FR_NETWORK = "data/pypsa_eur_fr225_400/network.xiidm"
 FR_ACTIONS = "data/pypsa_eur_fr225_400/actions.json"
 FR_LAYOUT = "data/pypsa_eur_fr225_400/grid_layout.json"
-# Curated solvable contingencies (can_proceed=True under the expert model) —
-# kept in sync with frontend/src/game/presets.ts and the Codabench reference.
+# Curated contingencies, each winnable below the 95 % monitoring factor with
+# the expert model's suggestions — kept in sync with the High set of
+# frontend/src/game/presets.ts (a Codabench reference keyed by the retired ids
+# s1, s2, s3, s6 and s7 no longer applies).
 PRESET_STUDIES = [
-    {"id": "s1", "label": "Toulouse 225 kV — Saint-Orens - Verfeil",
-     "contingencyElementId": "way_109818602-225", "contingencyLabel": "Saint-Orens - Verfeil"},
-    {"id": "s2", "label": "Biancon 225 kV — way/121500507",
-     "contingencyElementId": "way_121500507-225", "contingencyLabel": "way/121500507"},
-    {"id": "s3", "label": "Valence 225 kV — B.MONL61VALE8",
-     "contingencyElementId": "relation_6028666_c-225", "contingencyLabel": "B.MONL61VALE8"},
+    {"id": "s9", "label": "Toulouse 225 kV — Portet-Saint-Simon – Tarascon",
+     "contingencyElementId": "relation_8417719_a-225", "contingencyLabel": "Portet-Saint-Simon – Tarascon"},
+    {"id": "s10", "label": "Toulon 225 kV — Néoules – Rocbaron",
+     "contingencyElementId": "merged_way_1458387157-225_1", "contingencyLabel": "Néoules – Rocbaron"},
+    {"id": "s11", "label": "Clermont-Ferrand 225 kV — Bayet – Volvic",
+     "contingencyElementId": "relation_7013974-225", "contingencyLabel": "Bayet – Volvic"},
     {"id": "s4", "label": "Breuil 225 kV — BREUIL63CHAST",
      "contingencyElementId": "relation_8307566_d-225", "contingencyLabel": "BREUIL63CHAST"},
-    {"id": "s5", "label": "way/1463717755 225 kV",
-     "contingencyElementId": "way_1463717755-225", "contingencyLabel": "way/1463717755"},
-    {"id": "s6", "label": "Échalas 225 kV — Échalas - Le Soleil",
-     "contingencyElementId": "way_130969307-225", "contingencyLabel": "Échalas - Le Soleil"},
-    {"id": "s7", "label": "Génissiat 400 kV — Cornier - Génissiat",
-     "contingencyElementId": "merged_way_100497456-400_1", "contingencyLabel": "Cornier - Génissiat"},
+    {"id": "s5", "label": "Paris east 225 kV — Génitoy – Villevaudé",
+     "contingencyElementId": "way_1463717755-225", "contingencyLabel": "Génitoy – Villevaudé"},
+    {"id": "s12", "label": "Rennes 225 kV — Belle-Épine – Domloup",
+     "contingencyElementId": "relation_8384686_g-225", "contingencyLabel": "Belle-Épine – Domloup"},
+    {"id": "s13", "label": "Grenoble 400 kV — Le Cheylas – Grande Île",
+     "contingencyElementId": "merged_relation_6757413_b-400_2", "contingencyLabel": "Le Cheylas – Grande Île"},
     {"id": "s8", "label": "Villejust 225 kV — Liers - Villejust",
      "contingencyElementId": "way_204035714-225", "contingencyLabel": "Liers - Villejust"},
 ]

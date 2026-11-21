@@ -167,20 +167,20 @@ const FR_PATHS: GridPaths = {
 };
 
 /**
- * 8-study tour of the fr225_400 grid. Every entry is a contingency the expert
- * model can analyse (`can_proceed=True`) — verified end-to-end by
- * `scripts/game_mode/e2e_game_session.py`. Below the 95 % monitoring factor,
- * its suggestions clear only three (way/1463717755, Liers - Villejust, and
- * Breuil with a pair): the others are left for the players to crack.
+ * 8-study tour of the fr225_400 grid at ~130 % loadings. Every entry is
+ * winnable below the 95 % monitoring factor with the expert model's
+ * suggestions, checked against the real backend: one action clears Génitoy –
+ * Villevaudé, Liers – Villejust, Néoules – Rocbaron and Bayet – Volvic; the
+ * other four take a pair.
  */
 const FR_STUDIES: GameStudy[] = [
-  makeStudy(FR_PATHS, 's1', 'way_109818602-225', 'Saint-Orens - Verfeil', 'Toulouse 225 kV', 130),
-  makeStudy(FR_PATHS, 's2', 'way_121500507-225', 'way/121500507', 'Biancon 225 kV', 130),
-  makeStudy(FR_PATHS, 's3', 'relation_6028666_c-225', 'B.MONL61VALE8', 'Valence 225 kV', 130),
+  makeStudy(FR_PATHS, 's9', 'relation_8417719_a-225', 'Portet-Saint-Simon – Tarascon', 'Toulouse 225 kV', 128.9),
+  makeStudy(FR_PATHS, 's10', 'merged_way_1458387157-225_1', 'Néoules – Rocbaron', 'Toulon 225 kV', 130),
+  makeStudy(FR_PATHS, 's11', 'relation_7013974-225', 'Bayet – Volvic', 'Clermont-Ferrand 225 kV', 128.2),
   makeStudy(FR_PATHS, 's4', 'relation_8307566_d-225', 'BREUIL63CHAST', 'Breuil 225 kV', 130),
-  makeStudy(FR_PATHS, 's5', 'way_1463717755-225', 'way/1463717755', 'way/1463717755 225 kV', 130),
-  makeStudy(FR_PATHS, 's6', 'way_130969307-225', 'Échalas - Le Soleil', 'Échalas 225 kV', 130),
-  makeStudy(FR_PATHS, 's7', 'merged_way_100497456-400_1', 'Cornier - Génissiat', 'Génissiat 400 kV', 123.2),
+  makeStudy(FR_PATHS, 's5', 'way_1463717755-225', 'Génitoy – Villevaudé', 'Paris east 225 kV', 130),
+  makeStudy(FR_PATHS, 's12', 'relation_8384686_g-225', 'Belle-Épine – Domloup', 'Rennes 225 kV', 130),
+  makeStudy(FR_PATHS, 's13', 'merged_relation_6757413_b-400_2', 'Le Cheylas – Grande Île', 'Grenoble 400 kV', 130),
   makeStudy(FR_PATHS, 's8', 'way_204035714-225', 'Liers - Villejust', 'Villejust 225 kV', 130),
 ];
 
