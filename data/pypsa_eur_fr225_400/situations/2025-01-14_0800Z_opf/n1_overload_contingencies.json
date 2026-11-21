@@ -1,0 +1,607 @@
+{
+  "description": "N-1 contingencies that produce >100.0% line overloads on the 2025-01-14_0800Z_opf network",
+  "network": "data/pypsa_eur_fr225_400/situations/2025-01-14_0800Z_opf/network.xiidm",
+  "total_contingencies_tested": 1861,
+  "total_non_converged": 0,
+  "total_with_overload": 28,
+  "peak_loading_pct": 130.0,
+  "threshold_pct": 100.0,
+  "loadflow_type": "AC",
+  "contingencies": [
+    {
+      "tripped_line": "merged_way_117979290-400_2",
+      "tripped_line_name": "Liaison 400 kV Chooz B - Lonny",
+      "tripped_vl1": "VL_way_82825438-400",
+      "tripped_vl1_name": "LONNY 400kV",
+      "tripped_vl2": "VL_way_118655802-400",
+      "tripped_vl2_name": "CHOOZ 400kV",
+      "max_loading_pct": 130.0,
+      "most_loaded_line": "relation_6663381-400",
+      "most_loaded_line_name": "CHOO2L72LONNY",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_6663381-400",
+          "line_name": "CHOO2L72LONNY",
+          "loading_pct": 130.0,
+          "current_a": 3401.6,
+          "limit_a": 2616.6
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_6663381-400",
+      "tripped_line_name": "CHOO2L72LONNY",
+      "tripped_vl1": "VL_way_82825438-400",
+      "tripped_vl1_name": "LONNY 400kV",
+      "tripped_vl2": "VL_way_118655802-400",
+      "tripped_vl2_name": "CHOOZ 400kV",
+      "max_loading_pct": 130.0,
+      "most_loaded_line": "merged_way_117979290-400_2",
+      "most_loaded_line_name": "Liaison 400 kV Chooz B - Lonny",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "merged_way_117979290-400_2",
+          "line_name": "Liaison 400 kV Chooz B - Lonny",
+          "loading_pct": 130.0,
+          "current_a": 3400.3,
+          "limit_a": 2615.6
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_6684812-400",
+      "tripped_line_name": "Donzac - Golfech 1",
+      "tripped_vl1": "VL_way_105913465-400",
+      "tripped_vl1_name": "DONZAC 400kV",
+      "tripped_vl2": "VL_way_157456064-400",
+      "tripped_vl2_name": "GOLFECH (NUCLEAIRE) 400kV",
+      "max_loading_pct": 130.0,
+      "most_loaded_line": "relation_6684813-400",
+      "most_loaded_line_name": "Donzac - Golfech 2",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_6684813-400",
+          "line_name": "Donzac - Golfech 2",
+          "loading_pct": 130.0,
+          "current_a": 3593.9,
+          "limit_a": 2764.5
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_6684813-400",
+      "tripped_line_name": "Donzac - Golfech 2",
+      "tripped_vl1": "VL_way_105913465-400",
+      "tripped_vl1_name": "DONZAC 400kV",
+      "tripped_vl2": "VL_way_157456064-400",
+      "tripped_vl2_name": "GOLFECH (NUCLEAIRE) 400kV",
+      "max_loading_pct": 130.0,
+      "most_loaded_line": "relation_6684812-400",
+      "most_loaded_line_name": "Donzac - Golfech 1",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_6684812-400",
+          "line_name": "Donzac - Golfech 1",
+          "loading_pct": 130.0,
+          "current_a": 3593.8,
+          "limit_a": 2764.5
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_9509533-225",
+      "tripped_line_name": "REALTL63SEPTE",
+      "tripped_vl1": "VL_way_27259817-225",
+      "tripped_vl1_name": "REALTOR 225kV",
+      "tripped_vl2": "VL_way_27768969-225",
+      "tripped_vl2_name": "SEPTEMES 225kV",
+      "max_loading_pct": 130.0,
+      "most_loaded_line": "relation_9509532_b-225",
+      "most_loaded_line_name": "REALTL61SEPTE",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_9509532_b-225",
+          "line_name": "REALTL61SEPTE",
+          "loading_pct": 130.0,
+          "current_a": 1964.9,
+          "limit_a": 1511.5
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_9509532_b-225",
+      "tripped_line_name": "REALTL61SEPTE",
+      "tripped_vl1": "VL_way_27259817-225",
+      "tripped_vl1_name": "REALTOR 225kV",
+      "tripped_vl2": "VL_way_27768969-225",
+      "tripped_vl2_name": "SEPTEMES 225kV",
+      "max_loading_pct": 130.0,
+      "most_loaded_line": "relation_9509533-225",
+      "most_loaded_line_name": "REALTL63SEPTE",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_9509533-225",
+          "line_name": "REALTL63SEPTE",
+          "loading_pct": 130.0,
+          "current_a": 1959.2,
+          "limit_a": 1507.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_5989322_b-400",
+      "tripped_line_name": "P.ORGL71TAVEL",
+      "tripped_vl1": "VL_way_110086345-400",
+      "tripped_vl1_name": "TAVEL 400kV",
+      "tripped_vl2": "VL_way_393286774-400",
+      "tripped_vl2_name": "ISCLES (LES) 400kV",
+      "max_loading_pct": 122.2,
+      "most_loaded_line": "relation_10408156_b-225",
+      "most_loaded_line_name": "relation/10408156:b-225",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_10408156_b-225",
+          "line_name": "relation/10408156:b-225",
+          "loading_pct": 122.2,
+          "current_a": 1576.3,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_186825465-225",
+      "tripped_line_name": "way/186825465-225",
+      "tripped_vl1": "VL_way_29088787-225",
+      "tripped_vl1_name": "VILLEVAUDE 225kV",
+      "tripped_vl2": "VL_way_445088111-225",
+      "tripped_vl2_name": "VAIRES 225kV",
+      "max_loading_pct": 115.1,
+      "most_loaded_line": "relation_6634073_b-225",
+      "most_loaded_line_name": "VAIREL62VLEVA",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_6634073_b-225",
+          "line_name": "VAIREL62VLEVA",
+          "loading_pct": 115.1,
+          "current_a": 1485.2,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_6964570_b-225",
+      "tripped_line_name": "Echalas - La Riviere 1",
+      "tripped_vl1": "VL_virtual_way_130549365_1-225",
+      "tripped_vl1_name": "Liaison 225 kV n°2 Échalas - Le Soleil 225kV",
+      "tripped_vl2": "VL_way_84476231-225",
+      "tripped_vl2_name": "ECHALAS 225kV",
+      "max_loading_pct": 111.6,
+      "most_loaded_line": "way_130228930-225",
+      "most_loaded_line_name": "Liaison 225 kV n°2 Échalas - Le Soleil",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "way_130228930-225",
+          "line_name": "Liaison 225 kV n°2 Échalas - Le Soleil",
+          "loading_pct": 111.6,
+          "current_a": 1440.0,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_5952075_b-400",
+      "tripped_line_name": "BOUTRL71P.ORG",
+      "tripped_vl1": "VL_way_393286774-400",
+      "tripped_vl1_name": "ISCLES (LES) 400kV",
+      "tripped_vl2": "VL_virtual_relation_5952075_b_1-400",
+      "tripped_vl2_name": "BOUTRL71P.ORG 400kV",
+      "max_loading_pct": 111.5,
+      "most_loaded_line": "relation_6691717-225",
+      "most_loaded_line_name": "P.ORGL61RQROU",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_6691717-225",
+          "line_name": "P.ORGL61RQROU",
+          "loading_pct": 111.5,
+          "current_a": 1437.8,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_1249715117-225",
+      "tripped_line_name": "way/1249715117-225",
+      "tripped_vl1": "VL_way_104481448-225",
+      "tripped_vl1_name": "FEUILLANE 225kV",
+      "tripped_vl2": "VL_way_775447498-225",
+      "tripped_vl2_name": "way_775447498-225 225kV",
+      "max_loading_pct": 109.0,
+      "most_loaded_line": "way_1249715119-225",
+      "most_loaded_line_name": "way/1249715119-225",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "way_1249715119-225",
+          "line_name": "way/1249715119-225",
+          "loading_pct": 109.0,
+          "current_a": 1406.2,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_118340005-225",
+      "tripped_line_name": "Liaison 225 kV n°1 Courtry - Plison",
+      "tripped_vl1": "VL_way_28761900-225",
+      "tripped_vl1_name": "PLISON 225kV",
+      "tripped_vl2": "VL_way_26813222-225",
+      "tripped_vl2_name": "COURTRY 225kV",
+      "max_loading_pct": 108.3,
+      "most_loaded_line": "relation_9176296-225",
+      "most_loaded_line_name": "CZTRYL61MOISE",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_9176296-225",
+          "line_name": "CZTRYL61MOISE",
+          "loading_pct": 108.3,
+          "current_a": 1397.6,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_86344182-400",
+      "tripped_line_name": "Liaison 400 kV n°3 Le Chesnoy - Tabarderie",
+      "tripped_vl1": "VL_way_79866837-400",
+      "tripped_vl1_name": "CHESNOY (LE) 400kV",
+      "tripped_vl2": "VL_virtual_way_41453026_1-400",
+      "tripped_vl2_name": "Liaison 400 kV n°2 Le Chesnoy - Tabarderie 400kV",
+      "max_loading_pct": 107.9,
+      "most_loaded_line": "way_41453026-400",
+      "most_loaded_line_name": "Liaison 400 kV n°2 Le Chesnoy - Tabarderie",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "way_41453026-400",
+          "line_name": "Liaison 400 kV n°2 Le Chesnoy - Tabarderie",
+          "loading_pct": 107.9,
+          "current_a": 2784.2,
+          "limit_a": 2580.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_41453026-400",
+      "tripped_line_name": "Liaison 400 kV n°2 Le Chesnoy - Tabarderie",
+      "tripped_vl1": "VL_way_79866837-400",
+      "tripped_vl1_name": "CHESNOY (LE) 400kV",
+      "tripped_vl2": "VL_virtual_way_41453026_1-400",
+      "tripped_vl2_name": "Liaison 400 kV n°2 Le Chesnoy - Tabarderie 400kV",
+      "max_loading_pct": 107.8,
+      "most_loaded_line": "way_86344182-400",
+      "most_loaded_line_name": "Liaison 400 kV n°3 Le Chesnoy - Tabarderie",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "way_86344182-400",
+          "line_name": "Liaison 400 kV n°3 Le Chesnoy - Tabarderie",
+          "loading_pct": 107.8,
+          "current_a": 2782.3,
+          "limit_a": 2580.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_130228930-225",
+      "tripped_line_name": "Liaison 225 kV n°2 Échalas - Le Soleil",
+      "tripped_vl1": "VL_way_84476231-225",
+      "tripped_vl1_name": "ECHALAS 225kV",
+      "tripped_vl2": "VL_virtual_way_130228930_1-225",
+      "tripped_vl2_name": "Liaison 225 kV n°2 Échalas - Le Soleil 225kV",
+      "max_loading_pct": 107.2,
+      "most_loaded_line": "relation_6964570_b-225",
+      "most_loaded_line_name": "Echalas - La Riviere 1",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_6964570_b-225",
+          "line_name": "Echalas - La Riviere 1",
+          "loading_pct": 107.2,
+          "current_a": 1382.6,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "merged_way_214858102-400_4",
+      "tripped_line_name": "merged_way/214858102-400+4",
+      "tripped_vl1": "VL_way_214858101-400",
+      "tripped_vl1_name": "PONTEAU 400kV",
+      "tripped_vl2": "VL_way_27259817-400",
+      "tripped_vl2_name": "REALTOR 400kV",
+      "max_loading_pct": 106.4,
+      "most_loaded_line": "relation_10547433-225",
+      "most_loaded_line_name": "LAVERL61SEPTE",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_10547433-225",
+          "line_name": "LAVERL61SEPTE",
+          "loading_pct": 106.4,
+          "current_a": 1393.1,
+          "limit_a": 1309.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_9142328-225",
+      "tripped_line_name": "Liaison 225 kV n°2 Cirolliers - Les Loges",
+      "tripped_vl1": "VL_way_24990664-225",
+      "tripped_vl1_name": "LOGES (LES) 225kV",
+      "tripped_vl2": "VL_way_24849819-225",
+      "tripped_vl2_name": "CIROLLIERS 225kV",
+      "max_loading_pct": 106.1,
+      "most_loaded_line": "relation_9142329-225",
+      "most_loaded_line_name": "Liaison 225 kV n°1 Cirolliers - Les Loges",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_9142329-225",
+          "line_name": "Liaison 225 kV n°1 Cirolliers - Les Loges",
+          "loading_pct": 106.1,
+          "current_a": 1368.3,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_9142329-225",
+      "tripped_line_name": "Liaison 225 kV n°1 Cirolliers - Les Loges",
+      "tripped_vl1": "VL_way_24990664-225",
+      "tripped_vl1_name": "LOGES (LES) 225kV",
+      "tripped_vl2": "VL_way_24849819-225",
+      "tripped_vl2_name": "CIROLLIERS 225kV",
+      "max_loading_pct": 105.7,
+      "most_loaded_line": "relation_9142328-225",
+      "most_loaded_line_name": "Liaison 225 kV n°2 Cirolliers - Les Loges",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_9142328-225",
+          "line_name": "Liaison 225 kV n°2 Cirolliers - Les Loges",
+          "loading_pct": 105.7,
+          "current_a": 1363.9,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_192698906-400",
+      "tripped_line_name": "Liaison 400 kV n°1 Marlenheim - Vigy;Liaison 400 kV n°1 Saint-Avold- Vigy",
+      "tripped_vl1": "VL_way_129378915-400",
+      "tripped_vl1_name": "ST-AVOLD 400kV",
+      "tripped_vl2": "VL_way_81641090-400",
+      "tripped_vl2_name": "VIGY 400kV",
+      "max_loading_pct": 105.2,
+      "most_loaded_line": "relation_6674724-225",
+      "most_loaded_line_name": "SSAVOL61VIGY",
+      "n_overloaded_lines": 2,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_6674724-225",
+          "line_name": "SSAVOL61VIGY",
+          "loading_pct": 105.2,
+          "current_a": 1356.5,
+          "limit_a": 1290.0
+        },
+        {
+          "line_id": "relation_8890475-225",
+          "line_name": "LANDRL61MOULA",
+          "loading_pct": 102.9,
+          "current_a": 1337.9,
+          "limit_a": 1300.2
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_10408156_b-225",
+      "tripped_line_name": "relation/10408156:b-225",
+      "tripped_vl1": "VL_virtual_relation_10408156_a_1-225",
+      "tripped_vl1_name": "virtual_relation_10408156_a_1-225 225kV",
+      "tripped_vl2": "VL_way_121161175-225",
+      "tripped_vl2_name": "ROQUEROUSSE 225kV",
+      "max_loading_pct": 103.0,
+      "most_loaded_line": "relation_6691717-225",
+      "most_loaded_line_name": "P.ORGL61RQROU",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_6691717-225",
+          "line_name": "P.ORGL61RQROU",
+          "loading_pct": 103.0,
+          "current_a": 1329.2,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_5665483_c-225",
+      "tripped_line_name": "Liaison 225 kV n°1 La Martyre - Squividan",
+      "tripped_vl1": "VL_virtual_relation_5665483_b_1-225",
+      "tripped_vl1_name": "MARTYL61SQUIV 225kV",
+      "tripped_vl2": "VL_virtual_relation_5665483_c_1-225",
+      "tripped_vl2_name": "MARTYL61SQUIV 225kV",
+      "max_loading_pct": 103.0,
+      "most_loaded_line": "relation_5665804-225",
+      "most_loaded_line_name": "Liaison 225 kV n°1 Calan - Poteau-Rouge",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_5665804-225",
+          "line_name": "Liaison 225 kV n°1 Calan - Poteau-Rouge",
+          "loading_pct": 103.0,
+          "current_a": 1329.2,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_210665254-400",
+      "tripped_line_name": "way/210665254-400",
+      "tripped_vl1": "VL_way_117350758-400",
+      "tripped_vl1_name": "YVELINES-OUEST 400kV",
+      "tripped_vl2": "VL_virtual_way_85226749_1-400",
+      "tripped_vl2_name": "virtual_way_85226749_1-400 400kV",
+      "max_loading_pct": 102.9,
+      "most_loaded_line": "relation_9142326_c-225",
+      "most_loaded_line_name": "LIERSL61LOGES",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_9142326_c-225",
+          "line_name": "LIERSL61LOGES",
+          "loading_pct": 102.9,
+          "current_a": 1774.5,
+          "limit_a": 1725.2
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_6170189_b-400",
+      "tripped_line_name": "BEZAUL72VIGY",
+      "tripped_vl1": "VL_way_81665271-400",
+      "tripped_vl1_name": "BEZAUMONT 400kV",
+      "tripped_vl2": "VL_way_81641090-400",
+      "tripped_vl2_name": "VIGY 400kV",
+      "max_loading_pct": 102.8,
+      "most_loaded_line": "merged_way_81665248-400_4",
+      "most_loaded_line_name": "Liaison 400 kV Bezaumont - Vigy",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "merged_way_81665248-400_4",
+          "line_name": "Liaison 400 kV Bezaumont - Vigy",
+          "loading_pct": 102.8,
+          "current_a": 2653.4,
+          "limit_a": 2580.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "merged_way_81665248-400_4",
+      "tripped_line_name": "Liaison 400 kV Bezaumont - Vigy",
+      "tripped_vl1": "VL_way_81641090-400",
+      "tripped_vl1_name": "VIGY 400kV",
+      "tripped_vl2": "VL_way_81665271-400",
+      "tripped_vl2_name": "BEZAUMONT 400kV",
+      "max_loading_pct": 102.7,
+      "most_loaded_line": "relation_6170189_b-400",
+      "most_loaded_line_name": "BEZAUL72VIGY",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_6170189_b-400",
+          "line_name": "BEZAUL72VIGY",
+          "loading_pct": 102.7,
+          "current_a": 2650.1,
+          "limit_a": 2580.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "merged_way_214858102-225_4",
+      "tripped_line_name": "merged_way/214858102-225+4",
+      "tripped_vl1": "VL_way_214858101-225",
+      "tripped_vl1_name": "PONTEAU 225kV",
+      "tripped_vl2": "VL_way_27259817-225",
+      "tripped_vl2_name": "REALTOR 225kV",
+      "max_loading_pct": 102.2,
+      "most_loaded_line": "relation_10547433-225",
+      "most_loaded_line_name": "LAVERL61SEPTE",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_10547433-225",
+          "line_name": "LAVERL61SEPTE",
+          "loading_pct": 102.2,
+          "current_a": 1337.6,
+          "limit_a": 1309.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_6554458_a-400",
+      "tripped_line_name": "Liaison 400 kV n°1 Mézerolles - Yvelines-ouest",
+      "tripped_vl1": "VL_way_788298548-400",
+      "tripped_vl1_name": "BOINVILLE-EN-MANTOIS 400kV",
+      "tripped_vl2": "VL_way_117350758-400",
+      "tripped_vl2_name": "YVELINES-OUEST 400kV",
+      "max_loading_pct": 102.0,
+      "most_loaded_line": "relation_10489104-225",
+      "most_loaded_line_name": "ELANCL61YVE.O",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_10489104-225",
+          "line_name": "ELANCL61YVE.O",
+          "loading_pct": 102.0,
+          "current_a": 1537.2,
+          "limit_a": 1507.5
+        }
+      ]
+    },
+    {
+      "tripped_line": "way_186825471-225",
+      "tripped_line_name": "VLEVAL64ZGALE;VLEVAL62ZGAL5",
+      "tripped_vl1": "VL_way_101228343-225",
+      "tripped_vl1_name": "GALERES 225kV",
+      "tripped_vl2": "VL_way_29088787-225",
+      "tripped_vl2_name": "VILLEVAUDE 225kV",
+      "max_loading_pct": 101.3,
+      "most_loaded_line": "relation_9406979_b-225",
+      "most_loaded_line_name": "ROMAIL62VLEVA",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_9406979_b-225",
+          "line_name": "ROMAIL62VLEVA",
+          "loading_pct": 101.3,
+          "current_a": 1306.5,
+          "limit_a": 1290.0
+        }
+      ]
+    },
+    {
+      "tripped_line": "relation_9176296-225",
+      "tripped_line_name": "CZTRYL61MOISE",
+      "tripped_vl1": "VL_way_106284701-225",
+      "tripped_vl1_name": "MOISENAY 225kV",
+      "tripped_vl2": "VL_way_26813222-225",
+      "tripped_vl2_name": "COURTRY 225kV",
+      "max_loading_pct": 100.8,
+      "most_loaded_line": "relation_9142326_c-225",
+      "most_loaded_line_name": "LIERSL61LOGES",
+      "n_overloaded_lines": 1,
+      "overloaded_lines": [
+        {
+          "line_id": "relation_9142326_c-225",
+          "line_name": "LIERSL61LOGES",
+          "loading_pct": 100.8,
+          "current_a": 1739.2,
+          "limit_a": 1725.2
+        }
+      ]
+    }
+  ]
+}

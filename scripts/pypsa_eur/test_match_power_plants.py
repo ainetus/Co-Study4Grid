@@ -181,6 +181,24 @@ def test_thermal_efficiency_recorded(bundle):
     assert gen["efficiency"] == {"Natural Gas": pytest.approx(0.601, abs=1e-3)}
 
 
+def test_eic_codes_recorded(bundle):
+    net, plants, osm = bundle
+    # The database's ENTSO-E codes, per carrier, for the plants it has them for.
+    eic = {"Gravelines": "\"{'17W100P100P0213S', '17W100P100P0214Q'}\"",
+           "Grand'Maison": "\"{'17W100P100P02756'}\""}
+    lines = PLANTS.strip().split("\n")
+    plants.write_text("\n".join([lines[0] + ",EIC"] + [
+        line + "," + eic.get(line.split(",")[1], "set()") for line in lines[1:]]) + "\n", encoding="utf-8")
+    gens = mpp.run(net, plants, osm)["generators"]
+    assert gens["G_relation_1-400"]["eic"] == {
+        "Nuclear": [["Gravelines", 5460.0, ["17W100P100P0213S", "17W100P100P0214Q"]]]}
+    assert gens["G_way_2-225"]["eic"] == {"Pumped Storage": [["Grand'Maison", 1800.0, ["17W100P100P02756"]]]}
+    assert "eic" not in gens["G_relation_3-380"]
+    # A code may end in a hyphen; an empty set or a missing cell holds none.
+    assert mpp.eic_codes("{'49W000000000061-'}") == ("49W000000000061-",)
+    assert mpp.eic_codes("set()") == () and mpp.eic_codes(float("nan")) == ()
+
+
 def test_cli_help():
     out = subprocess.run([sys.executable, str(SCRIPT_PATH), "--help"],
                          capture_output=True, text=True, check=True)

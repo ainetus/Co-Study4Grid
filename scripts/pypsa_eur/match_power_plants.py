@@ -33,7 +33,8 @@ Output (``power_plants.json``)::
      "generators": {"G_<bus>": {"capacity_mw": {"Nuclear": 5706.0, ...},
                                 "efficiency": {"Natural Gas": 0.56, ...},
                                 "sites": {"Nuclear": {"name": "Gravelines", "lon": …, "lat": …,
-                                                      "units": [["Gravelines 1", 951.0], …]}}}}}
+                                                      "units": [["Gravelines 1", 951.0], …]}},
+                                "eic": {"Nuclear": [["Gravelines 1", 951.0, ["17W100P100P0213S"]], …]}}}}
 
 ``capacity_mw`` keys are powerplantmatching fuel types, with hydro split by
 technology (``Run-Of-River``, ``Reservoir``, ``Pumped Storage``) and wind by
@@ -42,7 +43,10 @@ data tell apart. ``efficiency`` is the capacity-weighted efficiency of the
 thermal plants (the database's own figure, else one estimated from the
 technology and commissioning year): the merit order of an optimal dispatch.
 ``sites`` places the carriers the map draws on their real site (nuclear):
-the plant, its units' capacity-weighted centre and its units.
+the plant, its units' capacity-weighted centre and its units. ``eic`` lists,
+per carrier, the plants the database knows the ENTSO-E codes (EIC) of — name,
+capacity, codes: ``build_situation.py`` gives them their own measured output
+(``fetch_entsoe_units.py``).
 
 Usage:
     python scripts/pypsa_eur/match_power_plants.py \\
@@ -83,6 +87,8 @@ NEAREST_CANDIDATES = 8
 EARTH_RADIUS_KM = 6371.0
 #: Carriers whose largest plant is recorded with its site (drawn there).
 SITE_CARRIERS = ("Nuclear",)
+#: An EIC code (Energy Identification Code) as the database quotes it.
+EIC_RE = re.compile(r"'([0-9A-Z\-]{16})'")
 #: Thermal carriers whose efficiency is recorded (an optimal dispatch's
 #: merit order), with the estimate used when the database gives none:
 #: (base efficiency, gain per commissioning year after REF_YEAR, ceiling).
@@ -191,7 +197,7 @@ def efficiency_of(carrier: str, technology: str, date_in: float, known: float) -
 def load_plants(path: Path, year: int | None, min_capacity: float) -> pd.DataFrame:
     """Operating plants of at least ``min_capacity`` MW, with a country code."""
     cols = ["Name", "Fueltype", "Technology", "Country", "Capacity", "Efficiency",
-            "lat", "lon", "DateIn", "DateOut"]
+            "lat", "lon", "DateIn", "DateOut", "EIC"]
     pp = pd.read_csv(path, usecols=lambda c: c in cols)
     pp = pp.dropna(subset=["lat", "lon", "Capacity"])
     keep = pp["Capacity"] >= min_capacity
@@ -214,7 +220,13 @@ def load_plants(path: Path, year: int | None, min_capacity: float) -> pd.DataFra
             pd.Series(known, index=pp.index).to_numpy())],
         "lon": pp["lon"].astype(float),
         "lat": pp["lat"].astype(float),
+        "eic": [eic_codes(v) for v in pp["EIC"]] if "EIC" in pp else [()] * len(pp),
     }).reset_index(drop=True)
+
+
+def eic_codes(cell) -> tuple[str, ...]:
+    """The EIC codes of a ``powerplants.csv`` cell (``"{'17W100P100P0198Z'}"``)."""
+    return tuple(sorted(set(EIC_RE.findall(cell)))) if isinstance(cell, str) else ()
 
 
 def _km(lon: np.ndarray, lat: np.ndarray, lat0: float) -> np.ndarray:
@@ -275,6 +287,13 @@ def build_record(matched: pd.DataFrame) -> dict[str, dict]:
                 "units": sorted(([str(n), round(float(c), 1)] for n, c in zip(units["name"], units["capacity"])),
                                 key=lambda u: _natural(u[0])),
             }
+    if "eic" in matched:
+        coded = matched[matched["eic"].map(len) > 0]
+        for (gen, carrier), plants in coded.groupby(["generator", "carrier"]):
+            generators[gen].setdefault("eic", {})[carrier] = sorted(
+                ([str(n), round(float(c), 1), list(e)] for n, c, e in
+                 zip(plants["name"], plants["capacity"], plants["eic"])),
+                key=lambda u: _natural(u[0]))
     return dict(sorted(generators.items()))
 
 

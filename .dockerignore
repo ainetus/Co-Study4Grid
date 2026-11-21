@@ -31,3 +31,7 @@ standalone_interface_legacy.html
 # imports them, and `COPY expert_backend/` would otherwise carry tests/ along.
 expert_backend/tests
 expert_backend/test_backend.py
+
+# The PyPSA problems a real-hour situation's optimal dispatch solved
+# (scripts/pypsa_eur/build_situation.py --dispatch opf) — rebuildable.
+data/*/situations/*/opf_problem

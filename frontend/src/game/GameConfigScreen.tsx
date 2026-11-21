@@ -156,7 +156,7 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [previewError, setPreviewError] = useState(false);
 
-  // Top-level mode: the European demo grid (curated reference studies) vs one
+  // Top-level mode: the European demo grid (curated studies) vs one
   // of the difficulty-graded scenario databases (sampled by level). The demo
   // grid is the only mode a participant sees by default — France THT and
   // France EHV (Matpower) stay hidden behind this toggle inside Configure
@@ -528,7 +528,7 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
                       onClick={() => setMode('demo')}>
                       🌍 European grid — demo
                       <div style={{ fontSize: text.xs, fontWeight: 400, marginTop: space.half, opacity: 0.85 }}>
-                        The pan-European reference studies (and the French worst-case set).
+                        The pan-European grid on real 2025 hours (and the French worst-case set).
                       </div>
                     </button>
                     {Object.values(GRADED).map((fam) => (

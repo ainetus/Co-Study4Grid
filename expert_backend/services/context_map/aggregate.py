@@ -63,8 +63,9 @@ SOURCE_FILIERE = {
 class Zoning:
     """Which zone each voltage level belongs to, at the chosen mesh.
 
-    ``home``: the country whose regions are drawn (region mesh only).
-    ``zone_country``: the country of every zone."""
+    ``home``: the country the map is drawn around (Carte-Front's France
+    frame): the one whose regions are drawn, or France when the network
+    covers it alone. ``zone_country``: the country of every zone."""
 
     mesh: str
     home: str | None
@@ -88,8 +89,12 @@ def build_zoning(snap: NetworkSnapshot) -> Zoning:
     home_subs = [s for s, c in snap.substation_country.items() if c == HOME_COUNTRY]
     tagged = sum(1 for s in home_subs if s in snap.substation_region)
     region_mesh = bool(home_subs) and tagged >= REGION_MESH_MIN_SHARE * len(home_subs)
+    # France alone without regions (a PyPSA-EUR France bundle) is one zone,
+    # still drawn around France: its neighbours, when a rebuilt situation
+    # exchanges with them, at their badges.
+    home_only = {c for c in snap.substation_country.values() if c} == {HOME_COUNTRY}
     zoning = Zoning(mesh="region" if region_mesh else "country",
-                    home=HOME_COUNTRY if region_mesh else None)
+                    home=HOME_COUNTRY if region_mesh or home_only else None)
     sub_zone: dict[str, str] = {}
     for sid, country in snap.substation_country.items():
         if region_mesh and country == HOME_COUNTRY:

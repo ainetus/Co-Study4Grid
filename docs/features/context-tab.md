@@ -32,11 +32,18 @@ network places **at least two zones** on the European basemap
 - its substations carry their **country** (IIDM `country`, ISO code) — a grid
   spanning countries (the pan-European PyPSA grid: 29 countries); or
 - in France, its substations carry their **RTE region** (`regionCvg`
-  property — a *PtFige*, the France THT game grids: 12 regions).
+  property — a *PtFige*, the France THT game grids: 12 regions) — or, on a
+  France-only network placed on the ground, the region RTE gives them (see
+  *Mesh*: the PyPSA `pypsa_eur_fr225_400` grid and its rebuilt hours, the
+  France EHV Matpower cases).
+
+The neighbours a situation rebuilt on a real hour exchanges with count too
+(FICTITIOUS loads tagged `neighbour`, see *Real hours rebuilt on the PyPSA
+grid*): France alone and its six exchanges compare even on one zone.
 
 A network that cannot (no country codes — `bare_env_small_grid_test`; a
-single zone — a France-only grid without regions such as `pypsa_eur_fr225_400`
-or the France EHV Matpower cases) gets no Context tab: `GET /api/context-map`
+single zone — a France-only grid without regions nor exchanges that no
+layout places on the ground) gets no Context tab: `GET /api/context-map`
 answers `{"available": false, "unavailable_reason": "…"}`, the frontend hides
 the tab (and leaves it if it was open), and the sidebar **Notices** pill says
 why (*No Context tab for this network*). While a study loads, the tab shows
@@ -111,6 +118,34 @@ generation-type colours, consumption ring, arrows, nuclear units.
   are not drawn.
 - **Country mesh** otherwise — e.g. a European PyPSA-EUR grid: every
   substation in its country, each country a pie at its mainland centroid.
+  A network that covers **France alone** keeps Carte-Front's France frame
+  (`Zoning.home`): France one pie, the neighbours it exchanges with as badges
+  with their names around it, the net exports on the card, *Situation —
+  France* — unless its regions can be inferred (next point).
+- **RTE regions inferred** (`context_map/regions.py`) for a France-only
+  network whose substations carry no `regionCvg` but that the georeference
+  places (the PyPSA `pypsa_eur_fr225_400` grid and its real hours, the France
+  EHV Matpower cases): each French substation takes the region RTE tags its
+  RTE substation with, from `resources/rte_region_points.json` — the 1 191
+  substations of the France THT grids (`data/rte7000_tht`) with their
+  `regionCvg`, placed by the op4grid-plan calibration
+  (`scripts/build_rte_region_points.py` rebuilds it):
+  1. by **name**: an RTE line code (`CHOO2L72LONNY`, Chooz – Lonny) names the
+     RTE substations at its two ends, each end taking the one nearer to it,
+     the lines of a substation voting. RTE's regions are its own, not
+     administrative ones — Boctois (Nogent-sur-Seine's outlet) is NANCY's,
+     Gauglin (Belleville's) NANTES', Cruas and Tricastin MARSEILLE's — and a
+     name gets them right where geography cannot. 716 of the 1 067 PyPSA
+     France substations are named so;
+  2. else by **place**: the region most of the 5 nearest RTE substations
+     share (the nearest one breaks a tie) — it agrees with the names on 95 %
+     of the named substations.
+
+  The map then draws the region mesh, as on an RTE grid: *Situation — RTE
+  regions*, the seven pies, the transfers between them and each region's
+  exchanges with the neighbours. On the 14 January 2025 hour, Paris region
+  consumes 18.8 GW for 6.8 GW produced and imports 6.4 GW from Nantes,
+  3.0 GW from Lille and 2.3 GW from Nancy.
 
 Per zone (`aggregate.production_and_consumption`, `zone_transfers`):
 
@@ -178,28 +213,32 @@ reads it at capture and types the situation's production:
   France produces 17 GW in all (Europe 75 GW), well under a real day;
 - the situation card credits the database (powerplantmatching, CC BY 4.0).
 
-## Typed networks (a real hour rebuilt on a grid)
+## Real hours rebuilt on the PyPSA grid
 
-A network that carries its own plants — one generator per (bus, fuel) with
-real outputs, e.g. a PyPSA-EUR grid rebuilt on an observed hour — needs no
-estimate: the map reads it as it is.
+`scripts/pypsa_eur/build_situation.py` rebuilds the European and the French
+bundles on a real hour (`situations/<hour>_<dispatch>/`, see
+`docs/data/pypsa-eur-osm-to-xiidm.md`): real loads, one generator per (bus,
+fuel) for the matched plants, an observed or a PyPSA optimal dispatch. Such a
+network needs no estimate — the map reads it as it is:
 
 - **types** from each generator's `carrier` property (powerplantmatching's
   fuel names, `CARRIER_FILIERE`), between `genreCvg` and `energySource`:
   lignite is coal, run-of-river hydro, onshore wind wind…;
 - **nuclear units** at their real output, grouped by their `plant` property
   and drawn on its real site (`plant_lon` / `plant_lat`) — no *Estimated
-  output*;
+  output* (France at 9:00 on 14 January 2025: Gravelines 4.6 of 5.7 GW);
 - **exchanges with countries the grid leaves out** (Great Britain, Norway,
-  Sweden, Turkey…) — FICTITIOUS loads tagged `neighbour` — are not
-  consumption: they become transfers towards a **neighbour badge** named
-  after its country (placed at its label point); an HVDC link between two
-  countries of the grid (one such load at each end) counts once, from its
-  exporting end;
-- a `situation.json` beside the network (`situation.py`, schema
-  `costudy4grid-situation/1`) gives the hour, its dispatch (`observed`, or a
-  PyPSA `opf`) and its data sources: the situation card says *Real hour,
-  observed dispatch* (or *optimal dispatch (PyPSA)*) and credits them.
+  Sweden, Turkey… — and all six of France's for the French bundle) —
+  FICTITIOUS loads tagged `neighbour` — are not consumption: they become
+  transfers towards a **neighbour badge** named after its country (placed at
+  its label point, at Carte-Front's badge anchor on the France frame); an
+  HVDC link between two countries of the grid (one such load at each end)
+  counts once, from its exporting end;
+- `situation.json` beside the network (`situation.py`) gives the hour and its
+  dispatch; the situation card says *Real hour, optimal dispatch (PyPSA)*
+  (*observed dispatch* on a `--dispatch observed` build) and credits its sources — Energy-Charts, the
+  ENTSO-E Transparency Platform for the unit-by-unit outputs, and
+  powerplantmatching (CC BY 4.0 where the source states a licence).
 
 ## Where the studied elements are
 
@@ -263,24 +302,25 @@ where unknown).
 
 | Side | File |
 |------|------|
-| Backend | `expert_backend/services/context_map/` — `snapshot.py` (capture), `aggregate.py` (mesh + balances), `nuclear.py` (units layer), `plants.py` (`power_plants.json` matching), `situation.py` (`situation.json` of a rebuilt hour), `georef.py`, `geography.py` (ported constants, basemap, projection), `builder.py` (payload), `service.py` (singleton), `resources/europe_countries.geojson` |
+| Backend | `expert_backend/services/context_map/` — `snapshot.py` (capture), `aggregate.py` (mesh + balances), `nuclear.py` (units layer), `plants.py` (`power_plants.json` matching), `situation.py` (`situation.json` of a rebuilt hour), `regions.py` (RTE regions inferred for France alone, from `resources/rte_region_points.json`), `georef.py`, `geography.py` (ported constants, basemap, projection), `builder.py` (payload), `service.py` (singleton), `resources/europe_countries.geojson` |
 | Backend | `expert_backend/context_map_api.py` (routes), `main.py` (`/api/config` capture) |
 | Frontend | `hooks/useContextMap.ts`, `components/ContextMapView.tsx` (container, pan/zoom, cards), `components/ContextMapLayers.tsx` (SVG layers), `utils/contextMapGeometry.ts`, `utils/studyLoadSignal.ts`, `styles/tokens.ts` (`contextMapPalette`, `contextFiliereColors`) |
-| Tests | `expert_backend/tests/test_context_map.py`, `scripts/pypsa_eur/test_match_power_plants.py`, `useContextMap.test.ts`, `ContextMapView.test.tsx`, `contextMapGeometry.test.ts`, `VisualizationPanel.test.tsx` |
+| Tests | `expert_backend/tests/test_context_map.py`, `scripts/pypsa_eur/test_match_power_plants.py`, `scripts/pypsa_eur/test_build_situation.py`, `useContextMap.test.ts`, `ContextMapView.test.tsx`, `contextMapGeometry.test.ts`, `VisualizationPanel.test.tsx` |
 
 ## Game Mode grids
 
 | Grid | Map |
 |------|-----|
-| Pan-European PyPSA (`pypsa_eur_eur220_225_380_400`, "Medium") | 29-country mesh (Mercator layout fit), every transfer labelled. The network's generators are synthetic and untyped (the OSM source is grid-only); **`power_plants.json`** beside it types them by the real plants matched to each substation (see below). 38 nuclear plants (97 units) on their real sites. |
+| Pan-European PyPSA (`pypsa_eur_eur220_225_380_400`, "Medium") | 29-country mesh (Mercator layout fit), every transfer labelled. The network's generators are synthetic and untyped (the OSM source is grid-only); **`power_plants.json`** beside it types them by the real plants matched to each substation (see below). 38 nuclear plants (97 units) on their real sites. Its real-hour rebuilds (`situations/`) read as they are: real mix, units at their output, neighbour badges for GB / NO / SE / TR. |
 | France THT (`rte7000_tht`) | RTE region mesh (op4grid plan), full mix, 19 nuclear plants (Fessenheim included). No foreign substation: no net-export line. |
-| France EHV (`rte_matpower`) | No `regionCvg`: a single zone (France) — no Context tab (see *Prerequisite*). |
+| France EHV (`rte_matpower`) | No `regionCvg`: RTE regions inferred (see *Mesh*), on the op4grid plan. |
 
 ## Limits / follow-ups
 
-- A France-only network **without** `regionCvg` (e.g. the bundled PyPSA
-  `fr225_400`) has a single zone, hence no Context tab. Inferring RTE regions
-  from geography would need region outlines, which Carte-Front does not carry.
+- Inferred RTE regions (France-only networks without `regionCvg`) rest on
+  the France THT grids' substations, placed on a drawing (~30 km): a
+  substation no RTE line code names, near a regional boundary, may land in
+  the neighbouring region (about 1 in 20).
 - The tab is not detachable.
 - The *Net exports* line needs a neighbour in the network: a home-only grid
   shows none.

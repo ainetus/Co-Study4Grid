@@ -30,8 +30,10 @@ frontend build. Local dev (`npm run dev`) and the Vitest suite are unaffected
 HuggingFace's git endpoint rejects files **> 10 MiB** *and* non-LFS **binary**
 files. The European grid (`pypsa_eur_eur220_225_380_400/network.xiidm`, ~22 MB)
 therefore travels as a Git-LFS **`.zip`** (~2 MB), and the doc images travel as
-LFS too. `.gitattributes` (repo root) declares this. The Dockerfile decompresses
-the `.zip` back to `network.xiidm` at build time.
+LFS too — so do its real-hour rebuilds (`situations/*/network.xiidm.zip`, 2.7 MB —
+~29 MB raw — each; their `n1_overload_contingencies.json` / `situation.json` are text).
+`.gitattributes` (repo root) declares this. The Dockerfile decompresses every
+`.zip` back to `network.xiidm` at build time.
 
 One-time, on your machine:
 
@@ -75,8 +77,8 @@ git add --renormalize . && git commit -m "migrate binaries to LFS"
    (heavy scientific wheels), later builds reuse layers.
 
 3. **Play** — open the Space. It boots straight into the game shell (the
-   `VITE_GAME_MODE=1` build flag); the default session is the three European
-   reference studies (Medium difficulty). Build without that flag for the bare
+   `VITE_GAME_MODE=1` build flag); the default session is the four European
+   real-hour studies (Medium difficulty). Build without that flag for the bare
    workspace.
 
 ## Persistent storage — the shared solution base survives restarts

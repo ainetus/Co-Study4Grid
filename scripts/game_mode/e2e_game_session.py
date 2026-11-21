@@ -19,6 +19,12 @@ Usage:
     python3 scripts/game_mode/e2e_game_session.py
     python3 scripts/game_mode/e2e_game_session.py --max-studies 1 --out /tmp/sess.json
     python3 scripts/game_mode/e2e_game_session.py --grid small
+    # Any network: one study per --contingency (candidate presets)
+    python3 scripts/game_mode/e2e_game_session.py --grid custom \\
+        --network data/pypsa_eur_eur220_225_380_400/situations/2025-01-14_0800Z_opf/network.xiidm \\
+        --actions data/pypsa_eur_eur220_225_380_400/actions.json \\
+        --layout data/pypsa_eur_eur220_225_380_400/grid_layout.json \\
+        --contingency way_123-400 --contingency way_456-225
 """
 import argparse
 import importlib.util
@@ -334,7 +340,12 @@ def run_replay(args):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--grid", choices=["fr", "small"], default="fr")
+    ap.add_argument("--grid", choices=["fr", "small", "custom"], default="fr")
+    ap.add_argument("--network", help="--grid custom: network file")
+    ap.add_argument("--actions", help="--grid custom: action catalogue")
+    ap.add_argument("--layout", default="", help="--grid custom: grid_layout.json")
+    ap.add_argument("--contingency", action="append", default=[],
+                    help="--grid custom: a contingency to play (repeatable, all are played)")
     ap.add_argument("--max-studies", type=int, default=1)
     ap.add_argument("--max-actions", type=int, default=3)
     ap.add_argument("--time-limit", type=int, default=300)
@@ -361,6 +372,12 @@ def main():
     if args.grid == "fr":
         network, actions, layout = FR_NETWORK, FR_ACTIONS, FR_LAYOUT
         studies = PRESET_STUDIES[: args.max_studies]
+    elif args.grid == "custom":
+        if not (args.network and args.actions and args.contingency):
+            ap.error("--grid custom needs --network, --actions and at least one --contingency")
+        network, actions, layout = args.network, args.actions, args.layout
+        studies = [{"id": f"c{i + 1}", "label": cid, "contingencyElementId": cid, "contingencyLabel": cid}
+                   for i, cid in enumerate(args.contingency)]
     else:
         network = "data/bare_env_small_grid_test/grid.xiidm"
         actions = "data/action_space/reduced_model_actions_test.json"
