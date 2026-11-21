@@ -6,9 +6,11 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import GameConfigScreen from './GameConfigScreen';
+import { DEFAULT_SESSION_STUDIES, difficultyTier } from './presets';
+import type { GameStudy } from './types';
 
 const mockApi = vi.hoisted(() => ({ getPlayerSessions: vi.fn() }));
 vi.mock('../api', () => ({ api: mockApi }));
@@ -153,6 +155,62 @@ describe('GameConfigScreen landing', () => {
     expect(cfg.assistance).toBe(true);
     expect(cfg.timerSeconds).toBe(300);
     expect(cfg.studies.length).toBeGreaterThan(0);
+  });
+});
+
+describe('GameConfigScreen — study checklist (curated sets)', () => {
+  const ids = (cfg: { studies: GameStudy[] }) => cfg.studies.map((s) => s.id);
+  const boxes = () =>
+    within(screen.getByTestId('game-studies-summary')).getAllByRole('checkbox') as HTMLInputElement[];
+  const enterPlayer = async () => {
+    fireEvent.change(screen.getByTestId('game-player'), { target: { value: 'amarot' } });
+    await waitFor(() => expect(sessionInput().value).toBe('amarot — session 3'));
+  };
+
+  it('ticks every study of the default set and plays them all, in order', async () => {
+    const onStart = vi.fn();
+    render(<GameConfigScreen onStart={onStart} />);
+    expect(boxes()).toHaveLength(DEFAULT_SESSION_STUDIES.length);
+    expect(boxes().every((b) => b.checked)).toBe(true);
+    await enterPlayer();
+    fireEvent.click(screen.getByTestId('game-start'));
+    expect(ids(onStart.mock.calls[0][0])).toEqual(DEFAULT_SESSION_STUDIES.map((s) => s.id));
+  });
+
+  it('leaves unticked studies out of the session, keeping the order', async () => {
+    const onStart = vi.fn();
+    render(<GameConfigScreen onStart={onStart} />);
+    fireEvent.click(screen.getByTestId('game-study-pick-fr25-jan-realtor-tavel'));
+    fireEvent.click(screen.getByTestId('game-study-pick-fr25-jan-coubert-moisenay'));
+    expect(screen.getByText(/This session — 6 of 8 studies/)).toBeInTheDocument();
+    await enterPlayer();
+    fireEvent.click(screen.getByTestId('game-start'));
+    expect(ids(onStart.mock.calls[0][0])).toEqual(
+      DEFAULT_SESSION_STUDIES.map((s) => s.id)
+        .filter((id) => id !== 'fr25-jan-realtor-tavel' && id !== 'fr25-jan-coubert-moisenay'),
+    );
+  });
+
+  it('blocks Start when nothing is ticked; All ticks everything back', async () => {
+    render(<GameConfigScreen onStart={vi.fn()} />);
+    await enterPlayer();
+    fireEvent.click(screen.getByTestId('game-studies-none'));
+    expect(boxes().some((b) => b.checked)).toBe(false);
+    expect(screen.getByTestId('game-start')).toBeDisabled();
+    expect(screen.getByText('Tick at least one study to play.')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('game-studies-all'));
+    expect(boxes().every((b) => b.checked)).toBe(true);
+    expect(screen.getByTestId('game-start')).toBeEnabled();
+  });
+
+  it('ticks the whole new set when switching sets', () => {
+    render(<GameConfigScreen onStart={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('game-studies-none'));
+    openModePicker();
+    fireEvent.change(screen.getByDisplayValue(difficultyTier('france-2025').label),
+      { target: { value: 'medium' } });
+    expect(boxes()).toHaveLength(difficultyTier('medium').studies.length);
+    expect(boxes().every((b) => b.checked)).toBe(true);
   });
 });
 

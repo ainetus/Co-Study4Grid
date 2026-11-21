@@ -7,6 +7,25 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Game Mode — France 2025 set, studies picked at launch
+
+- **New default set, France 2025**: the French 225 / 400 kV grid on its two
+  real 2025 hours. A starter on 1 July 13:00 (Les Attaques – Mandarins n°2,
+  105 %), then seven cases on the 14 January 9:00 peak — around Marseille
+  (Réaltor – Tavel n°1, Ponteau – Réaltor, Réaltor – Septèmes n°1), Paris
+  (Coubert – Moisenay, Courtry – Plison n°1, Mézerolles – Yvelines-Ouest n°1)
+  and Lyon (Échalas – Le Soleil n°2), 98 to 130 %. Each is remediable by the
+  expert model (`e2e_game_session.py --grid custom`): one action clears it,
+  except Réaltor – Septèmes n°1, which takes a pair. Réaltor – Tavel n°1 and
+  Coubert – Moisenay load their line between 95 and 100 %: past the
+  monitoring limit, so the N-1 tables (> 100 %) leave them out and the preset
+  check reads them in the bundle's line list instead. The European set moves
+  behind ⚙ Configure settings → Other modes; the Space image unpacks the
+  French situations too.
+- **Studies picked at launch**: the landing page lists the set's studies with
+  a tick box each (all ticked, All / None shortcuts); Start plays the ticked
+  ones in list order.
+
 ### Evacuation antennas — expert_op4grid_recommender 0.3.4.post1, ExpertOp4Grid 0.3.4
 
 - **Dependencies**: `recommender-pin.txt` and `requirements_py310.txt` move
