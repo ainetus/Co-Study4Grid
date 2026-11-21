@@ -110,6 +110,75 @@
         "remediationFraction": 1.0,
         "solved": true
       }
+    },
+    {
+      "name": "monitoring-factor-solved",
+      "input": {
+        "studyId": "F",
+        "label": "F",
+        "finalMaxRho": 0.94,
+        "solved": true,
+        "baselineMaxRho": 1.064,
+        "monitoringFactor": 0.95,
+        "numActions": 1,
+        "maxActions": 3,
+        "timeLimitSeconds": 300,
+        "durationMs": 60000
+      },
+      "expected": {
+        "physical": 60.0,
+        "actions": 25.0,
+        "time": 12.0,
+        "total": 97.0,
+        "remediationFraction": 1.0,
+        "solved": true
+      }
+    },
+    {
+      "name": "monitoring-factor-under-100-partial",
+      "input": {
+        "studyId": "G",
+        "label": "G",
+        "finalMaxRho": 0.97,
+        "solved": false,
+        "baselineMaxRho": 1.064,
+        "monitoringFactor": 0.95,
+        "numActions": 1,
+        "maxActions": 3,
+        "timeLimitSeconds": 300,
+        "durationMs": 60000
+      },
+      "expected": {
+        "physical": 49.473684210526315,
+        "actions": 20.614035087719298,
+        "time": 9.894736842105264,
+        "total": 79.98245614035088,
+        "remediationFraction": 0.8245614035087719,
+        "solved": false
+      }
+    },
+    {
+      "name": "monitoring-factor-baseline-in-band",
+      "input": {
+        "studyId": "H",
+        "label": "H",
+        "finalMaxRho": 0.96,
+        "solved": false,
+        "baselineMaxRho": 0.975,
+        "monitoringFactor": 0.95,
+        "numActions": 2,
+        "maxActions": 3,
+        "timeLimitSeconds": 300,
+        "durationMs": 120000
+      },
+      "expected": {
+        "physical": 36.0,
+        "actions": 10.000000000000002,
+        "time": 5.3999999999999995,
+        "total": 51.4,
+        "remediationFraction": 0.6,
+        "solved": false
+      }
     }
   ],
   "sessions": [

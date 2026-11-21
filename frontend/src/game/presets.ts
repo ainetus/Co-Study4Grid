@@ -52,7 +52,7 @@ function makeStudy(
     contingencyLabel,
     baselineMaxLoadingPct,
     description: description
-      ?? `Loss of ${contingencyLabel} (${region}) drives a worst-case ${baselineMaxLoadingPct}% line loading. Bring every monitored line back under 100% using at most the allowed remedial actions.`,
+      ?? `Loss of ${contingencyLabel} (${region}) drives a worst-case ${baselineMaxLoadingPct}% line loading. Bring every monitored line back under the 95% monitoring limit using at most the allowed remedial actions.`,
   };
 }
 
@@ -74,17 +74,18 @@ const FR_JUL = situationPaths(FR_BUNDLE, '2025-07-01_1100Z_opf');
  * A starter on 1 July 2025 13:00 (heatwave midday), then seven cases on
  * 14 January 2025 9:00 (France's consumption peak) around Marseille, Paris
  * and Lyon — both hours in their PyPSA optimal dispatch. The player ticks the
- * ones to play on the start screen. Every one is remediable by the expert
- * model — verified end-to-end by `scripts/game_mode/e2e_game_session.py
- * --grid custom`: a single action clears each, except Réaltor – Septèmes n°1,
- * which takes a pair. Réaltor – Tavel n°1 and Coubert – Moisenay load their
- * line between 95 and 100 % — past the monitoring limit, under the thermal one.
+ * ones to play on the start screen. Every one is winnable below the 95 %
+ * monitoring factor with the expert model's suggestions, checked against the
+ * real backend: a single action clears each, except Ponteau – Réaltor and
+ * Réaltor – Septèmes n°1, which take a pair. Réaltor – Tavel n°1 and
+ * Coubert – Moisenay load their line between 95 and 100 % — past the
+ * monitoring limit, under the thermal one.
  */
 const FR_2025_STUDIES: GameStudy[] = [
   makeStudy(
     FR_JUL, 'fr25-jul-attaques-mandarins', 'relation_5674508-400', 'Les Attaques – Mandarins n°2',
     'Starter · Calais – Dunkirk 400 kV, 1 Jul 13:00', 105.2,
-    'Your first case, on the heatwave midday: losing Les Attaques – Mandarins n°2 loads Mandarins – Warande to 105 %. Bring it back under 100 %.',
+    'Your first case, on the heatwave midday: losing Les Attaques – Mandarins n°2 loads Mandarins – Warande to 105 %. Bring it back under 95 %.',
   ),
   makeStudy(
     FR_JAN, 'fr25-jan-realtor-tavel', 'relation_5989317-400', 'Réaltor – Tavel n°1',
@@ -94,7 +95,7 @@ const FR_2025_STUDIES: GameStudy[] = [
   makeStudy(
     FR_JAN, 'fr25-jan-ponteau-realtor', 'merged_way_214858102-400_4', 'Ponteau – Réaltor',
     'Marseille 400 kV, 14 Jan 9:00', 106.4,
-    'Same hour: losing Ponteau – Réaltor loads Lavéra – Septèmes to 106 %.',
+    'Same hour: losing Ponteau – Réaltor loads Lavéra – Septèmes to 106 %. One action gets close; under 95 % takes two.',
   ),
   makeStudy(
     FR_JAN, 'fr25-jan-realtor-septemes', 'relation_9509532_b-225', 'Réaltor – Septèmes n°1',
@@ -139,7 +140,7 @@ const EUR_STUDIES: GameStudy[] = [
   makeStudy(
     JAN_OPF, 'eu-jan-opf-2', 'way_130228930-225', 'Échalas – Le Soleil n°2',
     'Lyon south 225 kV, 14 Jan 9:00', 109.4,
-    "France's 2025 consumption peak: losing Échalas – Le Soleil n°2 loads Échalas – La Rivière to 109 %. Bring it back under 100 %.",
+    "France's 2025 consumption peak: losing Échalas – Le Soleil n°2 loads Échalas – La Rivière to 109 %. Bring it back under 95 %.",
   ),
   makeStudy(
     JAN_OPF, 'eu-jan-opf', 'way_192698906-400', 'Saint-Avold – Vigy',
@@ -167,8 +168,10 @@ const FR_PATHS: GridPaths = {
 
 /**
  * 8-study tour of the fr225_400 grid. Every entry is a contingency the expert
- * model can remediate (`can_proceed=True`) — verified end-to-end by
- * `scripts/game_mode/e2e_game_session.py`.
+ * model can analyse (`can_proceed=True`) — verified end-to-end by
+ * `scripts/game_mode/e2e_game_session.py`. Below the 95 % monitoring factor,
+ * its suggestions clear only three (way/1463717755, Liers - Villejust, and
+ * Breuil with a pair): the others are left for the players to crack.
  */
 const FR_STUDIES: GameStudy[] = [
   makeStudy(FR_PATHS, 's1', 'way_109818602-225', 'Saint-Orens - Verfeil', 'Toulouse 225 kV', 130),

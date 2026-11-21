@@ -19,6 +19,8 @@ interface GameHudProps {
   numActions: number;
   maxActions: number;
   finalMaxRho: number | null;
+  /** The study's resolution threshold (per-unit); 1.0 when absent. */
+  monitoringFactor?: number;
   onNext: () => void;
   onQuit: () => void;
 }
@@ -33,12 +35,13 @@ export default function GameHud(props: GameHudProps) {
   const {
     studyLabel, contingencyLabel, studyIndex, totalStudies,
     secondsLeft, timerSeconds, numActions, maxActions,
-    finalMaxRho, onNext, onQuit,
+    finalMaxRho, monitoringFactor = 1, onNext, onQuit,
   } = props;
 
   const lowTime = secondsLeft <= 10;
   const atCap = numActions >= maxActions;
-  const solved = finalMaxRho != null && finalMaxRho < 1.0;
+  const solved = finalMaxRho != null && finalMaxRho < monitoringFactor;
+  const targetPct = Math.round(monitoringFactor * 100);
 
   const pill = (bg: string, fg: string, border: string): React.CSSProperties => ({
     display: 'inline-flex', alignItems: 'center', gap: space[1],
@@ -94,8 +97,9 @@ export default function GameHud(props: GameHudProps) {
           solved ? colors.successSoft : colors.dangerSoft,
           solved ? colors.successText : colors.dangerText,
           solved ? colors.success : colors.danger,
-        )}>
-          {solved ? '✓' : '⚠'} {(finalMaxRho * 100).toFixed(0)}%
+        )} title={`Worst line after your best action — solved below ${targetPct}%`}>
+          {solved ? '✓' : '⚠'} {(finalMaxRho * 100).toFixed(1)}%
+          <span style={{ fontWeight: 400 }}>(target &lt; {targetPct}%)</span>
         </span>
       )}
 

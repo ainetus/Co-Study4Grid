@@ -14,14 +14,24 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   105 %), then seven cases on the 14 January 9:00 peak — around Marseille
   (Réaltor – Tavel n°1, Ponteau – Réaltor, Réaltor – Septèmes n°1), Paris
   (Coubert – Moisenay, Courtry – Plison n°1, Mézerolles – Yvelines-Ouest n°1)
-  and Lyon (Échalas – Le Soleil n°2), 98 to 130 %. Each is remediable by the
-  expert model (`e2e_game_session.py --grid custom`): one action clears it,
-  except Réaltor – Septèmes n°1, which takes a pair. Réaltor – Tavel n°1 and
-  Coubert – Moisenay load their line between 95 and 100 %: past the
-  monitoring limit, so the N-1 tables (> 100 %) leave them out and the preset
-  check reads them in the bundle's line list instead. The European set moves
+  and Lyon (Échalas – Le Soleil n°2), 98 to 130 %. Each is winnable below the
+  95 % monitoring factor with the expert model's suggestions: one action
+  clears it, except Ponteau – Réaltor and Réaltor – Septèmes n°1, which take a
+  pair. Réaltor – Tavel n°1 and Coubert – Moisenay load their line between 95
+  and 100 %: past the monitoring limit, so the N-1 tables (> 100 %) leave them
+  out and the preset check reads them in the bundle's line list instead. The
+  European set moves
   behind ⚙ Configure settings → Other modes; the Space image unpacks the
   French situations too.
+- **A study is won below the monitoring factor, not 100 %**: the HUD's ✓, the
+  score and the Codabench scorer counted a study as solved once its worst line
+  was under 100 %, while the workspace flags an overload from the monitoring
+  factor (95 % by default) — a line left at 97 % won. They now judge each
+  study against the monitoring factor it runs with, which the session log
+  records (`monitoringFactor`); a log without it is still judged at 100 %. The
+  HUD shows the target and the loading to a tenth of a percent. The European
+  set stays winnable with one action; the expert model's suggestions clear 3
+  of the High set's 8 studies below 95 % (5 under 100 %).
 - **Studies picked at launch**: the landing page lists the set's studies with
   a tick box each (all ticked, All / None shortcuts); Start plays the ticked
   ones in list order.

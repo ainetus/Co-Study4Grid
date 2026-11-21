@@ -39,6 +39,11 @@ export interface GameStudySnapshot {
    * block a redundant second simulation of the same lever.
    */
   simulatedActionIds: string[];
+  /**
+   * Monitoring factor the study runs with (per-unit): the workspace flags a
+   * line above it as overloaded, and the game judges the study solved below it.
+   */
+  monitoringFactor?: number;
 }
 
 const EMPTY_SNAPSHOT: GameStudySnapshot = {

@@ -156,6 +156,12 @@ describe('buildChosenActionRecord', () => {
     expect(buildChosenActionRecord('a1', partial, 1.2).maxRho).toBeNull();
   });
 
+  it('solves the study only below the monitoring factor it is given', () => {
+    const result = analysisResult({ a1: detail({ max_rho: 0.97, lines_overloaded_after: [] }) });
+    expect(buildChosenActionRecord('a1', result, 1.06).solved).toBe(true);
+    expect(buildChosenActionRecord('a1', result, 1.06, 0.95).solved).toBe(false);
+  });
+
   it('marks an action ineffective when it does not beat the baseline', () => {
     const result = analysisResult({
       // Still overloaded AND worse than doing nothing.

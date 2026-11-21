@@ -89,7 +89,13 @@ def parse_ndjson(text):
             yield json.loads(line)
 
 
-def configure_backend(client, network, actions, layout):
+# A study is solved when its worst line gets under the monitoring factor it
+# runs with — the loading the workspace flags as an overload (the backend's
+# default, which the game ships with).
+MONITORING_FACTOR = 0.95
+
+
+def configure_backend(client, network, actions, layout, monitoring_factor=MONITORING_FACTOR):
     """POST /api/config to load the network + action catalogue for a study."""
     r = client.post("/api/config", json={
         "network_path": network,
@@ -99,6 +105,7 @@ def configure_backend(client, network, actions, layout):
         "pypowsybl_fast_mode": True,
         "model": "expert",
         "compute_overflow_graph": True,
+        "monitoring_factor": monitoring_factor,
     })
     r.raise_for_status()
 
@@ -159,7 +166,7 @@ def play_study(client, study, network, actions, layout, time_limit, max_actions)
     for aid, d in ranked[:max_actions]:
         after = d.get("lines_overloaded_after") or []
         mr = d.get("max_rho")
-        solved = mr is not None and mr < 1.0 and len(after) == 0
+        solved = mr is not None and mr < MONITORING_FACTOR and len(after) == 0
         chosen.append({
             "actionId": aid,
             "description": d.get("description_unitaire"),
@@ -170,7 +177,7 @@ def play_study(client, study, network, actions, layout, time_limit, max_actions)
         final_max_rho = mr if final_max_rho is None else min(final_max_rho, mr)
 
     duration_ms = int((time.time() - t0) * 1000)
-    solved = final_max_rho is not None and final_max_rho < 1.0
+    solved = final_max_rho is not None and final_max_rho < MONITORING_FACTOR
     started = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(t0))
     return {
         "studyId": study["id"],
@@ -188,6 +195,7 @@ def play_study(client, study, network, actions, layout, time_limit, max_actions)
         "baselineMaxRho": baseline_max_rho,
         "finalMaxRho": final_max_rho,
         "solved": solved,
+        "monitoringFactor": MONITORING_FACTOR,
     }
 
 
@@ -229,7 +237,11 @@ def replay_study(client, recorded, network, actions, layout, tolerance):
     ``tolerance`` (tamper / drift detection) and lists any action id the backend
     could no longer reproduce.
     """
-    configure_backend(client, network, actions, layout)
+    # Judged against the threshold the study was played with; a log recorded
+    # before it existed carries none and is judged against 1.0.
+    threshold = recorded.get("monitoringFactor") or 1.0
+    configure_backend(client, network, actions, layout,
+                      recorded.get("monitoringFactor") or MONITORING_FACTOR)
     contingency = recorded["contingencyElementId"]
     overloads, can_proceed, actions_dict, baseline_max_rho = analyze_contingency(client, contingency)
 
@@ -244,7 +256,7 @@ def replay_study(client, recorded, network, actions, layout, tolerance):
         if mr is not None:
             trusted_final = mr if trusted_final is None else min(trusted_final, mr)
 
-    trusted_solved = trusted_final is not None and trusted_final < 1.0
+    trusted_solved = trusted_final is not None and trusted_final < threshold
     reference_entry = {
         "studyId": recorded["studyId"],
         "baselineMaxRho": baseline_max_rho,

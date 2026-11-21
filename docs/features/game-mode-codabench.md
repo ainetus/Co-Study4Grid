@@ -90,7 +90,9 @@ The whole feature is additive and inert unless `?game=1` is set.
 ## Scoring
 
 Per study (0–100): `60·R + 25·R·A + 15·R·T` where **R** is the remediation
-fraction (1.0 = worst line back under 100 %), **A** rewards using fewer of the
+fraction (1.0 = worst line back under the study's **monitoring factor**, the
+loading the workspace flags as an overload — 95 % by default; a log recorded
+before it carried one is judged at 100 %), **A** rewards using fewer of the
 allowed actions, **T** rewards speed. Session score = mean across studies.
 `frontend/src/game/scoring.ts` and the in-repo Codabench twin
 `scripts/game_mode/scoring_program/score.py` implement the **identical**
