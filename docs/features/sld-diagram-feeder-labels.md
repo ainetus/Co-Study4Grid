@@ -82,7 +82,9 @@ direct lookup missed. (The contingency halo worked because
 bridge friendly name → IIDM id via the `feeder_labels` map (each entry's
 `name`), with the raw value as a fallback (covers id-keyed overload lists).
 The overload-highlight pass in `SldOverlay.tsx` now resolves through that
-bridge before `findCellForEquipment`.
+bridge before `findCellForEquipment`. Which lines get a halo, and when
+(the N-1 diagram's overloads before any analysis, the lines still
+overloaded after an action), is in [`sld-halos.md`](sld-halos.md).
 
 ## 3. Explaining the "after" loading of a line opened at one end
 

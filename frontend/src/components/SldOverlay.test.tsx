@@ -291,13 +291,16 @@ describe('SldOverlay', () => {
         });
 
         // When the action solves ALL overloads (lines_overloaded_after is
-        // empty) no `sld-highlight-overloaded` clones are added at all.
+        // empty, max_rho back under the monitoring factor) no
+        // `sld-highlight-overloaded` clones are added at all.
         it('adds no overload clones when the action solves every overload', () => {
             const vlOverlay = buildHighlightOverlay('action');
             const result = {
                 actions: {
                     action_1: {
                         ...baseActionDetail,
+                        max_rho: 0.9,
+                        max_rho_line: 'LINE_RESOLVED',
                         lines_overloaded_after: [],
                     },
                 },
@@ -312,6 +315,118 @@ describe('SldOverlay', () => {
                 <SldOverlay {...defaultProps} vlOverlay={vlOverlay} result={result} selectedContingency={["L_FAULTY"]} />,
             );
             expect(container.querySelectorAll('.sld-highlight-overloaded').length).toBe(0);
+        });
+
+        // NAD parity: a "Still overloaded" card whose enrichment left
+        // `lines_overloaded_after` empty still halos its `max_rho_line`
+        // on the action NAD (useDiagramHighlights) — the SLD must too.
+        it('falls back to max_rho_line, like the NAD, when lines_overloaded_after is empty', () => {
+            const vlOverlay = buildHighlightOverlay('action');
+            const result = {
+                actions: {
+                    action_1: { ...baseActionDetail, lines_overloaded_after: [] },
+                },
+                lines_overloaded: ['LINE_RESOLVED'],
+                pdf_path: null,
+                pdf_url: null,
+                message: '',
+                dc_fallback: false,
+            } as unknown as AnalysisResult;
+
+            const { container } = render(
+                <SldOverlay {...defaultProps} vlOverlay={vlOverlay} result={result} selectedContingency={["L_FAULTY"]} />,
+            );
+            expect(container.querySelector('#cell_new.sld-highlight-overloaded-original')).toBeTruthy();
+            expect(container.querySelector('#cell_resolved.sld-highlight-overloaded-original')).toBeNull();
+        });
+    });
+
+    // The SLD halos carry the same meaning as the NAD's: on the N-1 tab
+    // the tripped branch (yellow) and the N-1 overloads (orange) — known
+    // from the N-1 diagram as soon as the contingency is applied, long
+    // before "Analyze & Suggest" fills `result` — narrowed to the
+    // operator's selection in the Overloads panel.
+    describe('N-1 halos match the NAD before any analysis', () => {
+        // pypowsybl shape: a feeder node (metadata id) inside its bay
+        // cell — the halo clones the whole bay, wire included.
+        const bay = (name: string) =>
+            `<g class="sld-extern-cell" id="bay_${name}"><g id="feeder_${name}"><rect width="10" height="10"/></g></g>`;
+        const overlay = (tab: SldTab): VlOverlay => ({
+            vlName: 'VL_400',
+            actionId: null,
+            svg: `<svg xmlns="http://www.w3.org/2000/svg">${bay('trip')}${bay('ol_a')}${bay('ol_b')}</svg>`,
+            sldMetadata: JSON.stringify({
+                nodes: [
+                    { id: 'feeder_trip', equipmentId: 'LINE_TRIPPED' },
+                    { id: 'feeder_ol_a', equipmentId: 'LINE_OL_A' },
+                    { id: 'feeder_ol_b', equipmentId: 'LINE_OL_B' },
+                ],
+            }),
+            loading: false,
+            error: null,
+            tab,
+        });
+        const n1Diagram: DiagramData = {
+            svg: '<svg/>', metadata: null, lines_overloaded: ['LINE_OL_A', 'LINE_OL_B'],
+        };
+        const isHaloed = (container: HTMLElement, name: string, kind: string) =>
+            container.querySelector(`#bay_${name}.sld-highlight-${kind}-original`) !== null;
+
+        it('halos the contingency and the N-1 diagram overloads with no analysis result', () => {
+            const { container } = render(
+                <SldOverlay {...defaultProps} vlOverlay={overlay('contingency')} n1Diagram={n1Diagram}
+                    result={null} selectedContingency={['LINE_TRIPPED']} />,
+            );
+            expect(isHaloed(container, 'trip', 'contingency')).toBe(true);
+            expect(isHaloed(container, 'ol_a', 'overloaded')).toBe(true);
+            expect(isHaloed(container, 'ol_b', 'overloaded')).toBe(true);
+            // One clone per halo, behind its original cell.
+            expect(container.querySelectorAll('.sld-highlight-clone.sld-highlight-contingency')).toHaveLength(1);
+            expect(container.querySelectorAll('.sld-highlight-clone.sld-highlight-overloaded')).toHaveLength(2);
+        });
+
+        it('keeps only the overloads the operator selected, as the N-1 NAD does', () => {
+            const { container } = render(
+                <SldOverlay {...defaultProps} vlOverlay={overlay('contingency')} n1Diagram={n1Diagram}
+                    selectedContingency={['LINE_TRIPPED']} selectedOverloads={new Set(['LINE_OL_B'])} />,
+            );
+            expect(isHaloed(container, 'ol_a', 'overloaded')).toBe(false);
+            expect(isHaloed(container, 'ol_b', 'overloaded')).toBe(true);
+            expect(isHaloed(container, 'trip', 'contingency')).toBe(true);
+        });
+
+        it('adds the overload halos when the N-1 diagram arrives after the SLD', () => {
+            const props = {
+                ...defaultProps, vlOverlay: overlay('contingency'), selectedContingency: ['LINE_TRIPPED'],
+            };
+            const { container, rerender } = render(<SldOverlay {...props} n1Diagram={null} />);
+            expect(isHaloed(container, 'ol_a', 'overloaded')).toBe(false);
+            rerender(<SldOverlay {...props} n1Diagram={n1Diagram} />);
+            expect(isHaloed(container, 'ol_a', 'overloaded')).toBe(true);
+            expect(container.querySelectorAll('.sld-highlight-clone.sld-highlight-overloaded')).toHaveLength(2);
+        });
+
+        it('draws no halo on the N tab (no contingency applied there)', () => {
+            const { container } = render(
+                <SldOverlay {...defaultProps} vlOverlay={overlay('n')} n1Diagram={n1Diagram}
+                    selectedContingency={['LINE_TRIPPED']} />,
+            );
+            expect(container.querySelectorAll('.sld-highlight-clone')).toHaveLength(0);
+        });
+
+        it('keeps the contingency halo on the ACTION tab', () => {
+            const vlOverlay = { ...overlay('action'), actionId: 'act' };
+            const result = {
+                actions: { act: { description_unitaire: 'x', rho_before: null, rho_after: null, max_rho: 0.8, max_rho_line: 'LINE_OL_A', is_rho_reduction: true } },
+                lines_overloaded: ['LINE_OL_A'],
+            } as unknown as AnalysisResult;
+            const { container } = render(
+                <SldOverlay {...defaultProps} vlOverlay={vlOverlay} n1Diagram={n1Diagram} result={result}
+                    selectedContingency={['LINE_TRIPPED']} />,
+            );
+            expect(isHaloed(container, 'trip', 'contingency')).toBe(true);
+            // The action solved the overloads (max_rho under the factor).
+            expect(container.querySelectorAll('.sld-highlight-clone.sld-highlight-overloaded')).toHaveLength(0);
         });
     });
 
@@ -570,6 +685,72 @@ describe('SldOverlay', () => {
             // and neither the direct nor substring lookup of "P.SAO3TR311"
             // matched.
             expect(container.querySelector('#cell_for_load.sld-highlight-action-original')).toBeTruthy();
+        });
+
+        // PyPSA-EUR ids share their first five characters ("L_way",
+        // "VL_way…"), so the <text> fallback used to put a pink action
+        // halo on whatever label of the displayed VL matched — e.g. the
+        // bus-bar title of COURTRY for a load shed at MOISENAY.
+        describe('action targets of another voltage level', () => {
+            const pypsaSvg = '<svg xmlns="http://www.w3.org/2000/svg">'
+                + '<g class="sld-busbar-section" id="bbs"><text>VL_way_26813222-225_BBS1</text></g>'
+                + '<g class="sld-extern-cell" id="cell_local_load">'
+                +   '<rect width="10" height="10"/><text>L_way_26813222-225</text>'
+                + '</g>'
+                + '</svg>';
+            const pypsaOverlay: VlOverlay = {
+                vlName: 'VL_way_26813222-225',
+                actionId: 'load_shedding_L_way_106284701-225',
+                svg: pypsaSvg,
+                sldMetadata: JSON.stringify({
+                    nodes: [
+                        { id: 'bbs', equipmentId: 'VL_way_26813222-225_BBS1' },
+                        { id: 'cell_local_load', equipmentId: 'L_way_26813222-225' },
+                    ],
+                }),
+                loading: false,
+                error: null,
+                tab: 'action' as SldTab,
+            };
+            const shed = (loadName: string, vlId: string) => ({
+                actions: {
+                    'load_shedding_L_way_106284701-225': {
+                        description_unitaire: `Shed ${loadName}`,
+                        rho_before: [1.1], rho_after: [0.9], max_rho: 0.9, max_rho_line: 'X',
+                        is_rho_reduction: true,
+                        action_topology: { loads_p: { [loadName]: 0 } },
+                        load_shedding_details: [{ load_name: loadName, voltage_level_id: vlId, shedded_mw: 12 }],
+                    },
+                },
+                lines_overloaded: [],
+            } as unknown as AnalysisResult);
+
+            it('draws no action halo for a load shed at another voltage level', () => {
+                const { container } = render(
+                    <SldOverlay {...defaultProps} vlOverlay={pypsaOverlay}
+                        result={shed('L_way_106284701-225', 'VL_way_106284701-225')} />,
+                );
+                expect(container.querySelectorAll('.sld-highlight-clone.sld-highlight-action')).toHaveLength(0);
+            });
+
+            it('never haloes a bus-bar title through the <text> fallback', () => {
+                // Same VL this time, but no cell carries the load: the only
+                // label sharing its prefix ("VL_wa") is the bus-bar title.
+                const { container } = render(
+                    <SldOverlay {...defaultProps} vlOverlay={pypsaOverlay}
+                        result={shed('VL_wayX', 'VL_way_26813222-225')} />,
+                );
+                expect(container.querySelector('#bbs.sld-highlight-action-original')).toBeNull();
+                expect(container.querySelectorAll('.sld-highlight-clone.sld-highlight-action')).toHaveLength(0);
+            });
+
+            it('still haloes a load shed on the displayed voltage level', () => {
+                const { container } = render(
+                    <SldOverlay {...defaultProps} vlOverlay={pypsaOverlay}
+                        result={shed('L_way_26813222-225', 'VL_way_26813222-225')} />,
+                );
+                expect(container.querySelector('#cell_local_load.sld-highlight-action-original')).toBeTruthy();
+            });
         });
 
         it('suppresses the post-action overloaded halo when max_rho <= monitoringFactor (Solved / low-margin regression)', () => {

@@ -12,7 +12,7 @@ import {
   applyOverloadedHighlights,
   applyActionTargetHighlights,
 } from '../utils/svgUtils';
-import { computeN1OverloadHighlights } from '../utils/overloadHighlights';
+import { computeActionOverloadHighlights, computeN1OverloadHighlights } from '../utils/overloadHighlights';
 import { interactionLogger } from '../utils/interactionLogger';
 import type { AnalysisResult, TabId } from '../types';
 import type { DiagramsState } from './useDiagrams';
@@ -175,48 +175,11 @@ export function useDiagramHighlights({
         // Same ordering rule as the N-1 tab: clone-based highlights
         // first (so they capture pristine elements), delta visuals
         // last. Overload halos render in both Flows and Impacts modes.
-        //
-        // ActionCard severity classification (`components/ActionCard.tsx:76-78`):
-        //   - red:    `max_rho > monitoringFactor`         ("Still overloaded")
-        //   - orange: `max_rho > monitoringFactor - 0.05`  ("Solved — low margin")
-        //   - green:  else                                 ("Solves overload")
-        // When the card says "Solved" (orange or green) no line in the
-        // post-action state exceeds the operator's tolerance threshold,
-        // so overload halos on the NAD contradict the card's label.
-        // The backend's manual-simulation path flags `lines_overloaded_after`
-        // on raw rho >= monitoring_factor (0.95) whereas the analysis
-        // path uses raw rho >= 1.0 (`analysis_mixin.py:97` vs
-        // `simulation_mixin.py:536`). In the low-margin band — raw rho
-        // in `[mf, 1.0)` — the two paths disagree: manual ships a
-        // non-empty list, analysis ships an empty one. Without this
-        // gate, halos appear on manual low-margin actions but not on
-        // suggested ones with the same displayed max_rho — the exact
-        // user-reported bug (commit-time 2026-04-20).
-        const isSolved =
-          actionDetail.max_rho != null && actionDetail.max_rho <= monitoringFactor;
-
-        let overloadsToHighlight: string[] = [];
-
-        if (!isSolved) {
-          if (actionDetail.lines_overloaded_after && actionDetail.lines_overloaded_after.length > 0) {
-            overloadsToHighlight = actionDetail.lines_overloaded_after;
-          } else {
-            // Fallback for legacy results or actions without full enrichment
-            if (overloadedLines.length > 0 && actionDetail.rho_after) {
-              overloadedLines.forEach((name, i) => {
-                const rho = actionDetail.rho_after![i];
-                if (rho != null && rho > monitoringFactor) {
-                  overloadsToHighlight.push(name);
-                }
-              });
-            }
-            if (actionDetail.max_rho != null && actionDetail.max_rho > monitoringFactor && actionDetail.max_rho_line) {
-              if (!overloadsToHighlight.includes(actionDetail.max_rho_line)) {
-                overloadsToHighlight.push(actionDetail.max_rho_line);
-              }
-            }
-          }
-        }
+        // The list (empty when the card says "Solved") is shared with
+        // the action SLD — see `computeActionOverloadHighlights`.
+        const overloadsToHighlight = computeActionOverloadHighlights(
+          actionDetail, overloadedLines, monitoringFactor,
+        );
 
         // Stacking order (SVG draws later-appended clones ON TOP):
         // contingency halo appended FIRST (bottom), overload halos

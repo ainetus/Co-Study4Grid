@@ -17,12 +17,18 @@ vi.mock('../utils/svgUtils', () => ({
     applyActionTargetHighlights: vi.fn(),
 }));
 
-vi.mock('../utils/overloadHighlights', () => ({
-    computeN1OverloadHighlights: vi.fn((analysisOverloads: string[], n1Overloads: string[] | undefined) => {
-        if (analysisOverloads && analysisOverloads.length > 0) return analysisOverloads;
-        return n1Overloads ?? [];
-    }),
-}));
+vi.mock('../utils/overloadHighlights', async () => {
+    // The post-action list (`computeActionOverloadHighlights`) is pure and
+    // shared with the action SLD: it comes through unmodified.
+    const actual = await vi.importActual<typeof import('../utils/overloadHighlights')>('../utils/overloadHighlights');
+    return {
+        ...actual,
+        computeN1OverloadHighlights: vi.fn((analysisOverloads: string[], n1Overloads: string[] | undefined) => {
+            if (analysisOverloads && analysisOverloads.length > 0) return analysisOverloads;
+            return n1Overloads ?? [];
+        }),
+    };
+});
 
 import {
     applyContingencyHighlight,

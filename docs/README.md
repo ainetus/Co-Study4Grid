@@ -40,6 +40,7 @@ docs/
 | [`state-reset-and-confirmation-dialogs.md`](features/state-reset-and-confirmation-dialogs.md) | State-reset guards when switching contingencies / reloading. |
 | [`actions-topology.md`](features/actions-topology.md) | Action formats + topology algorithms (switch → set_bus, Union-Find cache). |
 | [`sld-topology-edit.md`](features/sld-topology-edit.md) | Interactive SLD topology edit → manual action card: target-topology preview (`/api/sld-topology-preview`), maneuver list, combined-card canonicalisation, six interaction events. |
+| [`sld-halos.md`](features/sld-halos.md) | SLD halos with the NAD's colours and meaning: contingency, N-1 overloads (before any analysis), post-action overloads, action targets; the lists shared with the NAD, the bay-clone technique, targets of another voltage level. |
 | [`vl-disk-interactions.md`](features/vl-disk-interactions.md) | Interactive VL disks on the NAD: hover name (labels hidden), single-click → Inspect/zoom, double-click → SLD. Delegation-based performance contract + the pointer-events click-retarget fix. |
 | [`curtailment-loadshedding-pst-actions.md`](features/curtailment-loadshedding-pst-actions.md) | Renewable curtailment, load shedding, PST tap actions. |
 | [`adding-action-type.md`](features/adding-action-type.md) | Cross-cutting checklist to integrate / upgrade a remedial-action type (lib → backend → frontend → save/log/reload triad → regression specs). Read before adding a family or touching session persistence. |
