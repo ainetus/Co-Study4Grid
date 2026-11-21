@@ -59,10 +59,11 @@ class FakeNetwork:
     """The pypowsybl tables the context map reads, as pandas frames."""
 
     def __init__(self, substations, vls, lines=None, generators=None, loads=None,
-                 hvdc=None, stations=None, positions=None):
+                 hvdc=None, stations=None, positions=None, vl_names=None):
         self.case_date = datetime(2026, 1, 10, 17, 30, tzinfo=timezone.utc)
         self._subs = _frame(substations, ["name", "country", "regionCvg"])
-        self._vls = _frame({k: {"substation_id": v} for k, v in vls.items()}, ["substation_id"])
+        self._vls = _frame({k: {"substation_id": v, "name": (vl_names or {}).get(k, "")}
+                            for k, v in vls.items()}, ["substation_id", "name"])
         self._lines = _frame(lines or {}, ["name", "voltage_level1_id", "voltage_level2_id",
                                            "p1", "p2", "connected1", "connected2"])
         self._gens = _frame(generators or {}, ["voltage_level_id", "p", "target_p",
@@ -304,6 +305,32 @@ class TestCountryMesh:
     def test_available_with_two_zones_on_the_ground(self):
         payload = build_context_map(capture_snapshot(_country_network()), layout={}).payload
         assert payload["available"] is True and payload["frame"] == "geo"
+
+    def test_lines_named_by_a_raw_osm_id_read_by_their_ends(self):
+        """As in the contingency list: a raw OSM name, merged by PyPSA or not,
+        gives way to the names of the line's end voltage levels."""
+        net = FakeNetwork(
+            substations={"S_FR": {"name": "", "country": "FR", "regionCvg": None},
+                         "S_DE": {"name": "", "country": "DE", "regionCvg": None}},
+            vls={"V_FR": "S_FR", "V_DE": "S_DE"},
+            vl_names={"V_FR": "PONTEAU 400kV", "V_DE": "REALTOR 400kV"},
+            lines={
+                "merged_way_214858102-400_4": dict(_line("V_FR", "V_DE", -120.0, 121.0),
+                                                   name="merged_way/214858102-400+4"),
+                "way_1-400": dict(_line("V_DE", "V_FR", 60.0, -59.0), name="way/1-400"),
+                "relation_5989317-400": dict(_line("V_FR", "V_DE", 10.0, -10.0),
+                                             name="REALTL71TAVEL"),
+            },
+            generators={"G1": _gen("V_DE", -500.0)},
+            loads={"LD1": {"voltage_level_id": "V_FR", "p": 300.0, "p0": 300.0, "connected": True}},
+        )
+        snap = capture_snapshot(net)
+        cmap = build_context_map(snap, layout={})
+        names = {eid: element_geometry(cmap, snap, eid)["name"]
+                 for eid in ("merged_way_214858102-400_4", "way_1-400", "relation_5989317-400")}
+        assert names == {"merged_way_214858102-400_4": "PONTEAU \u2014 REALTOR",
+                         "way_1-400": "REALTOR \u2014 PONTEAU",
+                         "relation_5989317-400": "REALTL71TAVEL"}
 
 
 class TestPrerequisite:

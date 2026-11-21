@@ -30,7 +30,10 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   (`get_element_names`) and the SLD feeder labels missed; like a plain `way/…`
   id, it now gives way to the end substations — study 3 reads
   `PONTEAU — REALTOR` instead of `merged_way/214858102-400+4`. 25 of the
-  French grid's 1,861 lines, 526 of the European grid's 7,173.
+  French grid's 1,861 lines, 526 of the European grid's 7,173. The Context
+  tab, which showed every raw id as it was, follows the same rule: one module
+  (`services/element_names.py`) now names lines for the contingency list,
+  the SLD feeders and the Context tab.
 
 ### Evacuation antennas — expert_op4grid_recommender 0.3.4.post1, ExpertOp4Grid 0.3.4
 

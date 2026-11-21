@@ -64,6 +64,10 @@ Co-Study4Grid/
 │   │   │                          # JSON records, novelty/bonus + usage
 │   │   │                          # frequencies; root via COSTUDY4GRID_DATA_DIR)
 │   │   ├── sanitize.py            # NumPy → native-Python recursive coercion
+│   │   ├── element_names.py       # Display-name rule every view shares: a raw
+│   │   │                          # OSM id (way/…, merged_way/…) reads by its
+│   │   │                          # end substations — contingency list, SLD
+│   │   │                          # feeders, Context tab
 │   │   ├── analysis/              # PR #104 decomposition — action_enrichment,
 │   │   │                          # mw_start_scoring, analysis_runner, pdf_watcher,
 │   │   │                          # overflow_geo_transform (PR #116 — geo-layout SVG
