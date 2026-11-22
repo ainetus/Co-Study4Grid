@@ -265,21 +265,62 @@ describe('ActionCard', () => {
         expect(onAssetClick).toHaveBeenCalledWith('act_1', 'LINE_B', 'action');
     });
 
+    // The action moved the worst loading to LINE_B: the overloaded LINE_A
+    // gets a row of its own.
+    const movedMax: ActionDetail = { ...baseDetails, max_rho: 0.9, max_rho_line: 'LINE_B' };
+
     it('shows the overloads after the action on the viewing card only, grouped with the max loading', () => {
         // At rest the per-card max ρ% summary stands alone; the viewing
         // card adds the per-line breakdown IN THE SAME loading group (same
         // kind of information). "Loading before" stays in the sticky
         // Overloads panel and never appears on the card.
-        const { rerender } = render(<ActionCard {...defaultProps} />);
+        const { rerender } = render(<ActionCard {...defaultProps} details={movedMax} />);
         expect(screen.queryByTestId('action-card-act_1-after')).not.toBeInTheDocument();
         expect(screen.queryByText(/loading before/i)).not.toBeInTheDocument();
 
-        rerender(<ActionCard {...defaultProps} isViewing={true} />);
+        rerender(<ActionCard {...defaultProps} details={movedMax} isViewing={true} />);
         const after = screen.getByTestId('action-card-act_1-after');
         expect(screen.getByTestId('action-card-act_1-loading')).toContainElement(after);
-        expect(after).toHaveTextContent(/LINE_A\s*85\.0%/);
+        expect(after).toHaveTextContent(/85\.0%\s*LINE_A/);
         expect(screen.getByTitle(/^Loading after this action of the lines the contingency overloads/)).toBeInTheDocument();
         expect(screen.queryByText(/loading before/i)).not.toBeInTheDocument();
+    });
+
+    it('reads the rate first, then the line, in both loading rows', () => {
+        render(<ActionCard {...defaultProps} details={movedMax} isViewing={true} />);
+        const rows = [screen.getByTitle(/^Max loading/), screen.getByTestId('action-card-act_1-after')];
+        expect(rows[0]).toHaveTextContent(/90\.0%\s*LINE_B/);
+        expect(rows[1]).toHaveTextContent(/85\.0%\s*LINE_A/);
+        for (const row of rows) {
+            const rate = row.querySelector('strong')!;
+            const line = row.querySelector('button')!;
+            expect(rate.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        }
+    });
+
+    it('does not repeat the overloaded line when it is still the most loaded one', () => {
+        // max_rho_line LINE_A at 85 % is the overloaded LINE_A at 85 %:
+        // the max-loading row says it all, with a light mention.
+        render(<ActionCard {...defaultProps} isViewing={true} />);
+        expect(screen.queryByTestId('action-card-act_1-after')).not.toBeInTheDocument();
+        const mention = screen.getByTestId('action-card-act_1-still-max');
+        expect(mention).toHaveTextContent('still the most loaded');
+        expect(mention).toHaveAttribute('title', expect.stringMatching(/^The line the contingency overloads is still the most loaded/));
+        expect(screen.getByTitle(/^Max loading/)).toHaveTextContent(/85\.0%\s*LINE_A/);
+    });
+
+    it('keeps the other overloads when the most loaded line is one of them', () => {
+        const details: ActionDetail = { ...baseDetails, rho_after: [0.85, 0.6], max_rho: 0.85, max_rho_line: 'LINE_A' };
+        render(<ActionCard {...defaultProps} details={details} linesOverloaded={['LINE_A', 'LINE_C']} isViewing={true} />);
+        const after = screen.getByTestId('action-card-act_1-after');
+        expect(after).toHaveTextContent(/60\.0%\s*LINE_C/);
+        expect(after).not.toHaveTextContent('LINE_A');
+        expect(screen.getByTestId('action-card-act_1-still-max')).toBeInTheDocument();
+    });
+
+    it('mentions nothing on a card at rest', () => {
+        render(<ActionCard {...defaultProps} />);
+        expect(screen.queryByTestId('action-card-act_1-still-max')).not.toBeInTheDocument();
     });
 
     it('renders the source / provenance row last, below the overloads after the action', () => {
@@ -288,7 +329,7 @@ describe('ActionCard', () => {
         // card — below the operational fields (description, loading group,
         // per-line editors).
         const details: ActionDetail = {
-            ...baseDetails,
+            ...movedMax,
             origin: 'user',
         };
         render(<ActionCard {...defaultProps} details={details} isViewing={true} />);
@@ -746,6 +787,18 @@ describe('ActionCard', () => {
             expect(screen.getByText(/33\.3%/)).toBeInTheDocument();
             expect(screen.getByText(/open one end/i)).toBeInTheDocument();
             expect(screen.getByText(/16\.8 MVAr/)).toBeInTheDocument();
+        });
+
+        it('keeps the note on the max-loading row when that row stands for the overload', () => {
+            const details: ActionDetail = {
+                ...baseDetails,
+                rho_after: [0.333], max_rho: 0.333, max_rho_line: 'LINE_A',
+                half_open_overloads: { LINE_A: 16.8 },
+            };
+            render(<ActionCard {...defaultProps} details={details} linesOverloaded={['LINE_A']} isViewing={true} />);
+            expect(screen.queryByTestId('action-card-act_1-after')).not.toBeInTheDocument();
+            expect(screen.getAllByText(/open one end/i)).toHaveLength(1);
+            expect(screen.getByTitle(/^Max loading/)).toHaveTextContent(/33\.3%\s*LINE_A\s*open one end · 16\.8 MVAr/);
         });
 
         it('does not annotate a normally-loaded line', () => {

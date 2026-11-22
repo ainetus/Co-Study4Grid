@@ -63,6 +63,7 @@ const linkStyle: React.CSSProperties = {
 /** Words a pictogram stands for — the hover tooltip that recalls its meaning. */
 const TIPS = {
     maxLoading: 'Max loading — the highest line loading in the network after this action',
+    stillMax: 'The line the contingency overloads is still the most loaded line after this action',
     after: 'Loading after this action of the lines the contingency overloads',
     halfOpen: 'Line open at one end — this loading is the line\'s capacitive charging current (reactive power, the MVAr shown), not real power flow. The line carries no active power (the diagrams show 0).',
     location: 'Where the action acts',
@@ -186,40 +187,53 @@ const ActionCard: React.FC<ActionCardProps> = ({
         );
     };
 
-    const renderRho = (arr: number[] | null, actionId: string): React.ReactNode => {
-        if (!arr || arr.length === 0) return '—';
-        const halfOpen = details.half_open_overloads;
-        return arr.map((v, i) => {
-            const lineName = linesOverloaded[i] || `line ${i}`;
-            // A line the action left open at one end shows a non-zero loading
-            // that is pure capacitive charging current (the diagrams show p = 0).
-            const reactiveMvar = halfOpen ? halfOpen[lineName] : undefined;
-            const tone = severityColors[severityOf(v)].border;
-            return (
-                <span key={i} style={{ display: 'flex', alignItems: 'center', gap: '2px 6px', flexWrap: 'wrap' }}>
-                    <button
-                        style={{ ...linkStyle, color: colors.brand, fontWeight: 600, textDecoration: 'underline dotted' }}
-                        title={`Zoom to ${named(lineName)}`}
-                        onClick={(e) => { e.stopPropagation(); onAssetClick(actionId, lineName, 'action'); }}
-                    >{displayName(lineName)}</button>
-                    <strong style={{ color: tone }}>{(v * 100).toFixed(1)}%</strong>
-                    {reactiveMvar != null && (
-                        <span
-                            title={TIPS.halfOpen}
-                            style={{
-                                display: 'inline-flex', alignItems: 'center', gap: '3px', cursor: 'help',
-                                fontSize: text.xs, color: colors.textSecondary, background: colors.surfaceMuted,
-                                border: `1px solid ${colors.borderSubtle}`, borderRadius: radius.lg, padding: '0 6px',
-                            }}
-                        >
-                            <Glyph kind="openEnd" size={11} />
-                            {`open one end · ${reactiveMvar.toFixed(1)} MVAr`}
-                        </span>
-                    )}
-                </span>
-            );
-        });
+    // One loading figure — the rate, then the line — read the same way in
+    // the max-loading row and the overloads-after row. Its parts are flex
+    // items of the row, so a narrow card wraps between them, never inside.
+    const loadingFigure = (rho: number, line: string, tone: string, halfOpenNote = true): React.ReactNode => {
+        // A line the action left open at one end shows a non-zero loading
+        // that is pure capacitive charging current (the diagrams show p = 0).
+        const reactiveMvar = halfOpenNote ? details.half_open_overloads?.[line] : undefined;
+        return (
+            <>
+                <strong style={{ color: tone, whiteSpace: 'nowrap' }}>{(rho * 100).toFixed(1)}%</strong>
+                <button
+                    style={{
+                        ...linkStyle, color: colors.textSecondary, textDecoration: 'underline dotted',
+                        textUnderlineOffset: '2px', overflowWrap: 'anywhere', minWidth: 0,
+                    }}
+                    title={`Zoom to ${named(line)}`}
+                    onClick={(e) => { e.stopPropagation(); onAssetClick(id, line, 'action'); }}
+                >{displayName(line)}</button>
+                {reactiveMvar != null && (
+                    <span
+                        title={TIPS.halfOpen}
+                        style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '3px', cursor: 'help', whiteSpace: 'nowrap',
+                            fontSize: text.xs, color: colors.textSecondary, background: colors.surfaceMuted,
+                            border: `1px solid ${colors.borderSubtle}`, borderRadius: radius.lg, padding: '0 6px',
+                        }}
+                    >
+                        <Glyph kind="openEnd" size={11} />
+                        {`open one end · ${reactiveMvar.toFixed(1)} MVAr`}
+                    </span>
+                )}
+            </>
+        );
     };
+    const figureRowStyle: React.CSSProperties = {
+        display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '2px 6px', minWidth: 0,
+    };
+
+    // The overloads after the action, less the one the max-loading row
+    // already gives: when the most loaded line is still the overloaded one,
+    // a second row would only repeat it.
+    const overloadsAfter = (details.rho_after ?? []).map((rho, i) => ({ rho, line: linesOverloaded[i] || `line ${i}` }));
+    const isMaxRow = (o: { rho: number; line: string }) =>
+        details.max_rho != null && o.line === details.max_rho_line
+        && (o.rho * 100).toFixed(1) === (details.max_rho * 100).toFixed(1);
+    const maxIsOverload = overloadsAfter.some(isMaxRow);
+    const otherOverloads = overloadsAfter.filter(o => !isMaxRow(o));
 
     const locationChip = (t: ActionTarget) => (
         <button key={t.id}
@@ -227,7 +241,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
             style={{
                 display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '1px 7px 1px 5px',
                 borderRadius: radius.lg, border: `1px solid ${colors.successSoft}`, cursor: 'pointer',
-                fontSize: text.xs, fontWeight: 600, flexShrink: 0,
+                fontSize: text.xs, fontWeight: 600, maxWidth: '100%', textAlign: 'left',
                 background: colors.successSoft, color: colors.successText,
             }}
             title={`${TIPS.location}: ${named(t.id)} — click: zoom · double-click: open SLD`}
@@ -370,35 +384,43 @@ const ActionCard: React.FC<ActionCardProps> = ({
                     }}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 8px' }}>
-                        {maxRhoPct != null ? (
-                            <span title={TIPS.maxLoading} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: colors.textSecondary }}>
+                        {details.max_rho != null ? (
+                            <span title={TIPS.maxLoading} style={{ ...figureRowStyle, flex: '1 1 auto', color: colors.textSecondary }}>
                                 <Glyph kind="gauge" />
-                                <strong style={{ color: sc.border }}>{maxRhoPct}%</strong>
-                                {details.max_rho_line && (
-                                    <button
-                                        style={{ ...linkStyle, color: colors.textTertiary, textDecoration: 'underline dotted' }}
-                                        title={`Zoom to ${named(details.max_rho_line)}`}
-                                        onClick={(e) => { e.stopPropagation(); onAssetClick(id, details.max_rho_line, 'action'); }}
-                                    >{displayName(details.max_rho_line)}</button>
+                                {details.max_rho_line
+                                    ? loadingFigure(details.max_rho, details.max_rho_line, sc.border, maxIsOverload)
+                                    : <strong style={{ color: sc.border }}>{maxRhoPct}%</strong>}
+                                {isViewing && maxIsOverload && (
+                                    <span
+                                        data-testid={`action-card-${id}-still-max`}
+                                        title={TIPS.stillMax}
+                                        style={{ fontSize: text.xs, fontStyle: 'italic', color: colors.textTertiary, whiteSpace: 'nowrap' }}
+                                    >still the most loaded</span>
                                 )}
                             </span>
                         ) : (
                             <span style={{ color: colors.textTertiary }}>No loading metric</span>
                         )}
                         {targets.locations.length > 0 && (
-                            <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '4px', marginLeft: 'auto' }}>
+                            <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '4px', marginLeft: 'auto', maxWidth: '100%' }}>
                                 {targets.locations.map(locationChip)}
                             </span>
                         )}
                     </div>
-                    {isViewing && (
+                    {isViewing && (overloadsAfter.length === 0 || otherOverloads.length > 0) && (
                         <div data-testid={`action-card-${id}-after`} style={{ display: 'flex', alignItems: 'flex-start', gap: '4px' }}>
                             <span title={TIPS.after} aria-label={TIPS.after} role="img"
                                 style={{ display: 'inline-flex', color: colors.textSecondary, marginTop: '2px' }}>
                                 <Glyph kind="after" />
                             </span>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                                {renderRho(details.rho_after, id)}
+                                {overloadsAfter.length === 0
+                                    ? '—'
+                                    : otherOverloads.map((o, i) => (
+                                        <span key={i} style={figureRowStyle}>
+                                            {loadingFigure(o.rho, o.line, severityColors[severityOf(o.rho)].border)}
+                                        </span>
+                                    ))}
                             </div>
                         </div>
                     )}
