@@ -180,14 +180,14 @@ describe('GameConfigScreen — study checklist (curated sets)', () => {
   it('leaves unticked studies out of the session, keeping the order', async () => {
     const onStart = vi.fn();
     render(<GameConfigScreen onStart={onStart} />);
-    fireEvent.click(screen.getByTestId('game-study-pick-fr25-jan-realtor-tavel'));
-    fireEvent.click(screen.getByTestId('game-study-pick-fr25-jan-coubert-moisenay'));
-    expect(screen.getByText(/This session — 6 of 8 studies/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('game-study-pick-eu-jan-opf'));
+    fireEvent.click(screen.getByTestId('game-study-pick-eu-jul-opf'));
+    expect(screen.getByText(/This session — 2 of 4 studies/)).toBeInTheDocument();
     await enterPlayer();
     fireEvent.click(screen.getByTestId('game-start'));
     expect(ids(onStart.mock.calls[0][0])).toEqual(
       DEFAULT_SESSION_STUDIES.map((s) => s.id)
-        .filter((id) => id !== 'fr25-jan-realtor-tavel' && id !== 'fr25-jan-coubert-moisenay'),
+        .filter((id) => id !== 'eu-jan-opf' && id !== 'eu-jul-opf'),
     );
   });
 
@@ -203,14 +203,21 @@ describe('GameConfigScreen — study checklist (curated sets)', () => {
     expect(screen.getByTestId('game-start')).toBeEnabled();
   });
 
-  it('ticks the whole new set when switching sets', () => {
-    render(<GameConfigScreen onStart={vi.fn()} />);
+  it('switching to France 2025 ticks its whole set and sets 20 minutes per study', async () => {
+    const onStart = vi.fn();
+    render(<GameConfigScreen onStart={onStart} />);
     fireEvent.click(screen.getByTestId('game-studies-none'));
     openModePicker();
-    fireEvent.change(screen.getByDisplayValue(difficultyTier('france-2025').label),
-      { target: { value: 'medium' } });
-    expect(boxes()).toHaveLength(difficultyTier('medium').studies.length);
+    expect((screen.getByTestId('game-timer-minutes') as HTMLInputElement).value).toBe('5');
+    fireEvent.change(screen.getByDisplayValue(difficultyTier('medium').label),
+      { target: { value: 'france-2025' } });
+    expect(boxes()).toHaveLength(difficultyTier('france-2025').studies.length);
     expect(boxes().every((b) => b.checked)).toBe(true);
+    expect((screen.getByTestId('game-timer-minutes') as HTMLInputElement).value).toBe('20');
+    expect((screen.getByTestId('game-timer-seconds') as HTMLInputElement).value).toBe('0');
+    await enterPlayer();
+    fireEvent.click(screen.getByTestId('game-start'));
+    expect(onStart.mock.calls[0][0].timerSeconds).toBe(20 * 60);
   });
 });
 

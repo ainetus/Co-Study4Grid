@@ -18,15 +18,23 @@ const situationOf = (s: { networkPath: string }) =>
   s.networkPath.split('/situations/')[1]?.split('/')[0];
 
 describe('game difficulty presets', () => {
-  it('defaults to France 2025 = the French grid on its real hours', () => {
-    expect(DEFAULT_DIFFICULTY).toBe('france-2025');
+  it('defaults to Medium = the European grid', () => {
+    expect(DEFAULT_DIFFICULTY).toBe('medium');
     const tier = difficultyTier(DEFAULT_DIFFICULTY);
-    expect(tier.networkPath).toContain('pypsa_eur_fr225_400/situations/');
+    expect(tier.networkPath).toContain('pypsa_eur_eur220_225_380_400');
     expect(DEFAULT_SESSION_STUDIES).toBe(tier.studies);
   });
 
-  it('the default session opens on the July starter, then the January peak by region', () => {
-    const ids = DEFAULT_SESSION_STUDIES.map((s) => s.contingencyElementId);
+  it('France 2025 gives 20 minutes per study, the other sets 5', () => {
+    expect(difficultyTier('france-2025').timerSeconds).toBe(20 * 60);
+    expect(difficultyTier('medium').timerSeconds).toBe(5 * 60);
+    expect(difficultyTier('high').timerSeconds).toBe(5 * 60);
+  });
+
+  it('France 2025 opens on the July starter, then the January peak by region', () => {
+    const france = difficultyTier('france-2025');
+    expect(france.networkPath).toContain('pypsa_eur_fr225_400/situations/');
+    const ids = france.studies.map((s) => s.contingencyElementId);
     expect(ids).toEqual([
       // Starter: Les Attaques – Mandarins n°2.
       'relation_5674508-400',
@@ -37,7 +45,7 @@ describe('game difficulty presets', () => {
       // Lyon: Échalas – Le Soleil n°2.
       'way_130228930-225',
     ]);
-    expect(DEFAULT_SESSION_STUDIES.map(situationOf)).toEqual([
+    expect(france.studies.map(situationOf)).toEqual([
       '2025-07-01_1100Z_opf',
       ...Array(7).fill('2025-01-14_0800Z_opf'),
     ]);
