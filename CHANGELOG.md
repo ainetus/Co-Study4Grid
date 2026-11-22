@@ -110,10 +110,15 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   clears it, except Ponteau – Réaltor and Réaltor – Septèmes n°1, which take a
   pair. Réaltor – Tavel n°1 and Coubert – Moisenay load their line between 95
   and 100 %: past the monitoring limit, so the N-1 tables (> 100 %) leave them
-  out and the preset check reads them in the bundle's line list instead. The
-  European set stays the default; France 2025 is picked under ⚙ Configure
-  settings → Other modes, which sets the timer to 20 minutes. The Space image
-  unpacks the French situations too.
+  out and the preset check reads them in the bundle's line list instead.
+  France 2025 is a mode of its own (⚙ Configure settings → Other modes → 🇫🇷
+  France 2025 — real hours), which sets the timer to 20 minutes. The Space
+  image unpacks the French situations too.
+- **The European set stays the default, on the README's three reference
+  studies**: Pyrenees (LANNEL61PRAGN), Campania (Santa Sofia — Montecorvino)
+  and Hinojosa 400 kV, on the bundle's own situation — each winnable below
+  95 % with one action. The four real-hour European studies are retired for
+  now.
 - **A study is won below the monitoring factor, not 100 %**: the HUD's ✓, the
   score and the Codabench scorer counted a study as solved once its worst line
   was under 100 %, while the workspace flags an overload from the monitoring
@@ -393,13 +398,9 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   dispatch's merit order) and lets offshore farms land up to 250 km away.
   `calibrate_thermal_limits.py` gains `--chunk-size` (a pan-European N-1 table
   exceeds the GraalVM heap).
-- **Game Mode's Medium tier plays the real hours**: two studies per hour
-  (Échalas – Le Soleil n°2 and Saint-Avold – Vigy on the January peak,
-  Les Attaques – Warande and Meitingen – Oberbachern at the July midday;
-  102–110 % overloads) instead of the
-  three studies on the synthetic situation (still described in the README).
-  Each is remediable by the expert model, checked by `e2e_game_session.py
-  --grid custom` (new: any network, any contingencies).
+- `e2e_game_session.py --grid custom` plays any network and any
+  contingencies — how the real-hour Game Mode studies are checked
+  remediable by the expert model.
 
 ### PyPSA-EUR — the French grid on the same real hours
 
@@ -468,8 +469,7 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   Bulgarian plants have no code in the database. Real outputs put Chooz B,
   Golfech and Penly at full power, and their outlets into the French N-1
   tables; the European tables move by a few contingencies (107 in January,
-  33 in July). Game Mode's Medium studies are each checked winnable by
-  `e2e_game_session.py`.
+  33 in July).
 - The Context tab credits ENTSO-E beside Energy-Charts and powerplantmatching,
   each licence after the sources it covers.
 

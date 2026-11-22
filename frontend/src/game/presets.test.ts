@@ -51,22 +51,18 @@ describe('game difficulty presets', () => {
     ]);
   });
 
-  it('Medium plays two studies per real hour of the European grid', () => {
+  it("Medium plays the README's three reference studies on the European grid", () => {
     const medium = difficultyTier('medium');
-    expect(medium.networkPath).toContain('pypsa_eur_eur220_225_380_400');
-    // Échalas – Le Soleil, Saint-Avold – Vigy, Les Attaques – Warande, Meitingen – Oberbachern.
+    // Pyrenees (LANNEL61PRAGN), Campania (Santa Sofia — Montecorvino), Hinojosa 400 kV.
     expect(medium.studies.map((s) => s.contingencyElementId)).toEqual([
-      'way_130228930-225',
-      'way_192698906-400',
-      'relation_5674507-400',
-      'relation_3710278_b-380',
+      'relation_8423570-225',
+      'relation_13164355-380',
+      'way_170479605-400',
     ]);
-    expect(medium.studies.map(situationOf)).toEqual([
-      '2025-01-14_0800Z_opf',
-      '2025-01-14_0800Z_opf',
-      '2025-07-01_1100Z_opf',
-      '2025-07-01_1100Z_opf',
-    ]);
+    // The bundle's own situation, not one of its real-hour rebuilds.
+    for (const s of medium.studies) {
+      expect(s.networkPath).toBe('data/pypsa_eur_eur220_225_380_400/network.xiidm');
+    }
   });
 
   it('High = the French fr225_400 grid', () => {

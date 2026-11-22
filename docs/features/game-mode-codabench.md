@@ -75,7 +75,7 @@ The whole feature is additive and inert unless `?game=1` is set.
 | `frontend/src/game/scoring.ts` | Shared scoring model (twin of the Python scorer) |
 | `frontend/src/game/gameLog.ts` | `GameSessionLog` assembly + CSV + download helpers |
 | `frontend/src/game/solutionLog.ts` | Solution capitalisation client: lever/signature computation + log payload + feedback mapping |
-| `frontend/src/game/presets.ts` | Curated **solvable** sets, each with its per-study timer: Medium (default — the European grid on real 2025 hours, 5 min), France 2025 (the French grid on the same hours, a July starter then the January peak around Marseille, Paris and Lyon, 20 min), High (French worst case, 5 min) |
+| `frontend/src/game/presets.ts` | Curated **solvable** sets, each with its per-study timer: Medium (default — the European grid's three README reference studies, 5 min), High (French worst case, 5 min), and France 2025 — a mode of its own: the French grid on its real 2025 hours, a July starter then the January peak around Marseille, Paris and Lyon, 20 min |
 | `frontend/src/game/types.ts` | Type contract for the whole module |
 
 ### App integration (3 touch points, all guarded by `gameBridge.isGameMode()`)
@@ -218,7 +218,7 @@ preset studies, plays a greedy operator (lowest-rho actions, ≤ cap), writes a
 ```bash
 python3 scripts/game_mode/e2e_game_session.py --max-studies 3
 # → writes test-results/e2e_*.json and prints the Codabench score
-# Any network — one study per --contingency (how the France 2025 and Medium sets were checked):
+# Any network — one study per --contingency (how the France 2025 set was checked):
 B=data/pypsa_eur_eur220_225_380_400
 python3 scripts/game_mode/e2e_game_session.py --grid custom \
     --network $B/situations/2025-07-01_1100Z_opf/network.xiidm \
