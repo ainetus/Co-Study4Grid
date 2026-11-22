@@ -289,7 +289,8 @@ async function runCanonicalSession(page: Page): Promise<{
 
   // 6. Display prioritized actions (if a separate button exists;
   //    otherwise the action feed populates automatically).
-  const displayBtn = page.getByRole('button', { name: /Display Prioritized/i });
+  // React labels it "Show prioritized actions"; the legacy standalone "Display …".
+  const displayBtn = page.getByRole('button', { name: /(Display|Show) Prioritized/i });
   if (await displayBtn.count() > 0) await displayBtn.click();
 
   // 7. Select (click) the first action card.

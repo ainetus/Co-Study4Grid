@@ -11,6 +11,10 @@ import {
     pinStarPath,
     pinCrossPath,
     resolvePinFill,
+    setPinOffset,
+    SPREAD_PITCH_X,
+    SPREAD_PITCH_Y,
+    spreadPins,
     SEVERITY_FILL,
     SEVERITY_FILL_DIMMED,
     SEVERITY_FILL_HIGHLIGHTED,
@@ -183,5 +187,73 @@ describe('createPinGlyph', () => {
         // A combined pin's "+" badge (radius 3.5) sits at (0, -28.5), the
         // slot of the star / cross — which never meet the feed badge.
         expect(Math.hypot(cx, cy + 28.5)).toBeGreaterThan(rb + 3.5);
+    });
+});
+
+describe('spreadPins — overlapping pins stay visible', () => {
+    type P = { x: number; y: number };
+    // Footprints overlap — neighbours exactly one pitch apart (give or
+    // take floating-point error) don't.
+    const overlap = (a: P, b: P, r: number) =>
+        Math.abs(a.x - b.x) < SPREAD_PITCH_X * r - 1e-6 && Math.abs(a.y - b.y) < SPREAD_PITCH_Y * r - 1e-6;
+    const clear = (pos: P[], r: number) =>
+        pos.every((a, i) => pos.every((b, j) => j <= i || !overlap(a, b, r)));
+
+    it('leaves pins with clear footprints on their anchors', () => {
+        const anchors = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 0, y: 100 }];
+        expect(spreadPins(anchors, 10)).toEqual(anchors);
+    });
+
+    it('puts pins sharing an anchor side by side, just above it', () => {
+        const out = spreadPins([{ x: 50, y: 50 }, { x: 50, y: 50 }], 10);
+        expect(clear(out, 10)).toBe(true);
+        expect(out[0].y).toBe(out[1].y);
+        expect(out[0].y).toBeLessThan(50);
+        expect((out[0].x + out[1].x) / 2).toBeCloseTo(50);
+    });
+
+    it('also separates pins on nearby, distinct anchors', () => {
+        const anchors = [{ x: 0, y: 0 }, { x: 12, y: -5 }, { x: 30, y: 8 }];
+        expect(clear(anchors, 10)).toBe(false);
+        expect(clear(spreadPins(anchors, 10), 10)).toBe(true);
+    });
+
+    it('merges crowds until no two pins overlap', () => {
+        let seed = 7;
+        const rand = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+        for (let trial = 0; trial < 20; trial++) {
+            const anchors = Array.from({ length: 25 }, () => ({ x: rand() * 300, y: rand() * 300 }));
+            expect(clear(spreadPins(anchors, 10), 10)).toBe(true);
+        }
+    });
+
+    it('is deterministic and leaves the input alone on a non-positive radius', () => {
+        const anchors = [{ x: 0, y: 0 }, { x: 1, y: 1 }];
+        expect(spreadPins(anchors, 10)).toEqual(spreadPins(anchors, 10));
+        expect(spreadPins(anchors, 0)).toEqual(anchors);
+    });
+});
+
+describe('setPinOffset', () => {
+    it('moves the glyph with a leader line from a dot on the anchor, and back', () => {
+        const g = createPinGlyph(document, { severity: 'green', label: '80%', r: 10 });
+        setPinOffset(document, g, 30, -20, 10);
+        const offset = g.querySelector('.cs4g-pin-offset');
+        expect(offset?.getAttribute('transform')).toBe('translate(30 -20)');
+        expect(offset?.querySelector('.cs4g-pin-body')).not.toBeNull();
+        const leader = g.querySelector('.cs4g-pin-leader');
+        expect([leader?.getAttribute('x2'), leader?.getAttribute('y2')]).toEqual(['30', '-20']);
+        expect(g.querySelector('.cs4g-pin-anchor')?.getAttribute('r')).toBe(String(10 * 0.16));
+        // Drawn under the glyph.
+        expect(g.firstElementChild?.getAttribute('class')).toBe('cs4g-pin-leader');
+
+        setPinOffset(document, g, 12, 0, 10);
+        expect(g.querySelectorAll('.cs4g-pin-leader')).toHaveLength(1);
+        expect(g.querySelector('.cs4g-pin-leader')?.getAttribute('x2')).toBe('12');
+
+        setPinOffset(document, g, 0, 0, 10);
+        expect(offset?.hasAttribute('transform')).toBe(false);
+        expect(g.querySelector('.cs4g-pin-leader')).toBeNull();
+        expect(g.querySelector('.cs4g-pin-anchor')).toBeNull();
     });
 });

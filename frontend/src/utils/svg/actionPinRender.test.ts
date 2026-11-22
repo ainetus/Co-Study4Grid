@@ -158,3 +158,34 @@ describe('applyActionOverviewPins — progressive reveal of the feed', () => {
         expect(container.querySelector('.nad-combined-action-curve')?.hasAttribute('opacity')).toBe(false);
     });
 });
+
+describe('applyActionOverviewPins — overlapping pins', () => {
+    const makeContainer = () => {
+        const container = document.createElement('div');
+        container.innerHTML = '<svg viewBox="0 0 400 400"></svg>';
+        return container;
+    };
+    const pin = (id: string, x: number, y = 100): ActionPinInfo => ({
+        id, x, y, severity: 'green', label: '60%', title: id,
+    });
+    const pinOf = (container: HTMLElement, id: string) =>
+        container.querySelector(`.nad-action-overview-pin[data-action-id="${id}"]`);
+
+    it('spreads pins sharing an anchor, each with a leader line back to it', () => {
+        const container = makeContainer();
+        applyActionOverviewPins(container, [pin('a', 100), pin('b', 100), pin('far', 380, 380)], () => {});
+        const a = pinOf(container, 'a');
+        const b = pinOf(container, 'b');
+        // The groups stay on the anchor; their glyphs move apart.
+        expect(a?.getAttribute('transform')).toBe('translate(100 100)');
+        expect(b?.getAttribute('transform')).toBe('translate(100 100)');
+        const offA = a?.querySelector('.cs4g-pin-offset')?.getAttribute('transform');
+        const offB = b?.querySelector('.cs4g-pin-offset')?.getAttribute('transform');
+        expect(offA).toBeTruthy();
+        expect(offA).not.toBe(offB);
+        expect(a?.querySelector('.cs4g-pin-leader')).not.toBeNull();
+        expect(b?.querySelector('.cs4g-pin-anchor')).not.toBeNull();
+        // A pin with room around it stays put, without a leader.
+        expect(pinOf(container, 'far')?.querySelector('.cs4g-pin-leader')).toBeNull();
+    });
+});

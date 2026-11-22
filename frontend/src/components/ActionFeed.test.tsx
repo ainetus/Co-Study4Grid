@@ -321,7 +321,7 @@ describe('ActionFeed', () => {
         expect(screen.getByText('⚙️ Analyzing…')).toBeInTheDocument();
     });
 
-    it('shows display prioritized actions button when pending results exist and loading is false', () => {
+    it('shows "Show prioritized actions" with the found count as a subtitle when results are pending', () => {
         const props = {
             ...defaultProps,
             analysisLoading: false,
@@ -337,7 +337,23 @@ describe('ActionFeed', () => {
         };
         render(<ActionFeed {...props} />);
 
-        expect(screen.getByText(/Display 1 prioritized actions/)).toBeInTheDocument();
+        expect(screen.getByTestId('display-prioritized-actions')).toHaveTextContent('Show prioritized actions');
+        expect(screen.getByTestId('prioritized-actions-found')).toHaveTextContent('1 prioritized action found');
+        // No contradicting empty-state line under it.
+        expect(screen.queryByText('No suggested actions available.')).not.toBeInTheDocument();
+    });
+
+    it('pluralises the found count, and says when nothing was found', () => {
+        const pending = (n: number) => ({
+            actions: Object.fromEntries(Array.from({ length: n }, (_, i) => [`act_${i}`, {
+                description_unitaire: 'A', rho_before: [], rho_after: [], max_rho: 0.5, max_rho_line: '', is_rho_reduction: true,
+            }])),
+            lines_overloaded: [], pdf_path: null, pdf_url: null, message: '', dc_fallback: false,
+        } as unknown as AnalysisResult);
+        const { rerender } = render(<ActionFeed {...defaultProps} pendingAnalysisResult={pending(15)} />);
+        expect(screen.getByTestId('prioritized-actions-found')).toHaveTextContent('15 prioritized actions found');
+        rerender(<ActionFeed {...defaultProps} pendingAnalysisResult={pending(0)} />);
+        expect(screen.getByTestId('prioritized-actions-found')).toHaveTextContent('No prioritized action found');
     });
 
     it('calls onDisplayPrioritizedActions when display button is clicked', () => {
@@ -358,7 +374,7 @@ describe('ActionFeed', () => {
         };
         render(<ActionFeed {...props} />);
 
-        fireEvent.click(screen.getByText(/Display 1 prioritized actions/));
+        fireEvent.click(screen.getByText(/Show prioritized actions/));
         expect(onDisplay).toHaveBeenCalled();
     });
 
@@ -3042,7 +3058,7 @@ describe('ActionFeed', () => {
                 />,
             );
             expect(screen.queryByTestId('additional-lines-picker')).not.toBeInTheDocument();
-            expect(screen.getByText(/Display .* prioritized actions/)).toBeInTheDocument();
+            expect(screen.getByText(/Show prioritized actions/)).toBeInTheDocument();
         });
 
         it('hides the picker when the picker props are not wired', () => {

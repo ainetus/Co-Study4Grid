@@ -2487,21 +2487,18 @@ describe('buildActionOverviewPins — load shedding / curtailment VL anchoring',
     });
 });
 
-describe('buildActionOverviewPins — overlapping pin fan-out', () => {
+describe('buildActionOverviewPins — colocated pins', () => {
     const metaIndex = makeOverviewMetaIndex();
 
-    it('fans out pins sharing the same anchor position', () => {
+    it('keeps pins sharing an anchor ON it — the render layer spreads them at the current pin size', () => {
         const actions: Record<string, ActionDetail> = {
             'action_1': makeAction({ max_rho: 0.5, max_rho_line: 'LINE_A' }),
             'action_2': makeAction({ max_rho: 0.6, max_rho_line: 'LINE_A' }),
         };
         const pins = buildActionOverviewPins(actions, metaIndex, 0.95);
         expect(pins).toHaveLength(2);
-        // Both would have anchored on LINE_A midpoint (50, 0) but should be offset
-        const dx = pins[0].x - pins[1].x;
-        const dy = pins[0].y - pins[1].y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        expect(dist).toBeGreaterThan(0);
+        // Both anchor on the LINE_A midpoint (50, 0).
+        for (const p of pins) expect({ x: p.x, y: p.y }).toEqual({ x: 50, y: 0 });
     });
 
     it('does not offset pins at different positions', () => {

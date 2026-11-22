@@ -37,7 +37,6 @@ export {
     formatPinLabel,
     formatPinTitle,
     resolveActionAnchor,
-    fanOutColocatedPins,
     buildActionOverviewPins,
     buildUnsimulatedActionPins,
     curveMidpoint,

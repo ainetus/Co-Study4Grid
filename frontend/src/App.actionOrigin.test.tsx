@@ -184,7 +184,7 @@ describe('App — action-card origin (provenance) end-to-end', () => {
     });
 
     await act(async () => { await userEvent.click(screen.getByText('🔍 Analyze & Suggest')); });
-    const displayBtn = await screen.findByText(/Display.*prioritized actions/, {}, { timeout: 3000 });
+    const displayBtn = await screen.findByText(/Show prioritized actions/, {}, { timeout: 3000 });
     await act(async () => { await userEvent.click(displayBtn); });
 
     // The recommender action card is now in the Suggested feed. Click it

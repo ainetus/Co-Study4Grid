@@ -668,7 +668,9 @@ def _build_overlay_block() -> str:
       // popover next to the pin (same UX as the Action Overview
       // pin). Coordinates are iframe-screen pixels; the parent
       // adds the iframe's own offset to convert to parent-screen.
-      const rect = g.getBoundingClientRect();
+      // The glyph, not the whole group: a spread pin's group also
+      // holds its leader line back to the anchor.
+      const rect = (g.querySelector('.cs4g-pin-offset') || g).getBoundingClientRect();
       const rectPayload = {{
         left: rect.left, top: rect.top,
         width: rect.width, height: rect.height,
@@ -706,35 +708,6 @@ def _build_overlay_block() -> str:
       }}
     }});
     return g;
-  }}
-
-  // Fan out pins that resolved to (almost) the same anchor so they
-  // don't stack on top of each other. Mirrors ``fanOutColocatedPins``
-  // in ``frontend/src/utils/svg/actionPinData.ts`` — same hash key
-  // (round to 0.01) and same evenly-spaced angular fan starting at
-  // the top.  Mutates the ``positions`` map in place.
-  function fanOutColocated(positions, baseR) {{
-    const offsetRadius = (baseR || 14) * 1.6;
-    const groups = new Map();
-    for (const [id, p] of positions) {{
-      const key = Math.round(p.x * 100) + ':' + Math.round(p.y * 100);
-      const arr = groups.get(key);
-      if (arr) arr.push(id);
-      else groups.set(key, [id]);
-    }}
-    for (const ids of groups.values()) {{
-      if (ids.length < 2) continue;
-      const angleStep = (2 * Math.PI) / ids.length;
-      ids.forEach((id, i) => {{
-        const angle = -Math.PI / 2 + i * angleStep;
-        const p = positions.get(id);
-        positions.set(id, {{
-          x: p.x + offsetRadius * Math.cos(angle),
-          y: p.y + offsetRadius * Math.sin(angle),
-          ref: p.ref,
-        }});
-      }});
-    }}
   }}
 
   // Quadratic-Bézier midpoint identical to ``curveMidpoint`` in
@@ -799,10 +772,39 @@ def _build_overlay_block() -> str:
       unitary.push(pin);
     }}
 
-    // Pass 2 — fan out colocated pins so duplicates don't occlude
-    // each other. Same rule the Action Overview applies via
-    // ``fanOutColocatedPins``.
-    fanOutColocated(positions, baseR);
+    // Pass 2 — keep every pin visible: pins whose footprints overlap
+    // are regrouped above their anchors, each with a leader line back
+    // to it (shared ``spreadPins`` / ``setPinOffset``, the Action
+    // Overview's rule). Combined pins take part, anchored on their
+    // curve's midpoint. Pins scale with the graph here, so one layout
+    // per render holds at every zoom.
+    const spreadIds = [];
+    const spreadAnchors = [];
+    for (const pin of unitary) {{
+      const p = positions.get(pin.actionId);
+      spreadIds.push(pin.actionId);
+      spreadAnchors.push({{ x: p.x, y: p.y }});
+    }}
+    for (const cp of combined) {{
+      const p1 = positions.get(cp.action1Id);
+      const p2 = positions.get(cp.action2Id);
+      if (!p1 || !p2) continue;
+      const mid = combinedCurveMidpoint(p1, p2, 0.3);
+      spreadIds.push(cp.actionId);
+      spreadAnchors.push({{ x: mid.midX, y: mid.midY }});
+    }}
+    const spread = spreadPins(spreadAnchors, baseR);
+    const offsets = new Map();
+    spreadIds.forEach((id, i) => {{
+      offsets.set(id, {{
+        dx: spread[i].x - spreadAnchors[i].x,
+        dy: spread[i].y - spreadAnchors[i].y,
+      }});
+    }});
+    const placeOffset = function(g, id) {{
+      const off = offsets.get(id);
+      if (off) setPinOffset(document, g, off.dx, off.dy, baseR);
+    }};
 
     // NB. The Action-Overview pin layer does NOT auto-dim the
     // unitary constituents of a combined pin — dimming there is
@@ -895,6 +897,7 @@ def _build_overlay_block() -> str:
         plus.setAttribute('pointer-events', 'none');
         plus.textContent = '+';
         body.appendChild(plus);
+        placeOffset(g, cp.actionId);
 
         layer.appendChild(g);
         drawn += 1;
@@ -919,6 +922,7 @@ def _build_overlay_block() -> str:
           g.setAttribute('opacity', '0.35');
           g.setAttribute('data-dimmed-by-filter', 'true');
         }}
+        placeOffset(g, pin.actionId);
         layer.appendChild(g);
         drawn += 1;
       }} catch (e) {{

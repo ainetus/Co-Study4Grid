@@ -28,6 +28,8 @@ import {
     appendFeedBadge,
     createPinGlyph as createSharedPinGlyph,
     FEED_HIDDEN_OPACITY,
+    setPinOffset,
+    spreadPins,
     type PinFeedState,
 } from './pinGlyph';
 
@@ -157,6 +159,33 @@ const PIN_VIEWBOX_FRACTION = 50;
 const pinBaseRadiusCache = new WeakMap<SVGSVGElement, number>();
 
 /**
+ * Anchor (true position) of every rendered pin group. The group is
+ * translated to it; when pins crowd, `spreadOverviewPins` offsets the
+ * glyph from it with a leader line.
+ */
+const pinAnchors = new WeakMap<Element, { x: number; y: number }>();
+
+/**
+ * Keep every pin visible at the current pin size `r` (SVG units):
+ * pins whose footprints overlap are regrouped in rows above their
+ * anchors, each with a leader line back to its anchor (`spreadPins` /
+ * `setPinOffset`, shared with the overflow-graph overlay). Runs on every
+ * rescale — pins are screen-constant, so how many of them crowd depends
+ * on the zoom.
+ */
+const spreadOverviewPins = (layer: Element, r: number) => {
+    const placed: { g: SVGGElement; anchor: { x: number; y: number } }[] = [];
+    layer.querySelectorAll<SVGGElement>('.nad-action-overview-pin').forEach(g => {
+        const anchor = pinAnchors.get(g);
+        if (anchor) placed.push({ g, anchor });
+    });
+    const spread = spreadPins(placed.map(p => p.anchor), r);
+    placed.forEach(({ g, anchor }, i) => {
+        setPinOffset(document, g, spread[i].x - anchor.x, spread[i].y - anchor.y, r);
+    });
+};
+
+/**
  * Pure helper for rescale math — exported so tests can pin it down
  * without exercising the DOM mutation side.
  */
@@ -209,6 +238,7 @@ export const rescaleActionOverviewPins = (container: HTMLElement | null) => {
     layer.querySelectorAll('.nad-action-overview-pin-body').forEach(body => {
         body.setAttribute('transform', `scale(${scale})`);
     });
+    spreadOverviewPins(layer, baseR * scale);
 
     performance.mark('aod:rescalePins:end');
     const entry = performance.measure('aod:rescalePins', 'aod:rescalePins:start', 'aod:rescalePins:end');
@@ -302,7 +332,10 @@ const attachPinClickListeners = (
     g.addEventListener('click', (evt) => {
         evt.stopPropagation();
         if (clickTimer !== null) return;
-        const rect = (evt.currentTarget as SVGGElement).getBoundingClientRect();
+        // The glyph, not the whole group: a spread pin's group also holds
+        // its leader line back to the anchor.
+        const glyph = g.querySelector('.cs4g-pin-offset') ?? g;
+        const rect = glyph.getBoundingClientRect();
         const screenPos = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
         clickTimer = setTimeout(() => {
             clickTimer = null;
@@ -417,6 +450,7 @@ const renderCombinedPin = (
     const g = document.createElementNS(SVG_NS, 'g');
     g.setAttribute('class', 'nad-action-overview-pin nad-combined-action-pin');
     g.setAttribute('transform', `translate(${cp.x} ${cp.y})`);
+    pinAnchors.set(g, { x: cp.x, y: cp.y });
     g.setAttribute('data-action-id', cp.pairId);
     (g as SVGGElement).style.cursor = 'pointer';
 
@@ -497,6 +531,7 @@ const renderUnitaryPin = (
     // Wrap-up customisation specific to the overview layer.
     g.setAttribute('class', 'nad-action-overview-pin');
     g.setAttribute('transform', `translate(${pin.x} ${pin.y})`);
+    pinAnchors.set(g, { x: pin.x, y: pin.y });
     if (pin.dimmedByFilter) g.setAttribute('data-dimmed-by-filter', 'true');
     g.style.cursor = 'pointer';
 
@@ -522,6 +557,7 @@ const renderUnsimulatedPin = (
     const g = document.createElementNS(SVG_NS, 'g');
     g.setAttribute('class', 'nad-action-overview-pin nad-action-overview-pin-unsimulated');
     g.setAttribute('transform', `translate(${pin.x} ${pin.y})`);
+    pinAnchors.set(g, { x: pin.x, y: pin.y });
     g.setAttribute('data-action-id', pin.id);
     g.setAttribute('data-unsimulated', 'true');
     g.setAttribute('opacity', '0.5');
