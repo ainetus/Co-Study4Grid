@@ -235,37 +235,6 @@ export const resolveActionAnchor = (
 };
 
 /**
- * Fan out pins that share the same anchor position so they don't
- * stack on top of each other and remain individually clickable.
- *
- * Mutates `pins` in place. Exported so tests can exercise the
- * fan-out independently from the full builder.
- */
-export const fanOutColocatedPins = (pins: ActionPinInfo[], offsetRadius = 30 * 1.2): void => {
-    const bucketKey = (p: ActionPinInfo) =>
-        `${Math.round(p.x * 100)}:${Math.round(p.y * 100)}`;
-    const groups = new Map<string, number[]>();
-    pins.forEach((p, i) => {
-        const k = bucketKey(p);
-        const arr = groups.get(k);
-        if (arr) arr.push(i);
-        else groups.set(k, [i]);
-    });
-    for (const indices of groups.values()) {
-        if (indices.length < 2) continue;
-        const angleStep = (2 * Math.PI) / indices.length;
-        indices.forEach((idx, i) => {
-            const angle = -Math.PI / 2 + i * angleStep;
-            pins[idx] = {
-                ...pins[idx],
-                x: pins[idx].x + offsetRadius * Math.cos(angle),
-                y: pins[idx].y + offsetRadius * Math.sin(angle),
-            };
-        });
-    }
-};
-
-/**
  * Build the list of pin descriptors for the action-overview view.
  * Pure function — no DOM access — so it can be unit-tested.
  *
@@ -273,6 +242,10 @@ export const fanOutColocatedPins = (pins: ActionPinInfo[], offsetRadius = 30 * 1
  * the active category + threshold filters are dropped. The same
  * predicate drives the ActionFeed card filtering, keeping the two
  * views in lock-step.
+ *
+ * Each pin sits on its anchor, colocated or not: the render layer
+ * spreads the overlapping ones at the current pin size
+ * (`pinGlyph.js` `spreadPins`).
  */
 export const buildActionOverviewPins = (
     actions: Record<string, ActionDetail>,
@@ -302,8 +275,6 @@ export const buildActionOverviewPins = (
         const title = formatPinTitle(actionId, details);
         pins.push({ id: actionId, x: anchor.x, y: anchor.y, severity, label, title });
     }
-
-    fanOutColocatedPins(pins);
     return pins;
 };
 
@@ -389,8 +360,6 @@ export const buildUnsimulatedActionPins = (
             unsimulated: true,
         });
     }
-
-    fanOutColocatedPins(pins);
     return pins;
 };
 

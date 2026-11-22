@@ -105,6 +105,18 @@ Each unitary pin is an SVG `<g>` with the following structure:
 </g>
 ```
 
+A pin moved off its anchor to stay visible ([Overlapping pins](#overlapping-pins)) gains a leader line and an anchor dot, and its glyph moves inside an offset group:
+
+```
+<g class="nad-action-overview-pin" transform="translate(anchorX anchorY)" …>
+  <line class="cs4g-pin-leader" x1="0" y1="0" x2="dx" y2="dy" />   ← anchor → pin tip
+  <circle class="cs4g-pin-anchor" r="…" />                         ← dot on the anchor
+  <g class="cs4g-pin-offset" transform="translate(dx dy)">
+    <g class="nad-action-overview-pin-body" transform="scale(k)">…</g>
+  </g>
+</g>
+```
+
 The outer group also carries `data-selected` / `data-rejected` / `data-feed="shown" | "hidden"` sentinels for tests and the overflow overlay.
 
 ### Un-simulated action pin
@@ -222,9 +234,18 @@ For each action, the anchor position is resolved in this order:
 
 Actions whose asset cannot be located in the metadata are silently skipped.
 
-### Overlapping pin fan-out
+### Overlapping pins
 
-When multiple actions resolve to the same anchor position (e.g. two actions targeting the same line), pins are fanned out in a circle around the shared centre so each remains individually clickable. The offset radius is `1.2 × 30` SVG units — enough to expose each pin's clickable area without scattering them too far from the original anchor.
+Pins crowd wherever several actions target nearby equipment — the same line, or voltage levels a few units apart in one substation. Every pin stays visible and clickable:
+
+- Each pin group sits on its **true anchor** (`translate(x y)`); the data layer no longer nudges colocated pins.
+- `spreadPins(anchors, r)` (shared `utils/svg/pinGlyph.js`) keeps every pin whose footprint is clear on its anchor. It regroups the ones whose footprints overlap — `SPREAD_PITCH_X` × `SPREAD_PITCH_Y` = 2.4 × 3.5 radii, the teardrop plus its badge and symbol slot — into compact rows just above their cluster, merging clusters until no two pins overlap. Lowest anchors go to the bottom row, and each row is in anchor x order, so leaders stay short and seldom cross.
+- `setPinOffset(doc, g, dx, dy, r)` moves the glyph (wrapped in `.cs4g-pin-offset`) and draws a thin leader line (`.cs4g-pin-leader`, 1.5 px, non-scaling) from a small dot on the anchor (`.cs4g-pin-anchor`) to the pin tip; (0, 0) puts the pin back.
+- Pins are screen-constant here (22 px minimum radius), so how many crowd depends on the zoom: the layout is recomputed at the current pin size on every rescale (`rescaleActionOverviewPins` → `spreadOverviewPins`). Zooming in splits the clusters and returns pins to their anchors.
+- Unitary, combined (anchored on their curve's midpoint) and un-simulated pins all take part; combined curves still join the constituents' anchors.
+- The click popover is placed against the glyph (`.cs4g-pin-offset`), not the leader.
+
+The overflow-graph overlay runs the same `spreadPins` / `setPinOffset` once per render: its pins scale with the graph, so one layout holds at every zoom.
 
 ### Combined action detection
 
@@ -375,7 +396,7 @@ Un-simulated pins (dashed, grey, dimmed) intercept the double-click gesture via 
 
 ## Progressive reveal of the suggestions
 
-After **Display N prioritized actions**, the sidebar's Suggested Actions list shows only the first `n` cards (in feed order: max loading ascending, load-flow faults last, shared filters applied), where `n` is the **Suggestions Shown at First** setting (Settings → Recommender; default 3). A bar under the list reads "3 of 15 suggestions shown" and offers:
+After **📊 Show prioritized actions** — the button's subtitle tells how many were found ("15 prioritized actions found") — the sidebar's Suggested Actions list shows only the first `n` cards (in feed order: max loading ascending, load-flow faults last, shared filters applied), where `n` is the **Suggestions Shown at First** setting (Settings → Recommender; default 3). A bar under the list reads "3 of 15 suggestions shown" and offers:
 
 - **Show N more** — reveals the next `n` hidden cards (fewer when fewer remain);
 - **Show all** — reveals every remaining card (offered while more than `n` are hidden).
@@ -389,7 +410,7 @@ The window is count-based: starring or rejecting a listed card moves it to Selec
 | `hooks/useSuggestionReveal.ts` | Reveal state (window size + cards revealed one by one), the feed `scrollTarget` and the pin-preview handler; returns the `SuggestionRevealControls` the feed reads and both pin layers read as a `FeedRevealState` (`displayedIds` / `hiddenIds`, `types.ts`). Owned by `App.tsx`. |
 | `utils/feedEntries.ts` | Pure feed ordering (`sortFeedEntries`, `passesFeedFilters`) shared by `ActionFeed` and the hook, so the pins and the list agree on which cards are shown; reveal-window maths (`revealWindow`, `nextRevealCount`). |
 | `components/SuggestionRevealBar.tsx` | The "N of M shown · Show N more · Show all" bar. |
-| `utils/svg/pinGlyph.js` | `appendFeedBadge`, `FEED_HIDDEN_OPACITY` and the `feed: 'shown' \| 'hidden'` option of `createPinGlyph` (overview pins and overflow overlay alike; the overlay payload carries `feed` per pin). |
+| `utils/svg/pinGlyph.js` | `appendFeedBadge`, `FEED_HIDDEN_OPACITY` and the `feed: 'shown' \| 'hidden'` option of `createPinGlyph` (overview pins and overflow overlay alike; the overlay payload carries `feed` per pin); `spreadPins` / `setPinOffset` keep crowded pins visible ([Overlapping pins](#overlapping-pins)). |
 
 The two buttons log `suggestions_show_more` `{ step, n_shown }` and `suggestions_show_all` `{ n_shown }` (see `docs/features/interaction-logging.md`). The setting is persisted with the other recommender settings (user config, session `configuration.n_initial_suggestions`, `config_loaded` / `settings_applied` payloads); the reveal state itself is not saved — a reloaded session lists the first `n` cards again.
 

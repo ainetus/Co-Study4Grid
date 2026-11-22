@@ -19,8 +19,10 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ### Action feed — suggestions revealed progressively
 
-- **The first suggestions, then more on demand**: after "Display N
-  prioritized actions" the Suggested Actions list shows the first 3 cards
+- **The first suggestions, then more on demand**: after **📊 Show
+  prioritized actions** (formerly "Display N prioritized actions" — the
+  count is now its subtitle, "15 prioritized actions found") the Suggested
+  Actions list shows the first 3 cards
   (new recommender setting **Suggestions Shown at First**, persisted with the
   other recommender settings and in saved sessions); **Show N more** reveals
   as many again and **Show all** the rest. Starring or rejecting a listed
@@ -33,6 +35,12 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   scrolls to it, as does selecting the action. The two buttons log
   `suggestions_show_more` / `suggestions_show_all`. See
   `docs/features/action-overview-diagram.md`.
+- **Crowded pins stay visible**: pins whose footprints overlap — several
+  actions on the same line, or on nearby voltage levels — are regrouped in
+  rows just above their anchors, each with a thin leader line back to its
+  anchor, on the overview (recomputed at every zoom) and on the overflow
+  graph alike. It replaces the fixed fan-out, which only separated pins on
+  the exact same anchor and left them overlapping at most zoom levels.
 
 ### Fixed — SLD halos match the network diagram
 

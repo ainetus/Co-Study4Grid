@@ -8,13 +8,11 @@ import { describe, expect, it } from 'vitest';
 import {
     computeActionSeverity,
     curveMidpoint,
-    fanOutColocatedPins,
     formatPinLabel,
     formatPinTitle,
     severityFill,
     severityFillDimmed,
     severityFillHighlighted,
-    type ActionPinInfo,
 } from './actionPinData';
 import type { ActionDetail } from '../../types';
 
@@ -108,38 +106,6 @@ describe('formatPinTitle', () => {
     it('reports islanding explicitly', () => {
         const t = formatPinTitle('act_X', baseDetail({ max_rho: null, is_islanded: true }));
         expect(t).toContain('islanding');
-    });
-});
-
-describe('fanOutColocatedPins', () => {
-    const makePin = (id: string, x: number, y: number): ActionPinInfo => ({
-        id, x, y, severity: 'green', label: '', title: '',
-    });
-
-    it('leaves solo pins untouched', () => {
-        const pins = [makePin('a', 10, 20)];
-        fanOutColocatedPins(pins);
-        expect(pins[0]).toEqual({ id: 'a', x: 10, y: 20, severity: 'green', label: '', title: '' });
-    });
-
-    it('spreads colocated pins around a shared centre', () => {
-        const pins = [makePin('a', 100, 100), makePin('b', 100, 100), makePin('c', 100, 100)];
-        fanOutColocatedPins(pins, 30);
-        // All three pins moved to different positions.
-        const positions = new Set(pins.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`));
-        expect(positions.size).toBe(3);
-        // Each remains at radius ~30 from the original centre.
-        pins.forEach(p => {
-            const r = Math.hypot(p.x - 100, p.y - 100);
-            expect(r).toBeCloseTo(30, 1);
-        });
-    });
-
-    it('does not fan out pins at distinct positions', () => {
-        const pins = [makePin('a', 0, 0), makePin('b', 1000, 1000)];
-        const before = pins.map(p => ({ ...p }));
-        fanOutColocatedPins(pins);
-        expect(pins).toEqual(before);
     });
 });
 

@@ -159,6 +159,10 @@ interface ActionFeedProps {
     onClearSuggested?: () => void;
 }
 
+/** Subtitle of the "Show prioritized actions" button. */
+const foundLabel = (n: number): string =>
+    n === 0 ? 'No prioritized action found' : `${n} prioritized action${n === 1 ? '' : 's'} found`;
+
 const ActionFeed: React.FC<ActionFeedProps> = ({
     actions,
     actionScores,
@@ -988,7 +992,7 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                         + (hasEnrichment ? enrichmentTime! : 0);
                     // Prefer the wall-clock figure as the headline number —
                     // it matches what the operator perceives between
-                    // pressing "Analyze & Suggest" and the "Display N
+                    // pressing "Analyze & Suggest" and the "Show
                     // prioritized actions" button appearing. The per-stage
                     // backend buckets explain how that wall-clock was
                     // spent; the residual is network / NDJSON overhead.
@@ -1074,7 +1078,7 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                     );
                 })()}
 
-                {/* Unified analysis action slot: Analyze & Suggest → Analyzing… → Display N prioritized actions */}
+                {/* Unified analysis action slot: Analyze & Suggest → Analyzing… → Show prioritized actions */}
                 {/* Show the analysis trigger slot whenever the Suggested
                     feed is empty — not just when result.actions has no
                     recommender-produced entry. After "Clear", the
@@ -1118,21 +1122,31 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                                 )}
                             </>
                         ) : pendingAnalysisResult ? (
-                            <button
-                                data-testid="display-prioritized-actions"
-                                onClick={onDisplayPrioritizedActions}
-                                style={{
-                                    width: '100%', padding: '10px 16px',
-                                    background: colors.success,
-                                    color: colors.textOnBrand, border: 'none', borderRadius: '8px',
-                                    cursor: 'pointer', fontSize: '14px', fontWeight: 700,
-                                    boxShadow: '0 2px 8px rgba(39,174,96,0.3)', transition: 'transform 0.1s',
-                                }}
-                                onMouseEnter={(e) => (e.target as HTMLButtonElement).style.transform = 'scale(1.02)'}
-                                onMouseLeave={(e) => (e.target as HTMLButtonElement).style.transform = 'scale(1)'}
-                            >
-                                📊 Display {Object.keys(pendingAnalysisResult.actions || {}).length} prioritized actions
-                            </button>
+                            <>
+                                <button
+                                    data-testid="display-prioritized-actions"
+                                    onClick={onDisplayPrioritizedActions}
+                                    style={{
+                                        width: '100%', padding: '10px 16px',
+                                        background: colors.success,
+                                        color: colors.textOnBrand, border: 'none', borderRadius: '8px',
+                                        cursor: 'pointer', fontSize: '14px', fontWeight: 700,
+                                        boxShadow: '0 2px 8px rgba(39,174,96,0.3)', transition: 'transform 0.1s',
+                                    }}
+                                    onMouseEnter={(e) => (e.target as HTMLButtonElement).style.transform = 'scale(1.02)'}
+                                    onMouseLeave={(e) => (e.target as HTMLButtonElement).style.transform = 'scale(1)'}
+                                >
+                                    📊 Show prioritized actions
+                                </button>
+                                {/* How many were found, as an informative subtitle: the
+                                    feed no longer lists them all at once ("Show N more"). */}
+                                <p
+                                    data-testid="prioritized-actions-found"
+                                    style={{ color: colors.textTertiary, fontStyle: 'italic', fontSize: '13px', margin: '6px 0 0 0', textAlign: 'center' }}
+                                >
+                                    {foundLabel(Object.keys(pendingAnalysisResult.actions || {}).length)}
+                                </p>
+                            </>
                         ) : (
                             <>
                                 {branches && additionalLinesToCut && onToggleAdditionalLineToCut && (
@@ -1219,15 +1233,17 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                             )}
                         </>
                     ) : (
-                        !analysisLoading ? (
+                        // While a result awaits display, the "N prioritized
+                        // actions found" subtitle above says it all.
+                        !analysisLoading && !pendingAnalysisResult ? (
                             <div style={{ textAlign: 'center' }}>
                                 <p
-                                    data-testid={overviewFilteredOutCount > 0 && !pendingAnalysisResult ? 'no-actions-match-filter' : undefined}
+                                    data-testid={overviewFilteredOutCount > 0 ? 'no-actions-match-filter' : undefined}
                                     style={{ color: colors.textTertiary, fontStyle: 'italic', fontSize: '13px', margin: '5px 0' }}
                                 >
-                                    {overviewFilteredOutCount > 0 && !pendingAnalysisResult
+                                    {overviewFilteredOutCount > 0
                                         ? 'No actions match the active filter. Clear the filter to see suggestions.'
-                                        : (!pendingAnalysisResult ? 'Click \u201cAnalyze & Suggest\u201d above to get action suggestions.' : 'No suggested actions available.')}
+                                        : 'Click \u201cAnalyze & Suggest\u201d above to get action suggestions.'}
                                 </p>
                                 {/* Recommender thresholds banner moved into NoticesPanel
                                     (tier-warning-system PR — see `docs/proposals/ui-design-critique.md`

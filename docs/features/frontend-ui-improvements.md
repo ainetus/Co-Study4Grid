@@ -55,6 +55,8 @@ Move the analysis trigger into the **ActionFeed** panel header area, at the loca
 | **Running** (`analysisLoading === true`) | `⚙️ Analyzing…` button (yellow, disabled) |
 | **Pending** (`pendingAnalysisResult !== null`) | `📊 Display N prioritized actions` button (green gradient, enabled) |
 
+> Since the progressive reveal of the suggestions, the pending button reads **`📊 Show prioritized actions`**, with "N prioritized actions found" as a subtitle under it — the feed then lists the suggestions a few at a time (see `docs/features/action-overview-diagram.md#progressive-reveal-of-the-suggestions`).
+
 ### Files to Change
 
 #### `App.tsx`

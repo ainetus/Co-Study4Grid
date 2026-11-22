@@ -371,11 +371,13 @@ The factory returns an `<g class="cs4g-pin">` element with:
   nodes was off-curve for any edge graphviz draws as a curve —
   parallel transformers, lines bowing around obstacles — and put
   pins like ``reco_CHALOL31LOUHA`` on a different line entirely.)
-- `fanOutColocated(positions, baseR)` — final pass that spreads
-  pins resolving to the same anchor on a small circle around it
-  (radius `1.6 * baseR`). Same hash key + angular fan as
-  `frontend/src/utils/svg/actionPinData.ts:fanOutColocatedPins`,
-  so duplicates stay individually clickable.
+- `spreadPins(anchors, baseR)` + `setPinOffset(…)` — final pass,
+  shared with the Action Overview (`frontend/src/utils/svg/pinGlyph.js`):
+  pins whose footprints overlap — same anchor or merely nearby ones,
+  combined pins included — are regrouped in rows just above their
+  anchors, each with a thin leader line back to a dot on its anchor,
+  so every pin stays visible and clickable. See
+  `docs/features/action-overview-diagram.md#overlapping-pins`.
 
 ### 6.5 Pin radius
 
@@ -590,8 +592,8 @@ as context for the combined glyph" (the Action-Overview rule).
 
 For each ``isCombined`` pin the overlay:
 
-- Looks up the two constituent positions (after the
-  ``fanOutColocated`` pass).
+- Looks up the two constituent anchors (the curve joins anchors;
+  ``spreadPins`` only offsets the glyphs).
 - Calls ``combinedCurveMidpoint(p1, p2, 0.3)`` — quadratic-Bézier
   control point offset perpendicular to the chord by
   ``dist * 0.3`` (identical math to ``curveMidpoint`` in

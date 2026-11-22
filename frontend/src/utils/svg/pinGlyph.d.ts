@@ -47,6 +47,7 @@ export const PIN_CHROME: {
     crossFill: string;
     crossStroke: string;
     feedBadge: string;
+    strokeNeutral: string;
 };
 
 export function pinStarPath(cx: number, cy: number, outerR: number): string;
@@ -66,3 +67,20 @@ export function createPinGlyph(
     doc: Document,
     opts: PinGlyphOptions,
 ): SVGGElement;
+
+/** Footprint pitch of a pin, in radii (horizontal / vertical). */
+export const SPREAD_PITCH_X: number;
+export const SPREAD_PITCH_Y: number;
+/** Tip positions that keep every pin visible — see ``pinGlyph.js``. */
+export function spreadPins(
+    anchors: ReadonlyArray<{ x: number; y: number }>,
+    r: number,
+): Array<{ x: number; y: number }>;
+/** Offset a pin's glyph from its anchor, with a leader line back to it. */
+export function setPinOffset(
+    doc: Document,
+    g: SVGGElement,
+    dx: number,
+    dy: number,
+    r: number,
+): void;

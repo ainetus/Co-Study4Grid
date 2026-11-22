@@ -492,15 +492,21 @@ class TestDarkTheme:
         # The unitary render loop defers dimming to renderFilterState.
         assert "renderFilterState" in out
 
-    def test_pins_fan_out_when_colocated(self) -> None:
-        """Two pins resolving to the same anchor must be spread on a
-        small circle around the anchor so they remain individually
-        clickable. Mirrors ``fanOutColocatedPins`` in actionPinData.ts."""
+    def test_overlapping_pins_are_spread_with_leaders(self) -> None:
+        """Pins whose footprints overlap — same anchor or merely nearby
+        ones — are regrouped above their anchors with a leader line, so
+        each stays visible and clickable. The overlay runs the SHARED
+        layout (``spreadPins`` / ``setPinOffset`` from the inlined
+        ``pinGlyph.js``) the Action Overview uses, combined pins included,
+        and anchors the popover on the glyph, not on the leader."""
         out = inject_overlay(_BASE_HTML)
-        assert "function fanOutColocated(positions, baseR)" in out
-        # Same hash key the Action Overview uses (round * 100).
-        assert "Math.round(p.x * 100) + ':' + Math.round(p.y * 100)" in out
-        assert "(2 * Math.PI) / ids.length" in out
+        assert "function spreadPins(anchors, r)" in out
+        assert "function setPinOffset(doc, g, dx, dy, r)" in out
+        assert "const spread = spreadPins(spreadAnchors, baseR);" in out
+        assert "placeOffset(g, pin.actionId);" in out
+        assert "placeOffset(g, cp.actionId);" in out
+        assert "(g.querySelector('.cs4g-pin-offset') || g).getBoundingClientRect()" in out
+        assert "fanOutColocated" not in out
 
     def test_unsimulated_pin_dblclick_kicks_off_manual_simulation(self) -> None:
         """Un-simulated pins do NOT open the SLD overlay on dblclick;
