@@ -6,9 +6,9 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { ActionDetail, ActionOverviewFilters, DiagramData, MetadataIndex, UnsimulatedActionScoreInfo, ViewBox } from '../types';
+import type { ActionDetail, ActionOverviewFilters, DiagramData, FeedRevealState, MetadataIndex, UnsimulatedActionScoreInfo, ViewBox } from '../types';
 import { DEFAULT_ACTION_OVERVIEW_FILTERS, matchesActionTypeFilter } from '../utils/actionTypes';
-import { colors } from '../styles/tokens';
+import { colors, pinChrome } from '../styles/tokens';
 import {
     actionPassesOverviewFilter,
     applyActionOverviewHighlights,
@@ -140,6 +140,12 @@ interface ActionOverviewDiagramProps {
      * the Manual Selection dropdown.
      */
     onSimulateUnsimulatedAction?: (actionId: string) => void;
+    /**
+     * Progressive reveal of the suggestions in the action feed. Pins
+     * of listed suggestions carry the feed badge; hidden ones keep
+     * their pin, drawn translucent, and a click on it reveals the card.
+     */
+    feedReveal?: FeedRevealState;
 }
 
 const ZOOM_STEP_IN = 0.8;
@@ -177,6 +183,7 @@ const ActionOverviewDiagram: React.FC<ActionOverviewDiagramProps> = ({
     unsimulatedActionIds,
     unsimulatedActionInfo,
     onSimulateUnsimulatedAction,
+    feedReveal,
 }) => {
     // Normalize against DEFAULT_ACTION_OVERVIEW_FILTERS so legacy call sites that
     // predate a given field (e.g. `actionType`) don't crash the
@@ -597,13 +604,23 @@ const ActionOverviewDiagram: React.FC<ActionOverviewDiagramProps> = ({
         applyActionOverviewPins(container, pins, handlePinClick, handlePinDoubleClick, {
             selectedActionIds,
             rejectedActionIds,
+            feedReveal,
             combinedPins,
             unsimulatedPins,
             onUnsimulatedPinDoubleClick: handleUnsimulatedPinDoubleClick,
         });
         performance.mark('aod:applyPins:end');
         perfMeasure('aod:applyPins', 'aod:applyPins:start', 'aod:applyPins:end');
-    }, [pins, handlePinClick, handlePinDoubleClick, svgReady, preparedSvg, selectedActionIds, rejectedActionIds, combinedPins, unsimulatedPins, handleUnsimulatedPinDoubleClick]);
+    }, [pins, handlePinClick, handlePinDoubleClick, svgReady, preparedSvg, selectedActionIds, rejectedActionIds, feedReveal, combinedPins, unsimulatedPins, handleUnsimulatedPinDoubleClick]);
+
+    // Pins on the map whose card the action feed lists — the header
+    // legend explains their badge, so it only shows while some exist.
+    const feedPinCount = useMemo(() => {
+        const listed = feedReveal?.displayedIds;
+        if (!listed) return 0;
+        return pins.filter(p => listed.has(p.id)).length
+            + combinedPins.filter(cp => listed.has(cp.pairId)).length;
+    }, [feedReveal, pins, combinedPins]);
 
     // Screen-constant pin compensation.
     //
@@ -869,6 +886,20 @@ const ActionOverviewDiagram: React.FC<ActionOverviewDiagramProps> = ({
                             {pins.length}
                             {unsimulatedPins.length > 0 ? ` (+${unsimulatedPins.length})` : ''}
                         </span>
+                    </span>
+                )}
+                {feedPinCount > 0 && (
+                    <span
+                        data-testid="overview-feed-legend"
+                        title="Pins with this badge have their card listed in the action feed. Translucent pins are suggestions not listed yet: click one to reveal its card there."
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: colors.textSecondary, flexShrink: 0, cursor: 'help' }}
+                    >
+                        <svg width="14" height="14" viewBox="-1 -1 2 2" aria-hidden>
+                            <circle r="0.9" fill={pinChrome.feedBadge} stroke={pinChrome.glyphBg} strokeWidth="0.16" />
+                            <rect x="-0.48" y="-0.34" width="0.96" height="0.68" rx="0.12" fill={pinChrome.glyphBg} />
+                            <rect x="-0.29" y="-0.07" width="0.58" height="0.15" fill={pinChrome.feedBadge} />
+                        </svg>
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{feedPinCount} in feed</span>
                     </span>
                 )}
                 {/* Max-loading threshold now lives in the sidebar

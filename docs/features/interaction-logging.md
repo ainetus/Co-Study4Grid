@@ -55,6 +55,8 @@ type InteractionType =
   | 'analysis_step2_started'       // Step 2 launched (resolve overloads)
   | 'analysis_step2_completed'     // Step 2 finished (actions received)
   | 'prioritized_actions_displayed'// User clicked "Display Prioritized Actions"
+  | 'suggestions_show_more'        // User revealed the next batch of suggested cards ("Show N more")
+  | 'suggestions_show_all'         // User revealed every remaining suggested card ("Show all")
   | 'recommender_model_changed'    // User picked a different recommender model
   | 'suggested_actions_cleared'    // User cleared the un-touched suggestions ("Clear")
   // === Action Interactions ===
@@ -147,6 +149,8 @@ Each event's `details` field contains **all parameters needed to replay** the us
 
 > **Note on new recommender thresholds**: `min_load_shedding` and `min_renewable_curtailment_actions` were introduced alongside the new `loads_p` / `gens_p` power-reduction action format. They MUST be present in both `config_loaded` and `settings_applied` details so a replay agent can set the thresholds before loading the study. Older logs that predate these fields will be replayed with the backend defaults (`0.0`).
 
+> **Note on `n_initial_suggestions`** (optional): how many suggested cards the action feed lists after "Display Prioritized Actions" — the progressive reveal of the suggestions, see `docs/features/action-overview-diagram.md`. A display setting (never sent to `/api/config`), but part of both payloads so a replay starts from the same number of listed cards. Older logs that predate it replay with the agent's own setting (default `3`).
+
 > **Note on pluggable recommender model**: `model` (the string id of the selected recommender, e.g. `"expert"`, `"random"`, `"random_overflow"`) and `compute_overflow_graph` (boolean — whether step 1 must regenerate the overflow analysis graph) were added with the pluggable recommendation model feature. Both fields are now part of every `config_loaded` and `settings_applied` payload so a replay agent can reproduce the exact model + step-1 configuration the operator chose. Older logs that predate these fields fall back to `"expert"` and `true` respectively on replay (matching the historical hard-coded behaviour). See [`docs/backend/recommender_models.md`](../backend/recommender_models.md) for the full model contract and how to plug a third-party model.
 
 ### Contingency Selection
@@ -167,6 +171,8 @@ Each event's `details` field contains **all parameters needed to replay** the us
 | `analysis_step2_started` | `{ element, selected_overloads: string[], all_overloads: string[], monitor_deselected: bool, additional_lines_to_cut?: string[] }` | Click "Resolve Selected Overloads" |
 | `analysis_step2_completed` | `{ n_actions: number, action_ids: string[], dc_fallback: bool, message: string, pdf_url: string\|null, active_model?: string, compute_overflow_graph?: boolean }` — `active_model` echoes the recommender id that actually produced the action set on the backend; `compute_overflow_graph` echoes whether the overflow analysis graph was generated for this run. Both are sourced from the final `result` event of the step-2 NDJSON stream. | *(wait point)* |
 | `prioritized_actions_displayed` | `{ n_actions: number }` | Click "Display Prioritized Actions" button |
+| `suggestions_show_more` | `{ step: number, n_shown: number }` — the Suggested Actions list reveals its cards progressively (first `n_initial_suggestions` cards after the display). `step` is the batch the button reveals (the **Suggestions Shown at First** setting); `n_shown` is the number of suggested cards listed after the click. A pin click / selection that reveals one hidden card logs no event of its own: it follows from `overview_pin_clicked` / `overflow_pin_clicked` / `action_selected`. | Click **Show N more** under the Suggested Actions list |
+| `suggestions_show_all` | `{ n_shown: number }` — every suggested card is listed after the click. | Click **Show all** under the Suggested Actions list |
 | `recommender_model_changed` | `{ model: string, source?: 'action_feed' \| 'settings' }` — `model` is the new recommender registry id the operator selected. `source` identifies which dropdown changed: the selector above the Analyze & Suggest button (`'action_feed'`) or the Settings → Recommender tab (`'settings'`, omitted on older logs). The change is pushed to the backend via `POST /api/recommender-model` so the **next** analysis run uses it — replay must therefore emit this event *before* the following `analysis_step2_started`. | Pick a model in the dropdown above Analyze & Suggest, or in Settings → Recommender |
 | `suggested_actions_cleared` | `{ n_cleared: number }` — `n_cleared` is the count of recommender suggestions removed from the feed (those the operator had NOT starred / rejected / manually added — those are kept). Fired only after the operator confirms the "Clear Suggestions?" dialog. Does not re-run the analysis on its own. | Click the **Clear** button under the Suggested Actions tab header → confirm the dialog |
 
@@ -366,6 +372,7 @@ Every field listed in `config_loaded` / `settings_applied` is persisted under `s
 
 - `min_load_shedding` and `min_renewable_curtailment_actions` — required for the new `loads_p` / `gens_p` power-reduction format. Older session dumps that predate these fields fall back to `0.0` on reload.
 - `model` and `compute_overflow_graph` — the operator's recommender model id and overflow-graph toggle at save time (pluggable recommendation model feature). Older session dumps that predate these fields fall back to `"expert"` and `true` on reload, matching the historical hard-coded behaviour. See `docs/features/save-results.md` for the full persistence contract (configuration vs. analysis split).
+- `n_initial_suggestions` — the number of suggested cards the action feed lists at first. Older session dumps that predate it keep the operator's own setting on reload.
 
 On restore, `committedNetworkPathRef` is set to the restored `network_path`. This is important: it's what gates the "Change Network?" confirmation dialog when the user subsequently edits the Header network input. Without this update the dialog would either misfire (empty ref) or fire against a stale previous value.
 
@@ -402,6 +409,7 @@ If a replay agent depends on any of those post-load side effects, the reload pat
 
 - **Per-card edit state** (`cardEditMw`, `cardEditTap`): these are the raw, uncommitted values in the action card inputs. Only the committed, re-simulated result survives — persisted as `pst_details.tap_position` / `load_shedding_details[].shedded_mw` / `curtailment_details[].curtailed_mw`. A replay agent that wants to reproduce edit keystrokes must consume the `action_mw_resimulated` / `pst_tap_resimulated` events from `interaction_log.json` instead.
 - **Detached / tied tab state** (PR #84/#85): `detachedTabs` and the tied-tab registry are deliberately ephemeral. Detaching a tab does not change any analysis result, so reload intentionally starts with all tabs attached to the main window. A replay that needs to reproduce detach / reattach / tie / untie must stream the matching events from `interaction_log.json`.
+- **Progressive-reveal state** of the Suggested Actions list (cards revealed by **Show N more** / **Show all** / a pin click): a reloaded session lists the first `n_initial_suggestions` cards again. A replay must stream `suggestions_show_more` / `suggestions_show_all` (and the pin clicks) to list the same cards.
 - **Overflow Analysis tab UI state**: `overflowPinsEnabled`, `overflowLayoutMode`, the iframe layer-toggle checkboxes and the shared `overviewFilters` (category chips / threshold / action-type / Show unsimulated / Combined only) are intentionally not in `session.json` — they reset on reload. A replay must stream `overflow_pins_toggled` / `overflow_layout_mode_toggled` / `overflow_layer_toggled` / `overflow_select_all_layers` / `overview_filter_changed` / `overview_unsimulated_toggled` from `interaction_log.json` to reach the same operator state.
 
 ---

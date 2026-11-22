@@ -31,6 +31,7 @@ import { useContingencyFetch } from './hooks/useContingencyFetch';
 import { useDiagramHighlights } from './hooks/useDiagramHighlights';
 import { useManualSimulation } from './hooks/useManualSimulation';
 import { useLeverInteraction } from './hooks/useLeverInteraction';
+import { useSuggestionReveal } from './hooks/useSuggestionReveal';
 import { contextUnavailableNotice, useContextMap } from './hooks/useContextMap';
 import { interactionLogger } from './utils/interactionLogger';
 import { gameBridge } from './game/gameBridge';
@@ -213,25 +214,21 @@ function App() {
     showVoltageLevelNames, setShowVoltageLevelNames,
   } = diagrams;
 
-  // When a pin on the overview is single-clicked we want the sidebar
-  // action feed to scroll to the matching card without selecting it
-  // (which would drill into the action-variant view).  This counter-
-  // based state lets ActionFeed react on every click even if the same
-  // pin is tapped twice in a row (a plain id string would not trigger
-  // a re-render on the second identical value).
-  const [scrollTarget, setScrollTarget] = useState<{ id: string; seq: number } | null>(null);
-  const scrollSeqRef = useRef(0);
-  const handlePinPreview = useCallback((actionId: string) => {
-    scrollSeqRef.current += 1;
-    setScrollTarget({ id: actionId, seq: scrollSeqRef.current });
-  }, []);
-
   // Shared filter state for the Remedial Action overview. The same
   // `ActionOverviewFilters` drives (a) the pin visibility + dimmed
   // un-simulated pins on ActionOverviewDiagram and (b) the card
   // visibility in the sidebar ActionFeed, so both views stay in
   // lock-step regardless of which entry point the operator uses.
   const [overviewFilters, setOverviewFilters] = useState<ActionOverviewFilters>(DEFAULT_ACTION_OVERVIEW_FILTERS);
+
+  // Progressive reveal of the suggestions in the feed. A pin single-click
+  // reveals its card when hidden, then scrolls the feed to it without
+  // selecting it (which would drill into the action-variant view).
+  const suggestionReveal = useSuggestionReveal({
+    actions: result?.actions, actionScores: result?.action_scores, overviewFilters, monitoringFactor,
+    selectedActionIds, rejectedActionIds, analysisLoading, step: settings.nInitialSuggestions, selectedActionId,
+  });
+  const { scrollTarget, previewAction: handlePinPreview } = suggestionReveal;
 
   // Flat list of action ids that appear in `action_scores` but are
   // not yet simulated. Feeds ActionOverviewDiagram's un-simulated pin
@@ -471,10 +468,11 @@ function App() {
           rejectedActionIds,
           undefined,
           overviewFilters,
+          suggestionReveal.controls,
         )
       : [],
     [overflowPinsAvailable, result?.actions, diagrams.n1MetaIndex, vlToSubstation,
-     monitoringFactor, selectedActionIds, rejectedActionIds, overviewFilters],
+     monitoringFactor, selectedActionIds, rejectedActionIds, overviewFilters, suggestionReveal.controls],
   );
 
   // Un-simulated overflow pins. Built only when the operator has
@@ -720,6 +718,7 @@ function App() {
     minLineReconnections, minCloseCoupling, minOpenCoupling,
     minLineDisconnections, minPst, minLoadShedding,
     minRenewableCurtailmentActions, minRedispatch, allowedActionTypes, nPrioritizedActions,
+    nInitialSuggestions: settings.nInitialSuggestions,
     linesMonitoringPath, monitoringFactor,
     preExistingOverloadThreshold, ignoreReconnections, pypowsyblFastMode,
     selectedBranch: selectedContingency.join('+'),
@@ -737,7 +736,7 @@ function App() {
     networkPath, actionPath, layoutPath, outputFolderPath,
     minLineReconnections, minCloseCoupling, minOpenCoupling,
     minLineDisconnections, minPst, minLoadShedding,
-    minRenewableCurtailmentActions, minRedispatch, allowedActionTypes, nPrioritizedActions,
+    minRenewableCurtailmentActions, minRedispatch, allowedActionTypes, nPrioritizedActions, settings.nInitialSuggestions,
     linesMonitoringPath, monitoringFactor,
     preExistingOverloadThreshold, ignoreReconnections, pypowsyblFastMode,
     selectedContingency, selectedOverloads, monitorDeselected,
@@ -765,7 +764,7 @@ function App() {
     setMinLineDisconnections, setMinPst, setMinLoadShedding,
     setMinRenewableCurtailmentActions, setMinRedispatch, setAllowedActionTypes, setNPrioritizedActions,
     setLinesMonitoringPath, setMonitoringFactor, setPreExistingOverloadThreshold,
-    setIgnoreReconnections, setPypowsyblFastMode,
+    setIgnoreReconnections, setPypowsyblFastMode, setNInitialSuggestions: settings.setNInitialSuggestions,
     setMonitorDeselected: analysis.setMonitorDeselected,
     setSelectedOverloads: analysis.setSelectedOverloads,
     setCommittedAdditionalLinesToCut: analysis.setCommittedAdditionalLinesToCut,
@@ -794,7 +793,7 @@ function App() {
     setMinLineDisconnections, setMinPst, setMinLoadShedding,
     setMinRenewableCurtailmentActions, setMinRedispatch, setAllowedActionTypes, setNPrioritizedActions,
     setLinesMonitoringPath, setMonitoringFactor, setPreExistingOverloadThreshold,
-    setIgnoreReconnections, setPypowsyblFastMode,
+    setIgnoreReconnections, setPypowsyblFastMode, settings.setNInitialSuggestions,
     analysis, actionsHook, setResult, setSelectedContingency, setPendingContingency, resetAllState,
     diagrams, setError, applyConfigResponse, setBranches, setVoltageLevels, setNameMap,
   ]);
@@ -851,13 +850,14 @@ function App() {
     pre_existing_overload_threshold: preExistingOverloadThreshold,
     ignore_reconnections: ignoreReconnections,
     pypowsybl_fast_mode: pypowsyblFastMode,
+    n_initial_suggestions: settings.nInitialSuggestions,
   }), [
     networkPath, actionPath, layoutPath, outputFolderPath,
     minLineReconnections, minCloseCoupling, minOpenCoupling,
     minLineDisconnections, minPst, minLoadShedding,
     minRenewableCurtailmentActions, minRedispatch, allowedActionTypes, nPrioritizedActions,
     linesMonitoringPath, monitoringFactor, preExistingOverloadThreshold,
-    ignoreReconnections, pypowsyblFastMode,
+    ignoreReconnections, pypowsyblFastMode, settings.nInitialSuggestions,
   ]);
 
 
@@ -1662,6 +1662,7 @@ function App() {
             }
             selectedActionId={selectedActionId}
             scrollTarget={scrollTarget}
+            reveal={suggestionReveal.controls}
             selectedActionIds={selectedActionIds}
             rejectedActionIds={rejectedActionIds}
             manuallyAddedIds={manuallyAddedIds}
@@ -1818,6 +1819,7 @@ function App() {
               unsimulatedActionIds: unsimulatedActionIds,
               unsimulatedActionInfo: unsimulatedActionInfo,
               onSimulateUnsimulatedAction: handleSimulateUnsimulatedAction,
+              feedReveal: suggestionReveal.controls,
             }}
             showVoltageLevelNames={showVoltageLevelNames}
             onToggleVoltageLevelNames={handleToggleVoltageLevelNames}

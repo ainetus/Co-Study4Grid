@@ -172,6 +172,7 @@ remaining hex-literal count after each migration.
   --pin-gold-dark: #a16207;           /* selected-pin star stroke */
   --pin-cross-fill: #ef4444;          /* rejected-pin cross fill */
   --pin-cross-stroke: #b91c1c;        /* rejected-pin cross stroke */
+  --pin-feed-badge: #1e40af;          /* "card shown in the feed" badge (= brand) */
 
   /* Vite template carryover — visible only during the first paint
      before body { background-color: var(--color-surface) } takes over.

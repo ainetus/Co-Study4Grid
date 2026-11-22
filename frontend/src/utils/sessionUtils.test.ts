@@ -96,6 +96,11 @@ describe('buildSessionResult — structure', () => {
         });
     });
 
+    it('serialises the "suggestions shown at first" display setting when provided', () => {
+        const out = buildSessionResult({ ...baseInput, nInitialSuggestions: 5 });
+        expect(out.configuration.n_initial_suggestions).toBe(5);
+    });
+
     it('serialises contingency with selected_overloads array', () => {
         const out = buildSessionResult({
             ...baseInput,

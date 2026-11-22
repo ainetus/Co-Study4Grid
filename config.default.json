@@ -13,6 +13,7 @@
     "min_renewable_curtailment_actions": 2,
     "min_redispatch": 2,
     "n_prioritized_actions": 15,
+    "n_initial_suggestions": 3,
     "monitoring_factor": 0.95,
     "pre_existing_overload_threshold": 0.02,
     "ignore_reconnections": false,

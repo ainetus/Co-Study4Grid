@@ -10,7 +10,7 @@
  * re-used here.
  */
 
-import type { MetadataIndex } from '../../types';
+import type { FeedRevealState, MetadataIndex } from '../../types';
 import { pinChrome } from '../../styles/tokens';
 import { getIdMap } from './idMap';
 import {
@@ -24,7 +24,12 @@ import {
 // overflow-graph iframe overlay (`expert_backend/services/
 // overflow_overlay.py`) can render visually identical pins by
 // reading the same source.
-import { createPinGlyph as createSharedPinGlyph } from './pinGlyph';
+import {
+    appendFeedBadge,
+    createPinGlyph as createSharedPinGlyph,
+    FEED_HIDDEN_OPACITY,
+    type PinFeedState,
+} from './pinGlyph';
 
 /**
  * Apply contingency + overload halo highlights to the
@@ -258,6 +263,12 @@ export const crossPath = (cx: number, cy: number, halfW: number): string => {
 export interface ApplyPinsOptions {
     selectedActionIds?: Set<string>;
     rejectedActionIds?: Set<string>;
+    /**
+     * Progressive reveal of the suggestions in the action feed: pins
+     * of listed suggestions carry the feed badge, pins of hidden ones
+     * are drawn translucent (severity colours kept).
+     */
+    feedReveal?: FeedRevealState;
     combinedPins?: readonly CombinedPinInfo[];
     /**
      * Dimmed, dashed pins for scored-but-not-yet-simulated actions.
@@ -272,6 +283,13 @@ export interface ApplyPinsOptions {
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/** A pin's place in the feed's progressive reveal — none when it is not a listed / hidden suggestion. */
+const feedStateOf = (id: string, feedReveal: FeedRevealState | undefined): PinFeedState | undefined => {
+    if (feedReveal?.displayedIds.has(id)) return 'shown';
+    if (feedReveal?.hiddenIds.has(id)) return 'hidden';
+    return undefined;
+};
 
 const attachPinClickListeners = (
     g: SVGGElement,
@@ -370,9 +388,11 @@ const renderCombinedPin = (
     edgeStrokeW: number,
     selectedIds: Set<string> | undefined,
     rejectedIds: Set<string> | undefined,
+    feedReveal: FeedRevealState | undefined,
     onPinClick: (actionId: string, screenPos: { x: number; y: number }) => void,
     onPinDoubleClick: ((actionId: string) => void) | undefined,
 ) => {
+    const feed = feedStateOf(cp.pairId, feedReveal);
     // Curved connection line between the two unitary pins.
     const dx = cp.p2.x - cp.p1.x;
     const dy = cp.p2.y - cp.p1.y;
@@ -391,6 +411,7 @@ const renderCombinedPin = (
     curvePath.setAttribute('stroke-dasharray', `${edgeStrokeW * 2.5} ${edgeStrokeW * 1.5}`);
     curvePath.setAttribute('stroke-linecap', 'round');
     curvePath.setAttribute('pointer-events', 'none');
+    if (feed === 'hidden') curvePath.setAttribute('opacity', String(FEED_HIDDEN_OPACITY));
     frag.appendChild(curvePath);
 
     const g = document.createElementNS(SVG_NS, 'g');
@@ -433,6 +454,10 @@ const renderCombinedPin = (
     plusText.textContent = '+';
     body.appendChild(plusText);
 
+    if (feed) g.setAttribute('data-feed', feed);
+    if (feed === 'shown') appendFeedBadge(document, body, r);
+    if (feed === 'hidden') g.setAttribute('opacity', String(FEED_HIDDEN_OPACITY));
+
     attachPinClickListeners(g, cp.pairId, onPinClick, onPinDoubleClick);
     frag.appendChild(g);
 };
@@ -444,6 +469,7 @@ const renderUnitaryPin = (
     labelFont: number,
     selectedIds: Set<string> | undefined,
     rejectedIds: Set<string> | undefined,
+    feedReveal: FeedRevealState | undefined,
     onPinClick: (actionId: string, screenPos: { x: number; y: number }) => void,
     onPinDoubleClick: ((actionId: string) => void) | undefined,
 ) => {
@@ -452,8 +478,8 @@ const renderUnitaryPin = (
 
     // Shared glyph factory used by both the overview tab and the
     // overflow-graph iframe overlay. Returns the inner <g> already
-    // populated with body, chrome, label and the selected/rejected
-    // status symbol.
+    // populated with body, chrome, label, the selected/rejected
+    // status symbol and the feed badge / hidden-card translucency.
     const g = createSharedPinGlyph(document, {
         severity: pin.severity,
         label: pin.label,
@@ -462,6 +488,7 @@ const renderUnitaryPin = (
         isSelected,
         isRejected,
         dimmed: !!pin.dimmedByFilter,
+        feed: feedStateOf(pin.id, feedReveal),
         r,
         labelFont,
         bodyClass: 'nad-action-overview-pin-body',
@@ -552,6 +579,7 @@ export const applyActionOverviewPins = (
 
     const selectedIds = opts?.selectedActionIds;
     const rejectedIds = opts?.rejectedActionIds;
+    const feedReveal = opts?.feedReveal;
 
     const r = readPinBaseRadius(svg);
     pinBaseRadiusCache.set(svg, r);
@@ -574,10 +602,10 @@ export const applyActionOverviewPins = (
     const frag = document.createDocumentFragment();
 
     combinedPins.forEach(cp =>
-        renderCombinedPin(frag, cp, r, labelFont, edgeStrokeW, selectedIds, rejectedIds, onPinClick, onPinDoubleClick),
+        renderCombinedPin(frag, cp, r, labelFont, edgeStrokeW, selectedIds, rejectedIds, feedReveal, onPinClick, onPinDoubleClick),
     );
     pins.forEach(pin =>
-        renderUnitaryPin(frag, pin, r, labelFont, selectedIds, rejectedIds, onPinClick, onPinDoubleClick),
+        renderUnitaryPin(frag, pin, r, labelFont, selectedIds, rejectedIds, feedReveal, onPinClick, onPinDoubleClick),
     );
     unsimulatedPins.forEach(pin =>
         renderUnsimulatedPin(frag, pin, r, labelFont, onPinClick, onUnsimulatedPinDoubleClick, onPinDoubleClick),

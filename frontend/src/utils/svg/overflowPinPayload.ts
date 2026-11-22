@@ -18,6 +18,7 @@
 import type {
     ActionDetail,
     ActionOverviewFilters,
+    FeedRevealState,
     MetadataIndex,
     UnsimulatedActionScoreInfo,
 } from '../../types';
@@ -94,6 +95,13 @@ export interface OverflowPin {
     severity: ActionPinInfo['severity'];
     isSelected: boolean;
     isRejected: boolean;
+    /**
+     * Progressive reveal of the suggestions in the action feed:
+     * ``'shown'`` (card listed — the overlay draws the shared feed
+     * badge) or ``'hidden'`` (card not listed yet — pin drawn
+     * translucent, colours kept). Absent for every other pin.
+     */
+    feed?: 'shown' | 'hidden';
     /**
      * Marks scored-but-not-yet-simulated pins. The overlay renders
      * them with a dashed outline + dimmed fill and re-routes the
@@ -318,7 +326,18 @@ export const buildOverflowPinPayload = (
      * is emitted (legacy behaviour preserved for tests / standalone).
      */
     overviewFilters?: ActionOverviewFilters,
+    /**
+     * Progressive reveal of the suggestions in the action feed — sets
+     * each listed / hidden suggestion's ``feed``. Same state as the
+     * Action Overview's.
+     */
+    feedReveal?: FeedRevealState,
 ): OverflowPin[] => {
+    const feedOf = (id: string): Pick<OverflowPin, 'feed'> => {
+        if (feedReveal?.displayedIds.has(id)) return { feed: 'shown' };
+        if (feedReveal?.hiddenIds.has(id)) return { feed: 'hidden' };
+        return {};
+    };
     if (!actions || !metaIndex) return [];
     // When no substation set is provided, accept every resolved one.
     const knownSet = overflowSubstations ?? new Set<string>();
@@ -445,6 +464,7 @@ export const buildOverflowPinPayload = (
             isSelected: selectedActionIds.has(u.actionId),
             isRejected: rejectedActionIds.has(u.actionId),
             ...(dimmedByFilter ? { dimmedByFilter: true } : {}),
+            ...feedOf(u.actionId),
         });
     }
 
@@ -460,6 +480,7 @@ export const buildOverflowPinPayload = (
             severity: computeActionSeverity(cp.details, monitoringFactor),
             isSelected: selectedActionIds.has(cp.actionId),
             isRejected: rejectedActionIds.has(cp.actionId),
+            ...feedOf(cp.actionId),
         });
     }
     return out;

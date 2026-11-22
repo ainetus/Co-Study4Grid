@@ -321,9 +321,19 @@ export const DEMO_SCENARIO: ScenarioCheckpoint[] = [
         ],
         invariants: [
             {
-                description: '10 action cards are mounted in the feed',
-                selector: '[data-testid^="action-card-"]',
-                count: { min: SMALL_GRID.nPrioritizedActions },
+                // Progressive reveal: the Suggested list shows the first
+                // 3 suggestions (Settings → Suggestions Shown at First),
+                // while the overview keeps a pin for all 10 (étape 10).
+                // Card roots only (`data-viewing`), the étape-4 COUCHP6
+                // first guess (Selected Actions) left out.
+                description: 'The first 3 of the 10 suggestion cards are listed in the feed',
+                selector: '[data-testid^="action-card-"][data-viewing]:not([data-testid$="_COUCHP6"])',
+                count: 3,
+            },
+            {
+                description: 'The reveal bar offers the hidden suggestions',
+                selector: '[data-testid="suggestion-reveal-bar"]',
+                visible: true,
             },
             {
                 description: 'Feed header is visible',

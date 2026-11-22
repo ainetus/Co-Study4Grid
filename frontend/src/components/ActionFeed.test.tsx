@@ -31,8 +31,12 @@ vi.mock('../utils/svgUtils', () => ({
     applyActionTargetHighlights: vi.fn(),
     applyContingencyHighlight: vi.fn(),
     isCouplingAction: vi.fn(() => false),
-    // Always passing the severity/threshold gate isolates the
-    // action-type filter tests from the category/threshold filter.
+}));
+
+// Always passing the severity/threshold gate isolates the
+// action-type filter tests from the category/threshold filter.
+vi.mock('../utils/svg/actionPinData', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('../utils/svg/actionPinData')>()),
     actionPassesOverviewFilter: vi.fn(() => true),
 }));
 
@@ -3432,6 +3436,74 @@ describe('ActionFeed', () => {
                 />,
             );
             expect(screen.queryByTestId('execution-time-total')).not.toBeInTheDocument();
+        });
+    });
+
+    describe('progressive reveal of the suggestions', () => {
+        // act_i has max loading 0.5 + i/100, so the feed order is act_0 … act_5.
+        const sixActions: Record<string, ActionDetail> = Object.fromEntries(
+            [0, 1, 2, 3, 4, 5].map(i => [`act_${i}`, {
+                description_unitaire: `Action ${i}`,
+                rho_before: [1.1],
+                rho_after: [0.5 + i / 100],
+                max_rho: 0.5 + i / 100,
+                max_rho_line: 'LINE_1',
+                is_rho_reduction: true,
+            }]),
+        );
+        const reveal = (displayed: string[]) => ({
+            displayedIds: new Set(displayed),
+            hiddenIds: new Set(Object.keys(sixActions).filter(id => !displayed.includes(id))),
+            step: 3,
+            onShowMore: vi.fn(),
+            onShowAll: vi.fn(),
+        });
+
+        it('lists only the revealed cards, each keeping its rank in the full list', () => {
+            render(<ActionFeed {...defaultProps} actions={sixActions} reveal={reveal(['act_0', 'act_1', 'act_2', 'act_4'])} />);
+            for (const id of ['act_0', 'act_1', 'act_2', 'act_4']) {
+                expect(screen.getByTestId(`action-card-${id}`)).toBeInTheDocument();
+            }
+            expect(screen.queryByTestId('action-card-act_3')).not.toBeInTheDocument();
+            expect(screen.queryByTestId('action-card-act_5')).not.toBeInTheDocument();
+            // act_4 was revealed out of sequence: it keeps its rank #5.
+            expect(screen.getByTestId('action-card-act_4')).toHaveTextContent('#5 — act_4');
+            expect(screen.getByText('4 of 6 suggestions shown')).toBeInTheDocument();
+        });
+
+        it('wires "Show N more" and "Show all" to the reveal controls', () => {
+            const controls = reveal(['act_0']);
+            render(<ActionFeed {...defaultProps} actions={sixActions} reveal={controls} />);
+            fireEvent.click(screen.getByTestId('show-more-suggestions'));
+            expect(controls.onShowMore).toHaveBeenCalledTimes(1);
+            fireEvent.click(screen.getByTestId('show-all-suggestions'));
+            expect(controls.onShowAll).toHaveBeenCalledTimes(1);
+        });
+
+        it('drops the reveal bar once every suggestion is listed', () => {
+            render(<ActionFeed {...defaultProps} actions={sixActions} reveal={reveal(Object.keys(sixActions))} />);
+            expect(screen.queryByTestId('suggestion-reveal-bar')).not.toBeInTheDocument();
+        });
+
+        it('keeps starred cards in Selected Actions, outside the reveal window', () => {
+            render(
+                <ActionFeed
+                    {...defaultProps}
+                    actions={sixActions}
+                    selectedActionIds={new Set(['act_5'])}
+                    reveal={reveal(['act_0'])}
+                />,
+            );
+            expect(screen.getByTestId('action-card-act_5')).toBeInTheDocument();
+            expect(screen.getByText('1 of 5 suggestions shown')).toBeInTheDocument();
+        });
+
+        it('lists every suggestion when no reveal controls are wired', () => {
+            render(<ActionFeed {...defaultProps} actions={sixActions} />);
+            for (const id of Object.keys(sixActions)) {
+                expect(screen.getByTestId(`action-card-${id}`)).toBeInTheDocument();
+            }
+            expect(screen.queryByTestId('suggestion-reveal-bar')).not.toBeInTheDocument();
         });
     });
 });

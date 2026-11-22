@@ -33,6 +33,9 @@ export interface UserConfig {
     min_redispatch: number;
     allowed_action_types?: string[];
     n_prioritized_actions: number;
+    // Suggested cards the action feed shows at first (and per "Show N
+    // more"). Display-only: persisted here, never sent to /api/config.
+    n_initial_suggestions?: number;
     monitoring_factor: number;
     pre_existing_overload_threshold: number;
     ignore_reconnections: boolean;

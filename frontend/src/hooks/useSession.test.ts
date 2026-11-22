@@ -348,6 +348,28 @@ describe('useSession — handleRestoreSession', () => {
         expect(ctx.setPypowsyblFastMode).toHaveBeenCalledWith(false);
     });
 
+    it('restores "suggestions shown at first" when the session carries it', async () => {
+        const session = makeSession();
+        session.configuration.n_initial_suggestions = 5;
+        mockLoadSession.mockResolvedValue(session);
+        const ctx = makeCtx({ setNInitialSuggestions: vi.fn() });
+        const { result } = renderHook(() => useSession());
+        await act(async () => {
+            await result.current.handleRestoreSession('session_abc', ctx);
+        });
+        expect(ctx.setNInitialSuggestions).toHaveBeenCalledWith(5);
+    });
+
+    it('keeps the operator\'s own "suggestions shown at first" for older sessions', async () => {
+        mockLoadSession.mockResolvedValue(makeSession());
+        const ctx = makeCtx({ setNInitialSuggestions: vi.fn() });
+        const { result } = renderHook(() => useSession());
+        await act(async () => {
+            await result.current.handleRestoreSession('session_abc', ctx);
+        });
+        expect(ctx.setNInitialSuggestions).not.toHaveBeenCalled();
+    });
+
     it('falls back to safe defaults when older sessions lack load-shedding / curtailment thresholds', async () => {
         // Simulate a pre-PR-#73 session dump: neither new field present.
         const legacy = makeSession();

@@ -6,11 +6,14 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+    applyActionOverviewPins,
     computePinScale,
     crossPath,
     readPinBaseRadius,
     starPath,
 } from './actionPinRender';
+import type { ActionPinInfo, CombinedPinInfo } from './actionPinData';
+import { FEED_HIDDEN_OPACITY } from './pinGlyph';
 
 describe('computePinScale', () => {
     it('keeps scale = 1 when baseR already exceeds both floors', () => {
@@ -94,5 +97,64 @@ describe('crossPath', () => {
         // Count `L ` tokens — cross has 11 Ls after the initial M (12 vertices).
         const lCount = d.split(' L ').length - 1;
         expect(lCount).toBe(11);
+    });
+});
+
+describe('applyActionOverviewPins — progressive reveal of the feed', () => {
+    const makeContainer = () => {
+        const container = document.createElement('div');
+        container.innerHTML = '<svg viewBox="0 0 400 400"></svg>';
+        return container;
+    };
+    const pin = (id: string, x: number): ActionPinInfo => ({
+        id, x, y: 100, severity: 'green', label: '60%', title: id,
+    });
+    const combined: CombinedPinInfo = {
+        pairId: 'a+b', action1Id: 'a', action2Id: 'b',
+        p1: { x: 50, y: 100 }, p2: { x: 150, y: 100 },
+        x: 100, y: 60, label: '55%', title: 'a+b', severity: 'green',
+    };
+
+    const pinOf = (container: HTMLElement, id: string) => container.querySelector(`[data-action-id="${id}"]`);
+
+    it('badges the pins whose card the feed lists, unitary and combined', () => {
+        const container = makeContainer();
+        applyActionOverviewPins(container, [pin('a', 50), pin('b', 150), pin('c', 250)], () => {}, undefined, {
+            combinedPins: [combined],
+            feedReveal: { displayedIds: new Set(['a', 'a+b']), hiddenIds: new Set(['b']) },
+        });
+        expect(pinOf(container, 'a')?.getAttribute('data-feed')).toBe('shown');
+        expect(pinOf(container, 'a')?.querySelector('.cs4g-pin-feed-badge')).toBeTruthy();
+        expect(pinOf(container, 'a+b')?.getAttribute('data-feed')).toBe('shown');
+        expect(pinOf(container, 'a+b')?.querySelector('.nad-action-overview-pin-body .cs4g-pin-feed-badge')).toBeTruthy();
+        for (const other of ['b', 'c']) {
+            expect(pinOf(container, other)?.querySelector('.cs4g-pin-feed-badge')).toBeNull();
+        }
+    });
+
+    it('fades hidden suggestions only — unitary and combined, curve included', () => {
+        const container = makeContainer();
+        applyActionOverviewPins(container, [pin('a', 50), pin('b', 150), pin('c', 250)], () => {}, undefined, {
+            combinedPins: [combined],
+            feedReveal: { displayedIds: new Set(['a']), hiddenIds: new Set(['b', 'a+b']) },
+        });
+        const hiddenOpacity = String(FEED_HIDDEN_OPACITY);
+        expect(pinOf(container, 'b')?.getAttribute('data-feed')).toBe('hidden');
+        expect(pinOf(container, 'b')?.getAttribute('opacity')).toBe(hiddenOpacity);
+        expect(pinOf(container, 'a+b')?.getAttribute('data-feed')).toBe('hidden');
+        expect(pinOf(container, 'a+b')?.getAttribute('opacity')).toBe(hiddenOpacity);
+        expect(container.querySelector('.nad-combined-action-curve')?.getAttribute('opacity')).toBe(hiddenOpacity);
+        // Listed, and not a suggestion of the feed at all: full opacity.
+        expect(pinOf(container, 'a')?.hasAttribute('opacity')).toBe(false);
+        expect(pinOf(container, 'c')?.hasAttribute('data-feed')).toBe(false);
+        expect(pinOf(container, 'c')?.hasAttribute('opacity')).toBe(false);
+    });
+
+    it('leaves every pin as is when the reveal state is not wired', () => {
+        const container = makeContainer();
+        applyActionOverviewPins(container, [pin('a', 50)], () => {}, undefined, { combinedPins: [combined] });
+        expect(container.querySelector('.cs4g-pin-feed-badge')).toBeNull();
+        expect(container.querySelector('[data-feed]')).toBeNull();
+        expect(container.querySelector('.nad-combined-action-curve')?.hasAttribute('opacity')).toBe(false);
     });
 });

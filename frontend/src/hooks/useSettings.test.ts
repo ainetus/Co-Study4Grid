@@ -6,9 +6,11 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study. 
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { useSettings } from './useSettings';
 import { interactionLogger } from '../utils/interactionLogger';
+import { api } from '../api';
+import type { UserConfig } from '../api';
 
 // Mock the api module
 vi.mock('../api', () => ({
@@ -230,5 +232,39 @@ describe('useSettings — interaction logging', () => {
             expect(message).not.toContain('http://127.0.0.1:8000');
             alertSpy.mockRestore();
         });
+    });
+});
+
+describe('useSettings — suggestions shown at first', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('defaults to 3', () => {
+        const { result } = renderHook(() => useSettings());
+        expect(result.current.nInitialSuggestions).toBe(3);
+    });
+
+    it('loads the persisted value and saves changes to the user config', async () => {
+        vi.mocked(api.getUserConfig).mockResolvedValueOnce({ n_initial_suggestions: 5 } as UserConfig);
+        const { result } = renderHook(() => useSettings());
+        await waitFor(() => expect(result.current.nInitialSuggestions).toBe(5));
+        act(() => { result.current.setNInitialSuggestions(8); });
+        await waitFor(() => expect(api.saveUserConfig).toHaveBeenLastCalledWith(
+            expect.objectContaining({ n_initial_suggestions: 8 }),
+        ));
+    });
+
+    it('is display-only: never sent to /api/config', () => {
+        const { result } = renderHook(() => useSettings());
+        expect(result.current.buildConfigRequest()).not.toHaveProperty('n_initial_suggestions');
+    });
+
+    it('Cancel restores the value the Settings modal opened with', () => {
+        const { result } = renderHook(() => useSettings());
+        act(() => { result.current.handleOpenSettings('recommender'); });
+        act(() => { result.current.setNInitialSuggestions(7); });
+        act(() => { result.current.handleCloseSettings(); });
+        expect(result.current.nInitialSuggestions).toBe(3);
     });
 });

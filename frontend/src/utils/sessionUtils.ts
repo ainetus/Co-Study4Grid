@@ -27,6 +27,8 @@ export interface SessionInput {
     minRedispatch: number;
     allowedActionTypes: string[];
     nPrioritizedActions: number;
+    /** Suggested cards the action feed shows at first. */
+    nInitialSuggestions?: number;
     linesMonitoringPath: string;
     monitoringFactor: number;
     preExistingOverloadThreshold: number;
@@ -72,7 +74,7 @@ export function buildSessionResult(input: SessionInput): SessionResult {
     const {
         networkPath, actionPath, layoutPath,
         minLineReconnections, minCloseCoupling, minOpenCoupling, minLineDisconnections, minPst, minLoadShedding, minRenewableCurtailmentActions, minRedispatch, allowedActionTypes,
-        nPrioritizedActions, linesMonitoringPath, monitoringFactor,
+        nPrioritizedActions, nInitialSuggestions, linesMonitoringPath, monitoringFactor,
         preExistingOverloadThreshold, ignoreReconnections, pypowsyblFastMode,
         recommenderModel, computeOverflowGraph,
         selectedContingency: contingencyInput,
@@ -196,6 +198,7 @@ export function buildSessionResult(input: SessionInput): SessionResult {
             min_redispatch: minRedispatch,
             allowed_action_types: allowedActionTypes,
             n_prioritized_actions: nPrioritizedActions,
+            ...(nInitialSuggestions !== undefined ? { n_initial_suggestions: nInitialSuggestions } : {}),
             lines_monitoring_path: linesMonitoringPath,
             monitoring_factor: monitoringFactor,
             pre_existing_overload_threshold: preExistingOverloadThreshold,

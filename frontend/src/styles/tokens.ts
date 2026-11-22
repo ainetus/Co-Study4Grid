@@ -148,6 +148,8 @@ export const pinChrome = {
   goldDark: '#a16207',
   crossFill: '#ef4444',
   crossStroke: '#b91c1c',
+  // Badge of a suggestion whose card the action feed shows (= brand).
+  feedBadge: '#1e40af',
 } as const;
 
 // ===== Context tab — the Carte-Front situation map =====

@@ -9,6 +9,9 @@
 
 export type PinSeverity = 'green' | 'orange' | 'red' | 'grey';
 
+/** Progressive reveal of the action feed: card listed, or not yet. */
+export type PinFeedState = 'shown' | 'hidden';
+
 export interface PinGlyphOptions {
     severity: PinSeverity;
     label?: string;
@@ -19,6 +22,10 @@ export interface PinGlyphOptions {
     /** Filter-dimmed pin (kept visible only because a passing combined
      *  action references it).  Distinct from ``isRejected``. */
     dimmed?: boolean;
+    /** Progressive reveal of the suggestions: 'shown' (card listed in
+     *  the action feed) adds the feed badge; 'hidden' draws the whole
+     *  pin at ``FEED_HIDDEN_OPACITY``, severity colours kept. */
+    feed?: PinFeedState;
     /** Body radius in user-space units. */
     r: number;
     /** Optional override for the label font size (default = max(9, r*0.8)). */
@@ -28,6 +35,7 @@ export interface PinGlyphOptions {
     bodyClass?: string;
 }
 
+export const FEED_HIDDEN_OPACITY: number;
 export const SEVERITY_FILL: Record<PinSeverity, string>;
 export const SEVERITY_FILL_DIMMED: Record<PinSeverity, string>;
 export const SEVERITY_FILL_HIGHLIGHTED: Record<PinSeverity, string>;
@@ -38,10 +46,16 @@ export const PIN_CHROME: {
     goldDark: string;
     crossFill: string;
     crossStroke: string;
+    feedBadge: string;
 };
 
 export function pinStarPath(cx: number, cy: number, outerR: number): string;
 export function pinCrossPath(cx: number, cy: number, halfW: number): string;
+export function appendFeedBadge(
+    doc: Document,
+    body: SVGGElement,
+    r: number,
+): SVGGElement;
 export function resolvePinFill(
     severity: PinSeverity,
     isSelected: boolean,

@@ -322,10 +322,12 @@ Open the Vite dev-server URL shown in the terminal (typically `http://localhost:
    (Expert by default). The parameter inputs below the dropdown render
    dynamically from the active model's `params_spec()`. The model can also be
    swapped later from the selector above the Analyze & Suggest button.
+   **Suggestions Shown at First** (default 3) sets how many suggested cards
+   the action feed lists before you ask for more.
 3. Click **Load Study** to load the network.
 4. Pick a disconnectable element (line or transformer) from the searchable dropdown — the N-1 diagram is fetched with overloads highlighted automatically.
 5. Click **Analyze & Suggest** (two-step flow): select which overloads to resolve, then watch the action feed stream in.
-6. Inspect prioritized actions, simulate manual ones, or open the **Combine** modal to explore action pairs.
+6. Inspect prioritized actions, simulate manual ones, or open the **Combine** modal to explore action pairs. The feed lists the first suggestions only — **Show N more** / **Show all** reveal the rest — while the action pins on the Remedial action overview and the overflow graph keep showing every suggestion: the pins whose card is listed carry a blue card badge, the others are translucent, and clicking one of those reveals its card.
 7. To try a different recommender, hit **Clear** under the Suggested Actions tab header (keeps your starred / rejected / manually-added actions), pick a model in the dropdown above Analyze & Suggest, and re-run.
 8. Detach any visualization tab (`⧉`) onto a second screen for dual-monitor studies.
 9. Hit **Save Results** to export the full session (including the active recommender model under `analysis.active_model`); **Reload Session** restores it exactly, without re-simulating anything.
