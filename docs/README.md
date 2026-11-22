@@ -40,6 +40,8 @@ docs/
 | [`state-reset-and-confirmation-dialogs.md`](features/state-reset-and-confirmation-dialogs.md) | State-reset guards when switching contingencies / reloading. |
 | [`actions-topology.md`](features/actions-topology.md) | Action formats + topology algorithms (switch → set_bus, Union-Find cache). |
 | [`sld-topology-edit.md`](features/sld-topology-edit.md) | Interactive SLD topology edit → manual action card: target-topology preview (`/api/sld-topology-preview`), maneuver list, combined-card canonicalisation, six interaction events. |
+| [`action-card.md`](features/action-card.md) | Remedial-action card: readable names (title = what the action acts on, ids on hover / copy), pictograms with tooltips, description under the title, max loading + overloads after grouped. |
+| [`sld-diagram-feeder-labels.md`](features/sld-diagram-feeder-labels.md) | SLD readability: feeders by far-end VL, generators / loads / busbars / switches / title by name, overload halo bridge, half-open charging current. |
 | [`sld-halos.md`](features/sld-halos.md) | SLD halos with the NAD's colours and meaning: contingency, N-1 overloads (before any analysis), post-action overloads, action targets; the lists shared with the NAD, the bay-clone technique, targets of another voltage level. |
 | [`vl-disk-interactions.md`](features/vl-disk-interactions.md) | Interactive VL disks on the NAD: hover name (labels hidden), single-click → Inspect/zoom, double-click → SLD. Delegation-based performance contract + the pointer-events click-retarget fix. |
 | [`curtailment-loadshedding-pst-actions.md`](features/curtailment-loadshedding-pst-actions.md) | Renewable curtailment, load shedding, PST tap actions. |

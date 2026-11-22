@@ -13,7 +13,13 @@ import os
 import tempfile
 import zipfile
 
+from expert_backend.services.context_map.plants import load_plant_names, resolve_plants_path
 from expert_backend.services.element_names import branch_display_name
+from expert_backend.services.equipment_names import (
+    VoltageLevelNames,
+    injection_names,
+    manual_action_names,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +40,11 @@ class NetworkService:
         self._gen_limits_map = None  # gen_id -> (min_p, max_p)
         self._loads_df = None
         self._load_vl_map = None     # load_id -> voltage_level_id
+        # The path the study was loaded from (``power_plants.json`` sits
+        # beside it) and the display names of its branches + injections.
+        self._source_path = None     # str | None
+        self._display_names = None   # dict[str, str] | None
+        self._vl_names = None        # VoltageLevelNames | None
 
     def _invalidate_equipment_caches(self) -> None:
         """Drop the cached generator / load tables (called when the Network changes)."""
@@ -43,6 +54,8 @@ class NetworkService:
         self._gen_limits_map = None
         self._loads_df = None
         self._load_vl_map = None
+        self._display_names = None
+        self._vl_names = None
 
     def _get_generators_df(self):
         """Return the generators DataFrame, fetched once and memoized.
@@ -227,6 +240,7 @@ class NetworkService:
         return network_path
 
     def load_network(self, network_path: str) -> dict:
+        source_path = network_path
         network_path = self._resolve_network_file(network_path)
         if not os.path.exists(network_path):
             raise FileNotFoundError(f"Network file/directory not found: {network_path}")
@@ -257,6 +271,7 @@ class NetworkService:
         # do NOT have. Keeping the default (False) preserves correctness;
         # the contention (~2-3 s) is an accepted residual cost.
         self.network = pn.load(file_path)
+        self._source_path = source_path
         self._invalidate_equipment_caches()
         return {"message": "Network loaded successfully", "id": self.network.id}
 
@@ -289,24 +304,59 @@ class NetworkService:
         if not self.network:
             raise ValueError("Network not loaded")
 
-        vl_names: dict[str, object] = {}
-        voltage_levels = self.network.get_voltage_levels()
-        if voltage_levels is not None and not voltage_levels.empty and 'name' in voltage_levels.columns:
-            vl_names = {str(vl_id): n for vl_id, n in voltage_levels['name'].items()}
-
+        vl_names = self.voltage_level_namer()
         name_map: dict[str, str] = {}
         for table in (self.network.get_lines(), self.network.get_2_windings_transformers()):
             if table is None or table.empty:
                 continue
             for eid, row in table.iterrows():
+                vl1, vl2 = str(row.get('voltage_level1_id')), str(row.get('voltage_level2_id'))
                 display = branch_display_name(
-                    eid, row.get('name'),
-                    vl_names.get(str(row.get('voltage_level1_id'))),
-                    vl_names.get(str(row.get('voltage_level2_id'))),
+                    eid, row.get('name'), vl_names.seen_from(vl1, vl2), vl_names.seen_from(vl2, vl1),
                 )
                 if display:
-                    name_map[eid] = display
+                    name_map[eid] = vl_names.rewrite(display)
         return name_map
+
+    def get_injection_names(self) -> dict[str, str]:
+        """Return ``{generator / load id: display name}``: its own name, else
+        the power plant matched onto the generator (``power_plants.json``
+        beside the network), else ``Generator — <voltage level>`` — the rule
+        of ``services/element_names.py``."""
+        if not self.network:
+            raise ValueError("Network not loaded")
+        plants = load_plant_names(resolve_plants_path(self._source_path))
+        return injection_names(self.network, plants, vl_names=self.voltage_level_namer())
+
+    def voltage_level_namer(self) -> VoltageLevelNames:
+        """The display names of the voltage levels — a nameless bus (PyPSA
+        virtual bus, substation OSM never named) reads by the substations it
+        ties (``Piquage EMALES(LES) / RANVILLE 225kV``). Cached per network."""
+        if not self.network:
+            raise ValueError("Network not loaded")
+        if self._vl_names is None:
+            self._vl_names = VoltageLevelNames(self.network)
+        return self._vl_names
+
+    def get_display_names(self) -> dict[str, str]:
+        """Display names of the branches, generators and loads — the
+        ``/api/branches`` name map, also read by the SLD labels and the
+        manual-action descriptions. Cached: the network is read-only after
+        load (``load_network`` clears it)."""
+        if self._display_names is None:
+            self._display_names = {**(self.get_element_names() or {}), **self.get_injection_names()}
+        return self._display_names
+
+    def manual_action_names(self, content: dict) -> dict[str, str]:
+        """Display names of what a user-built manual action names — its
+        switches (by the feeder their bay serves), generators, loads and
+        voltage levels — for ``describe_manual_action``; ``{}`` before a
+        network is loaded."""
+        if not self.network:
+            return {}
+        return manual_action_names(
+            self.network, content, self.get_display_names(), self.get_voltage_level_names(),
+        )
 
     def get_monitored_elements(self) -> list:
         """Return the list of element IDs that have at least one permanent operational limit."""
@@ -380,19 +430,15 @@ class NetworkService:
         }
 
     def get_voltage_level_names(self) -> dict:
-        """Return {vl_id: display_name} for all voltage levels."""
+        """Return {vl_id: display_name} for the voltage levels named other than
+        their id — a nameless bus by the substations it ties
+        (``voltage_level_namer``)."""
         if not self.network:
             raise ValueError("Network not loaded")
-
-        name_map: dict[str, str] = {}
-        voltage_levels = self.network.get_voltage_levels()
-        if voltage_levels is not None and not voltage_levels.empty and 'name' in voltage_levels.columns:
-            for vl_id, row in voltage_levels.iterrows():
-                n = row.get('name')
-                if n and str(n) != str(vl_id) and str(n) != 'nan':
-                    name_map[vl_id] = str(n)
-
-        return name_map
+        return {
+            vl_id: name for vl_id, name in self.voltage_level_namer().as_dict().items()
+            if name and name != vl_id and name != 'nan'
+        }
 
     def get_nominal_voltages(self) -> dict:
         """Return {vl_id: nominal_v_kv} mapping for all voltage levels, snapped to detected grid values.

@@ -34,7 +34,6 @@ from expert_backend.services.sanitize import sanitize_for_json
 from expert_backend.services.service_lock import with_network_lock
 from expert_backend.services.simulation_helpers import (
     build_combined_description,
-    build_manual_action_description,
     canonicalize_action_id,
     classify_action_content,
     clamp_tap,
@@ -43,6 +42,7 @@ from expert_backend.services.simulation_helpers import (
     compute_reduction_setpoint,
     compute_redispatch_setpoint,
     compute_target_max_rho,
+    describe_manual_action,
     extract_action_topology,
     half_open_overload_notes,
     is_injection_action,
@@ -393,7 +393,8 @@ class SimulationMixin(_Base):
         frontend feed reads "Manoeuvre manuelle sur <vl>: …" instead of the
         synthetic id. The description covers both breaker / disconnector
         toggles AND load / generator active-power retunes staged from the
-        same diagram (see ``build_manual_action_description``).
+        same diagram, named as the operator sees them (see
+        ``describe_manual_action``).
         """
         if not action_content:
             return
@@ -409,9 +410,7 @@ class SimulationMixin(_Base):
             entry.update(antenna_aggregate_descriptions(action_scores, aid))
             content = entry.get("content") or {}
             if aid.startswith("user_topo_") or is_switch_only_content(content):
-                desc = build_manual_action_description(
-                    content, voltage_level_id=voltage_level_id
-                )
+                desc = describe_manual_action(content, voltage_level_id)
                 entry["description_unitaire"] = desc
                 entry["description"] = desc
             self._dict_action[aid] = entry

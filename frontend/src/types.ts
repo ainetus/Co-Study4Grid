@@ -603,8 +603,11 @@ export interface FeederLabel {
     name: string | null;
     /** Voltage-level id at the far end of the branch; ``null`` when unknown. */
     other_vl: string | null;
-    /** Display label (far-end VL name + index); ``null`` → keep the default id. */
+    /** Display label (far-end VL name + index for a branch, the display name
+     *  of a generator / load / busbar); ``null`` → keep the default id. */
     label: string | null;
+    /** What the label names — a busbar label is never wrapped. */
+    kind?: 'branch' | 'generator' | 'load' | 'busbar' | null;
 }
 
 export interface VlOverlay {
@@ -644,6 +647,13 @@ export interface VlOverlay {
      * ``extract_vl_injections``.
      */
     injections?: Record<string, VlInjection>;
+    /**
+     * Switch display names for the displayed VL (``disjoncteur
+     * ATTAQL61MANDA``) — the maneuver list reads them; the action the
+     * operator builds is described with the same names (backend
+     * ``switch_names``).
+     */
+    switch_labels?: Record<string, string>;
 }
 
 // ===== Session Save =====

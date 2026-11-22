@@ -114,8 +114,8 @@ export function wrapFeederLabel(label: string): string[] {
  * single-line id used to, spreading up AND down rather than only downward into
  * the diagram.
  */
-function setFeederText(textEl: SVGTextElement, label: string): void {
-    const lines = wrapFeederLabel(label);
+function setFeederText(textEl: SVGTextElement, label: string, wrap = true): void {
+    const lines = wrap ? wrapFeederLabel(label) : [label];
     if (lines.length <= 1) {
         textEl.textContent = label;
         return;
@@ -139,7 +139,13 @@ function setFeederText(textEl: SVGTextElement, label: string): void {
  * far-end VL name + parallel-circuit index; here we swap the matching
  * ``<text>`` content, wrapping long labels so they don't occlude their
  * neighbours, and tag each with ``data-feeder-nav`` (the far-end VL id) so a
- * click can navigate to that VL's SLD.
+ * click can navigate to that VL's SLD. Generators, loads and busbars get their
+ * display names the same way (``MANDARINS 400kV Solar``, ``Load — MANDARINS
+ * 400kV``; a busbar label is never wrapped).
+ *
+ * Every relabelled text carries ``data-feeder-equip`` (its equipment id — the
+ * injection name buttons find their label by it) and its feeder group a
+ * ``<title>``: the raw id stays one hover away.
  *
  * Navigation does NOT depend on relabelling: on grids whose voltage levels
  * carry no friendly name (e.g. the RTE Matpower grids — ``label`` is ``null``)
@@ -164,8 +170,10 @@ export function applyFeederRelabels(
         el.removeAttribute('data-feeder-relabel');
         el.removeAttribute('data-feeder-orig');
         el.removeAttribute('data-feeder-nav');
+        el.removeAttribute('data-feeder-equip');
         el.classList.remove('sld-feeder-navigable');
     });
+    container.querySelectorAll('title[data-feeder-title]').forEach(el => el.remove());
     const entries = feederLabels
         ? Object.entries(feederLabels).filter(([, info]) => !!info && (!!info.label || !!info.other_vl))
         : [];
@@ -181,13 +189,27 @@ export function applyFeederRelabels(
         if (info.label) {
             textEl.setAttribute('data-feeder-orig', textEl.textContent ?? '');
             textEl.setAttribute('data-feeder-relabel', '1');
-            setFeederText(textEl, info.label);
+            textEl.setAttribute('data-feeder-equip', eid);
+            setFeederText(textEl, info.label, info.kind !== 'busbar');
+            addIdTitle(textEl, info.name && info.name !== info.label ? `${info.name} · ${eid}` : eid);
         }
         if (info.other_vl) {
             textEl.setAttribute('data-feeder-nav', info.other_vl);
             textEl.classList.add('sld-feeder-navigable');
         }
     }
+}
+
+/** Hang ``text`` on the label's feeder group as a native tooltip. A ``<title>``
+ *  inside the ``<text>`` itself would join its ``textContent``, which the
+ *  label passes match on. */
+function addIdTitle(textEl: SVGTextElement, text: string): void {
+    const group = textEl.parentElement;
+    if (!group || group.tagName.toLowerCase() !== 'g') return;
+    const title = document.createElementNS(SVG_NS, 'title');
+    title.setAttribute('data-feeder-title', '1');
+    title.textContent = text;
+    group.insertBefore(title, group.firstChild);
 }
 
 /** pypowsybl's SVG id escaping (``IdUtil.escapeId``): every non-alphanumeric
@@ -197,9 +219,11 @@ function escapeSldId(id: string): string {
 }
 
 /**
- * The feeder-name ``<text>`` of branch ``eid``: the text whose content is the
- * raw id (pypowsybl's default label), else the label inside the feeder group
- * ``id<eid>_95_<ONE|TWO|THREE>`` (side suffix of the branch terminal).
+ * The feeder-name ``<text>`` of equipment ``eid``: the text whose content is
+ * the raw id (pypowsybl's default label), else the label inside its group —
+ * ``id<eid>_95_<ONE|TWO|THREE>`` for a branch (side suffix of its terminal),
+ * ``id<eid>`` for an injection or a busbar (the topology preview draws names,
+ * not ids).
  */
 function findFeederText(
     texts: SVGTextElement[],
@@ -209,7 +233,7 @@ function findFeederText(
     const variants = new Set([eid, eid.replace(/\./g, '_'), eid.replace(/_/g, '.')]);
     const byText = texts.find(t => !claimed.has(t) && variants.has((t.textContent ?? '').trim()));
     if (byText) return byText;
-    const groupIdRe = new RegExp(`^${escapeSldId(eid)}_95_(ONE|TWO|THREE)$`);
+    const groupIdRe = new RegExp(`^${escapeSldId(eid)}(_95_(ONE|TWO|THREE))?$`);
     return texts.find(t =>
         !claimed.has(t)
         && groupIdRe.test(t.parentElement?.id ?? '')

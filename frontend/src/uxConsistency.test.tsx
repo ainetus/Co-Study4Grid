@@ -217,10 +217,10 @@ describe('UX consistency — Recommendation #2 (progressive disclosure)', () => 
     it('hides the disclosure subtree at rest (isViewing=false)', () => {
         render(<ActionCard {...baseProps} isViewing={false} />);
         expect(screen.queryByTestId('action-card-act_1-disclosure')).not.toBeInTheDocument();
-        // The description and the load-shedding editor row both belong
-        // to the disclosure, so neither should appear at rest.
-        expect(screen.queryByText('Shed load on LD_A — 12.5 MW')).not.toBeInTheDocument();
+        // The load-shedding editor belongs to the disclosure; the
+        // description stays under the title, folded to one line.
         expect(screen.queryByTestId('edit-mw-act_1')).not.toBeInTheDocument();
+        expect(screen.getByTestId('action-card-act_1-description')).toHaveStyle({ whiteSpace: 'nowrap' });
     });
 
     it('reveals the disclosure subtree when isViewing=true', () => {

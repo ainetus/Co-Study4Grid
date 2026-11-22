@@ -131,8 +131,12 @@ backend's `_build_action_entry_from_topology` maps to
 load-shedding / curtailment / redispatch actions already use. So
 **no new simulation code is needed**; the only backend addition is a
 generalised auto-description (`build_manual_action_description`) that
-names a user-built action covering switches AND injections
-(`"Manoeuvre manuelle sur <vl>: SW_A ouvert, GEN_X P=90.0 MW"`).
+names a user-built action covering switches AND injections, in the names
+the operator sees (`describe_manual_action` reads them from the network:
+`"Manoeuvre manuelle sur MANDARINS 400kV: disjoncteur MANDAL71WARAN ouvert,
+MANDARINS 400kV Solar P=90.0 MW"`; the raw ids when no network is loaded).
+The maneuver list shows the same switch names (`switch_labels` on the SLD
+payloads) — see [`sld-diagram-feeder-labels.md`](sld-diagram-feeder-labels.md) § 4.
 
 **Highlighting a combined injection action.** A user-built action can
 retune a generator AND a load at the same VL (`set_gen_p` + `set_load_p`).
@@ -160,7 +164,7 @@ contingency / post-action state being edited.
 | `POST /api/contingency-sld` | Same. |
 | `POST /api/action-variant-sld` | Same. The existing `changed_switches` diff is unchanged. |
 | `POST /api/sld-topology-preview` | **NEW.** Body: `{ voltage_level_id, disconnected_elements, switches, base_action_id? }`. Response: `{ svg, sld_metadata, voltage_level_id, switch_states, injections, stale_flows: true }`. |
-| `POST /api/simulate-manual-action` | Optional body field `voltage_level_id` used to auto-name user-built manual actions (`"Manoeuvre manuelle sur <vl>: SW_A ouvert, GEN_X P=90.0 MW"`). `action_content` may carry any combination of `switches` / `gens_p` / `loads_p`. |
+| `POST /api/simulate-manual-action` | Optional body field `voltage_level_id` used to auto-name user-built manual actions in display names (`"Manoeuvre manuelle sur MANDARINS 400kV: disjoncteur MANDAL71WARAN ouvert, MANDARINS 400kV Solar P=90.0 MW"`). `action_content` may carry any combination of `switches` / `gens_p` / `loads_p`. |
 | `POST /api/simulate-and-variant-diagram` | Same `voltage_level_id` plumbing + combined `action_content`. The NDJSON stream is unchanged (`{type:"metrics"} → {type:"diagram"}`). |
 
 **Injection baseline extraction** — `extract_vl_injections`

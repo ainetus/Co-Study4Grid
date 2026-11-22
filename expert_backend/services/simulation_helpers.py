@@ -76,17 +76,20 @@ def is_switch_only_content(content: Any) -> bool:
 def build_switch_action_description(
     switches: dict[str, bool],
     voltage_level_id: str | None = None,
+    names: dict[str, str] | None = None,
 ) -> str:
-    """Return ``"Manoeuvre manuelle sur <vl>: A ouvert, B fermé"`` ."""
+    """Return ``"Manoeuvre manuelle sur <vl>: A ouvert, B fermé"``, each id
+    read through ``names`` (its display name) when it has one."""
     if not switches:
         return "Manoeuvre manuelle (aucun switch)"
+    names = names or {}
     parts: list[str] = []
     for sw_id, is_open in switches.items():
         verb = "ouvert" if is_open else "fermé"
-        parts.append(f"{sw_id} {verb}")
+        parts.append(f"{names.get(sw_id, sw_id)} {verb}")
     body = ", ".join(parts)
     if voltage_level_id:
-        return f"Manoeuvre manuelle sur {voltage_level_id}: {body}"
+        return f"Manoeuvre manuelle sur {names.get(voltage_level_id, voltage_level_id)}: {body}"
     return f"Manoeuvre manuelle: {body}"
 
 
@@ -101,6 +104,7 @@ def _fmt_setpoint_mw(value: Any) -> str:
 def build_manual_action_description(
     content: dict[str, Any],
     voltage_level_id: str | None = None,
+    names: dict[str, str] | None = None,
 ) -> str:
     """Describe a user-built SLD-edit action (switch toggles AND/OR injection
     setpoint changes) in one human-readable French clause.
@@ -115,20 +119,42 @@ def build_manual_action_description(
 
     ``content`` is the post-``_build_action_entry_from_topology`` form, i.e.
     ``switches`` plus ``set_gen_p`` / ``set_load_p`` (absolute MW setpoints).
+
+    ``names`` maps the ids (switches, generators, loads, the voltage level) to
+    the names the operator sees (``disjoncteur ATTAQL61MANDA``,
+    ``MANDARINS 400kV``); an id without one stays as it is. Each switch clause
+    still ENDS with its state word (``ouvert`` / ``fermé``), which the
+    frontend's action-type classifier reads.
     """
+    names = names or {}
     parts: list[str] = []
     for sw_id, is_open in (content.get("switches") or {}).items():
-        parts.append(f"{sw_id} {'ouvert' if is_open else 'fermé'}")
+        parts.append(f"{names.get(sw_id, sw_id)} {'ouvert' if is_open else 'fermé'}")
     for gen_id, p in (content.get("set_gen_p") or {}).items():
-        parts.append(f"{gen_id} P={_fmt_setpoint_mw(p)} MW")
+        parts.append(f"{names.get(gen_id, gen_id)} P={_fmt_setpoint_mw(p)} MW")
     for load_id, p in (content.get("set_load_p") or {}).items():
-        parts.append(f"{load_id} P={_fmt_setpoint_mw(p)} MW")
+        parts.append(f"{names.get(load_id, load_id)} P={_fmt_setpoint_mw(p)} MW")
     if not parts:
         return "Manoeuvre manuelle (vide)"
     body = ", ".join(parts)
     if voltage_level_id:
-        return f"Manoeuvre manuelle sur {voltage_level_id}: {body}"
+        return f"Manoeuvre manuelle sur {names.get(voltage_level_id, voltage_level_id)}: {body}"
     return f"Manoeuvre manuelle: {body}"
+
+
+def describe_manual_action(content: dict[str, Any], voltage_level_id: str | None = None) -> str:
+    """:func:`build_manual_action_description` in the names the operator sees
+    (``Manoeuvre manuelle sur MANDARINS 400kV: disjoncteur ATTAQL61MANDA
+    ouvert``), read from the loaded network; the raw ids when no network is
+    loaded or naming fails — a description must never block a simulation."""
+    names: dict[str, str] = {}
+    try:
+        # Imported here: the network service is a singleton tests patch.
+        from expert_backend.services.network_service import network_service
+        names = network_service.manual_action_names(content)
+    except Exception as e:
+        logger.debug("Manual-action names unavailable: %s", e)
+    return build_manual_action_description(content, voltage_level_id, names)
 
 
 def compute_reduction_setpoint(

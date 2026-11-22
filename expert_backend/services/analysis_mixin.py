@@ -50,6 +50,7 @@ from expert_backend.services.analysis.action_enrichment import (
     derive_non_convergence,
     extract_action_topology,
     is_renewable_gen,
+    name_switches_in,
     scale_rho_series,
 )
 from expert_backend.services.analysis.analysis_runner import (
@@ -270,6 +271,8 @@ class AnalysisMixin(_Base):
                 enriched["action_topology"] = extract_action_topology(
                     action_obj, action_id, self._dict_action
                 )
+                enriched["description_unitaire"] = name_switches_in(
+                    enriched["description_unitaire"], enriched["action_topology"])
 
             load_shedding = self._compute_load_shedding_details(action_data)
             if load_shedding:

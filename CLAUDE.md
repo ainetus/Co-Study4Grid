@@ -231,7 +231,8 @@ Co-Study4Grid/
 | `docs/features/adding-action-type.md` | Cross-cutting checklist for adding/upgrading a remedial-action type (lib → backend → frontend → save/log/reload triad → regression specs) |
 | `docs/features/interaction-logging.md` | Replay-ready event log contract |
 | `docs/features/sld-topology-edit.md` | Interactive SLD topology edit → manual action card |
-| `docs/features/sld-diagram-feeder-labels.md` | SLD feeders relabelled by far-end VL name (+ parallel index), overload-halo friendly-name↔IIDM-id bridge, and the charging-current annotation explaining the "after" loading of a line opened at one end |
+| `docs/features/sld-diagram-feeder-labels.md` | SLD feeders relabelled by far-end VL name (+ parallel index); generators / loads / busbars / switches / the title by display name (ids on hover / copy); overload-halo friendly-name↔IIDM-id bridge; the charging-current annotation explaining the "after" loading of a line opened at one end |
+| `docs/features/action-card.md` | Remedial-action card: title = the names of what the action acts on, pictograms with tooltips (type, severity, loading, source), description under the title, max loading + overloads after grouped, raw id on hover / copy |
 | `docs/features/context-tab.md` | Context tab (leftmost): the Carte-Front situation map ported in — region mesh (`regionCvg`) else countries, mix pies / consumption rings / transfers / neighbour badges, contingency + overload highlights, snapshot at `/api/config` + early read, layout georeferencing |
 | `docs/performance/canvas-gesture-proxy.md` | Default pan/zoom renderer on large grids: canvas gesture proxy design, time budget on the European grid, decision log (never restyle the canvas, pointer capture, settle on a pause), next levers, probes |
 | `docs/features/vl-disk-interactions.md` | Interactive VL disks on the NAD (hover name / click → Inspect / double-click → SLD) + delegation performance contract |
@@ -344,8 +345,8 @@ guards the reductions documented in
 | POST | `/api/config` | Set network path, action file path, and all recommender parameters (incl. `model` and `compute_overflow_graph`) |
 | GET  | `/api/models` | List registered recommendation models with their `params_spec()` and capability flags |
 | POST | `/api/recommender-model` | Lightweight swap of the active recommender model (no network reload) — fired by the model dropdowns in Settings and above Analyze & Suggest |
-| GET  | `/api/branches` | List disconnectable elements (lines + 2-winding transformers) |
-| GET  | `/api/voltage-levels` | List voltage levels in the network |
+| GET  | `/api/branches` | List disconnectable elements (lines + 2-winding transformers); its `name_map` gives the display names of the branches AND the generators / loads (`network_service.get_display_names`) |
+| GET  | `/api/voltage-levels` | List voltage levels in the network; its `name_map` gives their display names — a nameless bus (PyPSA virtual bus) by the substations it ties (`Piquage EMALES(LES) / RANVILLE 225kV`) |
 | GET  | `/api/nominal-voltages` | Map voltage level IDs to nominal voltages (kV) |
 | GET  | `/api/element-voltage-levels` | Resolve equipment ID to its voltage level IDs |
 | GET  | `/api/voltage-level-substations` | Map voltage level IDs to their parent substation IDs (used by the SLD overlay and overflow pin pipeline) |
@@ -359,9 +360,9 @@ guards the reductions documented in
 | POST | `/api/action-variant-diagram-patch` | Per-branch delta + VL-subtree splice for action DOM recycling |
 | POST | `/api/focused-diagram` | Generate NAD sub-diagram focused on a specific element |
 | POST | `/api/action-variant-focused-diagram` | Focused NAD for specific VL in post-action state |
-| POST | `/api/n-sld` | Single Line Diagram for voltage level in N state. Response includes `switch_states` (per-switch open/closed map), `injections` (per-load/generator active-power baseline) used by the interactive SLD-edit feature, **and** `feeder_labels` (per-branch `{name, other_vl, label}` — `label` = far-end VL name + parallel index, used to relabel feeders and bridge friendly-named overloads to the SLD cell). |
-| POST | `/api/contingency-sld` | Single Line Diagram in N-1 state (with flow deltas + `switch_states` + `injections` + `feeder_labels`). |
-| POST | `/api/action-variant-sld` | SLD in post-action state (with flow deltas, `changed_switches`, `switch_states`, `injections`, `feeder_labels`). |
+| POST | `/api/n-sld` | Single Line Diagram for voltage level in N state. Response includes `switch_states` (per-switch open/closed map), `injections` (per-load/generator active-power baseline) used by the interactive SLD-edit feature, `feeder_labels` (per-feeder `{name, other_vl, label, kind}` — a branch's `label` = far-end VL name + parallel index, used to relabel feeders and bridge friendly-named overloads to the SLD cell; a generator / load / busbar's = its display name) **and** `switch_labels` (per-switch display name, `disjoncteur ATTAQL61MANDA`, read by the maneuver list). |
+| POST | `/api/contingency-sld` | Single Line Diagram in N-1 state (with flow deltas + `switch_states` + `injections` + `feeder_labels` + `switch_labels`). |
+| POST | `/api/action-variant-sld` | SLD in post-action state (with flow deltas, `changed_switches`, `switch_states`, `injections`, `feeder_labels`, `switch_labels`). |
 | POST | `/api/sld-topology-preview` | Target-topology preview SLD for the interactive SLD-edit feature: applies staged switch overrides on a throwaway variant and re-renders with topological colouring (no load flow; `stale_flows: true`). |
 | GET  | `/api/actions` | Return all available action IDs and descriptions |
 | POST | `/api/regenerate-overflow-graph` | Regenerate (or serve from cache) the overflow graph in hierarchical / geo layout — drives the toggle on the Overflow Analysis tab |

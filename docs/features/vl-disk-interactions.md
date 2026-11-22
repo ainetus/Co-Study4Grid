@@ -7,7 +7,7 @@ each disk:
 
 | Gesture | Effect |
 |---------|--------|
-| **Hover** | Shows the VL name in a small floating tooltip — but only while the on-diagram VL labels are hidden (the `🏷 VL` toggle). When the labels are visible the name is already drawn, so the tooltip stays out of the way. |
+| **Hover** | Shows the VL name in a small floating tooltip — but only while the on-diagram VL labels are hidden (the `🏷 VL` toggle), or for a PyPSA virtual bus, which is never labelled. When the labels are visible the name is already drawn, so the tooltip stays out of the way. |
 | **Single-click (disk)** | Selects the VL: fills the bottom-left **Inspect** field with the VL id, auto-zooms / highlights it, and surfaces the `📄 SLD` shortcut — exactly as typing the name into the Inspect box would. |
 | **Single-click (name box)** | Opens the VL's Single Line Diagram overlay directly — the name label next to the disk is a second, larger click target for the SLD. |
 | **Double-click (disk or name box)** | Opens the VL's Single Line Diagram overlay (the same entry point as the `📄 SLD` button / `onVlOpen`). |
@@ -90,6 +90,14 @@ Pan/zoom fluidity is the hard constraint — the NAD can carry ~5 000 VLs /
   (`App.css`), so none of the disk handlers fire mid-gesture. Pan/zoom is
   a direct `viewBox` rewrite (no React re-render per frame), and this
   layer adds nothing to it.
+- **Name boxes, once per bind.** When it binds, the layer labels
+  substations only (`applyVlNameBoxes`): a PyPSA virtual bus — a point on a
+  line — has its name box and connector hidden and its name
+  (`Piquage ECHALAS / RIVIERE (LA) 225kV`) shown on hover even while the
+  labels are on; a substation OSM never named reads its display name. One
+  pass over the text nodes, a write only for those few boxes; the canvas
+  proxy skips the hidden ones and picks the new text up on its next
+  rebuild. See [`sld-diagram-feeder-labels.md`](sld-diagram-feeder-labels.md) § 4.
 
 ### The click-vs-pan subtlety (regression-tested)
 

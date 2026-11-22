@@ -37,6 +37,26 @@ describe('SldEditPanel', () => {
         expect(b.textContent).toMatch(/ouvert.*fermé/);
     });
 
+    it('names each staged switch and retune as the SLD does, the raw id on hover', () => {
+        render(<SldEditPanel
+            {...defaultProps}
+            pendingChanges={[{ switchId: 'VL_M_BK_L1', baselineOpen: false, targetOpen: true }]}
+            injectionChanges={[{ equipmentId: 'GEN_S', kind: 'generator', baselineP: 14, targetP: 10 }]}
+            switchLabels={{ VL_M_BK_L1: 'disjoncteur MANDAL71WARAN' }}
+            feederLabels={{ GEN_S: { name: null, other_vl: null, label: 'MANDARINS 400kV Solar', kind: 'generator' } }}
+        />);
+        const sw = screen.getByText('disjoncteur MANDAL71WARAN');
+        expect(sw).toHaveAttribute('title', 'VL_M_BK_L1');
+        expect(screen.getByTestId('sld-edit-change-VL_M_BK_L1').textContent).toMatch(/disjoncteur MANDAL71WARAN: fermé → ouvert/);
+        expect(screen.getByText('MANDARINS 400kV Solar')).toHaveAttribute('title', 'GEN_S');
+    });
+
+    it('keeps the raw ids when no names are known', () => {
+        render(<SldEditPanel {...defaultProps}
+            pendingChanges={[{ switchId: 'SW_A', baselineOpen: false, targetOpen: true }]} />);
+        expect(screen.getByText('SW_A')).toBeInTheDocument();
+    });
+
     it('disables both action buttons when no changes are staged', () => {
         render(<SldEditPanel {...defaultProps} />);
         expect(screen.getByTestId('sld-edit-reset')).toBeDisabled();

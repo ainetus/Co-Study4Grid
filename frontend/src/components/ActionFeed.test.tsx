@@ -6,7 +6,7 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study. 
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { interactionLogger } from '../utils/interactionLogger';
 
@@ -1083,7 +1083,7 @@ describe('ActionFeed', () => {
 
         // Should show load shedding description with asset name
         expect(screen.getByText(/Shedding on/)).toBeInTheDocument();
-        expect(screen.getByText('LOAD_1')).toBeInTheDocument();
+        expect(screen.getAllByText('LOAD_1').length).toBeGreaterThanOrEqual(2); // title + editor
 
         // VL should be rendered as clickable badge button
         const vlButtons = screen.getAllByText('VL_ALPHA');
@@ -1146,8 +1146,8 @@ describe('ActionFeed', () => {
 
         // Both loads are named in ONE editor whose value is the action's total:
         // the backend spreads an edited total pro rata over them.
-        expect(screen.getByText('LOAD_A')).toBeInTheDocument();
-        expect(screen.getByText('LOAD_B')).toBeInTheDocument();
+        expect(screen.getAllByText('LOAD_A').length).toBeGreaterThanOrEqual(2); // title + editor
+        expect(screen.getAllByText('LOAD_B').length).toBeGreaterThanOrEqual(2); // title + editor
         expect(screen.getAllByText(/Shedding on/)).toHaveLength(1);
         expect(screen.getByTestId(`edit-mw-${actionId}`)).toHaveValue(35.3);
     });
@@ -1293,7 +1293,7 @@ describe('ActionFeed', () => {
 
         // Simplified format: "Shedding on LOAD_PR in MW: [input]"
         expect(screen.getByText(/Shedding on/)).toBeInTheDocument();
-        expect(screen.getByText('LOAD_PR')).toBeInTheDocument();
+        expect(screen.getAllByText('LOAD_PR').length).toBeGreaterThanOrEqual(2); // title + editor
         // VL badge should still be rendered
         const vlButtons = screen.getAllByText('VL_PR');
         expect(vlButtons.length).toBeGreaterThanOrEqual(1);
@@ -1324,7 +1324,7 @@ describe('ActionFeed', () => {
 
         // Simplified format: "Curtailment on WIND_1 in MW: [input]"
         expect(screen.getByText(/Curtailment on/)).toBeInTheDocument();
-        expect(screen.getByText('WIND_1')).toBeInTheDocument();
+        expect(screen.getAllByText('WIND_1').length).toBeGreaterThanOrEqual(2); // title + editor
         // VL badge should still be rendered
         const vlButtons = screen.getAllByText('VL_WIND');
         expect(vlButtons.length).toBeGreaterThanOrEqual(1);
@@ -1374,12 +1374,12 @@ describe('ActionFeed', () => {
 
         // Viewing the LS card discloses the load-shedding editor.
         expect(screen.getByText(/Shedding on/)).toBeInTheDocument();
-        expect(screen.getByText('LOAD_NEW')).toBeInTheDocument();
+        expect(screen.getAllByText('LOAD_NEW').length).toBeGreaterThanOrEqual(2); // title + editor
 
         // Viewing the RC card discloses the curtailment editor.
         rerender(<ActionFeed {...props} selectedActionId={rcId} />);
         expect(screen.getByText(/Curtailment on/)).toBeInTheDocument();
-        expect(screen.getByText('GEN_NEW')).toBeInTheDocument();
+        expect(screen.getAllByText('GEN_NEW').length).toBeGreaterThanOrEqual(2); // title + editor
     });
 
     it('shows Target MW column in score table for load shedding type', async () => {
@@ -3482,8 +3482,11 @@ describe('ActionFeed', () => {
             }
             expect(screen.queryByTestId('action-card-act_3')).not.toBeInTheDocument();
             expect(screen.queryByTestId('action-card-act_5')).not.toBeInTheDocument();
-            // act_4 was revealed out of sequence: it keeps its rank #5.
-            expect(screen.getByTestId('action-card-act_4')).toHaveTextContent('#5 — act_4');
+            // act_4 was revealed out of sequence: it keeps its rank #5 (the
+            // title shows the rank and names; the raw id is its tooltip).
+            const title = within(screen.getByTestId('action-card-act_4')).getByRole('heading', { level: 4 });
+            expect(title).toHaveTextContent(/^#5/);
+            expect(title).toHaveAttribute('title', 'act_4');
             expect(screen.getByText('4 of 6 suggestions shown')).toBeInTheDocument();
         });
 

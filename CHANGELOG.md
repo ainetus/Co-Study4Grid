@@ -7,6 +7,43 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Readable names in the SLDs and on the action cards; action card redesign
+
+- **SLDs read by name**: the title is the voltage level's name
+  (`MANDARINS 400kV`, id on hover + copy button); generators and loads read by
+  their own name (`MANDARINS 400kV Solar`, `Exchange with GB`), else the plant
+  matched onto them in the bundle's `power_plants.json` (`Gravelines`,
+  `Landivisiau`), else what and where (`Load — MANDARINS 400kV`); busbars by
+  their name; the maneuver list and the injection editor by the same names
+  (`disjoncteur MANDAL71WARAN: fermé → ouvert`). Every relabelled feeder keeps
+  its raw id as a hover tooltip. Backend: `services/equipment_names.py`, the
+  rules in `services/element_names.py`, `switch_labels` on the SLD payloads,
+  generator / load names in the `/api/branches` name map.
+- **PyPSA virtual buses named after the substations they tap**: the 191
+  virtual buses of the French bundle (taps and junctions on lines, named by
+  the pipeline after their line — `Liaison 225 kV n°2 Échalas - Le Soleil
+  225kV`, `COQUAL61TOURB 225kV` — or left with a raw id) and 11 OSM
+  substations never named now read by their nearest real substations —
+  `Piquage EMALES(LES) / RANVILLE 225kV`, `Poste près de BEAUTOR / CAPELLE
+  (LA) 225kV` — in the voltage-level and line name maps, the SLDs (title,
+  far-end feeders, generators), the hover names, the Inspect search and the
+  Context tab: a voltage-level label never shows a line's name. A line to a
+  tap reads `RANVILLE — Piquage EMALES(LES)`. On the network diagrams only
+  substations are labelled: a virtual bus (a point on a line) shows no label
+  and gives its name on hover.
+- **Manual actions described in names**: `Manoeuvre manuelle sur MANDARINS
+  400kV: disjoncteur MANDAL71WARAN ouvert` instead of the switch's raw id; the
+  dictionary's coupling descriptions drop the coupler's id (`Ouverture du
+  couplage dans le poste 'MANDARINS 400kV'`).
+- **Action cards redesigned**: the title names what the action acts on (the
+  line, the coupled voltage level, the shed load…) instead of its id, each
+  name a link (zoom; double-click a voltage level: SLD); the description sits
+  right under it; max loading and the overloads after the action form one
+  group; pictograms with tooltips replace the labels and emoji (type,
+  severity, loading, overloads after, source, location, star / reject); the
+  raw action id stays on hover and behind a copy button. Both themes. See
+  `docs/features/action-card.md`.
+
 ### Context tab — date and hour made prominent, data credits in a bubble
 
 - **The situation card's date and hour** now sit in a tile of their own, in

@@ -172,9 +172,23 @@ expert_backend/
 │   │                              # endpoints — kept out of main.py so it
 │   │                              # stays under the module-size ceiling
 │   ├── element_names.py           # Display-name rule every view shares: a raw
-│   │                              # OSM id (way/…, merged_way/…) reads by its
-│   │                              # end substations (get_element_names, SLD
-│   │                              # feeder labels, Context tab snapshot)
+│   │                              # OSM id (way/…, merged_way/…, virtual_…)
+│   │                              # reads by its end substations (get_element_names,
+│   │                              # SLD feeder labels, Context tab snapshot); a
+│   │                              # generator / load by its name, else its
+│   │                              # matched plant, else "Load — <VL>"; a switch
+│   │                              # by the feeder its bay serves; a nameless bus
+│   │                              # by the substations it ties ("Piquage A / B")
+│   ├── equipment_names.py         # Network readers applying those rules:
+│   │                              # VoltageLevelNames (nameless buses — PyPSA
+│   │                              # virtual buses — walked to their nearest real
+│   │                              # substations; cached per study by
+│   │                              # network_service.voltage_level_namer),
+│   │                              # injection_names (→ get_display_names → the
+│   │                              # /api/branches name map), busbar_names,
+│   │                              # switch_names (node-breaker bay walk),
+│   │                              # manual_action_names (describe_manual_action).
+│   │                              # See docs/features/sld-diagram-feeder-labels.md § 4
 │   └── sanitize.py                # NumPy → native-Python recursive coercion
 │                                  # (`sanitize_for_json`)
 ├── recommenders/               # Pluggable recommendation-model subsystem:
@@ -398,11 +412,13 @@ Diagram & topology:
   operable-switch booleans) AND an `injections` map (per-VL load /
   generator active-power baseline: `kind`, `p`, gen `min_p` / `max_p` /
   `energy_source`), driving the interactive SLD-edit baseline, AND a
-  `feeder_labels` map (`build_feeder_labels` — per-branch
-  `{name, other_vl, label}`: `label` = far-end VL name + parallel index
-  for feeder relabelling, `name` = friendly/operator name bridging
-  friendly-named overloads to the IIDM-id-keyed SLD cell). See
-  `docs/features/sld-diagram-feeder-labels.md`.
+  `feeder_labels` map (`build_feeder_labels` — per-feeder
+  `{name, other_vl, label, kind}`: a branch's `label` = far-end VL name +
+  parallel index for feeder relabelling, `name` = friendly/operator name
+  bridging friendly-named overloads to the IIDM-id-keyed SLD cell; a
+  generator / load / busbar's `label` = its display name), AND a
+  `switch_labels` map (`switch_names` — `disjoncteur ATTAQL61MANDA`, read by
+  the maneuver list). See `docs/features/sld-diagram-feeder-labels.md`.
 - `POST /api/sld-topology-preview` — re-renders the VL SLD with the
   user's staged switch overrides applied on a throwaway variant
   (topological-colouring, NO load flow). Response carries
@@ -434,8 +450,10 @@ Analysis:
   `services/analysis/overflow_geo_transform.py` (pure function,
   lxml-based, fully unit-tested).
 - `POST /api/simulate-manual-action` — one-off simulation. Optional
-  `voltage_level_id` field used to auto-name switch-only manual actions
-  (`"Manoeuvre manuelle sur <vl>: SW_A ouvert, SW_B fermé"`).
+  `voltage_level_id` field used to auto-name user-built manual actions in
+  display names (`describe_manual_action`: `"Manoeuvre manuelle sur
+  MANDARINS 400kV: disjoncteur MANDAL71WARAN ouvert"`, raw ids without a
+  loaded network).
 - `POST /api/simulate-and-variant-diagram` — combined NDJSON stream
   emitting `{type:"metrics"}` then `{type:"diagram"}` so the
   sidebar can update ahead of the SVG.

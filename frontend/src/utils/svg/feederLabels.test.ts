@@ -186,6 +186,61 @@ describe('applyFeederRelabels', () => {
         expect(t1.getAttribute('data-feeder-nav')).toBe('VL_A');
         expect(t2.textContent).toBe('X2');
     });
+
+    // Generators, loads and busbars read by their display names too.
+    describe('injections and busbars', () => {
+        const gen = (): Record<string, FeederLabel> => ({
+            'G_way_1-400': { name: null, other_vl: null, label: 'MANDARINS 400kV Solar', kind: 'generator' },
+        });
+
+        it('relabels a generator, tags its equipment id and keeps the raw id on hover', () => {
+            const container = mount('<svg><g id="idG_95_way_95_1_45_400" class="sld-generator"><text id="t">G_way_1-400</text></g></svg>');
+            applyFeederRelabels(container, gen(), '<svg/>');
+            const t = container.querySelector('#t')!;
+            expect(t.textContent).toBe('MANDARINS 400kVSolar'); // wrapped on two <tspan> lines
+            expect(t.querySelectorAll('tspan')).toHaveLength(2);
+            expect(t.getAttribute('data-feeder-equip')).toBe('G_way_1-400');
+            expect(t.hasAttribute('data-feeder-nav')).toBe(false);
+            const title = container.querySelector('g > title[data-feeder-title]')!;
+            expect(title.textContent).toBe('G_way_1-400');
+            // The tooltip is the group's, never part of the label text.
+            expect(t.textContent).not.toContain('G_way_1-400');
+        });
+
+        it('names the branch and its id in the tooltip of a relabelled branch feeder', () => {
+            const container = mount('<svg><g><text id="t">relation_8423569-225</text></g></svg>');
+            applyFeederRelabels(container, fl(), '<svg/>');
+            expect(container.querySelector('title')!.textContent).toBe('MARSIL61PRAGN · relation_8423569-225');
+        });
+
+        it('never wraps a busbar label', () => {
+            const container = mount('<svg><g><text id="t">VL_1_BBS1</text></g></svg>');
+            applyFeederRelabels(container, {
+                VL_1_BBS1: { name: null, other_vl: null, label: 'Liaison 225 kV n°2 Échalas - Le Soleil JdB1', kind: 'busbar' },
+            }, '<svg/>');
+            const t = container.querySelector('#t')!;
+            expect(t.querySelectorAll('tspan')).toHaveLength(0);
+            expect(t.textContent).toBe('Liaison 225 kV n°2 Échalas - Le Soleil JdB1');
+        });
+
+        it('finds an injection by its group id when the preview draws names, not ids', () => {
+            const container = mount(
+                '<svg><g id="idG_95_way_95_1_45_400"><text id="idG_95_way_95_1_45_400_95_N_95_LABEL">MANDARINS 400kV Solar</text></g></svg>',
+            );
+            applyFeederRelabels(container, gen(), '<svg/>');
+            expect(container.querySelector('text')!.getAttribute('data-feeder-equip')).toBe('G_way_1-400');
+        });
+
+        it('drops the equipment tag and the tooltip on restore', () => {
+            const container = mount('<svg><g><text id="t">G_way_1-400</text></g></svg>');
+            applyFeederRelabels(container, gen(), '<svg/>');
+            applyFeederRelabels(container, {}, '<svg/>');
+            const t = container.querySelector('#t')!;
+            expect(t.textContent).toBe('G_way_1-400');
+            expect(t.hasAttribute('data-feeder-equip')).toBe(false);
+            expect(container.querySelector('title')).toBeNull();
+        });
+    });
 });
 
 describe('applyFeederLabelWrap', () => {

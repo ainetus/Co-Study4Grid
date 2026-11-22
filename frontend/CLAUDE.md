@@ -135,6 +135,11 @@ frontend/
     │   ├── ActionOverviewDiagram.tsx, ActionSearchDropdown.tsx,
     │   ├── ActionTypeIcon.tsx, SeverityIcon.tsx,   # action-type + severity
     │   │                               # pictograms (shared by cards / rings / pins)
+    │   ├── Glyph.tsx               # monochrome UI pictograms (loading, source,
+    │   │                           # location, copy, star / cross, warning…) —
+    │   │                           # the tooltip lives on the element carrying it
+    │   ├── CopyIdButton.tsx        # copy a raw id (SLD title, card footer):
+    │   │                           # names on screen, ids one click away
     │   ├── ContextMapView.tsx      # Context tab (leftmost, not detachable):
     │   │                           # Carte-Front situation map — pan/zoom,
     │   │                           # summary + legend cards, hover tooltips,
@@ -244,6 +249,10 @@ frontend/
         ├── actionTypes.ts             # classifyActionType + matchesActionTypeFilter
         │                              # + DEFAULT_ACTION_OVERVIEW_FILTERS — shared
         │                              # by every filter UI surface (PR #109)
+        ├── actionLabels.ts            # What an action card names: title targets
+        │                              # (what it acts on), location chips, the
+        │                              # description with ids read by name
+        │                              # (humanizeIds) — docs/features/action-card.md
         ├── injectionActions.ts        # Multi-element injection actions (evacuation-
         │                              # antenna aggregates, recommender 0.3.4+): MW
         │                              # totals the editors show / send (the backend

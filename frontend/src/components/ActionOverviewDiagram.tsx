@@ -24,6 +24,7 @@ import {
 import { usePanZoom } from '../hooks/usePanZoom';
 import ActionCardPopover from './ActionCardPopover';
 import InspectSearchField from './InspectSearchField';
+import { applyVlNameBoxes } from '../utils/svg/vlInteractions';
 import { filterInspectables } from '../utils/inspectables';
 import { interactionLogger } from '../utils/interactionLogger';
 import {
@@ -591,6 +592,13 @@ const ActionOverviewDiagram: React.FC<ActionOverviewDiagramProps> = ({
         performance.mark('aod:highlights:end');
         perfMeasure('aod:highlights', 'aod:highlights:start', 'aod:highlights:end');
     }, [svgReady, preparedSvg, n1MetaIndex, contingency, overloadedLines]);
+
+    // Labels as on the N-1 tab: substations only, by their display names.
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!svgReady || !container || !n1MetaIndex?.textNodesBySvgId) return;
+        applyVlNameBoxes(container, n1MetaIndex.textNodesBySvgId, displayName);
+    }, [svgReady, preparedSvg, n1MetaIndex, displayName]);
 
     // (Re)apply pins whenever the source SVG or pin list changes.
     // Pins are appended to the SVG itself (not to the container

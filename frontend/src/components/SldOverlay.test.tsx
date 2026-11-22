@@ -42,6 +42,17 @@ describe('SldOverlay', () => {
         expect(screen.getByText('VL_400')).toBeInTheDocument();
     });
 
+    it('titles the overlay with the voltage level display name, its id on hover and to copy', () => {
+        const writeText = vi.fn(() => Promise.resolve());
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+        render(<SldOverlay {...defaultProps} displayName={(id) => (id === 'VL_400' ? 'MANDARINS 400kV' : id)} />);
+        const title = screen.getByTestId('sld-overlay-title');
+        expect(title).toHaveTextContent('MANDARINS 400kV');
+        expect(title).toHaveAttribute('title', 'Voltage level VL_400');
+        fireEvent.click(screen.getByTestId('sld-overlay-copy-id'));
+        expect(writeText).toHaveBeenCalledWith('VL_400');
+    });
+
     it('renders the close button', () => {
         render(<SldOverlay {...defaultProps} />);
         expect(screen.getByTitle('Close')).toBeInTheDocument();
@@ -1391,6 +1402,23 @@ describe('SldOverlay', () => {
                 expect(screen.queryByTestId('sld-injection-popover')).toBeNull();
                 fireEvent.click(container.querySelector('.sld-injection-name-label')!);
                 expect(screen.getByTestId('sld-injection-popover')).toBeInTheDocument();
+            });
+
+            it('keeps the name button on an injection relabelled with its display name', () => {
+                const vlOverlay: VlOverlay = {
+                    ...overlayWithName(),
+                    feeder_labels: { GEN_A: { name: null, other_vl: null, label: 'MANDARINS 400kV Solar', kind: 'generator' } },
+                };
+                const { container } = render(<SldOverlay {...editProps({ vlOverlay })} />);
+                const label = container.querySelector('text.sld-injection-name-label')!;
+                // Wrapped on two <tspan> lines.
+                expect(Array.from(label.querySelectorAll('tspan')).map(t => t.textContent).join(' ')).toBe('MANDARINS 400kV Solar');
+                expect(label.getAttribute('data-feeder-equip')).toBe('GEN_A');
+                expect(container.querySelector('.sld-injection-name-btn')!.getAttribute('data-injection-equip')).toBe('GEN_A');
+                // The editor reads the name too, the id on hover.
+                fireEvent.click(label);
+                expect(screen.getByTestId('sld-injection-name')).toHaveTextContent('MANDARINS 400kV Solar');
+                expect(screen.getByTestId('sld-injection-name')).toHaveAttribute('title', 'GEN_A');
             });
 
             it('renders no name button in read-only mode', () => {

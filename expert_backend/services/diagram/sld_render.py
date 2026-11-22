@@ -13,6 +13,7 @@ from collections import defaultdict
 from typing import Any
 
 from expert_backend.services.element_names import is_real_name
+from expert_backend.services.equipment_names import VoltageLevelNames, busbar_names
 
 logger = logging.getLogger(__name__)
 
@@ -245,9 +246,21 @@ def _collect_vl_branches(network: Any, voltage_level_id: str) -> list[dict]:
     return branches
 
 
-def build_feeder_labels(network: Any, voltage_level_id: str) -> dict[str, dict]:
-    """Return ``{equipment_id: {name, other_vl, label}}`` for the branch feeders
-    of ``voltage_level_id``.
+def build_feeder_labels(
+    network: Any,
+    voltage_level_id: str,
+    injections: dict[str, dict] | None = None,
+    display_names: dict[str, str] | None = None,
+    vl_names: VoltageLevelNames | None = None,
+) -> dict[str, dict]:
+    """Return ``{equipment_id: {name, other_vl, label, kind}}`` for the feeders
+    of ``voltage_level_id``: its branches, and — given ``injections`` (the
+    :func:`extract_vl_injections` map) and ``display_names`` — its generators
+    and loads (``MANDARINS 400kV Solar``, ``Load — MANDARINS 400kV``), plus
+    its named busbars. ``kind`` is ``branch`` / ``generator`` / ``load`` /
+    ``busbar``. Given ``vl_names``, a far end that is a nameless bus reads by
+    the substations it ties, seen from this one (``Piquage EMALES(LES)
+    225kV``).
 
     ``label`` is the **name of the voltage level at the OTHER end** of the
     branch — far more interpretable than the raw IIDM branch id pypowsybl draws
@@ -271,7 +284,7 @@ def build_feeder_labels(network: Any, voltage_level_id: str) -> dict[str, dict]:
     """
     if not voltage_level_id:
         return {}
-    vl_names = _vl_name_map(network)
+    named = _vl_name_map(network) if vl_names is None else {}
     branches = _collect_vl_branches(network, voltage_level_id)
 
     by_other: dict[str, list[dict]] = defaultdict(list)
@@ -282,7 +295,11 @@ def build_feeder_labels(network: Any, voltage_level_id: str) -> dict[str, dict]:
     for other_vl, members in by_other.items():
         members.sort(key=lambda b: b["eid"])
         multiple = len(members) > 1
-        other_name = vl_names.get(other_vl)
+        if vl_names is not None:
+            seen = vl_names.seen_from(other_vl, voltage_level_id)
+            other_name = seen if _is_real_name(seen, other_vl) else None
+        else:
+            other_name = named.get(other_vl)
         for idx, b in enumerate(members, start=1):
             if other_name:
                 label = f"{other_name} {idx}" if multiple else other_name
@@ -296,7 +313,15 @@ def build_feeder_labels(network: Any, voltage_level_id: str) -> dict[str, dict]:
                 "name": b["name"],
                 "other_vl": other_vl or None,
                 "label": label,
+                "kind": "branch",
             }
+    for eid, info in (injections or {}).items():
+        label = (display_names or {}).get(eid)
+        if label and label != eid:
+            result[eid] = {"name": None, "other_vl": None, "label": label, "kind": info.get("kind")}
+    if display_names is not None:
+        for bid, name in busbar_names(network, voltage_level_id).items():
+            result[bid] = {"name": None, "other_vl": None, "label": name, "kind": "busbar"}
     return result
 
 

@@ -8,6 +8,7 @@ import React, { useState, useMemo } from 'react';
 import { colors, space, text, radius } from '../styles/tokens';
 import { interactionLogger } from '../utils/interactionLogger';
 import type { SwitchToggleEntry, InjectionChangeEntry } from '../hooks/useSldTopologyEdit';
+import type { FeederLabel } from '../types';
 
 export interface SldEditPanelProps {
     pendingChanges: SwitchToggleEntry[];
@@ -41,12 +42,17 @@ export interface SldEditPanelProps {
     onFocus?: (equipmentId: string | null) => void;
     onRemove?: (equipmentId: string) => void;
     onRemoveMany?: (equipmentIds: string[]) => void;
+    /** Display names of the VL's switches (``disjoncteur ATTAQL61MANDA``) —
+     *  the names the simulated action will be described with. */
+    switchLabels?: Record<string, string>;
+    /** The SLD feeder labels — the display names of the loads / generators. */
+    feederLabels?: Record<string, FeederLabel>;
 }
 
 const SldEditPanel: React.FC<SldEditPanelProps> = ({
     pendingChanges, injectionChanges = [], onInjectionRemove,
     onReset, onSimulate, onClose, busy = false, combinedWithActionId = null,
-    focusedSwitchId = null, onFocus, onRemove, onRemoveMany,
+    focusedSwitchId = null, onFocus, onRemove, onRemoveMany, switchLabels, feederLabels,
 }) => {
     const hasSwitchChanges = pendingChanges.length > 0;
     const hasInjectionChanges = injectionChanges.length > 0;
@@ -156,10 +162,10 @@ const SldEditPanel: React.FC<SldEditPanelProps> = ({
                                     style={{
                                         flex: 1, textAlign: 'left', cursor: 'pointer',
                                         background: 'transparent', border: 'none', padding: 0,
-                                        color: colors.textSecondary, fontFamily: 'monospace', fontSize: text.xs,
+                                        color: colors.textSecondary, fontFamily: switchLabels?.[switchId] ? undefined : 'monospace', fontSize: text.xs,
                                     }}
                                 >
-                                    <strong style={{ color: colors.textPrimary }}>{switchId}</strong>
+                                    <strong style={{ color: colors.textPrimary }} title={switchId}>{switchLabels?.[switchId] ?? switchId}</strong>
                                     {': '}{baselineOpen ? 'ouvert' : 'fermé'} → {targetOpen ? 'ouvert' : 'fermé'}
                                 </button>
                                 <button
@@ -212,10 +218,10 @@ const SldEditPanel: React.FC<SldEditPanelProps> = ({
                                     style={{
                                         flex: 1, textAlign: 'left', cursor: 'pointer',
                                         background: 'transparent', border: 'none', padding: 0,
-                                        color: colors.textSecondary, fontFamily: 'monospace', fontSize: text.xs,
+                                        color: colors.textSecondary, fontFamily: feederLabels?.[equipmentId]?.label ? undefined : 'monospace', fontSize: text.xs,
                                     }}
                                 >
-                                    <strong style={{ color: colors.textPrimary }}>{equipmentId}</strong>
+                                    <strong style={{ color: colors.textPrimary }} title={equipmentId}>{feederLabels?.[equipmentId]?.label ?? equipmentId}</strong>
                                     {': '}{baseStr} → {targetP.toFixed(1)} MW
                                 </button>
                                 <button

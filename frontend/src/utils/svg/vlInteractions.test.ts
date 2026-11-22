@@ -6,7 +6,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MetadataIndex, NodeMeta } from '../../types';
-import { attachVlInteractions, VL_SINGLE_CLICK_DELAY_MS } from './vlInteractions';
+import { applyVlNameBoxes, attachVlInteractions, isVirtualBus, VL_SINGLE_CLICK_DELAY_MS } from './vlInteractions';
 import { GESTURE_PROXY_ATTR } from './canvasProxy';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -343,6 +343,84 @@ describe('attachVlInteractions', () => {
         vi.advanceTimersByTime(VL_SINGLE_CLICK_DELAY_MS);
         expect(onOpenSld).toHaveBeenCalledWith('VL_400');
         expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    // Only substations are labelled on the diagram, by the names every other
+    // view reads: a PyPSA virtual bus (a point on a line) shows no label.
+    describe('name boxes', () => {
+        const withNameBox = (text: string, vlId = 'VL_400') => {
+            const { container, disk } = makeContainer();
+            const fo = document.createElementNS(SVG_NS, 'foreignObject');
+            fo.setAttribute('class', 'nad-text-nodes');
+            const box = document.createElement('div');
+            box.id = '1';
+            box.className = 'nad-label-box';
+            const line = document.createElement('div');
+            line.textContent = text;
+            box.appendChild(line);
+            fo.appendChild(box);
+            const edges = document.createElementNS(SVG_NS, 'g');
+            edges.setAttribute('class', 'nad-text-edges');
+            const connector = document.createElementNS(SVG_NS, 'polyline');
+            connector.id = '2';
+            edges.appendChild(connector);
+            const svg = container.querySelector('svg')!;
+            svg.appendChild(edges);
+            svg.appendChild(fo);
+            const meta = makeMetaIndex();
+            const node: NodeMeta = { ...meta.nodesBySvgId.get('vl1-svg')!, equipmentId: vlId };
+            meta.nodesBySvgId = new Map([['vl1-svg', node]]);
+            meta.textNodesBySvgId = new Map([['1', node]]);
+            return { container, meta, box, line, connector, disk };
+        };
+
+        it('reads the display name when it differs from the drawn one', () => {
+            const { container, meta, line } = withNameBox('way_9-225 225kV');
+            cleanups.push(attachVlInteractions(container, meta, {
+                displayName: (id) => (id === 'VL_400' ? 'Poste près de BRAVO / CHARLIE 225kV' : id),
+            }));
+            expect(line.textContent).toBe('Poste près de BRAVO / CHARLIE 225kV');
+        });
+
+        it('hides the name box and the connector of a virtual bus', () => {
+            const { container, meta, box, connector } = withNameBox(
+                'Liaison 225 kV n°2 Échalas - Le Soleil 225kV', 'VL_virtual_way_130228930_1-225');
+            cleanups.push(attachVlInteractions(container, meta, { displayName: () => 'Piquage ECHALAS / RIVIERE (LA) 225kV' }));
+            expect(box.style.display).toBe('none');
+            expect(connector.style.display).toBe('none');
+        });
+
+        it('names a virtual bus on hover, labels shown or not', () => {
+            const { container, meta, disk } = withNameBox('x', 'VL_virtual_way_1_1-225');
+            cleanups.push(attachVlInteractions(container, meta, {
+                displayName: (id) => (id === 'VL_virtual_way_1_1-225' ? 'Piquage ALPHA / BRAVO 225kV' : id),
+            }));
+            disk.dispatchEvent(mouse('mouseover'));
+            const tooltip = container.querySelector<HTMLDivElement>('.cs4g-vl-hover-tooltip');
+            expect(tooltip?.textContent).toBe('Piquage ALPHA / BRAVO 225kV (VL_virtual_way_1_1-225)');
+        });
+
+        it('works on a detached diagram too (the action overview clone)', () => {
+            const { container, meta, box } = withNameBox('x', 'VL_virtual_way_1_1-225');
+            const clone = container.querySelector('svg')!.cloneNode(true) as SVGSVGElement;
+            applyVlNameBoxes(clone, meta.textNodesBySvgId!);
+            expect((clone.querySelector('.nad-label-box') as HTMLElement).style.display).toBe('none');
+            expect(box.style.display).toBe('');
+        });
+
+        it('tells a virtual bus by its id', () => {
+            expect(isVirtualBus('VL_virtual_relation_10012409_a_1-225')).toBe(true);
+            expect(isVirtualBus('VL_way_1271288345-400')).toBe(false);
+        });
+
+        it('leaves a name box alone when the voltage level has no other name', () => {
+            const { container, meta, line } = withNameBox('VL_400');
+            cleanups.push(attachVlInteractions(container, meta, { displayName: (id) => id }));
+            expect(line.textContent).toBe('VL_400');
+            const plain = withNameBox('PARIS 400kV');
+            cleanups.push(attachVlInteractions(plain.container, plain.meta, {}));
+            expect(plain.line.textContent).toBe('PARIS 400kV');
+        });
     });
 
     it('does not fire a queued single-click after teardown', () => {
