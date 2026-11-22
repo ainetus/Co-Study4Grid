@@ -4,7 +4,10 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+    appendFeedBadge,
     createPinGlyph,
+    FEED_HIDDEN_OPACITY,
+    PIN_CHROME,
     pinStarPath,
     pinCrossPath,
     resolvePinFill,
@@ -12,7 +15,7 @@ import {
     SEVERITY_FILL_DIMMED,
     SEVERITY_FILL_HIGHLIGHTED,
 } from './pinGlyph';
-import { pinColors, pinColorsDimmed, pinColorsHighlighted } from '../../styles/tokens';
+import { pinChrome, pinColors, pinColorsDimmed, pinColorsHighlighted } from '../../styles/tokens';
 
 describe('pinGlyph palette parity with design tokens', () => {
     // The palette in pinGlyph.js is duplicated by necessity (the
@@ -26,6 +29,11 @@ describe('pinGlyph palette parity with design tokens', () => {
     });
     it('SEVERITY_FILL_HIGHLIGHTED mirrors pinColorsHighlighted', () => {
         expect(SEVERITY_FILL_HIGHLIGHTED).toEqual({ ...pinColorsHighlighted });
+    });
+    it('PIN_CHROME mirrors the matching pinChrome tokens', () => {
+        for (const [key, hex] of Object.entries(PIN_CHROME)) {
+            expect(pinChrome[key as keyof typeof pinChrome], key).toBe(hex);
+        }
     });
 });
 
@@ -124,5 +132,56 @@ describe('createPinGlyph', () => {
         const bodyPath = g.querySelector('path');
         expect(bodyPath?.getAttribute('fill')).toBe(SEVERITY_FILL_DIMMED.green);
         expect(g.getAttribute('opacity')).toBe('0.4');
+    });
+
+    it('adds the feed badge when the card is listed in the action feed', () => {
+        const svg = makeSvg();
+        const g = createPinGlyph(document, {
+            severity: 'green', label: '61%', r: 20, feed: 'shown',
+        });
+        svg.appendChild(g);
+        expect(g.getAttribute('data-feed')).toBe('shown');
+        expect(g.hasAttribute('opacity')).toBe(false);
+        const badge = g.querySelector('.cs4g-pin-feed-badge');
+        expect(badge).toBeTruthy();
+        // Inside the body group, so the screen-constant rescale scales it.
+        expect(badge?.parentElement?.getAttribute('class')).toBe('cs4g-pin-body');
+        expect(badge?.querySelector('circle')?.getAttribute('fill')).toBe(PIN_CHROME.feedBadge);
+        expect(badge?.querySelector('title')?.textContent).toBe('Card shown in the action feed');
+    });
+
+    it('draws no feed badge by default', () => {
+        const g = createPinGlyph(document, { severity: 'green', label: '61%', r: 20 });
+        expect(g.hasAttribute('data-feed')).toBe(false);
+        expect(g.querySelector('.cs4g-pin-feed-badge')).toBeNull();
+    });
+
+    it('fades a suggestion the feed still hides, keeping its severity colour', () => {
+        const g = createPinGlyph(document, {
+            severity: 'orange', label: '94%', r: 20, feed: 'hidden',
+        });
+        expect(g.getAttribute('data-feed')).toBe('hidden');
+        expect(g.getAttribute('opacity')).toBe(String(FEED_HIDDEN_OPACITY));
+        expect(FEED_HIDDEN_OPACITY).toBeGreaterThan(0);
+        expect(FEED_HIDDEN_OPACITY).toBeLessThan(1);
+        // Full severity fill — not the washed-out palette of rejected /
+        // un-simulated / filter-dimmed pins.
+        expect(g.querySelector('path')?.getAttribute('fill')).toBe(SEVERITY_FILL.orange);
+        expect(g.querySelector('.cs4g-pin-feed-badge')).toBeNull();
+    });
+
+    it('places the badge on the upper-right rim of the bubble, clear of the top symbol slot', () => {
+        const body = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const badge = appendFeedBadge(document, body, 10);
+        const disc = badge.querySelector('circle');
+        const cx = Number(disc?.getAttribute('cx'));
+        const cy = Number(disc?.getAttribute('cy'));
+        const rb = Number(disc?.getAttribute('r'));
+        // Bubble centre is (0, -19) with radius 10: the badge centre sits on its rim.
+        expect(Math.hypot(cx, cy + 19)).toBeCloseTo(10, 0);
+        expect(cx).toBeGreaterThan(0);
+        // A combined pin's "+" badge (radius 3.5) sits at (0, -28.5), the
+        // slot of the star / cross — which never meet the feed badge.
+        expect(Math.hypot(cx, cy + 28.5)).toBeGreaterThan(rb + 3.5);
     });
 });

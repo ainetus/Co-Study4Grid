@@ -6,7 +6,7 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study. 
 
 import React, { useState, useMemo, type RefObject } from 'react';
-import type { DiagramData, AnalysisResult, TabId, VlOverlay, SldTab, MetadataIndex, ActionOverviewFilters, UnsimulatedActionScoreInfo } from '../types';
+import type { DiagramData, AnalysisResult, TabId, VlOverlay, SldTab, MetadataIndex, ActionOverviewFilters, UnsimulatedActionScoreInfo, FeedRevealState } from '../types';
 import MemoizedSvgContainer from './MemoizedSvgContainer';
 import SldOverlay from './SldOverlay';
 import DetachableTabHost from './DetachableTabHost';
@@ -126,6 +126,8 @@ export interface ActionOverviewControls {
     unsimulatedActionIds?: readonly string[];
     unsimulatedActionInfo?: Readonly<Record<string, UnsimulatedActionScoreInfo>>;
     onSimulateUnsimulatedAction?: (actionId: string) => void;
+    /** Progressive reveal of the suggestions in the feed: badge listed pins, fade hidden ones. */
+    feedReveal?: FeedRevealState;
 }
 
 interface VisualizationPanelProps {
@@ -324,6 +326,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
         unsimulatedActionIds,
         unsimulatedActionInfo,
         onSimulateUnsimulatedAction,
+        feedReveal,
     } = actionOverview ?? {};
 
     // No-op fallbacks so conditional branches don't need to guard.
@@ -1277,6 +1280,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                             unsimulatedActionIds={unsimulatedActionIds}
                             unsimulatedActionInfo={unsimulatedActionInfo}
                             onSimulateUnsimulatedAction={onSimulateUnsimulatedAction}
+                            feedReveal={feedReveal}
                         />
                         {actionDiagramLoading && (
                             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textTertiary, background: colors.diagramVeil, zIndex: 20 }}>

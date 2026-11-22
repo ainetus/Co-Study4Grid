@@ -40,6 +40,7 @@ export interface SaveParams {
   minRedispatch: number;
   allowedActionTypes: string[];
   nPrioritizedActions: number;
+  nInitialSuggestions?: number;
   linesMonitoringPath: string;
   monitoringFactor: number;
   preExistingOverloadThreshold: number;
@@ -86,6 +87,7 @@ export interface RestoreContext {
   setMinRedispatch: (v: number) => void;
   setAllowedActionTypes: (v: string[]) => void;
   setNPrioritizedActions: (v: number) => void;
+  setNInitialSuggestions?: (v: number) => void;
   setLinesMonitoringPath: (v: string) => void;
   setMonitoringFactor: (v: number) => void;
   setPreExistingOverloadThreshold: (v: number) => void;
@@ -162,6 +164,7 @@ export function useSession(): SessionState {
       minRedispatch: params.minRedispatch,
       allowedActionTypes: params.allowedActionTypes,
       nPrioritizedActions: params.nPrioritizedActions,
+      nInitialSuggestions: params.nInitialSuggestions,
       linesMonitoringPath: params.linesMonitoringPath,
       monitoringFactor: params.monitoringFactor,
       preExistingOverloadThreshold: params.preExistingOverloadThreshold,
@@ -271,6 +274,8 @@ export function useSession(): SessionState {
       ctx.setMinRedispatch(cfg.min_redispatch ?? 0.0);
       ctx.setAllowedActionTypes(cfg.allowed_action_types ?? []);
       ctx.setNPrioritizedActions(cfg.n_prioritized_actions);
+      // Older sessions don't carry it: keep the operator's own preference.
+      if (cfg.n_initial_suggestions !== undefined) ctx.setNInitialSuggestions?.(cfg.n_initial_suggestions);
       ctx.setLinesMonitoringPath(cfg.lines_monitoring_path || '');
       ctx.setMonitoringFactor(cfg.monitoring_factor);
       ctx.setPreExistingOverloadThreshold(cfg.pre_existing_overload_threshold);

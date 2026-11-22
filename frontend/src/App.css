@@ -801,6 +801,11 @@ input[data-testid="sidebar-filter-threshold-input"]::-webkit-outer-spin-button {
 .nad-action-overview-pin:hover > path {
     stroke-width: 2.5;
 }
+/* A suggestion the action feed still hides is drawn translucent
+   (pinGlyph.js FEED_HIDDEN_OPACITY); hovering brings it back up. */
+.nad-action-overview-pin[data-feed="hidden"]:hover {
+    opacity: 0.9;
+}
 /* The dim effect is achieved by a single white <rect> with
    opacity 0.65 inserted ABOVE the NAD content.  Highlights are
    inserted at the START of the SVG (behind NAD content), matching

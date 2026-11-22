@@ -414,6 +414,23 @@ class TestDarkTheme:
         assert "setAttribute('opacity', '0.5')" in out
         assert "setAttribute('data-unsimulated', 'true')" in out
 
+    def test_feed_state_is_forwarded_to_the_shared_glyph(self) -> None:
+        """Suggestions arrive with ``feed: 'shown' | 'hidden'``
+        (progressive reveal of the action feed). The overlay forwards it
+        — for unitary and combined pins — to the shared
+        ``createPinGlyph``, whose inlined ``appendFeedBadge`` /
+        ``FEED_HIDDEN_OPACITY`` draw the same badge and translucency as
+        the Action Overview pins; a hidden pair fades its curve too, and
+        hovering a hidden pin brings it back up."""
+        out = inject_overlay(_BASE_HTML)
+        assert "feed: pin.feed," in out
+        assert "feed: cp.feed," in out
+        assert "function appendFeedBadge(" in out
+        assert "export function appendFeedBadge" not in out
+        assert "const FEED_HIDDEN_OPACITY" in out
+        assert "cp.feed === 'hidden' ? String(FEED_HIDDEN_OPACITY)" in out
+        assert '.cs4g-pin[data-feed="hidden"]:hover' in out
+
     def test_overlay_uses_pin_title_field_when_present(self) -> None:
         """The native ``<title>`` tooltip rendered inside each pin
         prefers the parent-supplied ``pin.title`` field over the bare

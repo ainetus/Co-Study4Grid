@@ -249,6 +249,39 @@ describe('ActionOverviewDiagram', () => {
         expect(counter.getAttribute('title')).toContain('2 pins on the N-1 network');
     });
 
+    it('badges the pins whose card the action feed lists, fades the hidden ones, counts the listed', () => {
+        const { container, getByTestId } = render(
+            <ActionOverviewDiagram
+                {...defaultProps()}
+                feedReveal={{ displayedIds: new Set(['disco_LINE_A']), hiddenIds: new Set(['coupling_VL_FAR']) }}
+            />,
+        );
+        const pin = (id: string) => container.querySelector(`.nad-action-overview-pin[data-action-id="${id}"]`);
+        expect(pin('disco_LINE_A')?.getAttribute('data-feed')).toBe('shown');
+        expect(pin('disco_LINE_A')?.querySelector('.cs4g-pin-feed-badge')).not.toBeNull();
+        // Hidden suggestion: still pinned, translucent, without the badge.
+        expect(pin('coupling_VL_FAR')?.getAttribute('data-feed')).toBe('hidden');
+        expect(Number(pin('coupling_VL_FAR')?.getAttribute('opacity'))).toBeLessThan(1);
+        expect(pin('coupling_VL_FAR')?.querySelector('.cs4g-pin-feed-badge')).toBeNull();
+        expect(getByTestId('overview-feed-legend').textContent).toContain('1 in feed');
+    });
+
+    it('omits the feed legend when the feed ids are not wired', () => {
+        const { queryByTestId, container } = render(<ActionOverviewDiagram {...defaultProps()} />);
+        expect(queryByTestId('overview-feed-legend')).not.toBeInTheDocument();
+        expect(container.querySelector('.cs4g-pin-feed-badge')).toBeNull();
+    });
+
+    it('omits the feed legend while no pin carries the badge', () => {
+        const { queryByTestId } = render(
+            <ActionOverviewDiagram
+                {...defaultProps()}
+                feedReveal={{ displayedIds: new Set(['not_on_the_map']), hiddenIds: new Set(['disco_LINE_A']) }}
+            />,
+        );
+        expect(queryByTestId('overview-feed-legend')).not.toBeInTheDocument();
+    });
+
     it('hides itself when visible=false', () => {
         const { container } = render(
             <ActionOverviewDiagram {...defaultProps()} visible={false} />,

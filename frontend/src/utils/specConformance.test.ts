@@ -41,13 +41,15 @@ const CONFIG_FIELDS = new Set([
   'pre_existing_overload_threshold', 'ignore_reconnections',
   'pypowsybl_fast_mode',
 ]);
+// Display settings added after the original contract — absent from older logs.
+const CONFIG_OPTIONAL_FIELDS = new Set(['n_initial_suggestions']);
 
 const SPEC: Record<string, SpecRow> = {
   // --- Configuration & Study Loading ---
-  config_loaded:                  { required: CONFIG_FIELDS },
+  config_loaded:                  { required: CONFIG_FIELDS, optional: CONFIG_OPTIONAL_FIELDS },
   settings_opened:                { required: new Set(['tab']) },
   settings_tab_changed:           { required: new Set(['from_tab', 'to_tab']) },
-  settings_applied:               { required: CONFIG_FIELDS },
+  settings_applied:               { required: CONFIG_FIELDS, optional: CONFIG_OPTIONAL_FIELDS },
   settings_cancelled:             { required: new Set() },
   path_picked:                    { required: new Set(['type', 'path']) },
   // --- Contingency (single + N-K multi-element) ---
@@ -64,6 +66,9 @@ const SPEC: Record<string, SpecRow> = {
   suggested_actions_cleared:      { required: new Set(['n_cleared']) },
   analysis_step2_started:         { required: new Set(['element', 'selected_overloads', 'all_overloads', 'monitor_deselected']), optional: new Set(['additional_lines_to_cut']) },
   prioritized_actions_displayed:  { required: new Set(['n_actions']) },
+  // Progressive reveal of the Suggested Actions list ("Show N more" / "Show all").
+  suggestions_show_more:          { required: new Set(['step', 'n_shown']) },
+  suggestions_show_all:           { required: new Set(['n_shown']) },
   // --- Action ---
   action_selected:                { required: new Set(['action_id']) },
   action_deselected:              { required: new Set(['previous_action_id']) },

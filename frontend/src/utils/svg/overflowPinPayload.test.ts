@@ -752,6 +752,46 @@ describe('buildOverflowPinPayload — showCombinedOnly', () => {
 // the Action-Overview ``buildUnsimulatedActionPins`` contract.
 // ---------------------------------------------------------------------
 
+describe('buildOverflowPinPayload — progressive reveal of the feed', () => {
+    // Two load-shedding actions and their simulated pair.
+    const actions: Record<string, ActionDetail> = {
+        ls_a: {
+            description_unitaire: 'load shedding A',
+            max_rho: 0.4,
+            load_shedding_details: [{ load_name: 'L1', voltage_level_id: 'VLA', shedded_mw: 10 }],
+        } as unknown as ActionDetail,
+        ls_b: {
+            description_unitaire: 'load shedding B',
+            max_rho: 0.5,
+            load_shedding_details: [{ load_name: 'L2', voltage_level_id: 'VLB', shedded_mw: 12 }],
+        } as unknown as ActionDetail,
+        'ls_a+ls_b': { description_unitaire: 'combined LS', max_rho: 0.3 } as unknown as ActionDetail,
+    };
+    const meta = makeMetaIndex({ VLA: { equipmentId: 'VLA' }, VLB: { equipmentId: 'VLB' } });
+    const build = (displayed?: string[], hidden: string[] = []) => buildOverflowPinPayload(
+        actions, meta, { VLA: 'SUB_A', VLB: 'SUB_B' }, 0.95,
+        new Set(), new Set(), undefined, undefined,
+        displayed ? { displayedIds: new Set(displayed), hiddenIds: new Set(hidden) } : undefined,
+    );
+
+    it('marks listed and hidden suggestions, unitary and combined', () => {
+        const out = build(['ls_b'], ['ls_a', 'ls_a+ls_b']);
+        const byId = new Map(out.map(p => [p.actionId, p]));
+        expect(byId.get('ls_b')?.feed).toBe('shown');
+        expect(byId.get('ls_a')?.feed).toBe('hidden');
+        expect(byId.get('ls_a+ls_b')?.feed).toBe('hidden');
+    });
+
+    it('omits `feed` on pins that are neither listed nor hidden', () => {
+        const out = build(['ls_b']);
+        expect(out.find(p => p.actionId === 'ls_a')).not.toHaveProperty('feed');
+    });
+
+    it('leaves the wire format unchanged when no reveal state is passed', () => {
+        expect(build().some(p => 'feed' in p)).toBe(false);
+    });
+});
+
 describe('buildOverflowUnsimulatedPinPayload', () => {
     const meta = makeMetaIndex(
         { V1: { equipmentId: 'V1' }, V2: { equipmentId: 'V2' } },

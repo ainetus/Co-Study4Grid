@@ -51,6 +51,13 @@ frontend/
     ├── hooks/                # Custom hooks owning a slice of state
     │   ├── useSettings.ts          # All settings + setters → SettingsState
     │   ├── useActions.ts           # Action selection / favorite / reject
+    │   ├── useSuggestionReveal.ts  # Progressive reveal of the suggestions in
+    │   │                           # the feed (first N cards, Show N more /
+    │   │                           # Show all) + the feed scroll target and
+    │   │                           # pin-preview handler; as a FeedRevealState
+    │   │                           # it badges (listed) / fades (hidden) the
+    │   │                           # overview + overflow pins
+    │   │                           # (docs/features/action-overview-diagram.md)
     │   ├── useAnalysis.ts          # Two-step analysis flow (step1/step2)
     │   ├── useDiagrams.ts          # NAD fetching + tab management (thin-ish
     │   │                           # orchestrator; composes the two D4 sub-
@@ -194,6 +201,8 @@ frontend/
     │   │                           # overloads, per-N-1 monitoring
     │   │                           # checkboxes, monitor-deselected
     │   │                           # switch, monitoring-coverage hint).
+    │   ├── SuggestionRevealBar.tsx # "N of M shown · Show N more · Show all"
+    │   │                           # bar under the Suggested Actions list
     │   ├── NotificationHost.tsx    # Renders the typed notification store
     │   │                           # (D5) as dismissible bottom-right toasts
     │   │                           # in an aria-live region (severity =
@@ -246,6 +255,10 @@ frontend/
         │                              # displayed name OR raw id; shared by every
         │                              # inspect surface (N / N-1 / action + overview)
         ├── sessionUtils.ts            # buildSessionResult snapshot
+        ├── feedEntries.ts             # Action-feed ordering + filter predicate
+        │                              # shared by ActionFeed and
+        │                              # useSuggestionReveal, + the reveal-window
+        │                              # maths (revealWindow / nextRevealCount)
         ├── interactionLogger.ts       # Singleton replay-ready event log
         ├── apiError.ts                # D2 (2026-07) — single reader for the
         │                              # backend's unified {detail, code} error
@@ -310,6 +323,17 @@ in `App.tsx` because it needs multiple hook instances at once.
      required. The legacy file has been decommissioned; the
      auto-generated `frontend/dist-standalone/standalone.html`
      inherits the field on the next `npm run build:standalone`.
+
+  A setting persisted *like the recommender settings* also goes through
+  `useSettings`'s user-config load / save (`applyLoadedConfig`,
+  `configToSave`, `UserConfig` in `api.ts`) and Settings-cancel backup
+  (`createCurrentBackup` / `handleCloseSettings`), the session
+  `configuration` (`sessionUtils.ts` + `useSession.ts` + App's
+  `saveParams` / `restoreContext`), App's `buildConfigInteractionDetails`
+  and the replay specs (`specConformance.test.ts`,
+  `scripts/check_standalone_parity.py`, `scripts/check_session_fidelity.py`).
+  `n_initial_suggestions` (Suggestions Shown at First) is a worked example
+  of a display-only one — persisted everywhere, never sent to `/api/config`.
 
 Adding a new **remedial-action type** (a new action family + its
 `*_details` payload) is broader than a setting — it threads through the

@@ -531,6 +531,7 @@ export interface SettingsBackup {
     minRedispatch: number;
     allowedActionTypes: string[];
     nPrioritizedActions: number;
+    nInitialSuggestions?: number;
     linesMonitoringPath: string;
     monitoringFactor: number;
     preExistingOverloadThreshold: number;
@@ -734,6 +735,9 @@ export interface SessionResult {
         min_redispatch?: number;
         allowed_action_types?: string[];
         n_prioritized_actions: number;
+        // Suggested cards the action feed shows at first (display
+        // setting, absent from sessions saved before it existed).
+        n_initial_suggestions?: number;
         lines_monitoring_path: string;
         monitoring_factor: number;
         pre_existing_overload_threshold: number;
@@ -822,6 +826,8 @@ export type InteractionType =
     | 'analysis_step2_started'
     | 'analysis_step2_completed'
     | 'prioritized_actions_displayed'
+    | 'suggestions_show_more'
+    | 'suggestions_show_all'
     | 'action_selected'
     | 'action_deselected'
     | 'action_favorited'
@@ -908,6 +914,20 @@ export interface ActionOverviewFilters {
     showUnsimulated: boolean;
     actionType: ActionTypeFilterToken;
     showCombinedOnly: boolean;
+}
+
+/**
+ * Progressive reveal of the suggestions in the action feed, as the pin
+ * layers (Remedial action overview + overflow graph) read it: a listed
+ * suggestion's pin carries the feed badge, a hidden one is drawn
+ * translucent. Pins in neither set (starred, rejected, un-simulated, …)
+ * keep their own look.
+ */
+export interface FeedRevealState {
+    /** Suggestions whose card the Suggested Actions list shows. */
+    displayedIds: ReadonlySet<string>;
+    /** Suggestions still hidden behind "Show N more". */
+    hiddenIds: ReadonlySet<string>;
 }
 
 export interface UnsimulatedActionScoreInfo {

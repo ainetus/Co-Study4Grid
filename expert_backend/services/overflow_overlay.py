@@ -28,7 +28,8 @@ Wire-format (parent React app → iframe via `postMessage`)::
           "label":      "90.1%",
           "severity":   "green" | "orange" | "red" | "grey",
           "isSelected": true,
-          "isRejected": false
+          "isRejected": false,
+          "feed":       "shown"          # action feed: "shown" | "hidden"
         }, …
       ]
     }
@@ -101,6 +102,9 @@ def _build_overlay_block() -> str:
   /* Pin overlay — visual contract is owned by pinGlyph.js below.
      This file only adds interactive affordances (cursor / opacity). */
   .cs4g-pin {{ pointer-events: auto; cursor: pointer; }}
+  /* A suggestion the action feed still hides is drawn translucent
+     (pinGlyph.js FEED_HIDDEN_OPACITY); hovering brings it back up. */
+  .cs4g-pin[data-feed="hidden"]:hover {{ opacity: 0.9; }}
 
   /* Hide the synthetic upstream "grid source" node (and its edge) that the
      recommender injects into an islanded-pocket ("antenne") overflow graph to
@@ -626,6 +630,9 @@ def _build_overlay_block() -> str:
       isSelected: !!pin.isSelected,
       isRejected: !!pin.isRejected,
       dimmed: isUnsim,
+      // Progressive reveal of the suggestions in the action feed:
+      // 'shown' adds the feed badge, 'hidden' fades the pin.
+      feed: pin.feed,
       r: r,
     }});
     g.setAttribute('transform', 'translate(' + centre.x + ' ' + centre.y + ')');
@@ -837,7 +844,9 @@ def _build_overlay_block() -> str:
         curve.setAttribute('stroke-dasharray', String(sw * 2.5) + ' ' + String(sw * 1.5));
         curve.setAttribute('stroke-linecap', 'round');
         curve.setAttribute('pointer-events', 'none');
-        curve.setAttribute('opacity', '0.85');
+        // A pair whose card the action feed still hides fades with its pin.
+        curve.setAttribute('opacity',
+          cp.feed === 'hidden' ? String(FEED_HIDDEN_OPACITY) : '0.85');
         layer.appendChild(curve);
 
         // Combined pin sits at the curve midpoint. Wrap as a normal
@@ -852,6 +861,7 @@ def _build_overlay_block() -> str:
           title: cp.title || cp.actionId,
           isSelected: !!cp.isSelected,
           isRejected: !!cp.isRejected,
+          feed: cp.feed,
         }};
         const g = buildPin(pinDesc, {{ x: mid.midX, y: mid.midY }}, layer);
         g.setAttribute('data-combined-pair', '1');

@@ -35,6 +35,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
     minOpenCoupling, setMinOpenCoupling,
     minLineDisconnections, setMinLineDisconnections,
     nPrioritizedActions, setNPrioritizedActions,
+    nInitialSuggestions, setNInitialSuggestions,
     minPst, setMinPst,
     minLoadShedding, setMinLoadShedding,
     minRenewableCurtailmentActions, setMinRenewableCurtailmentActions,
@@ -302,6 +303,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onApply }) => {
                 />
               </div>
             )}
+            {/* Display-only (every model): how many suggestion cards the
+                action feed lists at first — the pins keep showing all. */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label htmlFor="nInitialSuggestions" style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Suggestions Shown at First</label>
+                <input
+                  id="nInitialSuggestions"
+                  type="number" step="1" min="1" value={nInitialSuggestions}
+                  onChange={e => setNInitialSuggestions(parseInt(e.target.value, 10))}
+                  style={{ width: '80px', padding: '5px', border: `1px solid ${colors.border}`, borderRadius: '4px' }}
+                />
+              </div>
+              <span style={{ fontSize: '0.75rem', color: colors.textTertiary }}>
+                Suggested cards the action feed lists at first; &ldquo;Show N more&rdquo; reveals as many again. Every suggestion keeps its pin on the overviews.
+              </span>
+            </div>
             {showField('ignore_reconnections') && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: colors.surfaceMuted, borderRadius: '4px', border: `1px solid ${colors.borderSubtle}` }}>
                 <input

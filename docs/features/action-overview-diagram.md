@@ -6,6 +6,8 @@ The Remedial Action tab now hosts an **action-overview diagram** when no action 
 
 Pins visually reflect the operator's triage decisions: **selected** (starred) actions are highlighted with a gold star above the pin, while **rejected** actions are dimmed with a red cross. **Simulated combined actions** (two unitary actions applied together) appear as a dedicated pin at the midpoint of a curved dashed connection linking the two constituent pins.
 
+The sidebar feed reveals the recommender's suggestions **progressively** — the first few cards, then "Show N more" / "Show all" — but the overview keeps a pin for **every** suggestion. Pins whose card the feed currently lists carry the blue **feed badge**; the hidden suggestions' pins are drawn **translucent**, in their full severity colour, and clicking one reveals its card in the feed. See [Progressive reveal of the suggestions](#progressive-reveal-of-the-suggestions).
+
 A compact **single-row header** above the diagram now exposes just the pin counter, the **Show unsimulated** checkbox, and the **Combined only** checkbox (PIN-SCOPED — restricts the overview to combined-action pins + their two constituents dimmed for context). The severity / action-type filters and the **Max-loading threshold** numeric input live in the shared sidebar `<ActionFilterRings>` strip (📍 – ring | ring | threshold), which the overview, the Action Feed, the Manual Selection modal, the Combine Actions modal and the Overflow Analysis iframe all read from. The wholesale relocation freed the overview banner from filter clutter and keeps every surface in lock-step on a single `ActionOverviewFilters` state owned by `App.tsx` — except `showCombinedOnly`, which is intentionally pin-only and never hides feed cards. See [Filtering](#filtering) below.
 
 When **Show unsimulated** is enabled, scored-but-not-yet-simulated actions (those present in `result.action_scores` but absent from the simulated `actions` dict) are rendered as dimmed, dashed **un-simulated pins**. Hovering one reveals a score-metadata tooltip (type, score, rank-in-type, MW/tap start); double-clicking it kicks off the same manual-simulation code path the Manual Selection dropdown uses. See [Un-simulated action pin](#un-simulated-action-pin) below.
@@ -19,7 +21,7 @@ When any action card IS selected (either via the sidebar feed or by double-click
 ├────────────────────────────────────────────────────────────────────────────┤
 │  Sidebar: ⚡ Contingency | ⚠ Overloads | 📍 – ◉◉◉◉ | ▭▭▭▭▭▭▭ | 150 %     │
 ├────────────────────────────────────────────────────────────────────────────┤
-│ 📍 7 (+3)   ☑ Show unsimulated   ☐ Combined only                          │
+│ 📍 7 (+3)   ▣ 3 in feed   ☑ Show unsimulated   ☐ Combined only            │
 ├────────────────────────────────────────────────────────────────────────────┤
 │                                                                            │
 │   Background: N-1 NAD (dimmed)                                             │
@@ -28,6 +30,12 @@ When any action card IS selected (either via the sidebar feed or by double-click
 │      ★  │ 73%  │   ← green pin, selected (gold star)                      │
 │         └──┬───┘                                                           │
 │            │ points at line mid-point                                       │
+│         ┌──────┐▣                                                          │
+│         │ 61%  │   ← suggestion whose card the feed lists (feed badge)     │
+│         └──┬───┘                                                           │
+│         ┌┄┄┄┄┄┄┐                                                           │
+│         ┊ 88%  ┊   ← suggestion not listed yet (translucent, colour kept)  │
+│         └┄┄┬┄┄┄┘                                                           │
 │         ┌──────┐                                                           │
 │      ✕  │ 99%  │   ← red pin, rejected (cross, dimmed)                    │
 │         └──┬───┘                                                           │
@@ -80,7 +88,7 @@ Each unitary pin is an SVG `<g>` with the following structure:
 
 ```
 <g class="nad-action-overview-pin" transform="translate(x y)" data-action-id="..."
-   opacity="0.55">                                       ← only if rejected
+   opacity="0.55">                                       ← if rejected (0.45 if the feed hides its card)
   <g class="nad-action-overview-pin-body" transform="scale(k)">
     <title>action id — description — max loading XX.X%</title>
     <path d="M ... A ... L 0 0 Z"  fill="..."  stroke="..." />  ← teardrop
@@ -88,9 +96,16 @@ Each unitary pin is an SVG `<g>` with the following structure:
     <text fill="#1f2937" font-weight="800">73%</text>            ← label
     <path d="M ... Z"  fill="#eab308" />                         ← star (selected only)
     <path d="M ... Z"  fill="#ef4444" />                         ← cross (rejected only)
+    <g class="cs4g-pin-feed-badge">                              ← feed badge (card listed in the feed)
+      <title>Card shown in the action feed</title>
+      <circle fill="#1e40af" stroke="#fff" />                    ← brand-blue disc on the bubble's upper-right rim
+      <rect fill="#fff" /> <rect fill="#1e40af" />               ← white card glyph + one text line
+    </g>
   </g>
 </g>
 ```
+
+The outer group also carries `data-selected` / `data-rejected` / `data-feed="shown" | "hidden"` sentinels for tests and the overflow overlay.
 
 ### Un-simulated action pin
 
@@ -158,6 +173,7 @@ Simulated combined actions (pair key containing `+` in the `actions` dict) are r
     <text>45%</text>                            ← label
     <circle fill="#28a745" stroke="white" />    ← "+" badge circle
     <text fill="white">+</text>                 ← "+" badge text
+    <g class="cs4g-pin-feed-badge">…</g>        ← feed badge (pair card listed in the feed)
   </g>
 </g>
 ```
@@ -183,9 +199,11 @@ The label text always uses dark slate `#1f2937` for contrast on both the white i
 |---|---|
 | **Selected** (starred) | Highlighted fill + gold border (`#eab308`) on teardrop + gold 5-pointed star above the bubble |
 | **Rejected** | Dimmed fill + red cross (`#ef4444`) above the bubble + whole pin group at `opacity: 0.55` |
-| **Neutral** | Standard severity fill, no symbol, full opacity |
+| **Suggested, card in the feed** | Standard severity fill + the **feed badge** — a brand-blue disc (`#1e40af`) carrying a white card glyph, on the bubble's upper-right rim |
+| **Suggested, card hidden** (progressive reveal) | Standard severity fill, no symbol, whole pin **translucent** (`opacity: 0.45`, `FEED_HIDDEN_OPACITY`); back to near-opaque on hover. Not the washed-out palette of rejected / un-simulated / filter-dimmed pins: the colour still tells the action's outcome |
+| **Neutral** (no reveal wired, e.g. isolated tests) | Standard severity fill, no symbol, full opacity |
 
-Both symbols are rendered as `<path>` elements inside the `.nad-action-overview-pin-body` group, so they scale with the pin on zoom.
+All three symbols are rendered inside the `.nad-action-overview-pin-body` group, so they scale with the pin on zoom. Every pin whose card is in the feed therefore carries a symbol — the star (Selected Actions), the cross (Rejected tab) or the feed badge (Suggested Actions list) — while the suggestions hidden behind "Show N more" carry none and are drawn translucent. The star / cross slot sits at the top of the bubble; the feed badge sits clear of it, and of a combined pin's "+" badge. A hidden combined pair fades its curve with its pin. The glyph comes from the shared `pinGlyph.js` (`appendFeedBadge`, `FEED_HIDDEN_OPACITY`, `createPinGlyph`'s `feed: 'shown' | 'hidden'`), so the overflow-graph pins draw the identical badge and translucency.
 
 ### Pin sizing
 
@@ -335,13 +353,15 @@ Popover placement is computed by `utils/popoverPlacement.ts`:
 
 Dismissed on: Escape, outside click, the ✕ button, card body click, or when `visible` flips false.
 
+The same single click also scrolls the sidebar feed to the action's card (`onPinPreview` → `useSuggestionReveal.previewAction` → `scrollTarget`). When the card is hidden by the progressive reveal, the click first reveals it in the Suggested Actions list, at its rank, then scrolls to it — exactly as for a card already listed.
+
 ### Double-click on a pin → drill-down
 
 A double-click (detected via the browser's click + dblclick sequence; the 250ms single-click timer is cancelled) calls `onActionSelect(actionId)`. This:
 
 1. Closes any open popover.
 2. Triggers the existing action-select flow in `useDiagrams` → fetches the action-variant NAD → folds the overview away.
-3. Scrolls the sidebar feed to centre the matching card via `ActionFeed`'s `scrollIntoView({ block: 'center' })` effect.
+3. Reveals the action's card when the progressive reveal hides it (the selected action's card is never hidden), then scrolls the sidebar feed to centre it via `ActionFeed`'s `scrollIntoView({ block: 'center' })` effect.
 
 ### Returning to the overview
 
@@ -350,6 +370,28 @@ When the action-variant diagram is showing, the tab label reads **"Remedial Acti
 ### Double-click on an un-simulated pin → manual simulation
 
 Un-simulated pins (dashed, grey, dimmed) intercept the double-click gesture via `onUnsimulatedPinDoubleClick` before it reaches the standard `onPinDoubleClick` path. The callback fires `onSimulateUnsimulatedAction(actionId)` in the parent, which runs the exact same code path as the Manual Selection dropdown in the ActionFeed. The logger records `overview_unsimulated_pin_simulated`. Once the simulation completes, the action appears in the `actions` dict and the pin swaps out of the dimmed un-simulated layer into the standard severity palette on the next render — regression-guarded by `ActionOverviewDiagram.test.tsx` (pin re-colour after double-click → completion).
+
+---
+
+## Progressive reveal of the suggestions
+
+After **Display N prioritized actions**, the sidebar's Suggested Actions list shows only the first `n` cards (in feed order: max loading ascending, load-flow faults last, shared filters applied), where `n` is the **Suggestions Shown at First** setting (Settings → Recommender; default 3). A bar under the list reads "3 of 15 suggestions shown" and offers:
+
+- **Show N more** — reveals the next `n` hidden cards (fewer when fewer remain);
+- **Show all** — reveals every remaining card (offered while more than `n` are hidden).
+
+The pin layers ignore the reveal: the overview and the overflow-graph overlay keep one pin per suggestion. Pins whose card the list shows carry the [feed badge](#selection--rejection-status-symbols), the hidden suggestions' pins are translucent (colour kept, near-opaque on hover), and the overview header counts the listed ones ("▣ 3 in feed", with a tooltip explaining the badge — shown while at least one pin carries it). A click on the pin of a hidden suggestion reveals that one card (not the ones ranked above it); a selection reveals it too (pin double-click, the popover's card body), since the action under review always has its card in the feed. Revealed cards keep their rank in the full list, so a card revealed from a pin reads e.g. "#12".
+
+The window is count-based: starring or rejecting a listed card moves it to Selected Actions / the Rejected tab and the next suggestion takes its place, so the list keeps showing `n` cards. It restarts at the first `n` cards on every new batch of suggestions — a new analysis run, a session reload, a cleared study (a batch is one `result.action_scores` object) — and not on star / reject / re-simulation edits. Until the operator reveals more, the window follows the setting live.
+
+| Piece | Role |
+|---|---|
+| `hooks/useSuggestionReveal.ts` | Reveal state (window size + cards revealed one by one), the feed `scrollTarget` and the pin-preview handler; returns the `SuggestionRevealControls` the feed reads and both pin layers read as a `FeedRevealState` (`displayedIds` / `hiddenIds`, `types.ts`). Owned by `App.tsx`. |
+| `utils/feedEntries.ts` | Pure feed ordering (`sortFeedEntries`, `passesFeedFilters`) shared by `ActionFeed` and the hook, so the pins and the list agree on which cards are shown; reveal-window maths (`revealWindow`, `nextRevealCount`). |
+| `components/SuggestionRevealBar.tsx` | The "N of M shown · Show N more · Show all" bar. |
+| `utils/svg/pinGlyph.js` | `appendFeedBadge`, `FEED_HIDDEN_OPACITY` and the `feed: 'shown' \| 'hidden'` option of `createPinGlyph` (overview pins and overflow overlay alike; the overlay payload carries `feed` per pin). |
+
+The two buttons log `suggestions_show_more` `{ step, n_shown }` and `suggestions_show_all` `{ n_shown }` (see `docs/features/interaction-logging.md`). The setting is persisted with the other recommender settings (user config, session `configuration.n_initial_suggestions`, `config_loaded` / `settings_applied` payloads); the reveal state itself is not saved — a reloaded session lists the first `n` cards again.
 
 ---
 
@@ -374,9 +416,10 @@ All text in the `ActionCard` uses a uniform **12px** font size for the title, de
 | `utils/svg/actionPinRender.ts` | DOM-mutating render layer: unitary / combined / un-simulated pin glyphs, rescaler, click listeners |
 | `utils/actionTypes.ts` | Shared classifier: `classifyActionType`, `matchesActionTypeFilter`, `ACTION_TYPE_FILTER_TOKENS` |
 | `utils/popoverPlacement.ts` | Pure helpers: `decidePopoverPlacement`, `computePopoverStyle` |
-| `components/VisualizationPanel.tsx` | Mounts overview in the action tab's `DetachableTabHost`; forwards `overviewFilters`, `unsimulatedActionIds`, `unsimulatedActionInfo`, `onSimulateUnsimulatedAction`; renders the deselect chip in the tab label |
+| `components/VisualizationPanel.tsx` | Mounts overview in the action tab's `DetachableTabHost`; forwards `overviewFilters`, `unsimulatedActionIds`, `unsimulatedActionInfo`, `onSimulateUnsimulatedAction`, `feedActionIds`; renders the deselect chip in the tab label |
+| `hooks/useSuggestionReveal.ts` + `utils/feedEntries.ts` + `components/SuggestionRevealBar.tsx` | Progressive reveal of the suggestions in the feed — see [above](#progressive-reveal-of-the-suggestions) |
 | `App.tsx` | Owns the `ActionOverviewFilters` state; computes `unsimulatedActionIds` + `unsimulatedActionInfo` from `result.action_scores` (type bucketing + rank within type); wires `n1MetaIndex`, `onActionSelect`, `onActionFavorite`, `onActionReject`, `selectedActionIds`, `rejectedActionIds`, `monitoringFactor`, and all of the above through to `VisualizationPanel` |
-| `components/ActionFeed.tsx` | `scrollIntoView` effect on `selectedActionId` change; applies the shared `actionPassesOverviewFilter` + `matchesActionTypeFilter` so sidebar cards mirror overview visibility |
+| `components/ActionFeed.tsx` | `scrollIntoView` effect on `selectedActionId` / `scrollTarget` change; orders and filters its cards with `utils/feedEntries.ts` (shared `actionPassesOverviewFilter` + `matchesActionTypeFilter`) so sidebar cards mirror overview visibility; lists only the revealed suggestions + the reveal bar |
 | `App.css` | `.nad-overview-dimmed`, `.nad-action-overview-pin`, `.nad-action-overview-pin-unsimulated`, `.nad-action-overview-container` styles |
 
 ---
@@ -386,13 +429,17 @@ All text in the `ActionCard` uses a uniform **12px** font size for the title, de
 | Test file | Covers |
 |---|---|
 | `utils/svgUtils.test.ts` (barrel) + `utils/svg/actionPinData.test.ts` + `utils/svg/actionPinRender.test.ts` | Pin resolution, severity, label, palette, idempotence, click semantics, mousedown stopPropagation, no-outline, dark label text, **combined pair exclusion from unitary pins**, **load shedding / curtailment VL anchoring**, **overlapping pin fan-out**, **combined pin building (Bezier midpoint, severity, label, p1/p2, skip on missing constituent)**, **selected pin highlighting (gold star, highlighted fill, gold stroke)**, **rejected pin dimming (red cross, dimmed fill, 0.55 opacity)**, **neutral pin unmodified**, **combined pin rendering (curved path, edge stroke-width, "+" badge, severity fill)**, **curve not rescaled on zoom**, **`actionPassesOverviewFilter` category/threshold/null-max-rho edge cases**, **`buildUnsimulatedActionPins` resolution, dedup, tooltip variants (generic / score-enriched / MW-start / PST-tap-range / missing-id fallback)**, **overview filter pass-through on `buildActionOverviewPins` (`overviewFilter` param)**, highlight cloning + background-layer ordering, pin rescale + rAF throttle + viewBox-fraction floor, fit-rect geometry |
-| `components/ActionOverviewDiagram.test.tsx` | SVG injection, dim rect, pins + palette, no-outline, anchor positions, double-click → onActionSelect, auto-fit, legend, pin count, visibility toggle, empty states, zoom +/−/Fit, inspect asset-focus + sticking regression, popover open/close/Escape/card-body-activate/placement (incl. viewport-clamping from PR #105's `d277597`), highlights ordering + refresh, pin rescale + rAF throttle, **filter header render (categories / All-None / threshold / unsimulated / action-type chips)**, **filter state propagation to pins (category hide / threshold cap / action-type chip)**, **protected constituent pins kept visible with `dimmedByFilter`**, **un-simulated pin rendering (dashed stroke, 0.5 opacity, `?` label)**, **un-simulated pin double-click → `onSimulateUnsimulatedAction`**, **un-simulated pin tooltip enrichment from score metadata**, **un-simulated pin re-colour after simulation completes** (commit `086e23e`) |
+| `components/ActionOverviewDiagram.test.tsx` | Feed badge on listed suggestions, translucent hidden ones, "N in feed" header legend; SVG injection, dim rect, pins + palette, no-outline, anchor positions, double-click → onActionSelect, auto-fit, legend, pin count, visibility toggle, empty states, zoom +/−/Fit, inspect asset-focus + sticking regression, popover open/close/Escape/card-body-activate/placement (incl. viewport-clamping from PR #105's `d277597`), highlights ordering + refresh, pin rescale + rAF throttle, **filter header render (categories / All-None / threshold / unsimulated / action-type chips)**, **filter state propagation to pins (category hide / threshold cap / action-type chip)**, **protected constituent pins kept visible with `dimmedByFilter`**, **un-simulated pin rendering (dashed stroke, 0.5 opacity, `?` label)**, **un-simulated pin double-click → `onSimulateUnsimulatedAction`**, **un-simulated pin tooltip enrichment from score metadata**, **un-simulated pin re-colour after simulation completes** (commit `086e23e`) |
 | `components/ActionTypeFilterChips.test.tsx` | Chip rendering, active state `aria-pressed`, click → `onChange`, custom token list override, test-id prefix forwarding |
 | `utils/actionTypes.test.ts` | Classifier routing: `disco` / `reco` / `ls` / `rc` / `open` / `close` / `pst` / `unknown`; regression for `"Ouverture … dans le poste"` → `disco` (commit `f356c2e`); regression for description `"du poste 'X'"` → coupling bucket (commit `d479516`); `matchesActionTypeFilter` identity + `all` pass-through |
 | `components/ActionCardPopover.test.tsx` | Shared ActionCard rendering, extraDataAttributes forwarding, custom testId, close ✕, stopPropagation, card-body activation, no-op stubs |
 | `utils/popoverPlacement.test.ts` | Vertical + horizontal placement rules, top/bottom/left anchoring, viewport clamping, end-to-end corner cases |
 | `components/VisualizationPanel.test.tsx` | Deselect chip render, click calls onActionSelect(null), Enter/Space keyboard, no chip when no action selected |
-| `components/ActionFeed.test.tsx` | `scrollIntoView` on selection change; **shared-filter predicate pass-through**: cards hidden when category disabled / threshold exceeded / action-type chip mismatches, in lock-step with the overview |
+| `components/ActionFeed.test.tsx` | `scrollIntoView` on selection change; **shared-filter predicate pass-through**: cards hidden when category disabled / threshold exceeded / action-type chip mismatches, in lock-step with the overview; **progressive reveal**: only revealed cards listed (rank kept), reveal-bar wiring, no bar once all are listed or without reveal controls |
+| `hooks/useSuggestionReveal.test.ts` | Initial window, Show N more / Show all (+ log events), star / reject refill, pin-preview reveal + scroll target (stable handler), selection reveal, reset per batch (incl. models without scores), live setting until the first reveal, invalid setting fallback, shared filter |
+| `utils/feedEntries.test.ts` | Score-type map, feed-card rule, filter predicate (combined either-side type match), ordering (faults last), reveal window + next-batch maths |
+| `components/SuggestionRevealBar.test.tsx` | Count caption, Show N more / Show all wiring, single button for the last batch |
+| `utils/svg/pinGlyph.test.ts` + `utils/svg/actionPinRender.test.ts` + `utils/svg/overflowPinPayload.test.ts` | Feed badge drawn inside the scaled body (unitary + combined), badge geometry clear of the "+" slot, hidden suggestions translucent with their severity fill (pair curve included), `PIN_CHROME` ↔ `pinChrome` token parity, `feed` on the overflow payload |
 
 ---
 

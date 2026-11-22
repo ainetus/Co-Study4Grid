@@ -7,6 +7,23 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Action feed — suggestions revealed progressively
+
+- **The first suggestions, then more on demand**: after "Display N
+  prioritized actions" the Suggested Actions list shows the first 3 cards
+  (new recommender setting **Suggestions Shown at First**, persisted with the
+  other recommender settings and in saved sessions); **Show N more** reveals
+  as many again and **Show all** the rest. Starring or rejecting a listed
+  card brings the next one in.
+- **Every suggestion keeps its pin**: the Remedial action overview and the
+  overflow-graph overlay still pin all suggestions. Pins whose card is listed
+  carry a blue card badge (counted in the overview header, "▣ 3 in feed");
+  the others are drawn translucent in their own colour (not greyed like
+  un-simulated actions). Clicking one reveals its card at its rank, then
+  scrolls to it, as does selecting the action. The two buttons log
+  `suggestions_show_more` / `suggestions_show_all`. See
+  `docs/features/action-overview-diagram.md`.
+
 ### Fixed — SLD halos match the network diagram
 
 - **Overloads haloed on the N-1 SLD before any analysis**: a single-line

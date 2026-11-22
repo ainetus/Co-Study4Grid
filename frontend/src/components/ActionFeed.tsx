@@ -7,8 +7,9 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { ActionDetail, NodeMeta, EdgeMeta, AvailableAction, AnalysisResult, CombinedAction, DiagramData, ActionOverviewFilters } from '../types';
-import { actionPassesOverviewFilter } from '../utils/svgUtils';
 import { DEFAULT_ACTION_OVERVIEW_FILTERS, matchesActionTypeFilter, rowPassesActionFilters } from '../utils/actionTypes';
+import { buildScoreTypeByActionId, isFeedCard, passesFeedFilters, sortFeedEntries } from '../utils/feedEntries';
+import type { SuggestionRevealControls } from '../hooks/useSuggestionReveal';
 import { api } from '../api';
 import type { ModelDescriptor } from '../api';
 import { interactionLogger } from '../utils/interactionLogger';
@@ -17,6 +18,7 @@ import CombinedActionsModal from './CombinedActionsModal';
 import ActionCard from './ActionCard';
 import AdditionalLinesPicker from './AdditionalLinesPicker';
 import ActionSearchDropdown from './ActionSearchDropdown';
+import SuggestionRevealBar from './SuggestionRevealBar';
 import { colors } from '../styles/tokens';
 import { apiErrorMessage } from '../utils/apiError';
 import { antennaAggregateContent } from '../utils/injectionActions';
@@ -86,6 +88,13 @@ interface ActionFeedProps {
      * on the action overview diagram.
      */
     scrollTarget?: { id: string; seq: number } | null;
+    /**
+     * Progressive reveal of the Suggested Actions list (see
+     * `useSuggestionReveal`). When provided, only the cards in
+     * `displayedIds` are listed, followed by the "Show N more / Show
+     * all" bar; without it every suggestion is listed.
+     */
+    reveal?: SuggestionRevealControls;
     onDisplayPrioritizedActions: () => void;
     onRunAnalysis: () => void;
     /** Abort an in-flight analysis run. When provided, a Cancel control
@@ -156,6 +165,7 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
     linesOverloaded,
     selectedActionId,
     scrollTarget,
+    reveal,
     selectedActionIds,
     rejectedActionIds,
     pendingAnalysisResult,
@@ -616,84 +626,17 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
         }
     };
 
-    // actionId → recommender score-type bucket (`line_reconnection`,
-    // `pst_tap_change`, …). The action-type filter feeds this `type`
-    // into `classifyActionType` — the SAME signal the Combine-modal
-    // Explore-Pairs filter uses (`ExplorePairsTab` passes `item.type`).
-    // Without it, `classifyActionType` can't tell reco from disco for
-    // ids like ``reco_GEN.PY762`` (its disco/reco heuristics look at
-    // the score type + description, never the id), so the whole
-    // reco / disco bucket would be filtered out of the feed.
-    const scoreTypeByActionId = useMemo(() => {
-        const m = new Map<string, string>();
-        if (!actionScores) return m;
-        for (const [type, data] of Object.entries(actionScores)) {
-            const scores = data?.scores || {};
-            for (const actionId of Object.keys(scores)) {
-                if (!m.has(actionId)) m.set(actionId, type);
-            }
-        }
-        return m;
-    }, [actionScores]);
+    // actionId → recommender score-type bucket, fed to the action-type
+    // chip filter (see `buildScoreTypeByActionId`).
+    const scoreTypeByActionId = useMemo(() => buildScoreTypeByActionId(actionScores), [actionScores]);
 
-    // Sort actions by max_rho ascending (matching standalone)
-    // Filter out combined actions that are only estimations (they will have '+' in ID but no rho_after yet)
-    const sortedActionEntries = useMemo(() => {
-        return Object.entries(actions)
-            .filter(([id, details]) => {
-                const isCombined = id.includes('+');
-                if (isCombined) {
-                    // Only show combined if it has been fully simulated (not just estimated)
-                    // Simulated actions will NOT have the is_estimated flag set.
-                    if (details.is_estimated) return false;
-                    if (!details.rho_after || details.rho_after.length === 0) return false;
-                }
-                // Shared overview filter: hide cards whose severity or
-                // max_rho falls outside the active category/threshold
-                // picked from the overview header. We skip the filter
-                // when overviewFilters is undefined so isolated tests
-                // (which don't wire it) keep their existing behaviour.
-                if (overviewFilters && !actionPassesOverviewFilter(
-                    details, monitoringFactor,
-                    overviewFilters.categories, overviewFilters.threshold,
-                )) return false;
-                // Shared action-type chip filter. Combined actions
-                // (key contains '+') are considered in scope when
-                // EITHER constituent matches — they're inherently
-                // multi-type, so hiding them because only one side
-                // matches would surprise the operator.
-                // `actionType ?? 'all'` keeps legacy call sites that
-                // don't yet set the field (older session reloads /
-                // tests) behaving as "no type filter".
-                const typeFilter = overviewFilters?.actionType ?? 'all';
-                if (typeFilter !== 'all') {
-                    if (id.includes('+')) {
-                        const [id1, id2] = id.split('+');
-                        const d1 = actions[id1];
-                        const d2 = actions[id2];
-                        const ok = (d1 && matchesActionTypeFilter(typeFilter, id1, d1.description_unitaire, scoreTypeByActionId.get(id1) ?? null))
-                            || (d2 && matchesActionTypeFilter(typeFilter, id2, d2.description_unitaire, scoreTypeByActionId.get(id2) ?? null));
-                        if (!ok) return false;
-                    } else if (!matchesActionTypeFilter(
-                        typeFilter, id, details.description_unitaire, scoreTypeByActionId.get(id) ?? null,
-                    )) {
-                        return false;
-                    }
-                }
-                return true;
-            })
-            .sort(([, a], [, b]) => {
-                // Sink load-flow faults (divergent / islanded) to the bottom of
-                // the stack regardless of their reported max_rho. The backend
-                // emits ``max_rho = 0`` (not ``null``) for non-convergent
-                // simulations — sorting by max_rho alone would float those
-                // cards to the top, ahead of legitimate solving actions.
-                const aFault = !!(a.is_islanded || a.non_convergence);
-                const bFault = !!(b.is_islanded || b.non_convergence);
-                if (aFault !== bFault) return aFault ? 1 : -1;
-                return (a.max_rho ?? 999) - (b.max_rho ?? 999);
-            });
-    }, [actions, overviewFilters, monitoringFactor, scoreTypeByActionId]);
+    // Shared overview filter + max_rho ascending, load-flow faults last.
+    // Combined actions that are only estimations get no card. Same
+    // ordering as `useSuggestionReveal`, which drives the pin layers.
+    const sortedActionEntries = useMemo(
+        () => sortFeedEntries(actions, overviewFilters, monitoringFactor, scoreTypeByActionId),
+        [actions, overviewFilters, monitoringFactor, scoreTypeByActionId],
+    );
 
     const analysisActionIds = useMemo(() => {
         const ids = new Set<string>();
@@ -727,33 +670,17 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
     // operator would actually see if they cleared the filter.
     const overviewFilteredOutCount = useMemo(() => {
         if (!overviewFilters) return 0;
-        const typeFilter = overviewFilters.actionType ?? 'all';
-        let hidden = 0;
-        for (const [id, details] of Object.entries(actions)) {
-            if (id.includes('+')) {
-                if (details.is_estimated) continue;
-                if (!details.rho_after || details.rho_after.length === 0) continue;
-            }
-            const passesCategory = actionPassesOverviewFilter(
-                details, monitoringFactor,
-                overviewFilters.categories, overviewFilters.threshold,
-            );
-            let passesType = true;
-            if (typeFilter !== 'all') {
-                if (id.includes('+')) {
-                    const [id1, id2] = id.split('+');
-                    const d1 = actions[id1];
-                    const d2 = actions[id2];
-                    passesType = !!((d1 && matchesActionTypeFilter(typeFilter, id1, d1.description_unitaire, scoreTypeByActionId.get(id1) ?? null))
-                        || (d2 && matchesActionTypeFilter(typeFilter, id2, d2.description_unitaire, scoreTypeByActionId.get(id2) ?? null)));
-                } else {
-                    passesType = matchesActionTypeFilter(typeFilter, id, details.description_unitaire, scoreTypeByActionId.get(id) ?? null);
-                }
-            }
-            if (!passesCategory || !passesType) hidden += 1;
-        }
-        return hidden;
+        return Object.entries(actions).filter(([id, details]) => isFeedCard(id, details) && !passesFeedFilters(
+            id, details, actions, overviewFilters, monitoringFactor, scoreTypeByActionId,
+        )).length;
     }, [actions, overviewFilters, monitoringFactor, scoreTypeByActionId]);
+
+    // Progressive reveal: the Suggested list shows the revealed cards
+    // only, each keeping its rank in the full list (card "#N").
+    const revealedEntries = useMemo(() => {
+        const ranked = prioritizedEntries.map((entry, rank) => ({ entry, rank }));
+        return reveal ? ranked.filter(({ entry: [id] }) => reveal.displayedIds.has(id)) : ranked;
+    }, [prioritizedEntries, reveal]);
 
     // When an action becomes the currently-viewed one (typically
     // after the user double-clicks a pin in the action overview
@@ -836,7 +763,7 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
         } as AnalysisResult;
     }, [pendingAnalysisResult, actions, combinedActions, linesOverloaded, actionScores]);
 
-    const renderActionList = (entries: [string, ActionDetail][]) => {
+    const renderActionList = (entries: [string, ActionDetail][], ranks?: readonly number[]) => {
         return entries.map(([id, details], index) => {
             if (!details) return null;
             return (
@@ -844,7 +771,7 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                     key={id}
                     id={id}
                     details={details}
-                    index={index}
+                    index={ranks?.[index] ?? index}
                     isViewing={selectedActionId === id}
                     isSelected={selectedActionIds.has(id)}
                     isRejected={rejectedActionIds.has(id)}
@@ -1278,7 +1205,20 @@ const ActionFeed: React.FC<ActionFeedProps> = ({
                 )}
 
                 {suggestedTab === 'prioritized' && (
-                    prioritizedEntries.length > 0 ? renderActionList(prioritizedEntries) : (
+                    prioritizedEntries.length > 0 ? (
+                        <>
+                            {renderActionList(revealedEntries.map(r => r.entry), revealedEntries.map(r => r.rank))}
+                            {reveal && revealedEntries.length < prioritizedEntries.length && (
+                                <SuggestionRevealBar
+                                    shown={revealedEntries.length}
+                                    total={prioritizedEntries.length}
+                                    step={reveal.step}
+                                    onShowMore={reveal.onShowMore}
+                                    onShowAll={reveal.onShowAll}
+                                />
+                            )}
+                        </>
+                    ) : (
                         !analysisLoading ? (
                             <div style={{ textAlign: 'center' }}>
                                 <p

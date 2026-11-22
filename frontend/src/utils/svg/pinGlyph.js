@@ -58,9 +58,16 @@ export const PIN_CHROME = {
     goldDark: '#a16207',
     crossFill: '#ef4444',
     crossStroke: '#b91c1c',
+    feedBadge: '#1e40af',
 };
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+
+// Opacity of a suggestion whose card the action feed still hides
+// (progressive reveal). Its body keeps the severity colour — unlike
+// the washed-out palette of rejected / un-simulated / filter-dimmed
+// pins — so it reads as "same action, not listed yet".
+export const FEED_HIDDEN_OPACITY = 0.45;
 
 // 5-pointed star path centred at (cx, cy), `outerR` body radius.
 export function pinStarPath(cx, cy, outerR) {
@@ -92,6 +99,48 @@ export function pinCrossPath(cx, cy, halfW) {
         'L ' + (cx - halfW + t) + ' ' + (cy - halfW),
         'Z',
     ].join(' ');
+}
+
+// "Card shown in the feed" badge: a brand-blue disc carrying a white
+// card glyph, on the upper-right rim of the bubble. Marks the
+// suggestions whose card the action feed lists — the progressive
+// reveal hides the others behind "Show N more" (their pins are drawn
+// at FEED_HIDDEN_OPACITY). Appended to the body group so it follows
+// the screen-constant pin rescale.
+export function appendFeedBadge(doc, body, r) {
+    const cx = r * 0.77;
+    const cy = -r - r * 0.9 - r * 0.64;
+    const badge = doc.createElementNS(SVG_NS, 'g');
+    badge.setAttribute('class', 'cs4g-pin-feed-badge');
+    const title = doc.createElementNS(SVG_NS, 'title');
+    title.textContent = 'Card shown in the action feed';
+    badge.appendChild(title);
+    const disc = doc.createElementNS(SVG_NS, 'circle');
+    disc.setAttribute('cx', String(cx));
+    disc.setAttribute('cy', String(cy));
+    disc.setAttribute('r', String(r * 0.38));
+    disc.setAttribute('fill', PIN_CHROME.feedBadge);
+    disc.setAttribute('stroke', PIN_CHROME.glyphBg);
+    disc.setAttribute('stroke-width', String(r * 0.07));
+    badge.appendChild(disc);
+    const card = doc.createElementNS(SVG_NS, 'rect');
+    card.setAttribute('x', String(cx - r * 0.2));
+    card.setAttribute('y', String(cy - r * 0.14));
+    card.setAttribute('width', String(r * 0.4));
+    card.setAttribute('height', String(r * 0.28));
+    card.setAttribute('rx', String(r * 0.05));
+    card.setAttribute('fill', PIN_CHROME.glyphBg);
+    badge.appendChild(card);
+    // One "text line" across the card.
+    const line = doc.createElementNS(SVG_NS, 'rect');
+    line.setAttribute('x', String(cx - r * 0.12));
+    line.setAttribute('y', String(cy - r * 0.03));
+    line.setAttribute('width', String(r * 0.24));
+    line.setAttribute('height', String(r * 0.06));
+    line.setAttribute('fill', PIN_CHROME.feedBadge);
+    badge.appendChild(line);
+    body.appendChild(badge);
+    return badge;
 }
 
 // Resolve the body fill given severity + status flags. Pulled out
@@ -126,6 +175,11 @@ export function resolvePinFill(severity, isSelected, isRejected, isDimmed) {
  * @param {boolean=} opts.isSelected Adds gold halo + star symbol.
  * @param {boolean=} opts.isRejected Adds red ✕ symbol + dim opacity.
  * @param {boolean=} opts.dimmed     Filter-dimmed (context only).
+ * @param {string=}  opts.feed       Progressive reveal of the action
+ *                                   feed: 'shown' (card listed — adds
+ *                                   the feed badge) or 'hidden' (card
+ *                                   not listed yet — whole pin at
+ *                                   FEED_HIDDEN_OPACITY, colours kept).
  * @param {number}   opts.r          Body radius in user-space units.
  * @param {number=}  opts.labelFont  Override for the label font size.
  * @param {string=}  opts.bodyClass  Extra class for the inner body
@@ -142,6 +196,7 @@ export function createPinGlyph(doc, opts) {
     const isSelected = !!opts.isSelected;
     const isRejected = !!opts.isRejected;
     const dimmed = !!opts.dimmed;
+    const feed = opts.feed === 'shown' || opts.feed === 'hidden' ? opts.feed : null;
     const fill = resolvePinFill(sev, isSelected, isRejected, dimmed);
 
     const g = doc.createElementNS(SVG_NS, 'g');
@@ -150,6 +205,7 @@ export function createPinGlyph(doc, opts) {
     g.setAttribute('data-severity', sev);
     if (isSelected) g.setAttribute('data-selected', 'true');
     if (isRejected) g.setAttribute('data-rejected', 'true');
+    if (feed) g.setAttribute('data-feed', feed);
 
     const body = doc.createElementNS(SVG_NS, 'g');
     body.setAttribute('class', opts.bodyClass || 'cs4g-pin-body');
@@ -219,9 +275,11 @@ export function createPinGlyph(doc, opts) {
         cross.setAttribute('pointer-events', 'none');
         body.appendChild(cross);
     }
+    if (feed === 'shown') appendFeedBadge(doc, body, r);
 
     if (isRejected) g.setAttribute('opacity', '0.55');
     else if (dimmed) g.setAttribute('opacity', '0.4');
+    else if (feed === 'hidden') g.setAttribute('opacity', String(FEED_HIDDEN_OPACITY));
 
     return g;
 }

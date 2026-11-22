@@ -42,6 +42,8 @@ describe('SettingsModal', () => {
         setMinLineDisconnections: vi.fn(),
         nPrioritizedActions: 5,
         setNPrioritizedActions: vi.fn(),
+        nInitialSuggestions: 3,
+        setNInitialSuggestions: vi.fn(),
         minPst: 1.0,
         setMinPst: vi.fn(),
         minLoadShedding: 0.0,
@@ -108,6 +110,14 @@ describe('SettingsModal', () => {
         render(<SettingsModal {...defaultProps} settings={{ ...mockSettings, settingsTab: 'recommender' } as unknown as SettingsState} />);
         fireEvent.click(screen.getByLabelText('Ignore Reconnections'));
         expect(mockSettings.setIgnoreReconnections).toHaveBeenCalledWith(true);
+    });
+
+    it('edits "Suggestions Shown at First" on the recommender tab, whatever the model', () => {
+        render(<SettingsModal {...defaultProps} settings={{ ...mockSettings, settingsTab: 'recommender' } as unknown as SettingsState} />);
+        const input = screen.getByLabelText('Suggestions Shown at First');
+        expect(input).toHaveValue(3);
+        fireEvent.change(input, { target: { value: '5' } });
+        expect(mockSettings.setNInitialSuggestions).toHaveBeenCalledWith(5);
     });
 
     it('calls apply and close callbacks', () => {

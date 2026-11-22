@@ -113,6 +113,8 @@ _CONFIG_FIELDS = frozenset({
     "pre_existing_overload_threshold", "ignore_reconnections",
     "pypowsybl_fast_mode",
 })
+# Display settings added after the original contract — absent from older logs.
+_CONFIG_OPTIONAL_FIELDS = frozenset({"n_initial_suggestions"})
 
 
 def _spec_row(required: set[str], optional: set[str] = frozenset()) -> dict:
@@ -121,10 +123,10 @@ def _spec_row(required: set[str], optional: set[str] = frozenset()) -> dict:
 
 SPEC_DETAILS: dict[str, dict] = {
     # --- Configuration & Study Loading ---
-    "config_loaded":           _spec_row(_CONFIG_FIELDS),
+    "config_loaded":           _spec_row(_CONFIG_FIELDS, optional=_CONFIG_OPTIONAL_FIELDS),
     "settings_opened":         _spec_row({"tab"}),
     "settings_tab_changed":    _spec_row({"from_tab", "to_tab"}),
-    "settings_applied":        _spec_row(_CONFIG_FIELDS),
+    "settings_applied":        _spec_row(_CONFIG_FIELDS, optional=_CONFIG_OPTIONAL_FIELDS),
     "settings_cancelled":      _spec_row(set()),
     "path_picked":             _spec_row({"type", "path"}),
     # --- Contingency (single + N-K multi-element) ---
@@ -153,6 +155,9 @@ SPEC_DETAILS: dict[str, dict] = {
         "n_actions", "action_ids", "dc_fallback", "message", "pdf_url",
     }),
     "prioritized_actions_displayed": _spec_row({"n_actions"}),
+    # Progressive reveal of the Suggested Actions list.
+    "suggestions_show_more":    _spec_row({"step", "n_shown"}),
+    "suggestions_show_all":     _spec_row({"n_shown"}),
     # --- Action ---
     "action_selected":          _spec_row({"action_id"}),
     "action_deselected":        _spec_row({"previous_action_id"}),

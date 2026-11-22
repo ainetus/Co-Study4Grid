@@ -93,6 +93,7 @@ Some pieces of in-memory state are deliberately ephemeral and will reset on relo
 - **Per-card edit state** (`cardEditMw`, `cardEditTap`): the raw, uncommitted values in the action card inputs. Only the committed, re-simulated result survives — persisted as `pst_details.tap_position` / `load_shedding_details[].shedded_mw` / `curtailment_details[].curtailed_mw`. A replay agent that wants to reproduce exact keystrokes must consume the `action_mw_resimulated` / `pst_tap_resimulated` events from `interaction_log.json` instead.
 - **Detached / tied visualization tab state** (PRs #84/#85): `detachedTabs` and the tied-tab registry are not in `session.json`. Detaching a tab does not change any analysis result, so reload intentionally starts with all tabs attached to the main window. A replay that needs to reproduce detach / reattach / tie / untie must stream the matching events from `interaction_log.json`.
 - **Overflow Analysis tab UI state**: `overflowPinsEnabled` (📌 Pins toggle), `overflowLayoutMode` (Hierarchical / Geo), the iframe layer-toggle checkboxes, and the shared `overviewFilters` (category chips / threshold / action-type / Show unsimulated) are deliberately ephemeral. On reload the toggle starts OFF (auto-disabled while `result.actions` is empty during the brief restore window), the layout mode resets to the backend default, and the filters reset to `DEFAULT_ACTION_OVERVIEW_FILTERS`. A replay that needs to reproduce the operator's exact overflow-tab navigation must stream `overflow_pins_toggled` / `overflow_layout_mode_toggled` / `overflow_layer_toggled` / `overflow_select_all_layers` / `overflow_pin_clicked` / `overflow_pin_double_clicked` / `overflow_node_double_clicked` / `overview_filter_changed` / `overview_unsimulated_toggled` events from `interaction_log.json`.
+- **Progressive-reveal state** of the Suggested Actions list: which suggested cards the operator revealed with **Show N more** / **Show all** / a pin click is not saved — a reloaded session lists the first `n_initial_suggestions` cards again (every suggestion keeps its pin on the overviews). A replay that needs the same listed cards must stream `suggestions_show_more` / `suggestions_show_all` and the pin clicks from `interaction_log.json`.
 - **Live diagram rho ratios** are not threaded back from `session.overloads.n1_overloads_rho` into the `n1Diagram` object — they come from the re-fetched N-1 payload after `setSelectedBranch` fires. The persisted rho arrays are primarily useful for inspection of standalone `session.json` dumps and for replay agents that don't re-run the backend.
 
 ---
@@ -117,6 +118,7 @@ Some pieces of in-memory state are deliberately ephemeral and will reset on relo
     "min_redispatch": 1.0,
     "allowed_action_types": [],
     "n_prioritized_actions": 10,
+    "n_initial_suggestions": 3,
     "lines_monitoring_path": "/data/monitoring.csv",
     "monitoring_factor": 0.95,
     "pre_existing_overload_threshold": 0.02,
@@ -234,10 +236,11 @@ All settings active when the analysis was run. Matches the fields sent to `POST 
 | `allowed_action_types` | *(optional)* The "Restrict to action types" recommender control — the subset of action families the recommender is allowed to propose. An **empty array** means all families are enabled (no restriction); a non-empty subset restricts the recommender to only those types. Persisted in the snapshot and restored on reload (and backed up for Settings-cancel). Mirrors `SettingsState.allowedActionTypes`. Defaults to `[]`. |
 | `model` | *(optional)* Registry key of the recommender model selected at save time. Captures **what the operator picked** in the Settings → Recommender tab — useful for replay agents that want to reproduce the same model selection before re-running analysis. Defaults to `"expert"`. See [docs/backend/recommender_models.md](../backend/recommender_models.md). |
 | `compute_overflow_graph` | *(optional)* Whether the Compute Overflow Graph toggle was ON at save time. Locked-on for models with `requires_overflow_graph=true`; opt-in for the others. |
+| `n_initial_suggestions` | *(optional)* The **Suggestions Shown at First** setting (Settings → Recommender): how many suggested cards the action feed lists after "Display prioritized actions" — also the batch of its **Show N more** button (see [progressive reveal](action-overview-diagram.md#progressive-reveal-of-the-suggestions)). A display setting, the one field here **not** sent to `POST /api/config`. Restored on reload; a session saved before it existed keeps the operator's own setting. |
 
 *(Other fields match the Recommender and Configurations settings tabs.)*
 
-> **Legacy sessions:** `min_load_shedding` / `min_renewable_curtailment_actions` / `model` / `compute_overflow_graph` were each added to the schema after the original release. Older session dumps that predate any of these fields are restored with sensible defaults (`0.0` for the threshold fields, `"expert"` for `model`, `true` for `compute_overflow_graph`) so reload remains byte-compatible.
+> **Legacy sessions:** `min_load_shedding` / `min_renewable_curtailment_actions` / `model` / `compute_overflow_graph` / `n_initial_suggestions` were each added to the schema after the original release. Older session dumps that predate any of these fields are restored with sensible defaults (`0.0` for the threshold fields, `"expert"` for `model`, `true` for `compute_overflow_graph`, the operator's current setting for `n_initial_suggestions`) so reload remains byte-compatible.
 
 ### `contingency`
 
@@ -506,6 +509,8 @@ as a frozen snapshot — do NOT edit further).
   `recommenderModel` and `computeOverflowGraph` from `SessionInput` go
   to `session.configuration.model` / `session.configuration.compute_overflow_graph`
   (conditional — omitted when undefined for legacy callers).
+- **Suggestions shown at first:** `nInitialSuggestions` goes to
+  `session.configuration.n_initial_suggestions` (conditional, like the model fields).
 - All four status tags independently computed
 - **Action origin:** `detail.origin` (`"user"` / a recommender model id) is serialised verbatim; left `undefined` for legacy / un-tracked actions
 - **Combined actions:** serialised with estimation and simulation data
@@ -523,6 +528,7 @@ A `makeCtx()` / `makeSession()` fixture pair makes each test self-contained:
 
 - Full configuration restore — every setter is called with the saved value, including the new `min_load_shedding` / `min_renewable_curtailment_actions` thresholds
 - Legacy sessions (neither new threshold present) fall back to `0.0` on reload
+- `n_initial_suggestions` is restored through the optional `ctx.setNInitialSuggestions`; a session without it leaves the operator's setting untouched
 - **`committedNetworkPathRef.current` is set** to the restored `network_path` — regression guard for the "Change Network?" dialog misfire
 - `api.updateConfig` is called once with the full configuration payload
 - A `session_reloaded` interaction event is recorded with the session name

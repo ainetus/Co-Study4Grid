@@ -11,6 +11,7 @@ import type { ModelDescriptor, UserConfig } from '../api';
 import type { SettingsBackup } from '../types';
 import { gameBridge } from '../game/gameBridge';
 import { interactionLogger } from '../utils/interactionLogger';
+import { DEFAULT_REVEAL_STEP } from '../utils/feedEntries';
 
 export interface SettingsState {
   configFilePath: string;
@@ -38,6 +39,9 @@ export interface SettingsState {
   setMinLineDisconnections: (v: number) => void;
   nPrioritizedActions: number;
   setNPrioritizedActions: (v: number) => void;
+  /** Suggested cards the action feed shows at first — also its "Show N more" step. */
+  nInitialSuggestions: number;
+  setNInitialSuggestions: (v: number) => void;
   minPst: number;
   setMinPst: (v: number) => void;
   minLoadShedding: number;
@@ -128,6 +132,7 @@ export function useSettings(): SettingsState {
   const [minOpenCoupling, setMinOpenCoupling] = useState(2.0);
   const [minLineDisconnections, setMinLineDisconnections] = useState(3.0);
   const [nPrioritizedActions, setNPrioritizedActions] = useState(10);
+  const [nInitialSuggestions, setNInitialSuggestions] = useState(DEFAULT_REVEAL_STEP);
   const [minPst, setMinPst] = useState(1.0);
   const [minLoadShedding, setMinLoadShedding] = useState(0.0);
   const [minRenewableCurtailmentActions, setMinRenewableCurtailmentActions] = useState(0.0);
@@ -183,6 +188,7 @@ export function useSettings(): SettingsState {
     if (cfg.min_redispatch !== undefined) setMinRedispatch(cfg.min_redispatch);
     if (cfg.allowed_action_types !== undefined) setAllowedActionTypes(cfg.allowed_action_types ?? []);
     if (cfg.n_prioritized_actions !== undefined) setNPrioritizedActions(cfg.n_prioritized_actions);
+    if (cfg.n_initial_suggestions !== undefined) setNInitialSuggestions(cfg.n_initial_suggestions);
     if (cfg.monitoring_factor !== undefined) setMonitoringFactor(cfg.monitoring_factor);
     if (cfg.pre_existing_overload_threshold !== undefined) setPreExistingOverloadThreshold(cfg.pre_existing_overload_threshold);
     if (cfg.ignore_reconnections !== undefined) setIgnoreReconnections(cfg.ignore_reconnections);
@@ -308,6 +314,7 @@ export function useSettings(): SettingsState {
       min_redispatch: minRedispatch,
       allowed_action_types: allowedActionTypes,
       n_prioritized_actions: nPrioritizedActions,
+      n_initial_suggestions: nInitialSuggestions,
       monitoring_factor: monitoringFactor,
       pre_existing_overload_threshold: preExistingOverloadThreshold,
       ignore_reconnections: ignoreReconnections,
@@ -328,7 +335,7 @@ export function useSettings(): SettingsState {
     });
   }, [networkPath, actionPath, layoutPath, outputFolderPath, linesMonitoringPath,
     minLineReconnections, minCloseCoupling, minOpenCoupling, minLineDisconnections,
-    minPst, minLoadShedding, minRenewableCurtailmentActions, minRedispatch, allowedActionTypes, nPrioritizedActions, monitoringFactor, preExistingOverloadThreshold,
+    minPst, minLoadShedding, minRenewableCurtailmentActions, minRedispatch, allowedActionTypes, nPrioritizedActions, nInitialSuggestions, monitoringFactor, preExistingOverloadThreshold,
     ignoreReconnections, pypowsyblFastMode, recommenderModel, computeOverflowGraph]);
 
   const pickSettingsPath = useCallback(async (type: 'file' | 'dir', setter: (path: string) => void) => {
@@ -370,12 +377,13 @@ export function useSettings(): SettingsState {
     minRedispatch,
     allowedActionTypes,
     nPrioritizedActions,
+    nInitialSuggestions,
     linesMonitoringPath,
     monitoringFactor,
     preExistingOverloadThreshold,
     ignoreReconnections,
     pypowsyblFastMode,
-  }), [networkPath, actionPath, layoutPath, outputFolderPath, minLineReconnections, minCloseCoupling, minOpenCoupling, minLineDisconnections, minLoadShedding, minRenewableCurtailmentActions, minRedispatch, allowedActionTypes, nPrioritizedActions, linesMonitoringPath, monitoringFactor, preExistingOverloadThreshold, ignoreReconnections, pypowsyblFastMode]);
+  }), [networkPath, actionPath, layoutPath, outputFolderPath, minLineReconnections, minCloseCoupling, minOpenCoupling, minLineDisconnections, minLoadShedding, minRenewableCurtailmentActions, minRedispatch, allowedActionTypes, nPrioritizedActions, nInitialSuggestions, linesMonitoringPath, monitoringFactor, preExistingOverloadThreshold, ignoreReconnections, pypowsyblFastMode]);
 
   const handleOpenSettings = useCallback((tab: 'recommender' | 'configurations' | 'paths' = 'paths') => {
     interactionLogger.record('settings_opened', { tab });
@@ -400,6 +408,7 @@ export function useSettings(): SettingsState {
       setMinRedispatch(settingsBackup.minRedispatch ?? 0.0);
       setAllowedActionTypes(settingsBackup.allowedActionTypes ?? []);
       setNPrioritizedActions(settingsBackup.nPrioritizedActions);
+      setNInitialSuggestions(settingsBackup.nInitialSuggestions ?? DEFAULT_REVEAL_STEP);
       setLinesMonitoringPath(settingsBackup.linesMonitoringPath);
       setMonitoringFactor(settingsBackup.monitoringFactor);
       setPreExistingOverloadThreshold(settingsBackup.preExistingOverloadThreshold);
@@ -460,6 +469,7 @@ export function useSettings(): SettingsState {
     minOpenCoupling, setMinOpenCoupling,
     minLineDisconnections, setMinLineDisconnections,
     nPrioritizedActions, setNPrioritizedActions,
+    nInitialSuggestions, setNInitialSuggestions,
     minPst, setMinPst,
     minLoadShedding, setMinLoadShedding,
     minRenewableCurtailmentActions, setMinRenewableCurtailmentActions,
@@ -492,7 +502,7 @@ export function useSettings(): SettingsState {
   }), [
     networkPath, actionPath, layoutPath, outputFolderPath,
     minLineReconnections, minCloseCoupling, minOpenCoupling, minLineDisconnections,
-    nPrioritizedActions, minPst, minLoadShedding, minRenewableCurtailmentActions, minRedispatch, allowedActionTypes, ignoreReconnections,
+    nPrioritizedActions, nInitialSuggestions, minPst, minLoadShedding, minRenewableCurtailmentActions, minRedispatch, allowedActionTypes, ignoreReconnections,
     recommenderModel, computeOverflowGraph, availableModels,
     linesMonitoringPath, monitoredLinesCount, totalLinesCount, showMonitoringWarning, monitoringFactor, preExistingOverloadThreshold, pypowsyblFastMode,
     actionDictFileName, actionDictStats,

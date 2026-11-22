@@ -28,7 +28,7 @@ import { DEFAULT_ACTION_OVERVIEW_FILTERS } from '../utils/actionTypes';
 const CLUSTER_KEYS: Record<string, readonly string[]> = {
     detach: ['detachedTabs', 'onDetachTab', 'onReattachTab', 'onFocusDetachedTab', 'isTabTied', 'onToggleTabTie'],
     overflow: ['overflowLayoutMode', 'overflowLayoutLoading', 'onOverflowLayoutChange', 'onOverflowPinPreview', 'onOverflowPinDoubleClick', 'overflowPins', 'overflowPinsEnabled', 'onOverflowPinsToggle'],
-    actionOverview: ['n1MetaIndex', 'onActionSelect', 'onActionFavorite', 'onActionReject', 'selectedActionIds', 'rejectedActionIds', 'onPinPreview', 'onOverviewPzChange', 'monitoringFactor', 'displayName', 'overviewFilters', 'onOverviewFiltersChange', 'sidebarCollapsed', 'hasActions', 'unsimulatedActionIds', 'unsimulatedActionInfo', 'onSimulateUnsimulatedAction'],
+    actionOverview: ['n1MetaIndex', 'onActionSelect', 'onActionFavorite', 'onActionReject', 'selectedActionIds', 'rejectedActionIds', 'onPinPreview', 'onOverviewPzChange', 'monitoringFactor', 'displayName', 'overviewFilters', 'onOverviewFiltersChange', 'sidebarCollapsed', 'hasActions', 'unsimulatedActionIds', 'unsimulatedActionInfo', 'onSimulateUnsimulatedAction', 'feedReveal'],
 };
 
 const groupClusterOverrides = (overrides: Record<string, unknown>) => {
