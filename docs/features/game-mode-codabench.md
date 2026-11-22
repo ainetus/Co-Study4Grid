@@ -75,7 +75,7 @@ The whole feature is additive and inert unless `?game=1` is set.
 | `frontend/src/game/scoring.ts` | Shared scoring model (twin of the Python scorer) |
 | `frontend/src/game/gameLog.ts` | `GameSessionLog` assembly + CSV + download helpers |
 | `frontend/src/game/solutionLog.ts` | Solution capitalisation client: lever/signature computation + log payload + feedback mapping |
-| `frontend/src/game/presets.ts` | Curated **solvable** sets: France 2025 (default — the French grid on its real 2025 hours, a July starter then the January peak around Marseille, Paris and Lyon), Medium (the European grid on the same hours), High (French worst case) |
+| `frontend/src/game/presets.ts` | Curated **solvable** sets, each with its per-study timer: Medium (default — the European grid on real 2025 hours, 5 min), France 2025 (the French grid on the same hours, a July starter then the January peak around Marseille, Paris and Lyon, 20 min), High (French worst case, 5 min) |
 | `frontend/src/game/types.ts` | Type contract for the whole module |
 
 ### App integration (3 touch points, all guarded by `gameBridge.isGameMode()`)

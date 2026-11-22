@@ -151,12 +151,14 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
   const [existingSessions, setExistingSessions] = useState<string[]>([]);
   const takenSessions = useMemo(
     () => new Set(existingSessions.map(sessionKey)), [existingSessions]);
-  const [minutes, setMinutes] = useState(5);
-  const [seconds, setSeconds] = useState(0);
+
   const [maxActions, setMaxActions] = useState(3);
   const [assistance, setAssistance] = useState(true);
   const [difficulty, setDifficulty] = useState<Difficulty>(DEFAULT_DIFFICULTY);
   const tier = difficultyTier(difficulty);
+  // Per-study time limit, seeded by the set (France 2025 gives 20 minutes).
+  const [minutes, setMinutes] = useState(Math.floor(tier.timerSeconds / 60));
+  const [seconds, setSeconds] = useState(tier.timerSeconds % 60);
   const [studies, setStudies] = useState<GameStudy[]>(tier.studies);
   // Studies the player unticked on the landing page: left out of the session
   // but kept in the list, so they can be ticked back. Keyed by study id.
@@ -166,7 +168,7 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [previewError, setPreviewError] = useState(false);
 
-  // Top-level mode: the curated PyPSA-EUR sets (France 2025 by default) vs one
+  // Top-level mode: the curated PyPSA-EUR sets (the European grid by default) vs one
   // of the difficulty-graded scenario databases (sampled by level). The curated
   // sets are the only mode a participant sees by default — France THT and
   // France EHV (Matpower) stay hidden behind this toggle inside Configure
@@ -222,9 +224,12 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
   // Switching difficulty swaps the whole study list to the new grid's
   // reference set (paths differ, so a mixed list would not load).
   const changeDifficulty = (d: Difficulty) => {
+    const next = difficultyTier(d);
     setDifficulty(d);
-    setStudies(difficultyTier(d).studies);
+    setStudies(next.studies);
     setSkipped(new Set());
+    setMinutes(Math.floor(next.timerSeconds / 60));
+    setSeconds(next.timerSeconds % 60);
     setPresetToAdd('');
     setPreviewError(false);
   };
@@ -543,10 +548,10 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
                 <div>
                   <label style={labelStyle}>Time limit per study</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: space[1] }}>
-                    <input type="number" min={0} max={59} value={minutes} style={{ ...inputStyle, width: 64 }}
+                    <input type="number" data-testid="game-timer-minutes" min={0} max={59} value={minutes} style={{ ...inputStyle, width: 64 }}
                       onChange={(e) => setMinutes(Math.max(0, Number(e.target.value)))} />
                     <span style={{ fontSize: text.sm, color: colors.textSecondary }}>min</span>
-                    <input type="number" min={0} max={59} value={seconds} style={{ ...inputStyle, width: 64 }}
+                    <input type="number" data-testid="game-timer-seconds" min={0} max={59} value={seconds} style={{ ...inputStyle, width: 64 }}
                       onChange={(e) => setSeconds(Math.min(59, Math.max(0, Number(e.target.value))))} />
                     <span style={{ fontSize: text.sm, color: colors.textSecondary }}>sec</span>
                   </div>

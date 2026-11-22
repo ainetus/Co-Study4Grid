@@ -98,22 +98,22 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   PyPSA-EUR id starts with `L_way` / `VL_way`, and a load shed at Moisenay
   lit up the Courtry bus-bar title. See `docs/features/sld-halos.md`.
 
-### Game Mode — France 2025 set, studies picked at launch
+### Game Mode — France 2025 set, studies picked at launch, won below the monitoring factor
 
-- **New default set, France 2025**: the French 225 / 400 kV grid on its two
-  real 2025 hours. A starter on 1 July 13:00 (Les Attaques – Mandarins n°2,
-  105 %), then seven cases on the 14 January 9:00 peak — around Marseille
-  (Réaltor – Tavel n°1, Ponteau – Réaltor, Réaltor – Septèmes n°1), Paris
-  (Coubert – Moisenay, Courtry – Plison n°1, Mézerolles – Yvelines-Ouest n°1)
-  and Lyon (Échalas – Le Soleil n°2), 98 to 130 %. Each is winnable below the
-  95 % monitoring factor with the expert model's suggestions: one action
+- **New set, France 2025**: the French 225 / 400 kV grid on its two real 2025
+  hours, with 20 minutes per study. A starter on 1 July 13:00 (Les Attaques –
+  Mandarins n°2, 105 %), then seven cases on the 14 January 9:00 peak — around
+  Marseille (Réaltor – Tavel n°1, Ponteau – Réaltor, Réaltor – Septèmes n°1),
+  Paris (Coubert – Moisenay, Courtry – Plison n°1, Mézerolles – Yvelines-Ouest
+  n°1) and Lyon (Échalas – Le Soleil n°2), 98 to 130 %. Each is winnable below
+  the 95 % monitoring factor with the expert model's suggestions: one action
   clears it, except Ponteau – Réaltor and Réaltor – Septèmes n°1, which take a
   pair. Réaltor – Tavel n°1 and Coubert – Moisenay load their line between 95
   and 100 %: past the monitoring limit, so the N-1 tables (> 100 %) leave them
   out and the preset check reads them in the bundle's line list instead. The
-  European set moves
-  behind ⚙ Configure settings → Other modes; the Space image unpacks the
-  French situations too.
+  European set stays the default; France 2025 is picked under ⚙ Configure
+  settings → Other modes, which sets the timer to 20 minutes. The Space image
+  unpacks the French situations too.
 - **A study is won below the monitoring factor, not 100 %**: the HUD's ✓, the
   score and the Codabench scorer counted a study as solved once its worst line
   was under 100 %, while the workspace flags an overload from the monitoring

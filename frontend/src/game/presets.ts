@@ -10,13 +10,13 @@ import type { GameStudy } from './types';
 // ---------------------------------------------------------------------------
 // Built-in study presets, grouped into three curated sets:
 //
-//  - **France 2025** (default): the French `pypsa_eur_fr225_400` grid
-//    rebuilt on real 2025 hours (`situations/`, see
-//    docs/data/pypsa-eur-osm-to-xiidm.md) — a starter on the July midday,
-//    then seven harder cases on the January peak (98–130 %).
-//  - **Medium**: the pan-European `pypsa_eur_eur220_225_380_400` grid on the
-//    same hours — two studies per hour. Moderate loadings (102–110 %), so
-//    they are clearable with a couple of actions.
+//  - **Medium** (default): the pan-European `pypsa_eur_eur220_225_380_400`
+//    grid rebuilt on real 2025 hours (`situations/`, see
+//    docs/data/pypsa-eur-osm-to-xiidm.md) — two studies per hour. Moderate
+//    loadings (102–110 %), so they are clearable with a couple of actions.
+//  - **France 2025**: the French `pypsa_eur_fr225_400` grid on the same
+//    hours — a starter on the July midday, then seven harder cases on the
+//    January peak (98–130 %), with 20 minutes per study.
 //  - **High**: the French `pypsa_eur_fr225_400` grid — worst-case ~130 %
 //    loadings that demand sharper remediation.
 //
@@ -192,34 +192,39 @@ export interface DifficultyTier extends GridPaths {
   id: Difficulty;
   label: string;
   blurb: string;
+  /** Per-study time limit (seconds) the config screen sets when the set is picked. */
+  timerSeconds: number;
   studies: GameStudy[];
 }
 
 export const DIFFICULTY_TIERS: DifficultyTier[] = [
   {
-    id: 'france-2025',
-    label: 'France 2025 — starter to hard',
-    blurb: 'PyPSA-EUR France 225 / 400 kV on real 2025 hours, PyPSA optimal dispatch — a 1 July 13:00 starter (105 %), then the 14 January 9:00 peak around Marseille, Paris and Lyon (98–130 %).',
-    ...FR_JAN,
-    studies: FR_2025_STUDIES,
-  },
-  {
     id: 'medium',
     label: 'Medium — European grid',
     blurb: 'Pan-European 220 / 225 / 380 / 400 kV on real 2025 hours, PyPSA optimal dispatch — 14 January 9:00 and 1 July 13:00 (102–110 % overloads).',
     ...JAN_OPF,
+    timerSeconds: 5 * 60,
     studies: EUR_STUDIES,
+  },
+  {
+    id: 'france-2025',
+    label: 'France 2025 — starter to hard',
+    blurb: 'PyPSA-EUR France 225 / 400 kV on real 2025 hours, PyPSA optimal dispatch — a 1 July 13:00 starter (105 %), then the 14 January 9:00 peak around Marseille, Paris and Lyon (98–130 %). 20 minutes per study.',
+    ...FR_JAN,
+    timerSeconds: 20 * 60,
+    studies: FR_2025_STUDIES,
   },
   {
     id: 'high',
     label: 'High — French grid',
     blurb: 'PyPSA-EUR France 225 / 400 kV — worst-case ~130 % loadings, harder to clear.',
     ...FR_PATHS,
+    timerSeconds: 5 * 60,
     studies: FR_STUDIES,
   },
 ];
 
-export const DEFAULT_DIFFICULTY: Difficulty = 'france-2025';
+export const DEFAULT_DIFFICULTY: Difficulty = 'medium';
 
 export function difficultyTier(d: Difficulty): DifficultyTier {
   return DIFFICULTY_TIERS.find((t) => t.id === d) ?? DIFFICULTY_TIERS[0];
@@ -227,7 +232,7 @@ export function difficultyTier(d: Difficulty): DifficultyTier {
 
 const DEFAULT_TIER = difficultyTier(DEFAULT_DIFFICULTY);
 
-/** Default new-session content: every study of the default (France 2025) set. */
+/** Default new-session content: every study of the default (medium) tier. */
 export const DEFAULT_SESSION_STUDIES: GameStudy[] = DEFAULT_TIER.studies;
 
 // Back-compat exports (custom-study defaults) — point at the default tier.
