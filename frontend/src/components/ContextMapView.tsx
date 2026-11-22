@@ -31,6 +31,10 @@ const SUMMARY_WIDTH = 250;
 const FOCUS_MIN_SHARE = 0.18;
 const FOCUS_PAD = 1.4;
 const TOOLTIP_OFFSET = 14;
+const INFO_POPOVER_WIDTH = 280;
+const INFO_MARGIN = 8;
+/** Grace period for the pointer to travel from the `i` bubble into its popover (links). */
+const INFO_HIDE_DELAY_MS = 180;
 
 interface ContextMapViewProps {
     state: ContextMapState;
@@ -179,26 +183,122 @@ const DISPATCH_LABELS: Record<string, string> = {
     opf: 'optimal dispatch (PyPSA)',
 };
 
+type Situation = NonNullable<ContextMapData['situation']>;
+
 /** A real hour rebuilt on the grid: how it was dispatched, whose data — each
  *  licence after the sources it covers (a source may state none). */
-const SituationCredit: React.FC<{ situation: NonNullable<ContextMapData['situation']> }> = ({ situation }) => {
+const SituationCredit: React.FC<{ situation: Situation }> = ({ situation }) => {
     const byLicence = new Map<string, typeof situation.sources>();
     for (const s of situation.sources) byLicence.set(s.licence ?? '', [...(byLicence.get(s.licence ?? '') ?? []), s]);
     return (
-        <div data-testid="context-map-situation" style={{ color: colors.textSecondary, fontSize: text.xs }}>
-            Real hour, {DISPATCH_LABELS[situation.dispatch] ?? situation.dispatch} — data:{' '}
-            {[...byLicence].map(([licence, sources], g) => (
-                <React.Fragment key={licence}>
-                    {g > 0 && '; '}
-                    {sources.map((s, i) => (
-                        <React.Fragment key={s.name}>
-                            {i > 0 && ', '}
-                            <a href={s.url} target="_blank" rel="noreferrer" style={{ color: 'inherit' }}>{s.name}</a>
-                        </React.Fragment>
-                    ))}
-                    {licence && ` (${licence})`}
-                </React.Fragment>
-            ))}
+        <div data-testid="context-map-situation">
+            <div style={{ fontWeight: 700 }}>Real hour, {DISPATCH_LABELS[situation.dispatch] ?? situation.dispatch}</div>
+            <div>
+                Data:{' '}
+                {[...byLicence].map(([licence, sources], g) => (
+                    <React.Fragment key={licence}>
+                        {g > 0 && '; '}
+                        {sources.map((s, i) => (
+                            <React.Fragment key={s.name}>
+                                {i > 0 && ', '}
+                                <a href={s.url} target="_blank" rel="noreferrer" style={{ color: 'inherit' }}>{s.name}</a>
+                            </React.Fragment>
+                        ))}
+                        {licence && ` (${licence})`}
+                    </React.Fragment>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+/**
+ * The small `i` bubble beside the situation's name: where the hour comes from
+ * and whose data it is built on. Shown on hover only — it never stays up once
+ * the pointer has left the bubble and its popover (the popover's own links
+ * stay reachable). It is placed `position: fixed` from the button's rect
+ * because the card's column scrolls (`overflow-y: auto` would clip an
+ * absolutely-placed popover).
+ */
+const SituationInfo: React.FC<{ situation: Situation; cardRef: React.RefObject<HTMLElement | null> }> = ({ situation, cardRef }) => {
+    const [open, setOpen] = useState(false);
+    const [pos, setPos] = useState<React.CSSProperties>({});
+    const buttonRef = useRef<HTMLButtonElement>(null);
+    const hideTimer = useRef<number | null>(null);
+
+    const cancelHide = useCallback(() => {
+        if (hideTimer.current !== null) window.clearTimeout(hideTimer.current);
+        hideTimer.current = null;
+    }, []);
+    const scheduleHide = useCallback(() => {
+        cancelHide();
+        hideTimer.current = window.setTimeout(() => setOpen(false), INFO_HIDE_DELAY_MS);
+    }, [cancelHide]);
+    useEffect(() => cancelHide, [cancelHide]);
+
+    const show = () => {
+        cancelHide();
+        // Beside the card, on the map: below the bubble it would hide the date.
+        const bubble = buttonRef.current?.getBoundingClientRect();
+        const card = cardRef.current?.getBoundingClientRect();
+        if (bubble && card) {
+            setPos({
+                left: Math.max(INFO_MARGIN, Math.min(card.right + INFO_MARGIN, window.innerWidth - INFO_POPOVER_WIDTH - INFO_MARGIN)),
+                top: Math.max(INFO_MARGIN, bubble.top - INFO_MARGIN),
+            });
+        }
+        setOpen(true);
+    };
+
+    return (
+        <span
+            data-testid="context-map-situation-info-wrap"
+            style={{ display: 'inline-flex', alignItems: 'center', marginLeft: space[1] }}
+            onMouseEnter={show}
+            onMouseLeave={scheduleHide}
+        >
+            <button
+                ref={buttonRef}
+                type="button"
+                data-testid="context-map-situation-info"
+                aria-label="Where this situation comes from"
+                aria-expanded={open}
+                style={{
+                    background: colors.chromeSoft, color: colors.textOnBrand, border: 'none', borderRadius: '50%',
+                    width: 16, height: 16, padding: 0, cursor: 'pointer', flexShrink: 0,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 10, fontWeight: 700, fontStyle: 'italic', lineHeight: 1,
+                }}
+            >
+                i
+            </button>
+            {open && (
+                <div
+                    data-testid="context-map-situation-popover"
+                    role="dialog"
+                    aria-label="Situation data origin"
+                    style={{
+                        ...panel, position: 'fixed', zIndex: 300, width: INFO_POPOVER_WIDTH, boxSizing: 'border-box',
+                        fontSize: text.xs, fontWeight: 400, ...pos,
+                    }}
+                >
+                    <SituationCredit situation={situation} />
+                </div>
+            )}
+        </span>
+    );
+};
+
+/** The study's date and hour, big: the first thing an operator reads on the situation. */
+const SituationClock: React.FC<{ caseDate: string }> = ({ caseDate }) => {
+    const [day, time] = caseDate.replace('T', ' ').slice(0, 16).split(' ');
+    return (
+        <div data-testid="context-map-date" style={{
+            margin: `${space[1]} 0`, padding: `${space[1]} ${space[2]}`, textAlign: 'center',
+            background: colors.surfaceMuted, border: `1px solid ${colors.border}`, borderRadius: radius.md,
+            fontSize: text.xl, fontWeight: 700, lineHeight: 1.25, fontVariantNumeric: 'tabular-nums',
+        }}>
+            <time dateTime={caseDate}>{day}{time && <>{' '}{time}</>}</time>
         </div>
     );
 };
@@ -207,10 +307,14 @@ const SituationCredit: React.FC<{ situation: NonNullable<ContextMapData['situati
 const Summary: React.FC<{ data: ContextMapData }> = ({ data }) => {
     const mix = useMemo(() => productionMix(data), [data]);
     const total = mix.reduce((sum, m) => sum + m.mw, 0);
+    const cardRef = useRef<HTMLDivElement>(null);
     return (
-        <div data-testid="context-map-summary" style={{ ...panel, width: SUMMARY_WIDTH, boxSizing: 'border-box' }}>
-            <div style={{ fontWeight: 700 }}>Situation — {meshLabel(data)}</div>
-            {data.case_date && <div style={{ color: colors.textSecondary }}>{data.case_date.replace('T', ' ').slice(0, 16)}</div>}
+        <div ref={cardRef} data-testid="context-map-summary" style={{ ...panel, width: SUMMARY_WIDTH, boxSizing: 'border-box' }}>
+            <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center' }}>
+                Situation — {meshLabel(data)}
+                {data.situation && <SituationInfo situation={data.situation} cardRef={cardRef} />}
+            </div>
+            {data.case_date && <SituationClock caseDate={data.case_date} />}
             <div>Production: <b>{formatMw(data.totals.production)}</b></div>
             {untyped(mix) ? (
                 <div data-testid="context-map-mix-untyped" style={{ color: colors.textSecondary, fontSize: text.xs }}>
@@ -225,7 +329,6 @@ const Summary: React.FC<{ data: ContextMapData }> = ({ data }) => {
                     </a>{' '}({data.plant_source.licence})
                 </div>
             )}
-            {data.situation && <SituationCredit situation={data.situation} />}
             <div style={{ color: P.consumption }}>Consumption: <b>{formatMw(data.totals.consumption)}</b></div>
             {data.totals.net_export !== null && (
                 <div>{data.totals.net_export >= 0 ? 'Net exports' : 'Net imports'}: <b>{formatMw(data.totals.net_export)}</b></div>

@@ -5,8 +5,8 @@
 // SPDX-License-Identifier: MPL-2.0
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
-import { describe, it, expect } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import ContextMapView from './ContextMapView';
 import type { ContextMapState } from '../hooks/useContextMap';
 import type { ContextMapData, ContextMapHighlight } from '../types';
@@ -210,38 +210,108 @@ describe('ContextMapView', () => {
         expect(screen.getAllByTestId('context-map-plant-source')).toHaveLength(1);
     });
 
-    it('names the dispatch of a real hour and credits its data', () => {
-        const situation = {
-            at_utc: '2025-01-14T08:00Z', dispatch: 'opf',
-            sources: [
-                { name: 'Energy-Charts (Fraunhofer ISE)', url: 'https://www.energy-charts.info', licence: 'CC BY 4.0' },
-                { name: 'powerplantmatching', url: 'https://github.com/PyPSA/powerplantmatching', licence: 'CC BY 4.0' },
-            ],
-        };
+    const realHour = (sources: { name: string; url: string; licence: string | null }[], dispatch = 'opf') =>
+        ({ at_utc: '2025-01-14T08:00Z', dispatch, sources });
+    const cc = 'CC BY 4.0';
+    const openInfo = () => fireEvent.mouseEnter(screen.getByTestId('context-map-situation-info-wrap'));
+
+    afterEach(() => { vi.useRealTimers(); });
+
+    it('names the dispatch of a real hour and credits its data in the info bubble', () => {
+        const situation = realHour([
+            { name: 'Energy-Charts (Fraunhofer ISE)', url: 'https://www.energy-charts.info', licence: cc },
+            { name: 'powerplantmatching', url: 'https://github.com/PyPSA/powerplantmatching', licence: cc },
+        ]);
         render(<ContextMapView state={state({ data: { ...payload(), situation } })} />);
+        // The credit no longer sits in the card: it waits behind the bubble.
+        expect(screen.queryByTestId('context-map-situation')).toBeNull();
+        expect(screen.getByTestId('context-map-summary')).not.toHaveTextContent('Real hour');
+        openInfo();
         const credit = screen.getByTestId('context-map-situation');
+        expect(screen.getByTestId('context-map-situation-popover')).toContainElement(credit);
         expect(credit).toHaveTextContent('Real hour, optimal dispatch (PyPSA)');
         expect(credit).toHaveTextContent('Energy-Charts (Fraunhofer ISE), powerplantmatching (CC BY 4.0)');
         expect(credit.querySelectorAll('a')).toHaveLength(2);
-        // A situation file says nothing when absent.
+    });
+
+    it('puts the info bubble beside the situation name, only for a real hour', () => {
+        const situation = realHour([{ name: 'Energy-Charts (Fraunhofer ISE)', url: 'https://www.energy-charts.info', licence: cc }]);
+        const { unmount } = render(<ContextMapView state={state({ data: { ...payload(), situation } })} />);
+        const title = screen.getByText(/^Situation — /);
+        expect(title).toContainElement(screen.getByTestId('context-map-situation-info'));
+        unmount();
+        // A situation file says nothing when absent: no bubble, nothing to open.
         render(<ContextMapView state={state()} />);
-        expect(screen.getAllByTestId('context-map-situation')).toHaveLength(1);
+        expect(screen.queryByTestId('context-map-situation-info')).toBeNull();
+    });
+
+    it('shows the info bubble on hover only, and never keeps it up afterwards', () => {
+        vi.useFakeTimers();
+        const situation = realHour([{ name: 'Energy-Charts (Fraunhofer ISE)', url: 'https://www.energy-charts.info', licence: cc }]);
+        render(<ContextMapView state={state({ data: { ...payload(), situation } })} />);
+        const wrap = screen.getByTestId('context-map-situation-info-wrap');
+        const bubble = screen.getByTestId('context-map-situation-info');
+        const popover = () => screen.queryByTestId('context-map-situation-popover');
+
+        expect(popover()).toBeNull();
+        fireEvent.mouseEnter(wrap);
+        expect(popover()).not.toBeNull();
+        expect(bubble).toHaveAttribute('aria-expanded', 'true');
+        fireEvent.mouseLeave(wrap);
+        act(() => { vi.advanceTimersByTime(300); });
+        expect(popover()).toBeNull();
+
+        // A click does not pin it: the pointer is on the bubble, the popover is up, and it still goes
+        // away once the pointer leaves.
+        fireEvent.mouseEnter(wrap);
+        fireEvent.click(bubble);
+        fireEvent.mouseLeave(wrap);
+        act(() => { vi.advanceTimersByTime(300); });
+        expect(popover()).toBeNull();
+        expect(bubble).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('stays up while the pointer travels from the bubble into the popover', () => {
+        vi.useFakeTimers();
+        const situation = realHour([{ name: 'Energy-Charts (Fraunhofer ISE)', url: 'https://www.energy-charts.info', licence: cc }]);
+        render(<ContextMapView state={state({ data: { ...payload(), situation } })} />);
+        const wrap = screen.getByTestId('context-map-situation-info-wrap');
+        fireEvent.mouseEnter(wrap);
+        fireEvent.mouseLeave(wrap);
+        act(() => { vi.advanceTimersByTime(50); });
+        fireEvent.mouseEnter(wrap);
+        act(() => { vi.advanceTimersByTime(500); });
+        expect(screen.queryByTestId('context-map-situation-popover')).not.toBeNull();
     });
 
     it('puts each licence after the sources it covers', () => {
-        const cc = 'CC BY 4.0';
-        const situation = {
-            at_utc: '2025-01-14T08:00Z', dispatch: 'observed',
-            sources: [
-                { name: 'Energy-Charts (Fraunhofer ISE)', url: 'https://www.energy-charts.info', licence: cc },
-                // The unit outputs' source states no licence: none is claimed for it.
-                { name: 'ENTSO-E Transparency Platform', url: 'https://transparency.entsoe.eu', licence: null },
-                { name: 'powerplantmatching', url: 'https://github.com/PyPSA/powerplantmatching', licence: cc },
-            ],
-        };
+        const situation = realHour([
+            { name: 'Energy-Charts (Fraunhofer ISE)', url: 'https://www.energy-charts.info', licence: cc },
+            // The unit outputs' source states no licence: none is claimed for it.
+            { name: 'ENTSO-E Transparency Platform', url: 'https://transparency.entsoe.eu', licence: null },
+            { name: 'powerplantmatching', url: 'https://github.com/PyPSA/powerplantmatching', licence: cc },
+        ], 'observed');
         render(<ContextMapView state={state({ data: { ...payload(), situation } })} />);
+        openInfo();
         expect(screen.getByTestId('context-map-situation')).toHaveTextContent(
             'Energy-Charts (Fraunhofer ISE), powerplantmatching (CC BY 4.0); ENTSO-E Transparency Platform');
+    });
+
+    it('shows the date and hour in their own big tile above the figures', () => {
+        render(<ContextMapView state={state()} />);
+        const clock = screen.getByTestId('context-map-date');
+        expect(clock).toHaveTextContent('2026-01-10 17:30');
+        expect(clock.querySelector('time')).toHaveAttribute('datetime', '2026-01-10T17:30:00+00:00');
+        // A tile of its own, ahead of production / consumption / exports in the card.
+        const summary = screen.getByTestId('context-map-summary');
+        expect(clock.parentElement).toBe(summary);
+        expect(clock.compareDocumentPosition(screen.getByText('Production:')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(clock).not.toHaveTextContent('Production');
+    });
+
+    it('draws no date tile for a network without a case date', () => {
+        render(<ContextMapView state={state({ data: { ...payload(), case_date: null } })} />);
+        expect(screen.queryByTestId('context-map-date')).toBeNull();
     });
 
     it('says so instead of a one-colour mix bar when no generator is typed', () => {

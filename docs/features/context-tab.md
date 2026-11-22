@@ -235,10 +235,16 @@ network needs no estimate — the map reads it as it is:
   HVDC link between two countries of the grid (one such load at each end)
   counts once, from its exporting end;
 - `situation.json` beside the network (`situation.py`) gives the hour and its
-  dispatch; the situation card says *Real hour, optimal dispatch (PyPSA)*
-  (*observed dispatch* on a `--dispatch observed` build) and credits its sources — Energy-Charts, the
-  ENTSO-E Transparency Platform for the unit-by-unit outputs, and
-  powerplantmatching (CC BY 4.0 where the source states a licence).
+  dispatch; a small **`i` bubble beside the situation card's name** (shown on
+  hover only — it never stays up once the pointer leaves) says *Real hour,
+  optimal dispatch (PyPSA)* (*observed dispatch* on a `--dispatch observed`
+  build) and credits its sources — Energy-Charts, the ENTSO-E Transparency
+  Platform for the unit-by-unit outputs, and powerplantmatching (CC BY 4.0
+  where the source states a licence). The popover sits beside the card, so it
+  never hides the date;
+- the study's **date and hour** (`case_date`) get a tile of their own at the
+  top of the card, above the production / consumption / exchange figures, in
+  large bold type.
 
 ## Where the studied elements are
 

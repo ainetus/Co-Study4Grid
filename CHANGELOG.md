@@ -7,6 +7,16 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Context tab — date and hour made prominent, data credits in a bubble
+
+- **The situation card's date and hour** now sit in a tile of their own, in
+  large bold type, above the production / consumption / exchange figures
+  (they were a small grey line).
+- **The data credits move into a small `i` bubble** beside the situation's
+  name: the dispatch (*Real hour, optimal dispatch (PyPSA)*) and the sources
+  with their licences are shown on hover only, in a popover beside the card
+  so it never hides the date. See `docs/features/context-tab.md`.
+
 ### Action feed — suggestions revealed progressively
 
 - **The first suggestions, then more on demand**: after "Display N
