@@ -7,6 +7,18 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Action card — the loading rows read alike
+
+- **Rate first, then the line, in both rows**: the max-loading row and the
+  overloads-after row now read the same way (`90.0% ATTAQL61MANDA`,
+  `89.0% MANDAL71WARAN`); the second one used to put the line first.
+- **No repeated overload**: when the most loaded line after the action is
+  still the overloaded one (same line, same value), the overload row is left
+  out and the max-loading row says *still the most loaded* (taking the
+  half-open note along, when there is one). A narrow card wraps between the
+  rate, the line and that mention, never inside them, and a long location
+  chip wraps inside the panel. See `docs/features/action-card.md`.
+
 ### Readable names in the SLDs and on the action cards; action card redesign
 
 - **SLDs read by name**: the title is the voltage level's name

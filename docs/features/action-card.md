@@ -28,7 +28,7 @@ After:
         Manoeuvre manuelle sur MANDARINS 400kV: disjoncteur MANDAL71WARAN ouvert
       ┌──────────────────────────────────────────────┐
       │ ◠ 138.6%  ATTAQL61MANDA                       │
-      │ ⋀ MANDAL71WARAN 1.1%  [⌐ open one end · 19.9 MVAr] │
+      │ ⋀ 1.1%  MANDAL71WARAN  [⌐ open one end · 19.9 MVAr] │
       └──────────────────────────────────────────────┘
         👤 Manual simulation (user)      user_topo_VL_way_12… ⧉
 ```
@@ -53,8 +53,13 @@ After:
    on the viewing card, the loading after the action of each line the
    contingency overloads (peak-line pictogram, each value in its own
    severity colour, a half-open line flagged by an "open one end · MVAr"
-   chip whose tooltip explains the charging current). On the viewing card
-   the group is a framed panel: same kind of information, one place.
+   chip whose tooltip explains the charging current). Both rows read alike:
+   the rate first, then the line. When the most loaded line is still the
+   overloaded one (same line, same value), the second row would only repeat
+   the first: it is left out and the max-loading row says *still the most
+   loaded* (taking the half-open chip along, when there is one). On the
+   viewing card the group is a framed panel: same kind of information, one
+   place.
 5. **The rest** — location chips (where an injection sits), fault pills
    (load-flow failure, islanding, pre-existing N overloads), the parameter
    editors (shedding / curtailment / redispatch MW, PST tap), and last the
