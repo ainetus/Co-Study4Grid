@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { collectActionTargets, humanizeIds, manualActionVoltageLevel } from './actionLabels';
-import type { ActionDetail, NodeMeta } from '../types';
+import type { ActionDetail, EdgeMeta, NodeMeta } from '../types';
 
 const names: Record<string, string> = {
     'X_GB_way_1271288345-400': 'Exchange with GB',
@@ -60,11 +60,12 @@ describe('collectActionTargets', () => {
         expect(t.locations).toEqual([{ id: 'VL_M', kind: 'vl' }]);
     });
 
-    it('titles a coupling action with its voltage level hint', () => {
+    it('titles a coupling action with its voltage level hint, which is also its SLD chip', () => {
         const t = collectActionTargets('open_coupler_VL_M', details({
             action_topology: { ...topo, voltage_level_id: 'VL_M' } as ActionDetail['action_topology'],
         }), null, null);
         expect(t.title).toEqual([{ id: 'VL_M', kind: 'vl' }]);
+        expect(t.locations).toEqual([{ id: 'VL_M', kind: 'vl' }]);
     });
 
     it('titles a manual manoeuvre — combined or not — with the voltage level it was built on', () => {
@@ -84,5 +85,43 @@ describe('collectActionTargets', () => {
     it('falls back to the injections of the topology when nothing else names the action', () => {
         const t = collectActionTargets('act', details({ action_topology: { ...topo, loads_p: { LOAD_1: 0 } } }), null, null);
         expect(t.title).toEqual([{ id: 'LOAD_1', kind: 'equipment' }]);
+    });
+
+    describe('SLD chips of a transformer / phase shifter', () => {
+        const vl = (equipmentId: string, svgId: string) => [equipmentId, { equipmentId, svgId } as NodeMeta] as const;
+        const nodes = new Map<string, NodeMeta>([vl('VL_400', '12'), vl('VL_225', '34'), vl('VL_OTHER', '56')]);
+        const edge = (equipmentId: string, node1: string, node2: string) =>
+            [equipmentId, { equipmentId, svgId: `e_${equipmentId}`, node1, node2 } as EdgeMeta] as const;
+        const edges = new Map<string, EdgeMeta>([edge('T_CRUA5', '12', '34'), edge('PST_1', '34', '56'), edge('L1', '12', '56')]);
+        const opening = (line: string, description: string) =>
+            details({ description_unitaire: description, action_topology: { ...topo, lines_or_bus: { [line]: -1 } } });
+
+        it('offers both ends of an opened transformer', () => {
+            const t = collectActionTargets('disco_T_CRUA5', opening('T_CRUA5', "Ouverture du transformateur 'CRUA5 - Liaisons'"), nodes, edges);
+            expect(t.title).toEqual([{ id: 'T_CRUA5', kind: 'line' }]);
+            expect(t.locations).toEqual([{ id: 'VL_400', kind: 'vl' }, { id: 'VL_225', kind: 'vl' }]);
+        });
+
+        it('offers both ends of a tap-changed phase shifter, whatever its id says', () => {
+            const t = collectActionTargets('pst_tap_1', details({ action_topology: { ...topo, pst_tap: { PST_1: 3 } } }), nodes, edges);
+            expect(t.locations).toEqual([{ id: 'VL_225', kind: 'vl' }, { id: 'VL_OTHER', kind: 'vl' }]);
+        });
+
+        it('leaves a plain line opening without chips — it has no single substation', () => {
+            const t = collectActionTargets('disco_L1', opening('L1', "Ouverture de la ligne 'L1'"), nodes, edges);
+            expect(t.title).toEqual([{ id: 'L1', kind: 'line' }]);
+            expect(t.locations).toEqual([]);
+        });
+
+        it('waits for the metadata rather than guessing the ends', () => {
+            const t = collectActionTargets('disco_T_CRUA5', opening('T_CRUA5', "Ouverture du transformateur 'CRUA5'"), null, null);
+            expect(t.locations).toEqual([]);
+        });
+
+        it('names a voltage level once when a combined action reaches it twice', () => {
+            const t = collectActionTargets('disco_T_CRUA5+user_topo_VL_400_9',
+                opening('T_CRUA5', "Ouverture du transformateur 'CRUA5'"), nodes, edges);
+            expect(t.locations).toEqual([{ id: 'VL_400', kind: 'vl' }, { id: 'VL_225', kind: 'vl' }]);
+        });
     });
 });

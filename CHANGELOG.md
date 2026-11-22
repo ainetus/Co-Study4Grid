@@ -7,6 +7,20 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Action card — the SLD chip follows the description
+
+- **The voltage-level chip moved out of the loading frame**: the green pin
+  chip (click: zoom, double-click: open the SLD) now sits at the end of the
+  action's description — on the same line when both fit, on the next one
+  otherwise (cut with an ellipsis at rest, wrapped on the viewing card).
+- **Couplers, manoeuvres and transformers get it too**: a coupling /
+  manoeuvre action offers its voltage level (the title link only underlines
+  on hover, so nothing said it opened an SLD), and an opened transformer or a
+  tap-changed phase shifter offers the voltage levels at both its ends —
+  `Ouverture du transformateur 'CRUA5 - Liaisons 225 kV…'` → `CRUA5 400kV` and
+  the Piquage voltage level on its 225 kV side. A plain line opening has no
+  single substation and gets none. See `docs/features/action-card.md`.
+
 ### Action card — the loading rows read alike
 
 - **Rate first, then the line, in both rows**: the max-loading row and the

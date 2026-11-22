@@ -47,7 +47,12 @@ After:
    hover.
 3. **How** — the description, right under the title: one line at rest
    (ellipsis, full text on hover), in full on the viewing card (the raw
-   description on hover when names replaced ids).
+   description on hover when names replaced ids). **At its end, the SLD
+   chips** — one green pin chip per voltage level the action acts on or sits
+   in (click: zoom, double-click: open its SLD). They share the description's
+   line when both fit and drop to the next one otherwise; at rest a very
+   long name is cut with an ellipsis, on the viewing card it wraps. They are
+   *not* in the loading frame below: that frame is figures only.
 4. **Outcome in figures** — one loading group: the max loading (gauge
    pictogram, value in the severity colour, the worst line as a link) and,
    on the viewing card, the loading after the action of each line the
@@ -60,7 +65,7 @@ After:
    loaded* (taking the half-open chip along, when there is one). On the
    viewing card the group is a framed panel: same kind of information, one
    place.
-5. **The rest** — location chips (where an injection sits), fault pills
+5. **The rest** — fault pills
    (load-flow failure, islanding, pre-existing N overloads), the parameter
    editors (shedding / curtailment / redispatch MW, PST tap), and last the
    provenance: source pictogram (a person for a manual simulation, a chip
@@ -77,10 +82,13 @@ principles explicitly:
 
 - **Names over ids.** Everything the operator reads is a name; every id
   stays one hover (tooltip) or one click (copy) away for traceability.
-- **Each name once.** The elements an action acts on form its title and are
-  links (click: zoom; double-click a voltage level: its SLD) — the chip row
-  that repeated them is gone. Only a location the title does not name (the
-  voltage level of a shed load) keeps a chip, with a pin pictogram.
+- **Each name once, except the way into an SLD.** The elements an action
+  acts on form its title and are links (click: zoom; double-click a voltage
+  level: its SLD), but a title link only underlines under the pointer, so
+  nothing on the card said it opened an SLD. The voltage level therefore also
+  gets a visible chip (pin pictogram) after the description — for a shed load
+  or a redispatched generator it is the only place the voltage level is named;
+  for a coupling or a manoeuvre it repeats the title, on purpose.
 - **Pictograms replace repeated labels** ("Max loading:", "Overload loading
   after:", "Source:"), each with a tooltip spelling out its meaning; no
   pictogram means two things (the overloads-after glyph is a line with a
@@ -97,7 +105,7 @@ principles explicitly:
 | On the card | Source |
 |---|---|
 | Title — lines, coupled voltage levels, shed loads, curtailed / redispatched generators | `utils/actionLabels.collectActionTargets` (the former badge logic, plus the voltage level a `user_topo_<vl>_<ts>` manoeuvre was built on) read through `displayName` |
-| Location chips | the voltage levels of the injection details |
+| SLD chips (after the description) | the voltage levels of the injection details; the voltage levels the title names (coupling hint, manoeuvre, description); the two ends of an opened transformer (`disco_T_…` / « transformateur ») or a tap-changed phase shifter, resolved through the NAD metadata (`edge.node1` / `node2` → voltage-level node) — so they appear once the diagram is loaded. A plain line opening gets none (two substations, no obvious one) |
 | Description | the backend's `description_unitaire`, every known id replaced by its name (`humanizeIds`, display only) |
 | Manual-action description | built by the backend in names: `Manoeuvre manuelle sur MANDARINS 400kV: disjoncteur MANDAL71WARAN ouvert` (`simulation_helpers.describe_manual_action`) |
 | Dictionary coupling description | the step-2 enrichment drops the coupler's switch id (`action_enrichment.name_switches_in`): `Ouverture du couplage dans le poste 'MANDARINS 400kV'` |
@@ -118,7 +126,8 @@ they always carried; the action-type classifier still reads the description
 ## Tests
 
 `ActionCard.test.tsx` (layout order, readable title / manual title /
-description / location chip / fallbacks, pictograms and their tooltips, the
+description / SLD chip position and its click / double-click, coupler and
+transformer chips, fallbacks, pictograms and their tooltips, the
 copy button), `utils/actionLabels.test.ts`, the progressive-disclosure spec
 in `uxConsistency.test.tsx`, and the provenance end-to-end
 `App.actionOrigin.test.tsx`.

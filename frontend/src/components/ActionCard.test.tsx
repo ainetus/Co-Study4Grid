@@ -16,7 +16,8 @@ vi.mock('../utils/svgUtils', () => ({
 }));
 
 import ActionCard from './ActionCard';
-import type { ActionDetail } from '../types';
+import { getActionTargetLines } from '../utils/svgUtils';
+import type { ActionDetail, EdgeMeta, NodeMeta } from '../types';
 
 describe('ActionCard', () => {
     const emptyTopo = { lines_ex_bus: {}, lines_or_bus: {}, gens_bus: {}, loads_bus: {} };
@@ -716,6 +717,74 @@ describe('ActionCard', () => {
             const chip = screen.getByTitle(/^Where the action acts: MANDARINS 400kV \(VL_M\)/);
             expect(chip).toHaveTextContent('MANDARINS 400kV');
             expect(screen.getAllByText('MANDARINS 400kV')).toHaveLength(1);
+        });
+
+        it('puts the SLD chip at the end of the description row, not in the loading frame', () => {
+            const onAssetClick = vi.fn();
+            const onVlDoubleClick = vi.fn();
+            const details: ActionDetail = {
+                ...baseDetails,
+                description_unitaire: 'Redispatch G1',
+                redispatch_details: [{ gen_name: 'X_GB', voltage_level_id: 'VL_M', delta_mw: 10, target_mw: 60, direction: 'up' }],
+            };
+            render(<ActionCard {...defaultProps} id="redispatch_X_GB" details={details} displayName={displayName}
+                onAssetClick={onAssetClick} onVlDoubleClick={onVlDoubleClick} />);
+            const chip = screen.getByTestId('action-card-redispatch_X_GB-location-VL_M');
+            expect(screen.getByTestId('action-card-redispatch_X_GB-how')).toContainElement(chip);
+            expect(screen.getByTestId('action-card-redispatch_X_GB-loading')).not.toContainElement(chip);
+            // After the description, on the same row.
+            expect(screen.getByTestId('action-card-redispatch_X_GB-description').nextElementSibling).toBe(chip);
+            fireEvent.click(chip);
+            expect(onAssetClick).toHaveBeenCalledWith('redispatch_X_GB', 'VL_M', 'action');
+            fireEvent.doubleClick(chip);
+            expect(onVlDoubleClick).toHaveBeenCalledWith('redispatch_X_GB', 'VL_M');
+        });
+
+        it('gives a coupling action an SLD chip for its voltage level, after the description', () => {
+            const onVlDoubleClick = vi.fn();
+            const details: ActionDetail = {
+                ...baseDetails,
+                description_unitaire: "Ouverture du couplage dans le poste 'MANDARINS 400kV'",
+                action_topology: { ...emptyTopo, voltage_level_id: 'VL_M' } as ActionDetail['action_topology'],
+            };
+            render(<ActionCard {...defaultProps} id="open_coupler_VL_M" details={details} displayName={displayName}
+                onVlDoubleClick={onVlDoubleClick} />);
+            const chip = screen.getByTestId('action-card-open_coupler_VL_M-location-VL_M');
+            expect(chip).toHaveTextContent('MANDARINS 400kV');
+            expect(screen.getByTestId('action-card-open_coupler_VL_M-description').nextElementSibling).toBe(chip);
+            fireEvent.doubleClick(chip);
+            expect(onVlDoubleClick).toHaveBeenCalledWith('open_coupler_VL_M', 'VL_M');
+        });
+
+        it('gives an opened transformer an SLD chip for each of its two voltage levels', () => {
+            const nodes = new Map<string, NodeMeta>([
+                ['VL_M', { equipmentId: 'VL_M', svgId: '1' } as NodeMeta],
+                ['VL_N', { equipmentId: 'VL_N', svgId: '2' } as NodeMeta],
+            ]);
+            const edges = new Map<string, EdgeMeta>([
+                ['T_W', { equipmentId: 'T_W', svgId: 'e1', node1: '1', node2: '2' } as EdgeMeta],
+            ]);
+            const details: ActionDetail = {
+                ...baseDetails,
+                description_unitaire: "Ouverture du transformateur 'T_W'",
+                action_topology: { ...emptyTopo, lines_or_bus: { T_W: -1 }, lines_ex_bus: { T_W: -1 } },
+            };
+            // svgUtils is mocked here: tell the card which branch the metadata resolves.
+            vi.mocked(getActionTargetLines).mockReturnValueOnce(['T_W']);
+            render(<ActionCard {...defaultProps} id="disco_T_W" details={details} displayName={displayName}
+                nodesByEquipmentId={nodes} edgesByEquipmentId={edges} />);
+            expect(screen.getByTestId('action-card-disco_T_W-location-VL_M')).toHaveTextContent('MANDARINS 400kV');
+            expect(screen.getByTestId('action-card-disco_T_W-location-VL_N')).toBeInTheDocument();
+        });
+
+        it('shows no chip for a plain line action', () => {
+            const details: ActionDetail = {
+                ...baseDetails,
+                description_unitaire: "Ouverture de la ligne 'LINE_W'",
+                action_topology: { ...emptyTopo, lines_or_bus: { LINE_W: -1 }, lines_ex_bus: { LINE_W: -1 } },
+            };
+            render(<ActionCard {...defaultProps} id="disco_LINE_W" details={details} displayName={displayName} />);
+            expect(screen.queryByTitle(/^Where the action acts/)).toBeNull();
         });
 
         it('falls back to the type label, then the raw id, when nothing can be named', () => {

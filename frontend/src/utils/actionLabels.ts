@@ -27,8 +27,11 @@ export interface ActionTarget {
 export interface ActionTargets {
     /** What the action acts on — the card title. */
     title: ActionTarget[];
-    /** Where its injections sit (shed loads, curtailed / redispatched
-     *  generators) — the location chips. */
+    /** The voltage levels the card offers as SLD chips, at the end of its
+     *  description: where its injections sit (shed loads, curtailed /
+     *  redispatched generators), the voltage levels the title names
+     *  (coupling, manoeuvre) and the two ends of a transformer / phase
+     *  shifter the action opens or tap-changes. */
     locations: ActionTarget[];
 }
 
@@ -56,6 +59,34 @@ const uniquePush = (list: ActionTarget[], seen: Set<string>, id: string | null |
     if (!id || seen.has(id)) return;
     seen.add(id);
     list.push({ id, kind });
+};
+
+/** A transformer opening / closing: ``disco_T_…`` ids and the dictionary's
+ *  ``Ouverture du transformateur '…'`` — a transformer sits between two
+ *  voltage levels, whose SLDs are what the operator opens next. */
+const isTransformerAction = (id: string, description?: string): boolean =>
+    id.split('+').some(part => /^(disco|reco)_T_/.test(part)) || /transformateur|transformer/i.test(description ?? '');
+
+// svgId → voltage-level node, built once per metadata index (an edge names
+// its two ends by svgId, the index is keyed by voltage-level id).
+const nodesBySvgIdCache = new WeakMap<Map<string, NodeMeta>, Map<string, NodeMeta>>();
+const nodesBySvgId = (nodes: Map<string, NodeMeta>): Map<string, NodeMeta> => {
+    let index = nodesBySvgIdCache.get(nodes);
+    if (!index) {
+        index = new Map();
+        nodes.forEach(n => index!.set(n.svgId, n));
+        nodesBySvgIdCache.set(nodes, index);
+    }
+    return index;
+};
+
+/** The voltage levels at the two ends of a branch (transformer / PST). */
+const branchVoltageLevels = (edge: EdgeMeta | undefined, nodes: Map<string, NodeMeta>): string[] => {
+    if (!edge) return [];
+    const bySvgId = nodesBySvgId(nodes);
+    return [edge.node1, edge.node2]
+        .map(ref => (bySvgId.get(ref) ?? nodes.get(ref))?.equipmentId)
+        .filter((vl): vl is string => !!vl);
 };
 
 /**
@@ -102,7 +133,20 @@ export const collectActionTargets = (
     id.split('+').forEach(part => { const vl = manualActionVoltageLevel(part); if (vl) vls.push(vl); });
     if (nodesByEquipmentId) vls.push(...getActionTargetVoltageLevels(details, id, nodesByEquipmentId));
     vls.filter(vl => !injectionVls.has(vl)).forEach(vl => uniquePush(title, seen, vl, 'vl'));
-    injectionVls.forEach(vl => uniquePush(locations, seen, vl, 'vl'));
+
+    // The SLD chips: the injections' voltage levels, then the ones the title
+    // names (the title link only underlines on hover — the chip is the
+    // visible way into the SLD), then the ends of a transformer / PST.
+    const seenLocation = new Set<string>();
+    injectionVls.forEach(vl => uniquePush(locations, seenLocation, vl, 'vl'));
+    title.filter(t => t.kind === 'vl').forEach(t => uniquePush(locations, seenLocation, t.id, 'vl'));
+    if (nodesByEquipmentId && edgesByEquipmentId) {
+        const transformer = isTransformerAction(id, details.description_unitaire);
+        const pst = new Set(Object.keys(topo?.pst_tap || {}));
+        title.filter(t => t.kind === 'line' && (transformer || pst.has(t.id))).forEach(t =>
+            branchVoltageLevels(edgesByEquipmentId.get(t.id), nodesByEquipmentId)
+                .forEach(vl => uniquePush(locations, seenLocation, vl, 'vl')));
+    }
 
     if (title.length === 0) {
         [...Object.keys(topo?.gens_bus || {}), ...Object.keys(topo?.loads_bus || {}),
