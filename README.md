@@ -127,7 +127,7 @@ Co-Study4Grid is built around the operator's ability to triage hundreds of remed
 
 ### Game Mode (`?game=1`)
 - **Timed, scored contingency game** layered over the exact same workspace, opt-in via the `?game=1` URL flag (or a `VITE_GAME_MODE=1` build). A *session* is an ordered list of *studies* (grid state + N-1 outage); remediate each one with **≤ 3 actions** before the per-study timer expires, then advance. Results export a `game_session.json` for [Codabench](https://www.codabench.org/) scoring + ranking, and the in-browser scorer (`60·R + 25·R·A + 15·R·T`) is a unit-test-locked twin of the Codabench Python scorer. The feature is additive and inert unless `?game=1` is set. See [`docs/features/game-mode-codabench.md`](docs/features/game-mode-codabench.md).
-- **Two scenario families** on the opening screen: **PyPSA-EUR — curated sets** (by default the pan-European grid on real 2025 hours; also **France 2025** — the French grid on the same hours, a 1 July starter then seven cases on the 14 January peak around Marseille, Paris and Lyon, 20 minutes per study — and the French worst-case set; each study ticked or unticked before starting) and **France THT — graded**, a database of **656** N-1 scenarios on reconstructed real French THT (≥ 200 kV) operating points, graded **easy / medium / hard** by the expert model's solvability at the 95 % monitoring factor. In France THT mode the player picks a difficulty level and how many cases to play, and the game samples that many across the graded pool. See [`docs/features/game-mode-rte7000-tht.md`](docs/features/game-mode-rte7000-tht.md).
+- **Scenario families** on the opening screen: **PyPSA-EUR — curated sets** (by default the pan-European grid's three reference studies below, and the French worst-case set), **France 2025** (the French grid on two real 2025 hours: a 1 July starter then seven cases on the 14 January peak around Marseille, Paris and Lyon, 20 minutes per study; each study ticked or unticked before starting), and **France THT — graded**, a database of **656** N-1 scenarios on reconstructed real French THT (≥ 200 kV) operating points, graded **easy / medium / hard** by the expert model's solvability at the 95 % monitoring factor. In France THT mode the player picks a difficulty level and how many cases to play, and the game samples that many across the graded pool. See [`docs/features/game-mode-rte7000-tht.md`](docs/features/game-mode-rte7000-tht.md).
 
 ### Frontend engineering
 - **React 19 + TypeScript 5.9 + Vite 7**, strict mode (`noUnusedLocals`, `noUnusedParameters`).
@@ -515,7 +515,7 @@ ENTSO-E Transparency Platform capped at its own output (a reactor in outage
 stays off). Load
 `situations/<hour>_<dispatch>/network.xiidm` with the bundle's
 `grid_layout.json` and `actions.json`; the Context tab shows the hour's real
-mix and exchanges, and Game Mode's Medium tier plays two studies on each. See
+mix and exchanges. See
 `docs/data/pypsa-eur-osm-to-xiidm.md`.
 
 The French 225 / 400 kV grid ships the same two hours under

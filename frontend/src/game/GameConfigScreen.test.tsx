@@ -135,6 +135,7 @@ describe('GameConfigScreen landing', () => {
 
     fireEvent.click(screen.getByTestId('game-mode-picker-toggle'));
     expect(screen.getByTestId('game-mode-demo')).toBeInTheDocument();
+    expect(screen.getByTestId('game-mode-france2025')).toBeInTheDocument();
     expect(screen.getByTestId('game-mode-tht')).toBeInTheDocument();
     expect(screen.getByTestId('game-mode-matpower')).toBeInTheDocument();
     // Demo is still the active mode, so its network-difficulty select shows too.
@@ -180,14 +181,14 @@ describe('GameConfigScreen — study checklist (curated sets)', () => {
   it('leaves unticked studies out of the session, keeping the order', async () => {
     const onStart = vi.fn();
     render(<GameConfigScreen onStart={onStart} />);
-    fireEvent.click(screen.getByTestId('game-study-pick-eu-jan-opf'));
-    fireEvent.click(screen.getByTestId('game-study-pick-eu-jul-opf'));
-    expect(screen.getByText(/This session — 2 of 4 studies/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('game-study-pick-eu-italy'));
+    fireEvent.click(screen.getByTestId('game-study-pick-eu-spain'));
+    expect(screen.getByText(/This session — 1 of 3 studies/)).toBeInTheDocument();
     await enterPlayer();
     fireEvent.click(screen.getByTestId('game-start'));
     expect(ids(onStart.mock.calls[0][0])).toEqual(
       DEFAULT_SESSION_STUDIES.map((s) => s.id)
-        .filter((id) => id !== 'eu-jan-opf' && id !== 'eu-jul-opf'),
+        .filter((id) => id !== 'eu-italy' && id !== 'eu-spain'),
     );
   });
 
@@ -203,14 +204,15 @@ describe('GameConfigScreen — study checklist (curated sets)', () => {
     expect(screen.getByTestId('game-start')).toBeEnabled();
   });
 
-  it('switching to France 2025 ticks its whole set and sets 20 minutes per study', async () => {
+  it('the France 2025 mode ticks its whole set and sets 20 minutes per study', async () => {
     const onStart = vi.fn();
     render(<GameConfigScreen onStart={onStart} />);
     fireEvent.click(screen.getByTestId('game-studies-none'));
     openModePicker();
     expect((screen.getByTestId('game-timer-minutes') as HTMLInputElement).value).toBe('5');
-    fireEvent.change(screen.getByDisplayValue(difficultyTier('medium').label),
-      { target: { value: 'france-2025' } });
+    fireEvent.click(screen.getByTestId('game-mode-france2025'));
+    // Its own mode: the PyPSA-EUR difficulty picker steps aside.
+    expect(screen.queryByText(/Difficulty \(network\)/)).not.toBeInTheDocument();
     expect(boxes()).toHaveLength(difficultyTier('france-2025').studies.length);
     expect(boxes().every((b) => b.checked)).toBe(true);
     expect((screen.getByTestId('game-timer-minutes') as HTMLInputElement).value).toBe('20');
@@ -218,6 +220,19 @@ describe('GameConfigScreen — study checklist (curated sets)', () => {
     await enterPlayer();
     fireEvent.click(screen.getByTestId('game-start'));
     expect(onStart.mock.calls[0][0].timerSeconds).toBe(20 * 60);
+  });
+
+  it('back on PyPSA-EUR, the European set and its 5 minutes return', () => {
+    render(<GameConfigScreen onStart={vi.fn()} />);
+    openModePicker();
+    fireEvent.click(screen.getByTestId('game-mode-france2025'));
+    fireEvent.click(screen.getByTestId('game-mode-demo'));
+    expect(boxes()).toHaveLength(difficultyTier('medium').studies.length);
+    expect((screen.getByTestId('game-timer-minutes') as HTMLInputElement).value).toBe('5');
+    // The PyPSA-EUR picker offers the European and worst-case sets only.
+    const options = [...(screen.getByDisplayValue(difficultyTier('medium').label) as HTMLSelectElement)
+      .options].map((o) => o.value);
+    expect(options).toEqual(['medium', 'high']);
   });
 });
 

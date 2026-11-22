@@ -59,8 +59,9 @@ python scripts/game_mode/decode_tht_grids.py
 The Game Mode config screen (`frontend/src/game/GameConfigScreen.tsx`) has a
 top-level **Mode** choice:
 
-- **PyPSA-EUR — curated sets**: the curated studies (the European grid by default, France 2025,
-  the French worst case), each ticked or unticked on the landing page.
+- **PyPSA-EUR — curated sets**: the European grid's reference studies (the default) and the
+  French worst case, each ticked or unticked on the landing page.
+- **France 2025 — real hours**: the French grid on two real 2025 hours, 20 minutes per study.
 - **France THT — graded**: pick a **difficulty level** (easy / medium / hard) and
   a **number of cases**; on start, `sampleRte7000(difficulty, n)` draws that many
   scenarios of the chosen level, round-robined across the distinct grid snapshots,

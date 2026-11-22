@@ -11,12 +11,14 @@ import type { GameStudy } from './types';
 // Built-in study presets, grouped into three curated sets:
 //
 //  - **Medium** (default): the pan-European `pypsa_eur_eur220_225_380_400`
-//    grid rebuilt on real 2025 hours (`situations/`, see
-//    docs/data/pypsa-eur-osm-to-xiidm.md) — two studies per hour. Moderate
-//    loadings (102–110 %), so they are clearable with a couple of actions.
-//  - **France 2025**: the French `pypsa_eur_fr225_400` grid on the same
-//    hours — a starter on the July midday, then seven harder cases on the
-//    January peak (98–130 %), with 20 minutes per study.
+//    grid — the three reference studies documented in the README's
+//    "European-Wide Studies in Practice" section. Moderate loadings
+//    (100–106 %), so they are clearable with a couple of actions.
+//  - **France 2025** (a mode of its own on the config screen): the French
+//    `pypsa_eur_fr225_400` grid rebuilt on real 2025 hours (`situations/`,
+//    see docs/data/pypsa-eur-osm-to-xiidm.md) — a starter on the July
+//    midday, then seven harder cases on the January peak (98–130 %), with
+//    20 minutes per study.
 //  - **High**: the French `pypsa_eur_fr225_400` grid — worst-case ~130 %
 //    loadings that demand sharper remediation.
 //
@@ -124,38 +126,34 @@ const FR_2025_STUDIES: GameStudy[] = [
   ),
 ];
 
-// --- Medium: European grid on real 2025 hours --------------------------------
-const EUR_BUNDLE = 'data/pypsa_eur_eur220_225_380_400';
-const JAN_OPF = situationPaths(EUR_BUNDLE, '2025-01-14_0800Z_opf');
-const JUL_OPF = situationPaths(EUR_BUNDLE, '2025-07-01_1100Z_opf');
+// --- Medium: European grid (the three README reference studies) ------------
+const EUR_PATHS: GridPaths = {
+  networkPath: 'data/pypsa_eur_eur220_225_380_400/network.xiidm',
+  actionFilePath: 'data/pypsa_eur_eur220_225_380_400/actions.json',
+  layoutPath: 'data/pypsa_eur_eur220_225_380_400/grid_layout.json',
+};
 
 /**
- * Two studies per real hour — 14 January 2025 9:00 (France's consumption
- * peak) and 1 July 2025 13:00 (heatwave midday), both in their PyPSA optimal
- * dispatch. Every one is remediable by the expert model (`can_proceed=True`,
- * a top action clears it) — verified end-to-end by
- * `scripts/game_mode/e2e_game_session.py --grid custom`.
+ * The three studies from the README's "European-Wide Studies in Practice",
+ * each a real N-1 overload on the pan-European grid's own (synthetic)
+ * situation. Every one is winnable below the 95 % monitoring factor with the
+ * expert model's suggestions, checked against the real backend.
  */
 const EUR_STUDIES: GameStudy[] = [
   makeStudy(
-    JAN_OPF, 'eu-jan-opf-2', 'way_130228930-225', 'Échalas – Le Soleil n°2',
-    'Lyon south 225 kV, 14 Jan 9:00', 109.4,
-    "France's 2025 consumption peak: losing Échalas – Le Soleil n°2 loads Échalas – La Rivière to 109 %. Bring it back under 95 %.",
+    EUR_PATHS, 'eu-pyrenees', 'relation_8423570-225', 'LANNEL61PRAGN',
+    'Pyrenees (France / Spain) 225 kV', 106.1,
+    'Loss of LANNEL61PRAGN pushes the parallel MARSIL61PRAGN line to 106 % toward the Spanish border. Bring it back under 95 %.',
   ),
   makeStudy(
-    JAN_OPF, 'eu-jan-opf', 'way_192698906-400', 'Saint-Avold – Vigy',
-    'Lorraine / Saarland 400 kV, 14 Jan 9:00', 107.7,
-    'Same hour: losing Saint-Avold – Vigy pushes the Ensdorf (DE) – Saint-Avold (FR) tie line to 108 %.',
+    EUR_PATHS, 'eu-italy', 'relation_13164355-380', 'Santa Sofia — Montecorvino',
+    'Campania (Italy) 380 kV', 100.1,
+    'Tripping the Santa Sofia line lifts the Brusciano-Nola corridor to 100.1 %, past the 95 % monitoring limit. A light overload to clear.',
   ),
   makeStudy(
-    JUL_OPF, 'eu-jul-opf-2', 'relation_5674507-400', 'Les Attaques – Warande',
-    'Calais – Dunkirk 400 kV, 1 Jul 13:00', 110.2,
-    'Heatwave midday — Penly at full power, the GB links exporting: losing Les Attaques – Warande pushes Mandarins – Warande to 110 %.',
-  ),
-  makeStudy(
-    JUL_OPF, 'eu-jul-opf', 'relation_3710278_b-380', 'Meitingen – Oberbachern',
-    'Bavaria 380 kV, 1 Jul 13:00', 102.2,
-    'Same hour: losing Meitingen – Oberbachern loads Kochel – Murnau, south of Munich, to 102 %.',
+    EUR_PATHS, 'eu-spain', 'way_170479605-400', 'Hinojosa 400 kV double line',
+    'Spain (Hinojosa) 400 kV', 102.2,
+    'One of the two parallel 400 kV branches near Subestación de Hinojosa trips; the other climbs to 102 %. Re-balance the corridor.',
   ),
 ];
 
@@ -201,8 +199,8 @@ export const DIFFICULTY_TIERS: DifficultyTier[] = [
   {
     id: 'medium',
     label: 'Medium — European grid',
-    blurb: 'Pan-European 220 / 225 / 380 / 400 kV on real 2025 hours, PyPSA optimal dispatch — 14 January 9:00 and 1 July 13:00 (102–110 % overloads).',
-    ...JAN_OPF,
+    blurb: "Pan-European 220 / 225 / 380 / 400 kV — the README's three reference studies: Pyrenees, Campania, Hinojosa (100–106 % overloads).",
+    ...EUR_PATHS,
     timerSeconds: 5 * 60,
     studies: EUR_STUDIES,
   },

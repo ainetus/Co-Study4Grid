@@ -179,6 +179,8 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
   const [thtDifficulty, setThtDifficulty] = useState<Rte7000Difficulty>('easy');
   const [numCases, setNumCases] = useState(5);
   const graded = mode === 'demo' ? null : GRADED[mode];
+  // France 2025 is a curated set played as a mode of its own.
+  const franceSet = difficulty === 'france-2025';
   const gradedTier = graded
     ? (graded.tiers.find((t) => t.id === thtDifficulty) ?? graded.tiers[0])
     : null;
@@ -584,14 +586,27 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
                   <div style={{ display: 'flex', gap: space[2] }}>
                     <button data-testid="game-mode-demo"
                       style={{
-                        ...btn(mode === 'demo' ? colors.brand : colors.surfaceMuted,
-                               mode === 'demo' ? colors.textOnBrand : colors.textSecondary),
+                        ...btn(mode === 'demo' && !franceSet ? colors.brand : colors.surfaceMuted,
+                               mode === 'demo' && !franceSet ? colors.textOnBrand : colors.textSecondary),
                         flex: 1, padding: `${space[2]} ${space[3]}`, textAlign: 'left',
                       }}
-                      onClick={() => setMode('demo')}>
+                      onClick={() => { setMode('demo'); if (franceSet) changeDifficulty(DEFAULT_DIFFICULTY); }}>
                       🌍 PyPSA-EUR — curated sets
                       <div style={{ fontSize: text.xs, fontWeight: 400, marginTop: space.half, opacity: 0.85 }}>
-                        France and Europe on real 2025 hours, and the French worst-case set.
+                        The European grid's reference studies, and the French worst-case set.
+                      </div>
+                    </button>
+                    <button data-testid="game-mode-france2025"
+                      style={{
+                        ...btn(mode === 'demo' && franceSet ? colors.brand : colors.surfaceMuted,
+                               mode === 'demo' && franceSet ? colors.textOnBrand : colors.textSecondary),
+                        flex: 1, padding: `${space[2]} ${space[3]}`, textAlign: 'left',
+                      }}
+                      onClick={() => { setMode('demo'); if (!franceSet) changeDifficulty('france-2025'); }}>
+                      🇫🇷 France 2025 — real hours
+                      <div style={{ fontSize: text.xs, fontWeight: 400, marginTop: space.half, opacity: 0.85 }}>
+                        The French grid on two real 2025 hours: a July starter, then the January peak
+                        around Marseille, Paris and Lyon. 20 min per study.
                       </div>
                     </button>
                     {Object.values(GRADED).map((fam) => (
@@ -612,12 +627,12 @@ export default function GameConfigScreen({ onStart }: GameConfigScreenProps) {
                 </div>
               )}
 
-              {showModePicker && mode === 'demo' && (
+              {showModePicker && mode === 'demo' && !franceSet && (
                 <div style={{ marginTop: space[3], maxWidth: 320 }}>
                   <label style={labelStyle}>Difficulty (network)</label>
                   <select style={inputStyle} value={difficulty}
                     onChange={(e) => changeDifficulty(e.target.value as Difficulty)}>
-                    {DIFFICULTY_TIERS.map((t) => (
+                    {DIFFICULTY_TIERS.filter((t) => t.id !== 'france-2025').map((t) => (
                       <option key={t.id} value={t.id}>{t.label}</option>
                     ))}
                   </select>
