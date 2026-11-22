@@ -126,3 +126,40 @@ def load_plant_matching(path: Path | None) -> PlantMatching | None:
     except (OSError, ValueError, TypeError, AttributeError, KeyError):
         logger.warning("Context map: could not read %s — plants not matched", path, exc_info=True)
         return None
+
+
+def _main_plant(entry: dict) -> str | None:
+    """The plant a generator stands for: its largest named plant (a nuclear
+    site, or a plant the database knows the ENTSO-E codes of), when that plant
+    is most of the capacity matched to it — a bus with 500 MW of anonymous
+    solar and a 30 MW named dam is not "the dam"."""
+    capacity = entry.get("capacity_mw", {})
+    total = sum(mw for mw in capacity.values() if isinstance(mw, (int, float)) and mw > 0)
+    named: list[tuple[float, str]] = []
+    for carrier, site in entry.get("sites", {}).items():
+        if isinstance(site, dict) and site.get("name"):
+            named.append((float(capacity.get(carrier, 0) or 0), str(site["name"])))
+    for plants in entry.get("eic", {}).values():
+        named.extend((float(p[1]), str(p[0])) for p in plants
+                     if isinstance(p, (list, tuple)) and len(p) >= 2 and p[0])
+    if not named or total <= 0:
+        return None
+    mw, name = max(named)
+    return name if mw >= 0.5 * total else None
+
+
+def load_plant_names(path: Path | None) -> dict[str, str]:
+    """``{generator id: main plant name}`` from ``power_plants.json`` — how an
+    untyped PyPSA generator reads (``Gravelines``, ``Landivisiau``); ``{}``
+    when the file is absent or unreadable."""
+    if path is None:
+        return {}
+    try:
+        record = json.loads(Path(path).read_text(encoding="utf-8"))
+        if record.get("schema") != SCHEMA:
+            return {}
+        names = {gen: _main_plant(entry) for gen, entry in record.get("generators", {}).items()}
+        return {gen: name for gen, name in names.items() if name}
+    except (OSError, ValueError, TypeError, AttributeError, KeyError):
+        logger.warning("Could not read plant names from %s", path, exc_info=True)
+        return {}

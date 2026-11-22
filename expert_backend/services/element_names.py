@@ -12,14 +12,25 @@ PyPSA merged several ways into one line). Such a name, like a missing one,
 gives way to the names of the line's end voltage levels, so the contingency
 list (``network_service.get_element_names``), the SLD feeder labels and the
 Context tab all read ``PONTEAU — REALTOR``.
+
+Generators and loads follow the same idea (``injection_display_name``): their
+own name, else the power plant matched onto them, else what they are and where
+(``Load — MANDARINS 400kV``). Switches read by the feeder they serve
+(``switch_display_name``: ``disjoncteur ATTAQL61MANDA``), so a manual
+manoeuvre is described with the names the operator sees. A PyPSA virtual bus —
+a point on a line, whatever the pipeline named it after (its raw id, its line's
+code or name) — and a substation OSM never named read by the real substations
+they tie (``nameless_bus_name``: ``Piquage EMALES(LES) / RANVILLE 225kV``): a
+voltage-level label never shows a line's name.
 """
 from __future__ import annotations
 
 import re
 from typing import Any
 
-#: A name that is still a raw OSM id.
-RAW_OSM_NAME = re.compile(r"^(merged_)?(way|relation)[/_]")
+#: A name that is still a raw OSM id — PyPSA virtual buses included
+#: (``virtual_relation_10012409_a_1-225 225kV``).
+RAW_OSM_NAME = re.compile(r"^(merged_|virtual_)?(way|relation)[/_]")
 _KV_SUFFIX = re.compile(r"\s+\d+\s*kV$")
 
 
@@ -58,3 +69,60 @@ def branch_display_name(
         return end1 or end2
     raw = _text(name)
     return raw if raw and raw != str(element_id) else None
+
+
+#: What an unnamed injection is, for its fallback display name.
+INJECTION_NOUNS = {"generator": "Generator", "load": "Load"}
+
+
+def injection_display_name(
+    element_id: Any, name: Any, kind: str, location: Any, plant: Any = None,
+) -> str:
+    """A generator's or load's display name: its own when it is a real one,
+    else the power plant matched onto it, else ``<Kind> — <location>``
+    (``Generator — MANDARINS 400kV``), ``location`` being the display name of
+    its voltage level."""
+    if is_real_name(name, element_id):
+        return _text(name)
+    if _text(plant):
+        return _text(plant)
+    noun = INJECTION_NOUNS.get(kind, kind.capitalize())
+    where = _text(location)
+    return f"{noun} — {where}" if where else f"{noun} {element_id}"
+
+
+#: French noun of a switch kind — the language of the manoeuvre descriptions.
+SWITCH_NOUNS = {"BREAKER": "disjoncteur", "DISCONNECTOR": "sectionneur",
+                "LOAD_BREAK_SWITCH": "interrupteur"}
+
+
+def switch_display_name(
+    kind: Any, feeders: list[str], busbar: str | None = None,
+) -> str:
+    """A switch's display name, from the feeder(s) its bay serves:
+    ``disjoncteur ATTAQL61MANDA``; a busbar-selection disconnector names its
+    busbar too (``sectionneur ATTAQL61MANDA (MANDARINS JdB1)``); a bay that
+    serves no feeder is a coupling (``disjoncteur de couplage``)."""
+    noun = SWITCH_NOUNS.get(_text(kind).upper(), "organe")
+    what = " / ".join(feeders) if feeders else "de couplage"
+    return f"{noun} {what} ({busbar})" if busbar else f"{noun} {what}"
+
+
+def kv_label(nominal_v: Any) -> str:
+    """``225kV`` for a nominal voltage of 225 (``''`` when unknown) — the
+    suffix every voltage-level name carries."""
+    try:
+        kv = float(nominal_v)
+    except (TypeError, ValueError):
+        return ""
+    return f"{kv:g}kV" if kv == kv and kv > 0 else ""
+
+
+def nameless_bus_name(places: list[str], virtual: bool, kv: str = "") -> str:
+    """The display name of a bus with no name of its own, from the real
+    substations it ties, nearest first. A PyPSA virtual bus is a point on a
+    line — a tap: ``Piquage EMALES(LES) / RANVILLE 225kV``; a substation OSM
+    never named sits near them: ``Poste près de BEAUTOR / CAPELLE (LA) 225kV``."""
+    prefix = "Piquage" if virtual else "Poste près de"
+    text = f"{prefix} {' / '.join(places)}"
+    return f"{text} {kv}" if kv else text

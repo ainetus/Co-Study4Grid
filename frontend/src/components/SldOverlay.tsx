@@ -15,6 +15,7 @@ import { useSldFeederNav } from '../hooks/useSldFeederNav';
 import { useSldInjectionNameButtons } from '../hooks/useSldInjectionNameButtons';
 import { colors } from '../styles/tokens';
 import SldEditPanel from './SldEditPanel';
+import CopyIdButton from './CopyIdButton';
 import SldInjectionPopover from './SldInjectionPopover';
 import type { SwitchToggleEntry, InjectionChangeEntry } from '../hooks/useSldTopologyEdit';
 
@@ -108,6 +109,8 @@ export interface SldOverlayProps {
      * overload stays visible from the other end.
      */
     onNavigateToVl?: (vlId: string) => void;
+    /** Resolve an element / VL id to its display name — the overlay title. */
+    displayName?: (id: string) => string;
 }
 
 const SldOverlay: React.FC<SldOverlayProps> = ({
@@ -138,6 +141,7 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
     onSwitchRemove,
     onSwitchRemoveMany,
     onNavigateToVl,
+    displayName,
 }) => {
     const overlayBodyRef = useRef<HTMLDivElement>(null);
     // True once a press-drag has moved the pointer beyond a small slop
@@ -854,7 +858,8 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
                         const q = equipId.toLowerCase().substring(0, 5);
                         if (q) {
                             for (const txt of Array.from(texts)) {
-                                const content = (txt.textContent ?? '').toLowerCase();
+                                // A relabelled feeder keeps its raw label in data-feeder-orig.
+                                const content = (txt.getAttribute('data-feeder-orig') ?? txt.textContent ?? '').toLowerCase();
                                 // Only a feeder cell's own label names its
                                 // equipment — never a bus-bar title or a clone.
                                 if (content.includes(q) && !txt.closest('.sld-highlight-clone')) {
@@ -1284,7 +1289,8 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
             >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: colors.successText }}>{vlOverlay.vlName}</span>
+                        <span data-testid="sld-overlay-title" title={`Voltage level ${vlOverlay.vlName}`} style={{ fontSize: '13px', fontWeight: 600, color: colors.successText }}>{displayName?.(vlOverlay.vlName) ?? vlOverlay.vlName}</span>
+                        <CopyIdButton value={vlOverlay.vlName} label="voltage level id" testId="sld-overlay-copy-id" />
                         {/* Mode indicator — shows which Flow vs Impact mode was active when overlay opened */}
                         <span style={{
                             fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '10px',
@@ -1375,6 +1381,7 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
                     <SldInjectionPopover
                         equipmentId={injectionPopover.equipmentId}
                         injection={vlOverlay.injections[injectionPopover.equipmentId]}
+                        label={vlOverlay.feeder_labels?.[injectionPopover.equipmentId]?.label ?? undefined}
                         currentValue={
                             pendingInjections?.[injectionPopover.equipmentId]
                             ?? vlOverlay.injections[injectionPopover.equipmentId].p
@@ -1393,6 +1400,8 @@ const SldOverlay: React.FC<SldOverlayProps> = ({
                 <SldEditPanel
                     pendingChanges={pendingChanges ?? []}
                     injectionChanges={injectionChanges}
+                    switchLabels={vlOverlay.switch_labels}
+                    feederLabels={vlOverlay.feeder_labels}
                     onReset={onResetEdit}
                     onSimulate={onSimulateEdit}
                     busy={editSimulationBusy}

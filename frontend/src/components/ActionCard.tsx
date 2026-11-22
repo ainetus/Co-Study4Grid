@@ -8,10 +8,14 @@
 import React from 'react';
 import type { ActionDetail, NodeMeta, EdgeMeta } from '../types';
 import type { ModelDescriptor } from '../api';
-import { getActionTargetVoltageLevels, getActionTargetLines, isCouplingAction } from '../utils/svgUtils';
-import { colors } from '../styles/tokens';
+import { colors, radius, text } from '../styles/tokens';
 import { clampRedispatchDelta, redispatchTotal } from '../utils/injectionActions';
+import { ACTION_TYPE_LABELS, classifyActionTypes, type ActionTypeKind } from '../utils/actionTypes';
+import { collectActionTargets, humanizeIds, type ActionTarget } from '../utils/actionLabels';
 import { SeverityIcon, type SeverityKind } from './SeverityIcon';
+import { ActionTypeIcon } from './ActionTypeIcon';
+import { Glyph } from './Glyph';
+import CopyIdButton from './CopyIdButton';
 
 interface ActionCardProps {
     id: string;
@@ -41,21 +45,37 @@ interface ActionCardProps {
     /**
      * Registered recommender models — used to resolve `details.origin`
      * (a model id) to a human-readable label in the unfolded card's
-     * "Source" row. Absent / no-match falls back to the raw id.
+     * source row. Absent / no-match falls back to the raw id.
      */
     availableModels?: ModelDescriptor[];
 }
 
-const clickableLinkStyle: React.CSSProperties = {
+const linkStyle: React.CSSProperties = {
     background: 'none',
     border: 'none',
     cursor: 'pointer',
     padding: 0,
-    fontSize: 'inherit',
-    color: colors.brand,
-    fontWeight: 600,
-    textDecoration: 'underline dotted',
+    font: 'inherit',
+    color: 'inherit',
+    textAlign: 'left',
 };
+
+/** Words a pictogram stands for — the hover tooltip that recalls its meaning. */
+const TIPS = {
+    maxLoading: 'Max loading — the highest line loading in the network after this action',
+    after: 'Loading after this action of the lines the contingency overloads',
+    halfOpen: 'Line open at one end — this loading is the line\'s capacitive charging current (reactive power, the MVAr shown), not real power flow. The line carries no active power (the diagrams show 0).',
+    location: 'Where the action acts',
+};
+
+/** Kinds the injection details name even when the id / description do not
+ *  (``curtail_*`` is only told apart by its details). */
+const detailKinds = (d: ActionDetail): ActionTypeKind[] => [
+    ...(d.load_shedding_details?.length ? ['ls' as const] : []),
+    ...(d.curtailment_details?.length ? ['rc' as const] : []),
+    ...(d.redispatch_details?.length ? ['redispatch' as const] : []),
+    ...(d.pst_details?.length ? ['pst' as const] : []),
+];
 
 const ActionCard: React.FC<ActionCardProps> = ({
     id,
@@ -85,16 +105,17 @@ const ActionCard: React.FC<ActionCardProps> = ({
 }) => {
     const maxRhoPct = details.max_rho != null ? (details.max_rho * 100).toFixed(1) : null;
 
-    // Provenance label for the unfolded card's "Source" row. `origin`
-    // is either the literal `"user"` (manual simulation) or a
-    // recommender model id — resolved here to the model's label.
+    // Provenance for the unfolded card's source row: `origin` is either
+    // the literal `"user"` (manual simulation) or a recommender model id.
     const originLabel = details.origin == null
         ? null
         : details.origin === 'user'
             ? 'Manual simulation (user)'
             : (availableModels?.find(m => m.name === details.origin)?.label ?? details.origin);
+    const severityOf = (rho: number) =>
+        rho > monitoringFactor ? 'red' as const : rho > (monitoringFactor - 0.05) ? 'orange' as const : 'green' as const;
     const severity = details.max_rho != null
-        ? (details.max_rho > monitoringFactor ? 'red' as const : details.max_rho > (monitoringFactor - 0.05) ? 'orange' as const : 'green' as const)
+        ? severityOf(details.max_rho)
         : (details.is_rho_reduction ? 'green' as const : 'red' as const);
     const severityColors = {
         green: { border: colors.success, badgeBg: colors.successSoft, badgeText: colors.successText, label: 'Solves overload', kind: 'solves' as SeverityKind },
@@ -107,6 +128,20 @@ const ActionCard: React.FC<ActionCardProps> = ({
             ? { border: colors.danger, badgeBg: colors.danger, badgeText: colors.textOnBrand, label: 'islanded', kind: 'islanded' as SeverityKind }
             : severityColors[severity];
 
+    // What the card names: its title (what the action acts on), the
+    // location chips (where its injections sit), its type pictograms.
+    const targets = collectActionTargets(id, details, nodesByEquipmentId, edgesByEquipmentId);
+    const typeKinds = Array.from(new Set([
+        ...classifyActionTypes(id, details.description_unitaire, null),
+        ...detailKinds(details),
+    ])).slice(0, 2);
+    const rawDescription = details.description_unitaire;
+    const description = rawDescription && rawDescription !== 'No description available'
+        ? humanizeIds(rawDescription, displayName)
+        : null;
+
+    // "MANDAL71WARAN (relation_5674501-400)" — the id only when it differs.
+    const named = (eid: string) => (displayName(eid) !== eid ? `${displayName(eid)} (${eid})` : eid);
     // An injection action may act on several loads / generators (an
     // evacuation-antenna aggregate): its editor shows and sends the TOTAL,
     // which the backend spreads pro rata — one input per action, not per element.
@@ -114,167 +149,114 @@ const ActionCard: React.FC<ActionCardProps> = ({
     const curtailedMw = details.curtailment_details?.reduce((sum, rc) => sum + rc.curtailed_mw, 0) ?? 0;
     const redispatch = redispatchTotal(details.redispatch_details);
     const renderElements = (rows: { name: string; mw: number }[]): React.ReactNode => (
-        <span title={rows.length > 1 ? rows.map(r => `${r.name}: ${r.mw.toFixed(1)} MW`).join(', ') : undefined}>
+        <span title={rows.map(r => `${named(r.name)}: ${r.mw.toFixed(1)} MW`).join(', ')}>
             {rows.map((r, i) => (
-                <React.Fragment key={r.name}>{i > 0 && ', '}<strong>{r.name}</strong></React.Fragment>
+                <React.Fragment key={r.name}>{i > 0 && ', '}<strong>{displayName(r.name)}</strong></React.Fragment>
             ))}
         </span>
     );
 
-    const renderRho = (arr: number[] | null, actionId: string, tab: 'action' | 'contingency' = 'action'): React.ReactNode => {
+    const nameLink = (t: ActionTarget) => (
+        <button
+            key={t.id}
+            type="button"
+            className="action-card-name"
+            style={linkStyle}
+            title={`${t.id} — click: zoom${t.kind === 'vl' ? ' · double-click: open SLD' : ''}`}
+            onClick={(e) => { e.stopPropagation(); onAssetClick(id, t.id, 'action'); }}
+            onDoubleClick={t.kind === 'vl' ? (e) => { e.stopPropagation(); onVlDoubleClick?.(id, t.id); } : undefined}
+        >{displayName(t.id)}</button>
+    );
+    const renderTitle = (): React.ReactNode => {
+        const shown = targets.title.length > 3 ? targets.title.slice(0, 2) : targets.title;
+        if (shown.length === 0) {
+            return typeKinds.length > 0 ? ACTION_TYPE_LABELS[typeKinds[0]] : id;
+        }
+        const sep = id.includes('+') ? ' + ' : ', ';
+        return (
+            <>
+                {shown.map((t, i) => <React.Fragment key={t.id}>{i > 0 && sep}{nameLink(t)}</React.Fragment>)}
+                {targets.title.length > shown.length && (
+                    <span style={{ color: colors.textTertiary, fontWeight: 500 }}
+                        title={targets.title.slice(shown.length).map(t => displayName(t.id)).join(', ')}>
+                        {` +${targets.title.length - shown.length}`}
+                    </span>
+                )}
+            </>
+        );
+    };
+
+    const renderRho = (arr: number[] | null, actionId: string): React.ReactNode => {
         if (!arr || arr.length === 0) return '—';
         const halfOpen = details.half_open_overloads;
         return arr.map((v, i) => {
             const lineName = linesOverloaded[i] || `line ${i}`;
             // A line the action left open at one end shows a non-zero loading
             // that is pure capacitive charging current (the diagrams show p = 0).
-            // Annotate it with the live-end reactive power so the operator reads
-            // it as charging current, not a residual overload.
             const reactiveMvar = halfOpen ? halfOpen[lineName] : undefined;
+            const tone = severityColors[severityOf(v)].border;
             return (
-                <React.Fragment key={i}>
-                    {i > 0 && ', '}
+                <span key={i} style={{ display: 'flex', alignItems: 'center', gap: '2px 6px', flexWrap: 'wrap' }}>
                     <button
-                        style={clickableLinkStyle}
-                        title={`Zoom to ${lineName}`}
-                        onClick={(e) => { e.stopPropagation(); onAssetClick(actionId, lineName, tab); }}
+                        style={{ ...linkStyle, color: colors.brand, fontWeight: 600, textDecoration: 'underline dotted' }}
+                        title={`Zoom to ${named(lineName)}`}
+                        onClick={(e) => { e.stopPropagation(); onAssetClick(actionId, lineName, 'action'); }}
                     >{displayName(lineName)}</button>
-                    {`: ${(v * 100).toFixed(1)}%`}
+                    <strong style={{ color: tone }}>{(v * 100).toFixed(1)}%</strong>
                     {reactiveMvar != null && (
                         <span
-                            style={{ color: colors.textTertiary, fontStyle: 'italic' }}
-                            title="Line open at one end — this loading is the line's capacitive charging current (reactive power), not real power flow. The line carries no active power (the diagrams show 0)."
+                            title={TIPS.halfOpen}
+                            style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '3px', cursor: 'help',
+                                fontSize: text.xs, color: colors.textSecondary, background: colors.surfaceMuted,
+                                border: `1px solid ${colors.borderSubtle}`, borderRadius: radius.lg, padding: '0 6px',
+                            }}
                         >
-                            {` — open one end · ${reactiveMvar.toFixed(1)} MVAr capacitive`}
+                            <Glyph kind="openEnd" size={11} />
+                            {`open one end · ${reactiveMvar.toFixed(1)} MVAr`}
                         </span>
                     )}
-                </React.Fragment>
+                </span>
             );
         });
     };
 
-    const renderBadges = () => {
-        const badges: React.ReactNode[] = [];
-        const badgeBtn = (name: string, bg: string, color: string, title: string, onDoubleClick?: (e: React.MouseEvent) => void) => (
-            <button key={name}
-                style={{ padding: '2px 7px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: 600, textDecoration: 'underline dotted', flexShrink: 0, backgroundColor: bg, color }}
-                title={title}
-                onClick={(e) => { e.stopPropagation(); onAssetClick(id, name, 'action'); }}
-                onDoubleClick={onDoubleClick}>
-                {displayName(name)}
-            </button>
-        );
-
-        // Collect badges from every source that applies. A combined
-        // action like ``load_shedding_X+reco_Y`` owes a badge to BOTH
-        // sub-actions — using an if/else-if/else here used to drop the
-        // topology-based sub-action (reco / disco / coupling) whenever
-        // the pair also contained a load-shedding or curtailment leg.
-        const vlSet = new Set<string>();
-
-        // Highest-priority signal: backend-supplied VL hint on the
-        // topology blob. The recommender pipeline writes this for
-        // pypowsybl switch-based / coupling actions (the dict_action
-        // entry's ``VoltageLevelId``) so the operator gets a
-        // clickable, double-clickable VL chip even when the action ID
-        // is opaque (e.g. UUID-prefixed ``..._VLNAME_..._coupling``).
-        const explicitVlHint = (details.action_topology as { voltage_level_id?: string } | undefined)?.voltage_level_id;
-        if (explicitVlHint && !vlSet.has(explicitVlHint)) {
-            vlSet.add(explicitVlHint);
-            badges.push(badgeBtn(explicitVlHint, colors.successSoft, colors.successText, `Click: zoom to ${explicitVlHint} | Double-click: open SLD`, (e) => {
-                e.stopPropagation();
-                onVlDoubleClick?.(id, explicitVlHint);
-            }));
-        }
-
-        details.load_shedding_details?.forEach(ls => {
-            if (ls.voltage_level_id && !vlSet.has(ls.voltage_level_id)) {
-                vlSet.add(ls.voltage_level_id);
-                badges.push(badgeBtn(ls.voltage_level_id, colors.successSoft, colors.successText, `Click: zoom to ${ls.voltage_level_id} | Double-click: open SLD`, (e) => {
-                    e.stopPropagation();
-                    onVlDoubleClick?.(id, ls.voltage_level_id!);
-                }));
-            }
-        });
-
-        details.curtailment_details?.forEach(rc => {
-            if (rc.voltage_level_id && !vlSet.has(rc.voltage_level_id)) {
-                vlSet.add(rc.voltage_level_id);
-                badges.push(badgeBtn(rc.voltage_level_id, colors.successSoft, colors.successText, `Click: zoom to ${rc.voltage_level_id} | Double-click: open SLD`, (e) => {
-                    e.stopPropagation();
-                    onVlDoubleClick?.(id, rc.voltage_level_id!);
-                }));
-            }
-        });
-
-        details.redispatch_details?.forEach(rd => {
-            if (rd.voltage_level_id && !vlSet.has(rd.voltage_level_id)) {
-                vlSet.add(rd.voltage_level_id);
-                badges.push(badgeBtn(rd.voltage_level_id, colors.successSoft, colors.successText, `Click: zoom to ${rd.voltage_level_id} | Double-click: open SLD`, (e) => {
-                    e.stopPropagation();
-                    onVlDoubleClick?.(id, rd.voltage_level_id!);
-                }));
-            }
-        });
-
-        if (nodesByEquipmentId) {
-            const vlNames = getActionTargetVoltageLevels(details, id, nodesByEquipmentId);
-            vlNames.forEach(vlName => {
-                if (vlSet.has(vlName)) return;
-                vlSet.add(vlName);
-                badges.push(badgeBtn(vlName, colors.successSoft, colors.successText, `Click: zoom to ${vlName} | Double-click: open SLD`, (e) => {
-                    e.stopPropagation();
-                    onVlDoubleClick?.(id, vlName);
-                }));
-            });
-        }
-
-        const isCoupling = isCouplingAction(id, details.description_unitaire);
-        const lineNames = edgesByEquipmentId
-            ? getActionTargetLines(details, id, edgesByEquipmentId)
-            : Array.from(new Set([
-                ...(isCoupling ? [] : Object.keys(details.action_topology?.lines_ex_bus || {})),
-                ...(isCoupling ? [] : Object.keys(details.action_topology?.lines_or_bus || {})),
-                ...Object.keys(details.action_topology?.pst_tap || {}),
-            ]));
-
-        lineNames.forEach(name => {
-            if (badges.some(b => React.isValidElement(b) && b.key === name)) return;
-            badges.push(badgeBtn(name, colors.brandSoft, colors.brand, `Zoom to ${name}`));
-        });
-
-        if (badges.length === 0) {
-            const topo = details.action_topology;
-            const equipNames = Array.from(new Set([
-                ...Object.keys(topo?.gens_bus || {}),
-                ...Object.keys(topo?.loads_bus || {}),
-                ...Object.keys(topo?.loads_p || {}),
-                ...Object.keys(topo?.gens_p || {}),
-            ]));
-            equipNames.forEach(name => {
-                badges.push(badgeBtn(name, colors.brandSoft, colors.brand, `Zoom to ${name}`));
-            });
-        }
-
-        return (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', flexShrink: 0, justifyContent: 'flex-end' }}>
-                {badges}
-            </div>
-        );
-    };
+    const locationChip = (t: ActionTarget) => (
+        <button key={t.id}
+            type="button"
+            style={{
+                display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '1px 7px 1px 5px',
+                borderRadius: radius.lg, border: `1px solid ${colors.successSoft}`, cursor: 'pointer',
+                fontSize: text.xs, fontWeight: 600, flexShrink: 0,
+                background: colors.successSoft, color: colors.successText,
+            }}
+            title={`${TIPS.location}: ${named(t.id)} — click: zoom · double-click: open SLD`}
+            onClick={(e) => { e.stopPropagation(); onAssetClick(id, t.id, 'action'); }}
+            onDoubleClick={(e) => { e.stopPropagation(); onVlDoubleClick?.(id, t.id); }}>
+            <Glyph kind="pin" size={11} />
+            {displayName(t.id)}
+        </button>
+    );
 
     const isFault = !!(details.non_convergence || details.is_islanded);
-    // Higher-saturation accent stripe for the viewing card — replaces
-    // the old vertical "VIEWING" ribbon with a quieter signal that
-    // doesn't steal a column of horizontal space inside the card.
+    // Higher-saturation accent stripe for the viewing card — a quiet
+    // signal that doesn't steal a column of space inside the card.
     const accentColor = isViewing ? colors.brandStrong : sc.border;
 
     const editorRowStyle: React.CSSProperties = {
-        fontSize: '12px',
+        fontSize: text.sm,
         padding: '6px 10px',
-        marginTop: '5px',
-        borderRadius: '4px',
+        marginTop: '6px',
+        borderRadius: radius.sm,
         fontWeight: 500,
+    };
+    const railButtonStyle: React.CSSProperties = {
+        background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: radius.sm,
+        cursor: 'pointer', padding: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 0,
+    };
+    const pillStyle: React.CSSProperties = {
+        display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: text.xs,
+        padding: '3px 8px', marginTop: '6px', borderRadius: radius.sm,
     };
 
     return (
@@ -285,283 +267,325 @@ const ActionCard: React.FC<ActionCardProps> = ({
             style={{
                 background: isFault ? colors.dangerSoft : (isViewing ? colors.brandSoft : colors.surface),
                 border: isFault ? `1px solid ${colors.danger}` : `1px solid ${colors.border}`,
-                borderRadius: '8px',
+                borderRadius: radius.lg,
                 marginBottom: '10px',
-                boxShadow: isViewing ? '0 2px 8px rgba(0,0,0,0.15)' : '0 2px 4px rgba(0,0,0,0.1)',
+                boxShadow: isViewing ? '0 2px 8px rgba(0,0,0,0.15)' : '0 1px 3px rgba(0,0,0,0.1)',
                 borderLeft: `5px solid ${accentColor}`,
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
                 overflow: 'hidden',
-                padding: '10px',
+                padding: '8px 10px 9px 8px',
                 position: 'relative',
+                display: 'flex',
+                gap: '7px',
+                alignItems: 'flex-start',
             }} onClick={() => onActionSelect(id)}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flex: 1, minWidth: 0 }}>
-                    {/* Severity pictogram — placed before the title so the
-                        operator immediately reads the outcome colour. */}
-                    <span
-                        data-testid={`action-card-${id}-severity`}
-                        title={sc.label}
-                        aria-label={sc.label}
-                        role="img"
+            {/* Outcome first — the severity column the eye scans down the feed. */}
+            <span
+                data-testid={`action-card-${id}-severity`}
+                title={sc.label}
+                aria-label={sc.label}
+                role="img"
+                style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '3px', borderRadius: '50%', background: sc.badgeBg, color: sc.badgeText,
+                    flexShrink: 0, lineHeight: 0, marginTop: '1px',
+                }}
+            >
+                <SeverityIcon kind={sc.kind} />
+            </span>
+
+            <div style={{ flex: 1, minWidth: 0 }}>
+                {/* What: rank, type pictogram(s), the elements it acts on. */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                    <h4
+                        title={id}
                         style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '3px',
-                            borderRadius: '50%',
-                            background: sc.badgeBg,
-                            color: sc.badgeText,
-                            flexShrink: 0,
-                            lineHeight: 0,
+                            margin: 0, flex: 1, minWidth: 0, fontSize: text.sm, fontWeight: 700, lineHeight: 1.4,
+                            color: isViewing ? colors.brandStrong : colors.textPrimary, overflowWrap: 'anywhere',
                         }}
                     >
-                        <SeverityIcon kind={sc.kind} />
-                    </span>
-                    <h4 style={{
-                        margin: 0,
-                        fontSize: '12px',
-                        color: isViewing ? colors.brandStrong : undefined,
-                        flex: 1,
-                        minWidth: 0,
-                        overflowWrap: 'anywhere',
-                        fontWeight: 700,
-                        lineHeight: 1.35,
-                    }}>
-                        #{index + 1} {'—'} {id}
+                        <span style={{ color: colors.textTertiary, fontWeight: 600, marginRight: '5px' }}>#{index + 1}</span>
+                        {typeKinds.map(kind => (
+                            <span
+                                key={kind}
+                                data-testid={`action-card-${id}-type-${kind}`}
+                                title={ACTION_TYPE_LABELS[kind]}
+                                aria-label={ACTION_TYPE_LABELS[kind]}
+                                role="img"
+                                style={{ display: 'inline-flex', verticalAlign: '-2px', marginRight: '5px', color: colors.textSecondary }}
+                            >
+                                <ActionTypeIcon kind={kind} />
+                            </span>
+                        ))}
+                        {renderTitle()}
                     </h4>
+                    {/* Star / reject rail — revealed on hover via CSS
+                        (.action-card-rail opacity transition). */}
+                    <div className="action-card-rail" style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
+                        {!isSelected && (
+                            <button
+                                data-testid={`favorite-${id}`}
+                                onClick={(e) => { e.stopPropagation(); onActionFavorite(id); }}
+                                style={{ ...railButtonStyle, color: colors.warningStrong }}
+                                title="Select this action"
+                                aria-label="Select this action"
+                            ><Glyph kind="star" size={14} /></button>
+                        )}
+                        {!isRejected && (
+                            <button
+                                data-testid={`reject-${id}`}
+                                onClick={(e) => { e.stopPropagation(); onActionReject(id); }}
+                                style={{ ...railButtonStyle, color: colors.danger }}
+                                title={isSelected ? 'Remove from selected' : 'Reject this action'}
+                                aria-label={isSelected ? 'Remove from selected' : 'Reject this action'}
+                            ><Glyph kind="cross" size={14} /></button>
+                        )}
+                    </div>
                 </div>
-                {/* Star / reject rail — top-right, revealed on hover via
-                    CSS (.action-card-rail opacity transition). */}
-                <div className="action-card-rail" style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
-                    {!isSelected && (
-                        <button
-                            data-testid={`favorite-${id}`}
-                            onClick={(e) => { e.stopPropagation(); onActionFavorite(id); }}
-                            style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '4px', cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            title="Select this action"
-                        ><span style={{ fontSize: '15px', lineHeight: 1 }}>⭐</span></button>
-                    )}
-                    {!isRejected && (
-                        <button
-                            data-testid={`reject-${id}`}
-                            onClick={(e) => { e.stopPropagation(); onActionReject(id); }}
-                            style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '4px', cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            title={isSelected ? "Remove from selected" : "Reject this action"}
-                        ><span style={{ fontSize: '15px', lineHeight: 1 }}>❌</span></button>
-                    )}
-                </div>
-            </div>
 
-            {/* Compact at-rest body: max loading + target badges. The
-                row wraps so multi-VL badge stacks flow to a second
-                line when the title is long or the badges don't fit
-                alongside the loading metric. */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', rowGap: '6px', gap: '8px', marginTop: '6px' }}>
-                <div style={{ flex: '1 1 160px', fontSize: '12px', minWidth: 'min-content' }}>
-                    {maxRhoPct != null ? (
-                        <div>
-                            Max loading: <strong style={{ color: sc.border }}>{maxRhoPct}%</strong>
-                            {details.max_rho_line && (
-                                <span style={{ color: colors.textTertiary }}> on <button
-                                    style={{ ...clickableLinkStyle, color: colors.textTertiary }}
-                                    title={`Zoom to ${details.max_rho_line}`}
-                                    onClick={(e) => { e.stopPropagation(); onAssetClick(id, details.max_rho_line, 'action'); }}
-                                >{displayName(details.max_rho_line)}</button></span>
-                            )}
-                        </div>
-                    ) : (
-                        <div style={{ color: colors.textTertiary }}>No loading metric</div>
-                    )}
-                </div>
-                {renderBadges()}
-            </div>
+                {/* How: the action's description, right under its title —
+                    one line at rest, in full on the viewing card. */}
+                {description && (
+                    <p
+                        data-testid={`action-card-${id}-description`}
+                        title={isViewing ? (description !== rawDescription ? rawDescription : undefined) : description}
+                        style={{
+                            margin: '2px 0 0', fontSize: text.xs, lineHeight: 1.45, color: colors.textSecondary,
+                            ...(isViewing ? { overflowWrap: 'anywhere' } : { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }),
+                        }}
+                    >{description}</p>
+                )}
 
-            {/* Fault states (divergent / islanded) are primary signals
-                and stay visible regardless of the viewing-state — they
-                replace the missing max-loading indicator. */}
-            {details.non_convergence && (
-                <div style={{ fontSize: '11px', color: colors.warningText, backgroundColor: colors.warningSoft, padding: '2px 6px', borderRadius: '4px', marginTop: '6px', border: `1px solid ${colors.warningBorder}`, display: 'inline-block' }}>
-                    ⚠️ LoadFlow failure: {details.non_convergence}
-                </div>
-            )}
-            {details.is_islanded && (
-                <div style={{ fontSize: '12px', background: colors.dangerSoft, color: colors.danger, padding: '6px 10px', marginTop: '6px', borderRadius: '4px', border: `1px solid ${colors.danger}`, fontWeight: 500 }}>
-                    🏝️ Islanding detected ({details.disconnected_mw?.toFixed(1)} MW disconnected)
-                </div>
-            )}
-            {details.persistent_n_overloads && details.persistent_n_overloads.length > 0 && (
+                {/* Outcome: max loading and, on the viewing card, the
+                    contingency's overloads after the action — one group. */}
                 <div
-                    data-testid={`action-card-${id}-persistent-n`}
-                    title={`These lines are already overloaded in the base (N) state — before any contingency — so this remedial action can't clear them: ${details.persistent_n_overloads.join(', ')}. They are not counted against solving this study.`}
-                    style={{ fontSize: '11px', background: colors.warningSoft, color: colors.warningText, padding: '4px 8px', marginTop: '6px', borderRadius: '4px', border: `1px solid ${colors.warningBorder}`, cursor: 'help', display: 'inline-block' }}
+                    data-testid={`action-card-${id}-loading`}
+                    style={{
+                        marginTop: '6px', fontSize: text.sm, display: 'flex', flexDirection: 'column', gap: '4px',
+                        ...(isViewing ? {
+                            background: colors.surface, border: `1px solid ${colors.borderSubtle}`,
+                            borderRadius: radius.md, padding: '6px 8px',
+                        } : {}),
+                    }}
                 >
-                    ℹ️ {details.persistent_n_overloads.length} pre-existing N overload{details.persistent_n_overloads.length > 1 ? 's' : ''} persist (not caused by this contingency)
-                </div>
-            )}
-
-            {/* Progressive disclosure: description, parameter editors,
-                and per-line "Loading after" only render on the viewing
-                card. Keeps non-viewing cards to five fields each. */}
-            {isViewing && (
-                <div
-                    data-testid={`action-card-${id}-disclosure`}
-                    style={{ marginTop: '8px', borderTop: `1px solid ${colors.borderSubtle}`, paddingTop: '8px' }}
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}
-                >
-                    <p style={{ fontSize: '12px', margin: 0, color: colors.textPrimary }}>{details.description_unitaire}</p>
-
-                    {details.load_shedding_details && details.load_shedding_details.length > 0 && (
-                        <div style={{ ...editorRowStyle, background: colors.warningSoft, color: colors.warningText, border: `1px solid ${colors.warningBorder}` }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                <span>Shedding on {renderElements(details.load_shedding_details.map(ls => ({ name: ls.load_name, mw: ls.shedded_mw })))} in MW:</span>
-                                <input
-                                    data-testid={`edit-mw-${id}`}
-                                    type="number"
-                                    min={0}
-                                    step={0.1}
-                                    value={cardEditMw[id] ?? sheddedMw.toFixed(1)}
-                                    onChange={(e) => onCardEditMwChange(id, e.target.value)}
-                                    style={{ width: '65px', fontSize: '11px', fontFamily: 'monospace', padding: '2px 4px', border: `1px solid ${colors.warningStrong}`, borderRadius: '3px', textAlign: 'right' }}
-                                />
-                                <button
-                                    data-testid={`resimulate-${id}`}
-                                    onClick={() => {
-                                        const mwVal = parseFloat(cardEditMw[id] ?? String(sheddedMw));
-                                        if (!isNaN(mwVal) && mwVal >= 0) onResimulate(id, mwVal);
-                                    }}
-                                    disabled={resimulating === id}
-                                    style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.warningStrong}`, background: colors.warning, color: colors.textOnBright, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
-                                >
-                                    {resimulating === id ? 'Simulating...' : 'Re-simulate'}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {details.curtailment_details && details.curtailment_details.length > 0 && (
-                        <div style={{ ...editorRowStyle, background: colors.infoSoft, color: colors.infoText, border: `1px solid ${colors.infoBorder}` }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                <span>Curtailment on {renderElements(details.curtailment_details.map(rc => ({ name: rc.gen_name, mw: rc.curtailed_mw })))} in MW:</span>
-                                <input
-                                    data-testid={`edit-mw-${id}`}
-                                    type="number"
-                                    min={0}
-                                    step={0.1}
-                                    value={cardEditMw[id] ?? curtailedMw.toFixed(1)}
-                                    onChange={(e) => onCardEditMwChange(id, e.target.value)}
-                                    style={{ width: '65px', fontSize: '11px', fontFamily: 'monospace', padding: '2px 4px', border: `1px solid ${colors.info}`, borderRadius: '3px', textAlign: 'right' }}
-                                />
-                                <button
-                                    data-testid={`resimulate-${id}`}
-                                    onClick={() => {
-                                        const mwVal = parseFloat(cardEditMw[id] ?? String(curtailedMw));
-                                        if (!isNaN(mwVal) && mwVal >= 0) onResimulate(id, mwVal);
-                                    }}
-                                    disabled={resimulating === id}
-                                    style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.info}`, background: colors.infoBorder, color: colors.infoText, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
-                                >
-                                    {resimulating === id ? 'Simulating...' : 'Re-simulate'}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {details.redispatch_details && redispatch && (
-                        <div style={{ ...editorRowStyle, background: colors.infoSoft, color: colors.infoText, border: `1px solid ${colors.infoBorder}` }}>
-                            {/* Signed-delta bounds from the generators' [min_p, max_p]:
-                                a raise can go up to +max raise, a lower down to -max lower. */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                <span>Redispatch on {renderElements(details.redispatch_details.map(rd => ({ name: rd.gen_name, mw: rd.delta_mw })))} ({redispatch.direction === 'up' ? 'raise' : 'lower'}) in MW:</span>
-                                <input
-                                    data-testid={`edit-mw-${id}`}
-                                    type="number"
-                                    step={0.1}
-                                    min={redispatch.minDeltaMw}
-                                    max={redispatch.maxDeltaMw}
-                                    value={cardEditMw[id] ?? redispatch.deltaMw.toFixed(1)}
-                                    onChange={(e) => onCardEditMwChange(id, e.target.value)}
-                                    style={{ width: '65px', fontSize: '11px', fontFamily: 'monospace', padding: '2px 4px', border: `1px solid ${colors.info}`, borderRadius: '3px', textAlign: 'right' }}
-                                />
-                                {redispatch.headroomMw != null && (
-                                    <span style={{ fontSize: '10px', color: colors.info }}>
-                                        max {redispatch.direction === 'up' ? 'raise' : 'lower'}: {redispatch.headroomMw.toFixed(0)} MW
-                                    </span>
-                                )}
-                                <button
-                                    data-testid={`resimulate-${id}`}
-                                    onClick={() => {
-                                        const raw = parseFloat(cardEditMw[id] ?? String(redispatch.deltaMw));
-                                        if (!isNaN(raw)) onResimulate(id, clampRedispatchDelta(redispatch, raw));
-                                    }}
-                                    disabled={resimulating === id}
-                                    style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.info}`, background: colors.infoBorder, color: colors.infoText, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
-                                >
-                                    {resimulating === id ? 'Simulating...' : 'Re-simulate'}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {details.pst_details && details.pst_details.length > 0 && (
-                        <div style={{ ...editorRowStyle, background: colors.accentSoft, color: colors.accentText, border: `1px solid ${colors.accentBorder}` }}>
-                            {details.pst_details.map((pst, i) => (
-                                <div key={pst.pst_name} style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: i > 0 ? '4px' : 0 }}>
-                                    <span>PST <strong>{pst.pst_name}</strong> tap:</span>
-                                    <input
-                                        data-testid={`edit-tap-${id}`}
-                                        type="number"
-                                        min={pst.low_tap ?? undefined}
-                                        max={pst.high_tap ?? undefined}
-                                        step={1}
-                                        value={cardEditTap[id] ?? pst.tap_position}
-                                        onChange={(e) => onCardEditTapChange(id, e.target.value)}
-                                        style={{ width: '55px', fontSize: '11px', fontFamily: 'monospace', padding: '2px 4px', border: `1px solid ${colors.accent}`, borderRadius: '3px', textAlign: 'right' }}
-                                    />
-                                    {pst.low_tap != null && pst.high_tap != null && (
-                                        <span style={{ fontSize: '10px', color: colors.accent }}>
-                                            [{pst.low_tap}..{pst.high_tap}]
-                                        </span>
-                                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 8px' }}>
+                        {maxRhoPct != null ? (
+                            <span title={TIPS.maxLoading} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: colors.textSecondary }}>
+                                <Glyph kind="gauge" />
+                                <strong style={{ color: sc.border }}>{maxRhoPct}%</strong>
+                                {details.max_rho_line && (
                                     <button
-                                        data-testid={`resimulate-tap-${id}`}
+                                        style={{ ...linkStyle, color: colors.textTertiary, textDecoration: 'underline dotted' }}
+                                        title={`Zoom to ${named(details.max_rho_line)}`}
+                                        onClick={(e) => { e.stopPropagation(); onAssetClick(id, details.max_rho_line, 'action'); }}
+                                    >{displayName(details.max_rho_line)}</button>
+                                )}
+                            </span>
+                        ) : (
+                            <span style={{ color: colors.textTertiary }}>No loading metric</span>
+                        )}
+                        {targets.locations.length > 0 && (
+                            <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '4px', marginLeft: 'auto' }}>
+                                {targets.locations.map(locationChip)}
+                            </span>
+                        )}
+                    </div>
+                    {isViewing && (
+                        <div data-testid={`action-card-${id}-after`} style={{ display: 'flex', alignItems: 'flex-start', gap: '4px' }}>
+                            <span title={TIPS.after} aria-label={TIPS.after} role="img"
+                                style={{ display: 'inline-flex', color: colors.textSecondary, marginTop: '2px' }}>
+                                <Glyph kind="after" />
+                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                                {renderRho(details.rho_after, id)}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Fault states (divergent / islanded) are primary signals
+                    and stay visible whatever the viewing state. */}
+                {details.non_convergence && (
+                    <div style={{ ...pillStyle, color: colors.warningText, backgroundColor: colors.warningSoft, border: `1px solid ${colors.warningBorder}` }}>
+                        <Glyph kind="warning" size={12} />
+                        LoadFlow failure: {details.non_convergence}
+                    </div>
+                )}
+                {details.is_islanded && (
+                    <div style={{ ...pillStyle, backgroundColor: colors.dangerSoft, color: colors.danger, border: `1px solid ${colors.danger}`, fontWeight: 600 }}>
+                        <Glyph kind="warning" size={12} />
+                        Islanding detected ({details.disconnected_mw?.toFixed(1)} MW disconnected)
+                    </div>
+                )}
+                {details.persistent_n_overloads && details.persistent_n_overloads.length > 0 && (
+                    <div
+                        data-testid={`action-card-${id}-persistent-n`}
+                        title={`These lines are already overloaded in the base (N) state — before any contingency — so this remedial action can't clear them: ${details.persistent_n_overloads.map(displayName).join(', ')}. They are not counted against solving this study.`}
+                        style={{ ...pillStyle, backgroundColor: colors.warningSoft, color: colors.warningText, border: `1px solid ${colors.warningBorder}`, cursor: 'help' }}
+                    >
+                        <Glyph kind="info" size={12} />
+                        {details.persistent_n_overloads.length} pre-existing N overload{details.persistent_n_overloads.length > 1 ? 's' : ''} persist (not caused by this contingency)
+                    </div>
+                )}
+
+                {/* Progressive disclosure: parameter editors and provenance
+                    only render on the viewing card. */}
+                {isViewing && (
+                    <div
+                        data-testid={`action-card-${id}-disclosure`}
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                    >
+                        {details.load_shedding_details && details.load_shedding_details.length > 0 && (
+                            <div style={{ ...editorRowStyle, background: colors.warningSoft, color: colors.warningText, border: `1px solid ${colors.warningBorder}` }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                    <span>Shedding on {renderElements(details.load_shedding_details.map(ls => ({ name: ls.load_name, mw: ls.shedded_mw })))} in MW:</span>
+                                    <input
+                                        data-testid={`edit-mw-${id}`}
+                                        type="number"
+                                        min={0}
+                                        step={0.1}
+                                        value={cardEditMw[id] ?? sheddedMw.toFixed(1)}
+                                        onChange={(e) => onCardEditMwChange(id, e.target.value)}
+                                        style={{ width: '65px', fontSize: text.xs, fontFamily: 'monospace', padding: '2px 4px', border: `1px solid ${colors.warningStrong}`, borderRadius: '3px', textAlign: 'right' }}
+                                    />
+                                    <button
+                                        data-testid={`resimulate-${id}`}
                                         onClick={() => {
-                                            const tapVal = parseInt(cardEditTap[id] ?? String(pst.tap_position), 10);
-                                            if (!isNaN(tapVal)) onResimulateTap(id, tapVal);
+                                            const mwVal = parseFloat(cardEditMw[id] ?? String(sheddedMw));
+                                            if (!isNaN(mwVal) && mwVal >= 0) onResimulate(id, mwVal);
                                         }}
                                         disabled={resimulating === id}
-                                        style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.accent}`, background: colors.accentBorder, color: colors.accentText, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+                                        style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.warningStrong}`, background: colors.warning, color: colors.textOnBright, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
                                     >
                                         {resimulating === id ? 'Simulating...' : 'Re-simulate'}
                                     </button>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                            </div>
+                        )}
 
-                    {/* "Loading before" stays in the sticky Overloads N-1
-                        section of the left feed — no need to duplicate
-                        it per card (see git blame for the original
-                        rationale). */}
-                    <div style={{ fontSize: '12px', background: colors.brandSoft, padding: '5px', marginTop: '8px', borderRadius: '4px' }}>
-                        Overload loading after: {renderRho(details.rho_after, id, 'action')}
-                    </div>
+                        {details.curtailment_details && details.curtailment_details.length > 0 && (
+                            <div style={{ ...editorRowStyle, background: colors.infoSoft, color: colors.infoText, border: `1px solid ${colors.infoBorder}` }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                    <span>Curtailment on {renderElements(details.curtailment_details.map(rc => ({ name: rc.gen_name, mw: rc.curtailed_mw })))} in MW:</span>
+                                    <input
+                                        data-testid={`edit-mw-${id}`}
+                                        type="number"
+                                        min={0}
+                                        step={0.1}
+                                        value={cardEditMw[id] ?? curtailedMw.toFixed(1)}
+                                        onChange={(e) => onCardEditMwChange(id, e.target.value)}
+                                        style={{ width: '65px', fontSize: text.xs, fontFamily: 'monospace', padding: '2px 4px', border: `1px solid ${colors.info}`, borderRadius: '3px', textAlign: 'right' }}
+                                    />
+                                    <button
+                                        data-testid={`resimulate-${id}`}
+                                        onClick={() => {
+                                            const mwVal = parseFloat(cardEditMw[id] ?? String(curtailedMw));
+                                            if (!isNaN(mwVal) && mwVal >= 0) onResimulate(id, mwVal);
+                                        }}
+                                        disabled={resimulating === id}
+                                        style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.info}`, background: colors.infoBorder, color: colors.infoText, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+                                    >
+                                        {resimulating === id ? 'Simulating...' : 'Re-simulate'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
-                    {/* Source / provenance sits at the very bottom of
-                        the unfolded card — it's a low-information
-                        attribution row that shouldn't compete with the
-                        operational fields above. */}
-                    {originLabel && (
+                        {details.redispatch_details && redispatch && (
+                            <div style={{ ...editorRowStyle, background: colors.infoSoft, color: colors.infoText, border: `1px solid ${colors.infoBorder}` }}>
+                                {/* Signed-delta bounds from the generators' [min_p, max_p]:
+                                    a raise can go up to +max raise, a lower down to -max lower. */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                    <span>Redispatch on {renderElements(details.redispatch_details.map(rd => ({ name: rd.gen_name, mw: rd.delta_mw })))} ({redispatch.direction === 'up' ? 'raise' : 'lower'}) in MW:</span>
+                                    <input
+                                        data-testid={`edit-mw-${id}`}
+                                        type="number"
+                                        step={0.1}
+                                        min={redispatch.minDeltaMw}
+                                        max={redispatch.maxDeltaMw}
+                                        value={cardEditMw[id] ?? redispatch.deltaMw.toFixed(1)}
+                                        onChange={(e) => onCardEditMwChange(id, e.target.value)}
+                                        style={{ width: '65px', fontSize: text.xs, fontFamily: 'monospace', padding: '2px 4px', border: `1px solid ${colors.info}`, borderRadius: '3px', textAlign: 'right' }}
+                                    />
+                                    {redispatch.headroomMw != null && (
+                                        <span style={{ fontSize: '10px', color: colors.info }}>
+                                            max {redispatch.direction === 'up' ? 'raise' : 'lower'}: {redispatch.headroomMw.toFixed(0)} MW
+                                        </span>
+                                    )}
+                                    <button
+                                        data-testid={`resimulate-${id}`}
+                                        onClick={() => {
+                                            const raw = parseFloat(cardEditMw[id] ?? String(redispatch.deltaMw));
+                                            if (!isNaN(raw)) onResimulate(id, clampRedispatchDelta(redispatch, raw));
+                                        }}
+                                        disabled={resimulating === id}
+                                        style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.info}`, background: colors.infoBorder, color: colors.infoText, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+                                    >
+                                        {resimulating === id ? 'Simulating...' : 'Re-simulate'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {details.pst_details && details.pst_details.length > 0 && (
+                            <div style={{ ...editorRowStyle, background: colors.accentSoft, color: colors.accentText, border: `1px solid ${colors.accentBorder}` }}>
+                                {details.pst_details.map((pst, i) => (
+                                    <div key={pst.pst_name} style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: i > 0 ? '4px' : 0 }}>
+                                        <span>PST <strong title={pst.pst_name}>{displayName(pst.pst_name)}</strong> tap:</span>
+                                        <input
+                                            data-testid={`edit-tap-${id}`}
+                                            type="number"
+                                            min={pst.low_tap ?? undefined}
+                                            max={pst.high_tap ?? undefined}
+                                            step={1}
+                                            value={cardEditTap[id] ?? pst.tap_position}
+                                            onChange={(e) => onCardEditTapChange(id, e.target.value)}
+                                            style={{ width: '55px', fontSize: text.xs, fontFamily: 'monospace', padding: '2px 4px', border: `1px solid ${colors.accent}`, borderRadius: '3px', textAlign: 'right' }}
+                                        />
+                                        {pst.low_tap != null && pst.high_tap != null && (
+                                            <span style={{ fontSize: '10px', color: colors.accent }}>
+                                                [{pst.low_tap}..{pst.high_tap}]
+                                            </span>
+                                        )}
+                                        <button
+                                            data-testid={`resimulate-tap-${id}`}
+                                            onClick={() => {
+                                                const tapVal = parseInt(cardEditTap[id] ?? String(pst.tap_position), 10);
+                                                if (!isNaN(tapVal)) onResimulateTap(id, tapVal);
+                                            }}
+                                            disabled={resimulating === id}
+                                            style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '3px', border: `1px solid ${colors.accent}`, background: colors.accentBorder, color: colors.accentText, cursor: resimulating === id ? 'wait' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+                                        >
+                                            {resimulating === id ? 'Simulating...' : 'Re-simulate'}
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Provenance + the raw id, last: low-information
+                            attribution that shouldn't compete with the above. */}
                         <div
                             data-testid={`action-card-${id}-origin`}
-                            style={{ fontSize: '11px', marginTop: '8px', color: colors.textTertiary }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '7px', fontSize: text.xs, color: colors.textTertiary, minWidth: 0 }}
                         >
-                            Source: <strong style={{ color: colors.textSecondary }}>{originLabel}</strong>
+                            {originLabel && (
+                                <span title={`Source: ${originLabel}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                    <Glyph kind={details.origin === 'user' ? 'user' : 'model'} size={12} />
+                                    <span style={{ color: colors.textSecondary }}>{originLabel}</span>
+                                </span>
+                            )}
+                            <code
+                                title={id}
+                                style={{ marginLeft: 'auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '10px' }}
+                            >{id}</code>
+                            <CopyIdButton value={id} label="action id" testId={`action-card-${id}-copy-id`} />
                         </div>
-                    )}
-                </div>
-            )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

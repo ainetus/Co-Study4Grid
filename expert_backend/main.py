@@ -487,7 +487,9 @@ def set_recommender_model(req: RecommenderModelRequest) -> dict:
 def get_branches() -> dict:
     try:
         branches = network_service.get_disconnectable_elements()
-        name_map = network_service.get_element_names()
+        # Display names of the branches AND the generators / loads (the
+        # action cards name injections too) — see services/element_names.py.
+        name_map = network_service.get_display_names()
         return {"branches": branches, "name_map": name_map}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -332,6 +332,28 @@ class TestCountryMesh:
                          "way_1-400": "REALTOR \u2014 PONTEAU",
                          "relation_5989317-400": "REALTL71TAVEL"}
 
+    def test_a_virtual_bus_reads_by_the_substations_it_ties(self):
+        """A PyPSA virtual bus (a tap on a line) named by its raw id reads by
+        the substations it ties, and the lines to it by their ends."""
+        tap = "VL_virtual_relation_1_a_1-400"
+        net = FakeNetwork(
+            substations={"S_FR": {"name": "", "country": "FR", "regionCvg": None},
+                         "S_DE": {"name": "", "country": "DE", "regionCvg": None},
+                         "SS_TAP": {"name": "", "country": "FR", "regionCvg": None}},
+            vls={"V_FR": "S_FR", "V_DE": "S_DE", tap: "SS_TAP"},
+            vl_names={"V_FR": "PONTEAU 400kV", "V_DE": "REALTOR 400kV",
+                      tap: "virtual_relation_1_a_1-400 400kV"},
+            lines={
+                "relation_1_a-400": dict(_line("V_FR", tap, -50.0, 50.0), name="relation/1:a-400"),
+                "relation_1_b-400": dict(_line(tap, "V_DE", -50.0, 50.0), name="relation/1:b-400"),
+            },
+            generators={"G1": _gen("V_DE", -500.0)},
+        )
+        snap = capture_snapshot(net)
+        assert snap.names[tap] == "Piquage PONTEAU / REALTOR"
+        assert snap.names["relation_1_a-400"] == "PONTEAU \u2014 Piquage REALTOR"
+        assert snap.names["relation_1_b-400"] == "Piquage PONTEAU \u2014 REALTOR"
+
 
 class TestPrerequisite:
     """No Context tab for a network that cannot place two zones on the map."""

@@ -10,6 +10,8 @@ import type { VlInjection } from '../types';
 
 export interface SldInjectionPopoverProps {
     equipmentId: string;
+    /** Display name (``MANDARINS 400kV Solar``); the id stays on hover. */
+    label?: string;
     injection: VlInjection;
     /** Seed value for the input: the staged override, or the baseline setpoint. */
     currentValue: number;
@@ -37,7 +39,7 @@ const roundMw = (v: number): number => Math.round(v * 10) / 10;
  * ``petite bulle d'information`` requested for injection editing.
  */
 const SldInjectionPopover: React.FC<SldInjectionPopoverProps> = ({
-    equipmentId, injection, currentValue, staged, position, onApply, onRemove, onClose,
+    equipmentId, label, injection, currentValue, staged, position, onApply, onRemove, onClose,
 }) => {
     // Seed (and edit) to a single decimal — the backend setpoints can carry
     // many digits, but the operator tunes in 0.1 MW steps.
@@ -82,9 +84,9 @@ const SldInjectionPopover: React.FC<SldInjectionPopoverProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: space[1] }}>
                 <strong
                     data-testid="sld-injection-name"
-                    style={{ fontSize: text.sm, color: colors.textPrimary, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    style={{ fontSize: text.sm, color: colors.textPrimary, fontFamily: label ? undefined : 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                     title={equipmentId}
-                >{equipmentId}</strong>
+                >{label ?? equipmentId}</strong>
                 <span style={{
                     fontSize: text.xs, fontWeight: 700, padding: `0 ${space.half}`, borderRadius: radius.sm,
                     background: colors.brandSoft, color: colors.brandStrong, whiteSpace: 'nowrap',

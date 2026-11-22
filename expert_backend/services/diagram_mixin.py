@@ -65,6 +65,7 @@ from expert_backend.services.diagram.sld_render import (
     extract_vl_injections,
     extract_vl_switch_states,
 )
+from expert_backend.services.equipment_names import switch_names
 from typing import TYPE_CHECKING
 
 from expert_backend.services.sanitize import sanitize_for_json
@@ -528,6 +529,24 @@ class DiagramMixin(_Base):
     # Public SLD endpoints
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _sld_labels(network, voltage_level_id: str, injections: dict) -> tuple[dict, dict]:
+        """Feeder labels (branches, injections, busbars) and switch names of a
+        voltage level's SLD, in the names the rest of the app shows. Branch
+        labels only, and no switch names, when the network service has no
+        names to give (no network loaded there — the unit tests)."""
+        display_names: dict[str, str] | None = None
+        vl_names = None
+        try:
+            from expert_backend.services.network_service import network_service
+            display_names = network_service.get_display_names()
+            vl_names = network_service.voltage_level_namer()
+        except Exception as e:
+            logger.debug("Display names unavailable for the SLD labels: %s", e)
+        feeder_labels = build_feeder_labels(network, voltage_level_id, injections, display_names, vl_names)
+        switch_labels = switch_names(network, voltage_level_id, display_names) if display_names else {}
+        return feeder_labels, switch_labels
+
     @with_network_lock
     def get_n_sld(self, voltage_level_id: str) -> dict:
         """Single Line Diagram in the base N state."""
@@ -539,7 +558,7 @@ class DiagramMixin(_Base):
             svg, sld_metadata = extract_sld_svg_and_metadata(sld)
             switch_states = extract_vl_switch_states(n, voltage_level_id)
             injections = extract_vl_injections(n, voltage_level_id)
-            feeder_labels = build_feeder_labels(n, voltage_level_id)
+            feeder_labels, switch_labels = self._sld_labels(n, voltage_level_id, injections)
         finally:
             n.set_working_variant(original_variant)
         return {
@@ -549,6 +568,7 @@ class DiagramMixin(_Base):
             "switch_states": switch_states,
             "injections": injections,
             "feeder_labels": feeder_labels,
+            "switch_labels": switch_labels,
         }
 
     @with_network_lock
@@ -564,7 +584,7 @@ class DiagramMixin(_Base):
             svg, sld_metadata = extract_sld_svg_and_metadata(sld)
             switch_states = extract_vl_switch_states(n, voltage_level_id)
             injections = extract_vl_injections(n, voltage_level_id)
-            feeder_labels = build_feeder_labels(n, voltage_level_id)
+            feeder_labels, switch_labels = self._sld_labels(n, voltage_level_id, injections)
             result = {
                 "svg": svg,
                 "sld_metadata": sld_metadata,
@@ -573,6 +593,7 @@ class DiagramMixin(_Base):
                 "switch_states": switch_states,
                 "injections": injections,
                 "feeder_labels": feeder_labels,
+                "switch_labels": switch_labels,
             }
             self._attach_flow_deltas_vs_base(result, n, voltage_level_ids=[voltage_level_id])
             return result
@@ -603,7 +624,7 @@ class DiagramMixin(_Base):
         svg, sld_metadata = extract_sld_svg_and_metadata(sld)
         switch_states = extract_vl_switch_states(network, voltage_level_id)
         injections = extract_vl_injections(network, voltage_level_id)
-        feeder_labels = build_feeder_labels(network, voltage_level_id)
+        feeder_labels, switch_labels = self._sld_labels(network, voltage_level_id, injections)
 
         result = {
             "svg": svg,
@@ -613,6 +634,7 @@ class DiagramMixin(_Base):
             "switch_states": switch_states,
             "injections": injections,
             "feeder_labels": feeder_labels,
+            "switch_labels": switch_labels,
         }
         self._attach_convergence_from_obs(result, obs)
 
@@ -761,7 +783,7 @@ class DiagramMixin(_Base):
             svg, sld_metadata = extract_sld_svg_and_metadata(sld)
             switch_states = extract_vl_switch_states(network, voltage_level_id)
             injections = extract_vl_injections(network, voltage_level_id)
-            feeder_labels = build_feeder_labels(network, voltage_level_id)
+            feeder_labels, switch_labels = self._sld_labels(network, voltage_level_id, injections)
             return {
                 "svg": svg,
                 "sld_metadata": sld_metadata,
@@ -769,6 +791,7 @@ class DiagramMixin(_Base):
                 "switch_states": switch_states,
                 "injections": injections,
                 "feeder_labels": feeder_labels,
+                "switch_labels": switch_labels,
                 "stale_flows": True,
             }
         finally:

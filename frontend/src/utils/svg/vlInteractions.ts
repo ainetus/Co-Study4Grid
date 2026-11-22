@@ -74,6 +74,50 @@ export interface VlInteractionHandlers {
 const NOOP = () => { /* no diagram / no metadata → nothing to wire */ };
 
 /**
+ * A PyPSA-EUR virtual bus (`VL_virtual_relation_…`, `VL_virtual_way_…`): a
+ * point on a line — a tap or a junction — not a substation. The backend names
+ * it by the substations it ties (`Piquage ECHALAS / RIVIERE (LA) 225kV`,
+ * `services/equipment_names.py`).
+ */
+export const isVirtualBus = (vlId: string): boolean => vlId.includes('virtual_');
+
+/**
+ * The VL name boxes of a NAD as the rest of the app reads them. Only
+ * substations are labelled: a virtual bus's name box and its connector are
+ * hidden (its name shows on hover). Another box takes the voltage level's
+ * display name where it differs from what pypowsybl drew — a substation OSM
+ * never named, drawn `way_1063748572-225 225kV`, reads `Poste près de BEAUTOR
+ * / CAPELLE (LA) 225kV`. One pass over the text nodes, writing only those
+ * boxes; idempotent. pypowsybl numbers a box's connector right after it
+ * (`nad-text-edges`, id + 1); without it only the box hides.
+ */
+export const applyVlNameBoxes = (
+    root: ParentNode,
+    textNodesBySvgId: Map<string, NodeMeta>,
+    displayName?: (id: string) => string,
+): void => {
+    let byId: Map<string, Element> | null = null;
+    const find = (id: string): Element | undefined => {
+        byId ??= new Map(Array.from(
+            root.querySelectorAll('.nad-label-box[id], .nad-text-edges [id]'), el => [el.id, el] as const,
+        ));
+        return byId.get(id);
+    };
+    textNodesBySvgId.forEach((vl, svgId) => {
+        if (isVirtualBus(vl.equipmentId)) {
+            for (const el of [find(svgId), find(String(Number(svgId) + 1))]) {
+                if (el instanceof HTMLElement || el instanceof SVGElement) el.style.display = 'none';
+            }
+            return;
+        }
+        const name = displayName?.(vl.equipmentId);
+        if (!name || name === vl.equipmentId) return;
+        const line = find(svgId)?.firstElementChild;
+        if (line && line.textContent !== name) line.textContent = name;
+    });
+};
+
+/**
  * Wire hover / click / double-click behaviours onto every voltage-level
  * disk of a NAD container via a single set of delegated listeners.
  *
@@ -93,6 +137,8 @@ export const attachVlInteractions = (
     const { nodesBySvgId } = metaIndex;
     const textNodesBySvgId = metaIndex.textNodesBySvgId ?? new Map<string, NodeMeta>();
     const { onSelect, onOpenSld, displayName } = handlers;
+    // Only substations are labelled, by the names every other view reads.
+    applyVlNameBoxes(container, textNodesBySvgId, displayName);
 
     // What a hit resolved to: the VL, and whether it landed on the name box
     // (`viaText`) rather than the disk — the two get different click actions.
@@ -198,7 +244,8 @@ export const attachVlInteractions = (
             : resolveDirect(evt.target);
         if (!res) return;
         hoveredSvgId = res.node.svgId;
-        if (labelsHidden) showTooltip(res.node, evt.clientX, evt.clientY);
+        // A virtual bus has no label on the diagram: its name shows on hover.
+        if (labelsHidden || isVirtualBus(res.node.equipmentId)) showTooltip(res.node, evt.clientX, evt.clientY);
     };
 
     const onOut = (evt: MouseEvent) => {

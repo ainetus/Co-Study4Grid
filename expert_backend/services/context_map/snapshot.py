@@ -35,6 +35,7 @@ import pandas as pd
 
 from expert_backend.services.context_map.plants import PlantMatching
 from expert_backend.services.element_names import branch_display_name
+from expert_backend.services.equipment_names import VoltageLevelNames
 
 logger = logging.getLogger(__name__)
 
@@ -237,13 +238,17 @@ def capture_snapshot(network: Any) -> NetworkSnapshot:
     for table in (vls, gens, loads):
         names = _col(table, "name", "").fillna("")
         snap.names.update({str(k): str(v) for k, v in names.items() if v})
-    # Branches read as everywhere else in the app: a missing or raw OSM name
-    # gives way to the end voltage levels' (``PONTEAU — REALTOR``).
-    vl_names = _col(vls, "name", "")
+    # Voltage levels and branches read as everywhere else in the app: a
+    # nameless bus by the substations it ties (``Piquage EMALES(LES) /
+    # RANVILLE 225kV``), a missing or raw OSM line name by its ends
+    # (``PONTEAU — REALTOR``).
+    vl_names = VoltageLevelNames(network)
+    snap.names.update(vl_names.as_dict())
     branches_df = snap.branches
     for bid, name, vl1, vl2 in zip(branches_df.index, branches_df["name"],
                                    branches_df["vl1"], branches_df["vl2"]):
-        display = branch_display_name(bid, name, vl_names.get(vl1), vl_names.get(vl2))
+        display = branch_display_name(bid, name, vl_names.seen_from(str(vl1), str(vl2)),
+                                      vl_names.seen_from(str(vl2), str(vl1)))
         if display:
-            snap.names[str(bid)] = display
+            snap.names[str(bid)] = vl_names.rewrite(display)
     return snap

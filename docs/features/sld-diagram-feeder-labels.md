@@ -123,12 +123,97 @@ the card annotates it with the live-end reactive power.
   save / reload triad (`sessionUtils` + `useSession`) so it survives a
   session reload.
 
+## 4. Every element by its name — injections, busbars, switches, the title
+
+Branch feeders were relabelled; the rest of the SLD still showed raw ids: the
+title (`VL_way_1271288345-400`), the generators (`G_way_1271288345-400`,
+`…_WST`), the loads (`L_way_1271288345-400`), the busbars
+(`VL_way_1271288345-400_BBS1`) and, in the maneuver list, the switches
+(`VL_way_1271288345-400_BK_relation_5674501-400_s1`). They now read by name,
+every id kept one hover (tooltip) or one click (copy) away.
+
+**Naming rules** (`expert_backend/services/element_names.py`, one rule for
+every view):
+
+- *Generator / load* — `injection_display_name`: its own name when real
+  (`MANDARINS 400kV Solar`, `Blayais 1`, `Exchange with GB`), else the plant
+  matched onto the generator in the bundle's `power_plants.json`
+  (`context_map/plants.load_plant_names` — the largest named plant, a
+  nuclear site or a plant with ENTSO-E codes, when it is most of the
+  capacity matched there: `Gravelines`, `Landivisiau`), else what it is and
+  where: `Generator — MANDARINS 400kV`, `Load — MANDARINS 400kV`. Unnamed
+  injections of one kind sharing a voltage level are numbered
+  (`Load 1 — X`, `Load 2 — X`).
+- *Switch* — `switch_display_name`, from the feeder its bay serves, found by
+  walking the voltage level's node-breaker graph from the switch without
+  crossing a busbar (`equipment_names.switch_names`): `disjoncteur
+  MANDAL71WARAN`; a busbar-selection disconnector names its busbar too
+  (`sectionneur MANDAL71WARAN (MANDARINS JdB1)`); a bay serving no feeder is
+  the coupling (`disjoncteur de couplage`). French, the language of the
+  manoeuvre descriptions; a bus-breaker voltage level keeps its ids.
+- *Busbar* — its own name when real (`MANDARINS JdB1`).
+- *Voltage level with no name of its own* — `nameless_bus_name`, from the
+  real substations it ties (`equipment_names.VoltageLevelNames`). PyPSA-EUR
+  puts *virtual buses* on its lines — T-taps and line junctions, ids
+  `VL_virtual_relation_…` / `VL_virtual_way_…`, 191 in fr225_400. They are
+  points on a line, never substations, so they never keep the name the
+  pipeline gave them: their line's RTE code (`COQUAL61TOURB 225kV`, 88), its
+  OSM name (`Liaison 225 kV n°2 Échalas - Le Soleil 225kV`, 37) — a line's
+  name in a voltage-level label — or their raw id
+  (`virtual_relation_10012409_a_1-225 225kV`, 66). The 11 substations OSM
+  never named read the same way, and `RAW_OSM_NAME` now flags the
+  `virtual_` ids too. Walking the lines through the other virtual / nameless
+  buses, such a bus reads by its nearest real substations — every one a hop
+  away (at most three), completed with the next nearest up to two:
+  `Piquage EMALES(LES) / RANVILLE 225kV` for a virtual bus ("piquage", the
+  RTE term for a tap), `Poste près de BEAUTOR / CAPELLE (LA) 225kV` for an
+  unnamed substation; two that would read alike are numbered
+  (`Piquage CHANCEAUX (2) 225kV`). Seen from a line (`seen_from`), it leaves
+  out the substation at the line's other end: in RANVILLE's SLD the feeder
+  to that tap reads `Piquage EMALES(LES) 225kV`, and the raw-named line
+  reads `RANVILLE — Piquage EMALES(LES)`. Names the pipeline built from the
+  bus's name follow (`rewrite`, `injection_names`): the generators `Piquage
+  EMALES(LES) / RANVILLE 225kV Solar`, a transformer's `G.SOL - Piquage G.SOL
+  (2)`; a line keeps its own name. One namer
+  serves the voltage-level name map (`/api/voltage-levels`), the line names
+  (`/api/branches`, the Context tab), the SLD far ends and the injection
+  fallbacks — cached per study by `network_service.voltage_level_namer`.
+
+**Where they show**:
+
+| Place | How |
+|---|---|
+| SLD title | `displayName(vlOverlay.vlName)` (`MANDARINS 400kV`), the id in the tooltip and a copy button (`CopyIdButton`) |
+| NAD voltage-level labels | only substations are labelled: `applyVlNameBoxes` (run by `attachVlInteractions` on the N / N-1 / action tabs and by the action overview) hides a virtual bus's name box and connector — a point on a line, its `Piquage …` name shows on hover — and gives an unnamed substation's box its display name, once per diagram |
+| Generator / load / busbar labels | `build_feeder_labels(network, vl, injections, display_names)` adds them to `feeder_labels` (`kind` = `generator` / `load` / `busbar`); `applyFeederRelabels` swaps them like a branch — a busbar label is never wrapped |
+| Hover on any relabelled feeder | a `<title>` on its feeder group: the raw id (`MANDAL71WARAN · relation_5674501-400` for a branch) — never inside the `<text>`, whose content the label passes match on |
+| Injection name buttons (edit mode) | found by `data-feeder-equip` (the equipment id every relabelled text carries) once their text reads a name |
+| Maneuver list / injection editor | the SLD payloads carry `switch_labels` (`switch_names`); `SldEditPanel` and `SldInjectionPopover` read them and the injection feeder labels |
+| The manual action card | the backend describes the simulated manoeuvre in the same names — see [`action-card.md`](action-card.md) |
+
+The topology preview renders with `use_name=True`, so its labels are names,
+not ids: `findFeederText` then finds an injection or a busbar by its group id
+(`id<escaped id>`, no side suffix) as it does a branch.
+
+The generator / load names of the whole network are computed once per study
+(`network_service.get_display_names`, cached and cleared on load) and ride
+the `/api/branches` name map, so the action cards name injections too.
+
 ## Tests
 
-- Backend: `test_feeder_labels.py`, `test_half_open_overload.py`, and the
-  `build_half_open_reactive` cases in `test_simulation_helpers.py`.
+- Backend: `test_feeder_labels.py`, `test_half_open_overload.py`, the
+  `build_half_open_reactive` cases in `test_simulation_helpers.py`,
+  `test_element_names.py` (the naming rules) and `test_equipment_names.py`
+  (injection / busbar / switch names on a node-breaker layout, plant names,
+  the manual description, `name_switches_in`, the SLD payload's
+  `switch_labels` + injection labels, the nameless buses: taps, chains,
+  numbering, `seen_from`, `rewrite`, the line names and the SLD far end),
+  plus the virtual-bus case of `test_context_map.py`.
 - Frontend: `utils/svg/feederLabels.test.ts` (relabel + `wrapFeederLabel` +
-  `data-feeder-nav` tagging), the "feeder relabelling" / "overload halo via
-  friendly name" / feeder-name navigation suites in
-  `components/SldOverlay.test.tsx`, and the "half-open overload annotation"
-  suite in `components/ActionCard.test.tsx`.
+  `data-feeder-nav` tagging, injections / busbars / tooltips / preview
+  group-id lookup), the "feeder relabelling" / "overload halo via friendly
+  name" / feeder-name navigation / readable title / relabelled name-button
+  suites in `components/SldOverlay.test.tsx`, the named maneuver list in
+  `SldEditPanel.test.tsx`, the NAD name boxes in
+  `utils/svg/vlInteractions.test.ts`, and the "half-open overload
+  annotation" suite in `components/ActionCard.test.tsx`.

@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, act, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, act, cleanup, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom/vitest';
 import App from './App';
@@ -195,7 +195,8 @@ describe('App — action-card origin (provenance) end-to-end', () => {
     // The "Source" row resolves the `active_model` id ("expert") to its
     // human label via availableModels (GET /api/models).
     const originRow = await screen.findByTestId('action-card-ACT_RECO-origin');
-    expect(originRow).toHaveTextContent('Source: Expert system');
+    expect(originRow).toHaveTextContent('Expert system');
+    expect(within(originRow).getByTitle('Source: Expert system')).toBeInTheDocument();
   });
 
   it('stamps a manually-simulated action with origin "user" and shows it in the unfolded card', async () => {
@@ -232,6 +233,7 @@ describe('App — action-card origin (provenance) end-to-end', () => {
     // handleManualActionAdded auto-selects the new action, so its card
     // is already unfolded — the "Source" row reads the literal "user".
     const originRow = await screen.findByTestId('action-card-my_manual_action-origin', {}, { timeout: 3000 });
-    expect(originRow).toHaveTextContent('Source: Manual simulation (user)');
+    expect(originRow).toHaveTextContent('Manual simulation (user)');
+    expect(within(originRow).getByTitle('Source: Manual simulation (user)')).toBeInTheDocument();
   });
 });

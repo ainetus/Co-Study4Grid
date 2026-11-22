@@ -70,7 +70,10 @@ export function useSldInjectionNameButtons(
                 equipmentId.replace(/\./g, '_'),
                 equipmentId.replace(/_/g, '.'),
             ]);
-            const textEl = texts.find(t => variants.has((t.textContent ?? '').trim()));
+            // A relabelled name (``MANDARINS 400kV Solar``) no longer reads
+            // as its id: its text carries the id in ``data-feeder-equip``.
+            const textEl = texts.find(t => t.getAttribute('data-feeder-equip') === equipmentId)
+                ?? texts.find(t => variants.has((t.textContent ?? '').trim()));
             if (!textEl || !textEl.parentNode) continue;
             let bbox: DOMRect;
             try {

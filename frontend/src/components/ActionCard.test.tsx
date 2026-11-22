@@ -6,7 +6,7 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
 vi.mock('../utils/svgUtils', () => ({
@@ -62,9 +62,15 @@ describe('ActionCard', () => {
         expect(screen.getByText(/^#1/)).toBeInTheDocument();
     });
 
-    it('hides the description at rest (progressive disclosure)', () => {
+    it('shows the description right under the title — one line at rest', () => {
         render(<ActionCard {...defaultProps} />);
-        expect(screen.queryByText('Open line L1')).not.toBeInTheDocument();
+        const desc = screen.getByTestId('action-card-act_1-description');
+        expect(desc).toHaveTextContent('Open line L1');
+        expect(desc).toHaveStyle({ whiteSpace: 'nowrap' });
+        const title = screen.getByRole('heading', { level: 4 });
+        const follows = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+        expect(follows(title, desc)).toBe(true);
+        expect(follows(desc, screen.getByTestId('action-card-act_1-loading'))).toBe(true);
     });
 
     it('reveals the description and disclosure region when viewing', () => {
@@ -159,26 +165,15 @@ describe('ActionCard', () => {
         expect(screen.getByTitle('Reject this action')).toBeInTheDocument();
     });
 
-    it('places severity icon before the title and star/reject rail in the header row', () => {
-        // Structural spec: the header row contains (left to right)
-        // the severity pictogram, then the title, then the hover-
-        // revealed star/reject rail in the top-right corner.
+    it('puts the severity in its own column, then the title row with the star/reject rail at its right', () => {
+        // Structural spec: column 1 is the severity pictogram the eye
+        // scans down the feed; column 2 holds everything else, starting
+        // with the title row (title, then the hover-revealed rail).
         const { container } = render(<ActionCard {...defaultProps} />);
-        // The first child of the card is the header flex row
         const card = container.querySelector('[data-testid="action-card-act_1"]')!;
-        const headerRow = card.children[0] as HTMLElement;
-
-        // Left group: severity icon + title
-        const leftGroup = headerRow.children[0] as HTMLElement;
-        const severity = leftGroup.querySelector('[data-testid="action-card-act_1-severity"]');
-        const title = leftGroup.querySelector('h4');
-        expect(severity).not.toBeNull();
-        expect(title).not.toBeNull();
-        // Severity comes before title in DOM order
-        const children = Array.from(leftGroup.children);
-        expect(children.indexOf(severity!)).toBeLessThan(children.indexOf(title!));
-
-        // Right group: the rail sits as the second child of the header row
+        expect(card.children[0]).toBe(screen.getByTestId('action-card-act_1-severity'));
+        const headerRow = (card.children[1] as HTMLElement).children[0] as HTMLElement;
+        expect(headerRow.children[0].tagName).toBe('H4');
         const rail = headerRow.querySelector('.action-card-rail');
         expect(rail).not.toBeNull();
         expect(headerRow.children[1]).toBe(rail);
@@ -227,8 +222,9 @@ describe('ActionCard', () => {
 
     it('displays max loading percentage and line name', () => {
         render(<ActionCard {...defaultProps} />);
-        expect(screen.getByText('Max loading:')).toBeInTheDocument();
-        expect(screen.getAllByText(/85\.0%/).length).toBeGreaterThan(0);
+        // The gauge pictogram replaces the "Max loading:" label; its
+        // tooltip recalls what the figure is.
+        expect(screen.getByTitle(/^Max loading — the highest line loading/)).toHaveTextContent('85.0%');
         expect(screen.getAllByTitle('Zoom to LINE_A').length).toBeGreaterThan(0);
     });
 
@@ -269,39 +265,36 @@ describe('ActionCard', () => {
         expect(onAssetClick).toHaveBeenCalledWith('act_1', 'LINE_B', 'action');
     });
 
-    it('renders the "Overload loading after" detail only inside the viewing disclosure', () => {
-        // At rest the "Overload loading after" detail is hidden — the
-        // per-card max ρ% summary above replaces it.  Only the viewing
-        // card expands the per-line breakdown.  "Loading before" stays
-        // in the sticky Overloads panel and never appears on the card.
+    it('shows the overloads after the action on the viewing card only, grouped with the max loading', () => {
+        // At rest the per-card max ρ% summary stands alone; the viewing
+        // card adds the per-line breakdown IN THE SAME loading group (same
+        // kind of information). "Loading before" stays in the sticky
+        // Overloads panel and never appears on the card.
         const { rerender } = render(<ActionCard {...defaultProps} />);
-        expect(screen.queryByText(/loading after/i)).not.toBeInTheDocument();
+        expect(screen.queryByTestId('action-card-act_1-after')).not.toBeInTheDocument();
         expect(screen.queryByText(/loading before/i)).not.toBeInTheDocument();
 
         rerender(<ActionCard {...defaultProps} isViewing={true} />);
-        expect(screen.getByText(/Overload loading after/i)).toBeInTheDocument();
+        const after = screen.getByTestId('action-card-act_1-after');
+        expect(screen.getByTestId('action-card-act_1-loading')).toContainElement(after);
+        expect(after).toHaveTextContent(/LINE_A\s*85\.0%/);
+        expect(screen.getByTitle(/^Loading after this action of the lines the contingency overloads/)).toBeInTheDocument();
         expect(screen.queryByText(/loading before/i)).not.toBeInTheDocument();
     });
 
-    it('renders the Source / provenance row BELOW the "Overload loading after" line in the unfolded card', () => {
-        // Operator-requested layout: Source is a low-information
-        // attribution row, so it sits at the very bottom of the
-        // unfolded disclosure — below the operational fields
-        // (description, per-line editors, "Overload loading after").
-        // Pre-change the row sat just under the description, which
-        // pushed it above the more relevant operational data.
+    it('renders the source / provenance row last, below the overloads after the action', () => {
+        // Operator-requested layout: the source is a low-information
+        // attribution row, so it sits at the very bottom of the unfolded
+        // card — below the operational fields (description, loading group,
+        // per-line editors).
         const details: ActionDetail = {
             ...baseDetails,
             origin: 'user',
         };
         render(<ActionCard {...defaultProps} details={details} isViewing={true} />);
-        const disclosure = screen.getByTestId('action-card-act_1-disclosure');
-        const html = disclosure.innerHTML;
-        const overloadIdx = html.indexOf('Overload loading after');
-        const sourceIdx = html.indexOf('Source:');
-        expect(overloadIdx).toBeGreaterThanOrEqual(0);
-        expect(sourceIdx).toBeGreaterThanOrEqual(0);
-        expect(sourceIdx).toBeGreaterThan(overloadIdx);
+        const after = screen.getByTestId('action-card-act_1-after');
+        const origin = screen.getByTestId('action-card-act_1-origin');
+        expect(after.compareDocumentPosition(origin) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
     it('renders load shedding details with MW input and re-simulate button when viewing', () => {
@@ -313,7 +306,7 @@ describe('ActionCard', () => {
         };
         render(<ActionCard {...defaultProps} details={details} isViewing={true} />);
         expect(screen.getByText(/Shedding on/)).toBeInTheDocument();
-        expect(screen.getByText('LOAD_X')).toBeInTheDocument();
+        expect(within(screen.getByTestId('action-card-act_1-disclosure')).getByText('LOAD_X')).toBeInTheDocument();
         expect(screen.getByTestId('edit-mw-act_1')).toBeInTheDocument();
         expect(screen.getByTestId('resimulate-act_1')).toBeInTheDocument();
     });
@@ -339,7 +332,7 @@ describe('ActionCard', () => {
         };
         render(<ActionCard {...defaultProps} details={details} isViewing={true} />);
         expect(screen.getByText(/Curtailment on/)).toBeInTheDocument();
-        expect(screen.getByText('GEN_Y')).toBeInTheDocument();
+        expect(within(screen.getByTestId('action-card-act_1-disclosure')).getByText('GEN_Y')).toBeInTheDocument();
         expect(screen.getByTestId('edit-mw-act_1')).toBeInTheDocument();
     });
 
@@ -352,7 +345,7 @@ describe('ActionCard', () => {
         };
         render(<ActionCard {...defaultProps} details={details} isViewing={true} />);
         expect(screen.getByText(/Redispatch on/)).toBeInTheDocument();
-        expect(screen.getByText('THERM_1')).toBeInTheDocument();
+        expect(within(screen.getByTestId('action-card-act_1-disclosure')).getByText('THERM_1')).toBeInTheDocument();
         expect(screen.getByTestId('edit-mw-act_1')).toBeInTheDocument();
         expect(screen.getByTestId('resimulate-act_1')).toBeInTheDocument();
     });
@@ -416,8 +409,9 @@ describe('ActionCard', () => {
         };
         render(<ActionCard {...defaultProps} details={details} isViewing={true} onResimulate={onResimulate} />);
         expect(screen.getAllByText(/Curtailment on/)).toHaveLength(1);
-        expect(screen.getByText('WIND_A')).toBeInTheDocument();
-        expect(screen.getByText('WIND_B')).toBeInTheDocument();
+        const disclosure = within(screen.getByTestId('action-card-act_1-disclosure'));
+        expect(disclosure.getByText('WIND_A')).toBeInTheDocument();
+        expect(disclosure.getByText('WIND_B')).toBeInTheDocument();
         expect(screen.getByTestId('edit-mw-act_1')).toHaveValue(12);
         fireEvent.click(screen.getByTestId('resimulate-act_1'));
         expect(onResimulate).toHaveBeenCalledWith('act_1', 12);
@@ -582,27 +576,28 @@ describe('ActionCard', () => {
             const details = { ...baseDetails, origin: 'user' };
             render(<ActionCard {...defaultProps} details={details} isViewing availableModels={models} />);
             expect(screen.getByTestId('action-card-act_1-origin'))
-                .toHaveTextContent('Source: Manual simulation (user)');
+                .toHaveTextContent('Manual simulation (user)');
+            expect(screen.getByTitle('Source: Manual simulation (user)')).toBeInTheDocument();
         });
 
         it('resolves a model id to its label for a recommender-originated action', () => {
             const details = { ...baseDetails, origin: 'random_overflow' };
             render(<ActionCard {...defaultProps} details={details} isViewing availableModels={models} />);
-            expect(screen.getByTestId('action-card-act_1-origin'))
-                .toHaveTextContent('Source: Random (post overflow analysis)');
+            expect(screen.getByTitle('Source: Random (post overflow analysis)'))
+                .toHaveTextContent('Random (post overflow analysis)');
         });
 
         it('falls back to the raw origin id when no model matches', () => {
             const details = { ...baseDetails, origin: 'ml_policy_v9' };
             render(<ActionCard {...defaultProps} details={details} isViewing availableModels={models} />);
-            expect(screen.getByTestId('action-card-act_1-origin'))
-                .toHaveTextContent('Source: ml_policy_v9');
+            expect(screen.getByTitle('Source: ml_policy_v9')).toHaveTextContent('ml_policy_v9');
         });
 
-        it('does not render the Source row when origin is absent', () => {
+        it('shows no source when origin is absent — only the action id', () => {
             // baseDetails has no `origin` — legacy / un-tracked actions.
             render(<ActionCard {...defaultProps} isViewing availableModels={models} />);
-            expect(screen.queryByTestId('action-card-act_1-origin')).not.toBeInTheDocument();
+            expect(screen.queryByTitle(/^Source:/)).not.toBeInTheDocument();
+            expect(screen.getByTestId('action-card-act_1-origin')).toHaveTextContent('act_1');
         });
 
         it('does not render the Source row on a folded (non-viewing) card', () => {
@@ -610,6 +605,126 @@ describe('ActionCard', () => {
             render(<ActionCard {...defaultProps} details={details} isViewing={false} availableModels={models} />);
             expect(screen.queryByTestId('action-card-act_1-origin')).not.toBeInTheDocument();
         });
+    });
+
+    // The redesign names what an action acts on instead of its raw id —
+    // see docs/features/action-card.md.
+    describe('readable names', () => {
+        const names: Record<string, string> = {
+            LINE_W: 'MANDAL71WARAN',
+            VL_M: 'MANDARINS 400kV',
+            X_GB: 'Exchange with GB',
+            LINE_A: 'ATTAQL61MANDA',
+        };
+        const displayName = (id: string) => names[id] ?? id;
+
+        it('titles the card with the names of the elements it acts on, the raw id on hover', () => {
+            const onAssetClick = vi.fn();
+            const details: ActionDetail = {
+                ...baseDetails,
+                description_unitaire: "Ouverture de la ligne 'LINE_W'",
+                action_topology: { ...emptyTopo, lines_or_bus: { LINE_W: -1 }, lines_ex_bus: { LINE_W: -1 } },
+            };
+            render(<ActionCard {...defaultProps} id="disco_LINE_W" details={details}
+                displayName={displayName} onAssetClick={onAssetClick} />);
+            const title = screen.getByRole('heading', { level: 4 });
+            expect(title).toHaveAttribute('title', 'disco_LINE_W');
+            expect(title).toHaveTextContent('MANDAL71WARAN');
+            expect(title).not.toHaveTextContent('disco_LINE_W');
+            // A name in the title is a link: click → zoom on that element.
+            fireEvent.click(within(title).getByRole('button', { name: 'MANDAL71WARAN' }));
+            expect(onAssetClick).toHaveBeenCalledWith('disco_LINE_W', 'LINE_W', 'action');
+        });
+
+        it('titles a manual SLD manoeuvre with its voltage level — double-click opens its SLD', () => {
+            const onVlDoubleClick = vi.fn();
+            const details: ActionDetail = {
+                ...baseDetails,
+                description_unitaire: 'Manoeuvre manuelle sur MANDARINS 400kV: disjoncteur MANDAL71WARAN ouvert',
+                origin: 'user',
+            };
+            render(<ActionCard {...defaultProps} id="user_topo_VL_M_1795338763679" details={details}
+                displayName={displayName} onVlDoubleClick={onVlDoubleClick} />);
+            const title = screen.getByRole('heading', { level: 4 });
+            const vl = within(title).getByRole('button', { name: 'MANDARINS 400kV' });
+            fireEvent.doubleClick(vl);
+            expect(onVlDoubleClick).toHaveBeenCalledWith('user_topo_VL_M_1795338763679', 'VL_M');
+            expect(title).not.toHaveTextContent('user_topo');
+        });
+
+        it('reads the ids of a description by their names, the raw text on the viewing card hover', () => {
+            const details: ActionDetail = {
+                ...baseDetails,
+                description_unitaire: "Effacement 'X_GB' ('VL_M')",
+            };
+            render(<ActionCard {...defaultProps} details={details} displayName={displayName} isViewing />);
+            const desc = screen.getByTestId('action-card-act_1-description');
+            expect(desc).toHaveTextContent("Effacement 'Exchange with GB' ('MANDARINS 400kV')");
+            expect(desc).toHaveAttribute('title', "Effacement 'X_GB' ('VL_M')");
+        });
+
+        it('names a shed load in the title and its voltage level once, as a location chip', () => {
+            const details: ActionDetail = {
+                ...baseDetails,
+                load_shedding_details: [{ load_name: 'X_GB', voltage_level_id: 'VL_M', shedded_mw: 120 }],
+            };
+            render(<ActionCard {...defaultProps} id="load_shedding_X_GB" details={details} displayName={displayName} />);
+            const title = screen.getByRole('heading', { level: 4 });
+            expect(title).toHaveTextContent('Exchange with GB');
+            expect(title).not.toHaveTextContent('MANDARINS 400kV');
+            const chip = screen.getByTitle(/^Where the action acts: MANDARINS 400kV \(VL_M\)/);
+            expect(chip).toHaveTextContent('MANDARINS 400kV');
+            expect(screen.getAllByText('MANDARINS 400kV')).toHaveLength(1);
+        });
+
+        it('falls back to the type label, then the raw id, when nothing can be named', () => {
+            const { rerender } = render(<ActionCard {...defaultProps} />);
+            expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent('act_1');
+            rerender(<ActionCard {...defaultProps} id="load_shedding_ALL" details={{ ...baseDetails, action_topology: emptyTopo }} />);
+            expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent('Load shedding');
+        });
+
+        it('caps a long title at two names, the rest on hover', () => {
+            const details: ActionDetail = {
+                ...baseDetails,
+                curtailment_details: ['G1', 'G2', 'G3', 'G4'].map(g => ({ gen_name: g, voltage_level_id: 'VL_M', curtailed_mw: 1 })),
+            };
+            render(<ActionCard {...defaultProps} details={details} />);
+            const title = screen.getByRole('heading', { level: 4 });
+            expect(title).toHaveTextContent(/G1, G2 \+2/);
+            expect(screen.getByTitle('G3, G4')).toBeInTheDocument();
+        });
+    });
+
+    describe('pictograms', () => {
+        it('shows the action type as a pictogram with its meaning on hover', () => {
+            const details: ActionDetail = {
+                ...baseDetails,
+                curtailment_details: [{ gen_name: 'WIND_A', voltage_level_id: 'VL_A', curtailed_mw: 9.0 }],
+            };
+            // ``curtail_*`` is only told apart by its details.
+            render(<ActionCard {...defaultProps} id="curtail_WIND_A" details={details} />);
+            expect(screen.getByTestId('action-card-curtail_WIND_A-type-rc')).toHaveAttribute('title', 'Renewable curtailment');
+        });
+
+        it('shows the source as a pictogram — a person for a manual simulation, a chip for a model', () => {
+            const { container, rerender } = render(<ActionCard {...defaultProps} details={{ ...baseDetails, origin: 'user' }} isViewing />);
+            expect(screen.getByTitle('Source: Manual simulation (user)').querySelector('svg')).not.toBeNull();
+            rerender(<ActionCard {...defaultProps} details={{ ...baseDetails, origin: 'expert' }} isViewing />);
+            expect(screen.getByTitle('Source: expert').querySelector('svg')).not.toBeNull();
+            expect(container.textContent).not.toMatch(/Source:/);
+        });
+    });
+
+    it('keeps the raw action id one click away on the viewing card', async () => {
+        const writeText = vi.fn(() => Promise.resolve());
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+        const onActionSelect = vi.fn();
+        render(<ActionCard {...defaultProps} id="user_topo_VL_M_1" isViewing onActionSelect={onActionSelect} />);
+        expect(screen.getByTestId('action-card-user_topo_VL_M_1-origin')).toHaveTextContent('user_topo_VL_M_1');
+        fireEvent.click(screen.getByTestId('action-card-user_topo_VL_M_1-copy-id'));
+        expect(writeText).toHaveBeenCalledWith('user_topo_VL_M_1');
+        expect(onActionSelect).not.toHaveBeenCalled();
     });
 
     describe('half-open overload annotation (charging current)', () => {

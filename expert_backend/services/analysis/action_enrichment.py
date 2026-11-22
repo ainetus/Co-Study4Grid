@@ -15,6 +15,7 @@ plain mocks and documents the data flow explicitly.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any, Iterable
 
 from expert_backend.services.sanitize import sanitize_for_json
@@ -160,6 +161,37 @@ def extract_action_topology(action_obj: Any, action_id: str, dict_action: dict |
             topo["voltage_level_id"] = str(vl_id)
 
     return topo
+
+
+def name_switches_in(description: str, topology: dict | None) -> str:
+    """``description`` with each switch id of the action's ``topology`` it
+    quotes read by its display name (``disjoncteur MANDAL71WARAN``). A
+    coupling switch is dropped from a sentence that already says so: the
+    dictionary's ``Ouverture du couplage 'VL_way_…_COUPL' dans le poste
+    'MANDARINS 400kV'`` becomes ``Ouverture du couplage dans le poste
+    'MANDARINS 400kV'``.
+
+    Only switch ids are touched (the frontend reads the voltage-level ids a
+    description quotes); unchanged when the network service cannot name them.
+    """
+    switches = (topology or {}).get("switches") or {}
+    quoted = [str(s) for s in switches if str(s) in description]
+    if not quoted:
+        return description
+    try:
+        # Imported here: the network service is a singleton tests patch.
+        from expert_backend.services.network_service import network_service
+        names = network_service.manual_action_names({"switches": {s: True for s in quoted}})
+    except Exception as e:
+        logger.debug("Switch names unavailable for %s: %s", quoted, e)
+        return description
+    for sw_id in sorted(quoted, key=len, reverse=True):
+        name = names.get(sw_id, sw_id)
+        if name.endswith("de couplage") and "couplage" in description.replace(sw_id, ""):
+            description = re.sub(rf"\s*['\"]?{re.escape(sw_id)}['\"]?", "", description)
+        else:
+            description = description.replace(sw_id, name)
+    return description
 
 
 def compute_lines_overloaded_after(

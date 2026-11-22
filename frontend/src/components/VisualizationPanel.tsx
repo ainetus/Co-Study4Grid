@@ -1431,6 +1431,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         onSwitchRemove={onSldSwitchRemove}
                         onSwitchRemoveMany={onSldSwitchRemoveMany}
                         onNavigateToVl={onSldNavigateToVl}
+                        displayName={displayName}
                     />
                 )}
 

@@ -786,6 +786,14 @@ input[data-testid="sidebar-filter-threshold-input"]::-webkit-outer-spin-button {
     opacity: 1;
     pointer-events: auto;
 }
+/* The element names in a card title are links (click: zoom, double-click
+   a voltage level: SLD) — underlined only under the pointer so the title
+   still reads as a title. */
+.action-card-name:hover,
+.action-card-name:focus-visible {
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+}
 
 /* ============================================================
    Action-overview pins (Remedial Action tab, no card selected)
