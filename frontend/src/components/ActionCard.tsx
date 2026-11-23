@@ -235,19 +235,24 @@ const ActionCard: React.FC<ActionCardProps> = ({
     const maxIsOverload = overloadsAfter.some(isMaxRow);
     const otherOverloads = overloadsAfter.filter(o => !isMaxRow(o));
 
+    // The SLD chip of a voltage level the action acts on or sits in. It
+    // follows the description (see the row below), one name per chip: at
+    // rest a long name is cut, on the viewing card it wraps.
     const locationChip = (t: ActionTarget) => (
         <button key={t.id}
             type="button"
+            data-testid={`action-card-${id}-location-${t.id}`}
             style={{
-                display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '1px 7px 1px 5px',
+                display: 'inline-block', padding: '1px 7px 1px 5px', maxWidth: '100%', minWidth: 0,
                 borderRadius: radius.lg, border: `1px solid ${colors.successSoft}`, cursor: 'pointer',
-                fontSize: text.xs, fontWeight: 600, maxWidth: '100%', textAlign: 'left',
+                fontSize: text.xs, fontWeight: 600, lineHeight: 1.4, textAlign: 'left',
                 background: colors.successSoft, color: colors.successText,
+                ...(isViewing ? { overflowWrap: 'anywhere' } : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }),
             }}
             title={`${TIPS.location}: ${named(t.id)} — click: zoom · double-click: open SLD`}
             onClick={(e) => { e.stopPropagation(); onAssetClick(id, t.id, 'action'); }}
             onDoubleClick={(e) => { e.stopPropagation(); onVlDoubleClick?.(id, t.id); }}>
-            <Glyph kind="pin" size={11} />
+            <span style={{ display: 'inline-flex', verticalAlign: '-2px', marginRight: '3px', lineHeight: 0 }}><Glyph kind="pin" size={11} /></span>
             {displayName(t.id)}
         </button>
     );
@@ -359,16 +364,26 @@ const ActionCard: React.FC<ActionCardProps> = ({
                 </div>
 
                 {/* How: the action's description, right under its title —
-                    one line at rest, in full on the viewing card. */}
-                {description && (
-                    <p
-                        data-testid={`action-card-${id}-description`}
-                        title={isViewing ? (description !== rawDescription ? rawDescription : undefined) : description}
-                        style={{
-                            margin: '2px 0 0', fontSize: text.xs, lineHeight: 1.45, color: colors.textSecondary,
-                            ...(isViewing ? { overflowWrap: 'anywhere' } : { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }),
-                        }}
-                    >{description}</p>
+                    one line at rest, in full on the viewing card — and, at
+                    its end, the SLD chips of the voltage levels it acts on
+                    (they drop to the next line when both do not fit). */}
+                {(description || targets.locations.length > 0) && (
+                    <div
+                        data-testid={`action-card-${id}-how`}
+                        style={{ margin: '2px 0 0', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px 6px', minWidth: 0 }}
+                    >
+                        {description && (
+                            <p
+                                data-testid={`action-card-${id}-description`}
+                                title={isViewing ? (description !== rawDescription ? rawDescription : undefined) : description}
+                                style={{
+                                    margin: 0, maxWidth: '100%', minWidth: 0, fontSize: text.xs, lineHeight: 1.45, color: colors.textSecondary,
+                                    ...(isViewing ? { overflowWrap: 'anywhere' } : { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }),
+                                }}
+                            >{description}</p>
+                        )}
+                        {targets.locations.map(locationChip)}
+                    </div>
                 )}
 
                 {/* Outcome: max loading and, on the viewing card, the
@@ -400,11 +415,6 @@ const ActionCard: React.FC<ActionCardProps> = ({
                             </span>
                         ) : (
                             <span style={{ color: colors.textTertiary }}>No loading metric</span>
-                        )}
-                        {targets.locations.length > 0 && (
-                            <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '4px', marginLeft: 'auto', maxWidth: '100%' }}>
-                                {targets.locations.map(locationChip)}
-                            </span>
                         )}
                     </div>
                     {isViewing && (overloadsAfter.length === 0 || otherOverloads.length > 0) && (

@@ -993,12 +993,18 @@ describe('ActionFeed', () => {
 
         render(<ActionFeed {...props} />);
 
-        // Should see both badges
-        expect(screen.getByText('VL1')).toBeInTheDocument();
+        // Both elements are named in the title; the voltage level is also
+        // offered as an SLD chip after the description.
         expect(screen.getByText('LINE_A')).toBeInTheDocument();
+        const vlNames = screen.getAllByText('VL1');
+        expect(vlNames).toHaveLength(2);
+        expect(screen.getByTestId(`action-card-${combinedId}-location-VL1`)).toBe(vlNames[1]);
 
-        // Clicking a badge should call onAssetClick
-        fireEvent.click(screen.getByText('VL1'));
+        // Clicking either calls onAssetClick
+        fireEvent.click(vlNames[0]);
+        expect(props.onAssetClick).toHaveBeenCalledWith(combinedId, 'VL1', 'action');
+        props.onAssetClick.mockClear();
+        fireEvent.click(vlNames[1]);
         expect(props.onAssetClick).toHaveBeenCalledWith(combinedId, 'VL1', 'action');
 
         fireEvent.click(screen.getByText('LINE_A'));
