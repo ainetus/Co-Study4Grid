@@ -405,7 +405,7 @@ describe('ActionCard', () => {
         expect(onResimulate).toHaveBeenCalledWith('act_1', -10.0);
     });
 
-    it('renders a clickable VL chip for a redispatch action (zoom + SLD)', () => {
+    it('renders a clickable VL chip for a redispatch action on the unfolded card (zoom + SLD)', () => {
         const onVlDoubleClick = vi.fn();
         const details: ActionDetail = {
             ...baseDetails,
@@ -413,7 +413,7 @@ describe('ActionCard', () => {
                 { gen_name: 'THERM_1', voltage_level_id: 'VL_BIEST', delta_mw: 10.0, target_mw: 40.0, direction: 'up' }
             ],
         };
-        render(<ActionCard {...defaultProps} details={details} onVlDoubleClick={onVlDoubleClick} />);
+        render(<ActionCard {...defaultProps} details={details} isViewing onVlDoubleClick={onVlDoubleClick} />);
         const chip = screen.getByText('VL_BIEST');
         expect(chip).toBeInTheDocument();
         fireEvent.doubleClick(chip);
@@ -575,6 +575,7 @@ describe('ActionCard', () => {
                 {...defaultProps}
                 id="load_shedding_BEON3 TR311+reco_GEN.PY762"
                 details={details}
+                isViewing
             />
         );
         // Both sub-actions' impacted assets must be clickable.
@@ -600,6 +601,7 @@ describe('ActionCard', () => {
                 {...defaultProps}
                 id="curtail_WIND_A+reco_LINE_R"
                 details={details}
+                isViewing
             />
         );
         expect(screen.getByRole('button', { name: 'VL_WIND' })).toBeInTheDocument();
@@ -657,6 +659,9 @@ describe('ActionCard', () => {
             VL_M: 'MANDARINS 400kV',
             X_GB: 'Exchange with GB',
             LINE_A: 'ATTAQL61MANDA',
+            LOAD_M: 'Load — MANDARINS 400kV',
+            GEN_S: 'WARANDE 400kV Solar',
+            GEN_P: 'Blayais 1',
         };
         const displayName = (id: string) => names[id] ?? id;
 
@@ -671,7 +676,7 @@ describe('ActionCard', () => {
                 displayName={displayName} onAssetClick={onAssetClick} />);
             const title = screen.getByRole('heading', { level: 4 });
             expect(title).toHaveAttribute('title', 'disco_LINE_W');
-            expect(title).toHaveTextContent('MANDAL71WARAN');
+            expect(title).toHaveTextContent('Branch - MANDAL71WARAN');
             expect(title).not.toHaveTextContent('disco_LINE_W');
             // A name in the title is a link: click → zoom on that element.
             fireEvent.click(within(title).getByRole('button', { name: 'MANDAL71WARAN' }));
@@ -691,6 +696,7 @@ describe('ActionCard', () => {
             const vl = within(title).getByRole('button', { name: 'MANDARINS 400kV' });
             fireEvent.doubleClick(vl);
             expect(onVlDoubleClick).toHaveBeenCalledWith('user_topo_VL_M_1795338763679', 'VL_M');
+            expect(title).toHaveTextContent('Substation - MANDARINS 400kV');
             expect(title).not.toHaveTextContent('user_topo');
         });
 
@@ -710,9 +716,9 @@ describe('ActionCard', () => {
                 ...baseDetails,
                 load_shedding_details: [{ load_name: 'X_GB', voltage_level_id: 'VL_M', shedded_mw: 120 }],
             };
-            render(<ActionCard {...defaultProps} id="load_shedding_X_GB" details={details} displayName={displayName} />);
+            render(<ActionCard {...defaultProps} id="load_shedding_X_GB" details={details} displayName={displayName} isViewing />);
             const title = screen.getByRole('heading', { level: 4 });
-            expect(title).toHaveTextContent('Exchange with GB');
+            expect(title).toHaveTextContent('Exchange - with GB');
             expect(title).not.toHaveTextContent('MANDARINS 400kV');
             const chip = screen.getByTitle(/^Where the action acts: MANDARINS 400kV \(VL_M\)/);
             expect(chip).toHaveTextContent('MANDARINS 400kV');
@@ -728,7 +734,7 @@ describe('ActionCard', () => {
                 redispatch_details: [{ gen_name: 'X_GB', voltage_level_id: 'VL_M', delta_mw: 10, target_mw: 60, direction: 'up' }],
             };
             render(<ActionCard {...defaultProps} id="redispatch_X_GB" details={details} displayName={displayName}
-                onAssetClick={onAssetClick} onVlDoubleClick={onVlDoubleClick} />);
+                isViewing onAssetClick={onAssetClick} onVlDoubleClick={onVlDoubleClick} />);
             const chip = screen.getByTestId('action-card-redispatch_X_GB-location-VL_M');
             expect(screen.getByTestId('action-card-redispatch_X_GB-how')).toContainElement(chip);
             expect(screen.getByTestId('action-card-redispatch_X_GB-loading')).not.toContainElement(chip);
@@ -748,7 +754,7 @@ describe('ActionCard', () => {
                 action_topology: { ...emptyTopo, voltage_level_id: 'VL_M' } as ActionDetail['action_topology'],
             };
             render(<ActionCard {...defaultProps} id="open_coupler_VL_M" details={details} displayName={displayName}
-                onVlDoubleClick={onVlDoubleClick} />);
+                isViewing onVlDoubleClick={onVlDoubleClick} />);
             const chip = screen.getByTestId('action-card-open_coupler_VL_M-location-VL_M');
             expect(chip).toHaveTextContent('MANDARINS 400kV');
             expect(screen.getByTestId('action-card-open_coupler_VL_M-description').nextElementSibling).toBe(chip);
@@ -772,7 +778,7 @@ describe('ActionCard', () => {
             // svgUtils is mocked here: tell the card which branch the metadata resolves.
             vi.mocked(getActionTargetLines).mockReturnValueOnce(['T_W']);
             render(<ActionCard {...defaultProps} id="disco_T_W" details={details} displayName={displayName}
-                nodesByEquipmentId={nodes} edgesByEquipmentId={edges} />);
+                isViewing nodesByEquipmentId={nodes} edgesByEquipmentId={edges} />);
             expect(screen.getByTestId('action-card-disco_T_W-location-VL_M')).toHaveTextContent('MANDARINS 400kV');
             expect(screen.getByTestId('action-card-disco_T_W-location-VL_N')).toBeInTheDocument();
         });
@@ -783,8 +789,94 @@ describe('ActionCard', () => {
                 description_unitaire: "Ouverture de la ligne 'LINE_W'",
                 action_topology: { ...emptyTopo, lines_or_bus: { LINE_W: -1 }, lines_ex_bus: { LINE_W: -1 } },
             };
-            render(<ActionCard {...defaultProps} id="disco_LINE_W" details={details} displayName={displayName} />);
+            render(<ActionCard {...defaultProps} id="disco_LINE_W" details={details} displayName={displayName} isViewing />);
             expect(screen.queryByTitle(/^Where the action acts/)).toBeNull();
+        });
+
+        it('shows no SLD chip until the card is unfolded', () => {
+            const details: ActionDetail = {
+                ...baseDetails,
+                description_unitaire: "Ouverture du couplage dans le poste 'MANDARINS 400kV'",
+                action_topology: { ...emptyTopo, voltage_level_id: 'VL_M' } as ActionDetail['action_topology'],
+            };
+            const { rerender } = render(<ActionCard {...defaultProps} id="open_coupler_VL_M" details={details}
+                displayName={displayName} />);
+            expect(screen.queryByTestId('action-card-open_coupler_VL_M-location-VL_M')).toBeNull();
+            expect(screen.queryByTitle(/^Where the action acts/)).toBeNull();
+            // The description stays; the name stays a link in the title.
+            expect(screen.getByTestId('action-card-open_coupler_VL_M-description')).toBeInTheDocument();
+            expect(within(screen.getByRole('heading', { level: 4 })).getByRole('button', { name: 'MANDARINS 400kV' })).toBeInTheDocument();
+            rerender(<ActionCard {...defaultProps} id="open_coupler_VL_M" details={details}
+                displayName={displayName} isViewing />);
+            expect(screen.getByTestId('action-card-open_coupler_VL_M-location-VL_M')).toBeInTheDocument();
+        });
+
+        it('leaves no empty description row at rest for an action whose only extra is its chip', () => {
+            const details: ActionDetail = {
+                ...baseDetails,
+                description_unitaire: '',
+                redispatch_details: [{ gen_name: 'GEN_S', voltage_level_id: 'VL_M', delta_mw: 10, target_mw: 60, direction: 'up' }],
+            };
+            const { rerender } = render(<ActionCard {...defaultProps} id="redispatch_GEN_S" details={details} displayName={displayName} />);
+            expect(screen.queryByTestId('action-card-redispatch_GEN_S-how')).toBeNull();
+            rerender(<ActionCard {...defaultProps} id="redispatch_GEN_S" details={details} displayName={displayName} isViewing />);
+            expect(screen.getByTestId('action-card-redispatch_GEN_S-how')).toBeInTheDocument();
+        });
+
+        describe('title convention — the type first, then the name after a dash', () => {
+            const titleOf = (id: string, details: ActionDetail) => {
+                render(<ActionCard {...defaultProps} id={id} details={details} displayName={displayName} />);
+                return screen.getByRole('heading', { level: 4 });
+            };
+
+            it('a coupling', () => {
+                expect(titleOf('open_coupler_VL_M', {
+                    ...baseDetails,
+                    description_unitaire: "Ouverture du couplage dans le poste 'MANDARINS 400kV'",
+                    action_topology: { ...emptyTopo, voltage_level_id: 'VL_M' } as ActionDetail['action_topology'],
+                })).toHaveTextContent('Coupling - MANDARINS 400kV');
+            });
+
+            it('a shed load, without the noun its name restates', () => {
+                expect(titleOf('load_shedding_LOAD_M', {
+                    ...baseDetails,
+                    load_shedding_details: [{ load_name: 'LOAD_M', voltage_level_id: 'VL_M', shedded_mw: 5 }],
+                })).toHaveTextContent('Load - MANDARINS 400kV');
+            });
+
+            it('an exchange', () => {
+                expect(titleOf('load_shedding_X_GB', {
+                    ...baseDetails,
+                    load_shedding_details: [{ load_name: 'X_GB', voltage_level_id: 'VL_M', shedded_mw: 5 }],
+                })).toHaveTextContent('Exchange - with GB');
+            });
+
+            it('a curtailed solar plant, typed by its carrier', () => {
+                const title = titleOf('curtail_GEN_S', {
+                    ...baseDetails,
+                    curtailment_details: [{ gen_name: 'GEN_S', voltage_level_id: 'VL_M', curtailed_mw: 30 }],
+                });
+                expect(title).toHaveTextContent('Solar - WARANDE 400kV');
+                expect(title).not.toHaveTextContent('WARANDE 400kV Solar');
+            });
+
+            it('a redispatched plant that names no carrier is a production', () => {
+                expect(titleOf('redispatch_GEN_P', {
+                    ...baseDetails,
+                    redispatch_details: [{ gen_name: 'GEN_P', voltage_level_id: 'VL_M', delta_mw: 10, target_mw: 60, direction: 'up' }],
+                })).toHaveTextContent('Production - Blayais 1');
+            });
+
+            it('a combined action chains its parts, each with its type', () => {
+                const title = titleOf('disco_LINE_W+open_coupler_VL_M', {
+                    ...baseDetails,
+                    description_unitaire: "Ouverture de la ligne 'LINE_W' + Ouverture du couplage dans le poste 'MANDARINS 400kV'",
+                    action_topology: {
+                        ...emptyTopo, lines_or_bus: { LINE_W: -1 }, voltage_level_id: 'VL_M',
+                    } as ActionDetail['action_topology'],
+                });
+                expect(title).toHaveTextContent('Branch - MANDAL71WARAN + Coupling - MANDARINS 400kV');
+            });
         });
 
         it('falls back to the type label, then the raw id, when nothing can be named', () => {
