@@ -991,11 +991,13 @@ describe('ActionFeed', () => {
         vi.mocked(getActionTargetVoltageLevels).mockReturnValue(['VL1']);
         vi.mocked(getActionTargetLines).mockReturnValue(['LINE_A']);
 
-        render(<ActionFeed {...props} />);
+        const { rerender } = render(<ActionFeed {...props} />);
 
-        // Both elements are named in the title; the voltage level is also
-        // offered as an SLD chip after the description.
+        // Both elements are named in the title; the voltage level's SLD chip
+        // only joins them once the card is unfolded.
         expect(screen.getByText('LINE_A')).toBeInTheDocument();
+        expect(screen.getAllByText('VL1')).toHaveLength(1);
+        rerender(<ActionFeed {...props} selectedActionId={combinedId} />);
         const vlNames = screen.getAllByText('VL1');
         expect(vlNames).toHaveLength(2);
         expect(screen.getByTestId(`action-card-${combinedId}-location-VL1`)).toBe(vlNames[1]);
@@ -1115,11 +1117,12 @@ describe('ActionFeed', () => {
                     ],
                 }
             },
+            selectedActionId: actionId,
             selectedActionIds: new Set([actionId]),
         };
         render(<ActionFeed {...props} />);
 
-        // VL badge should be present (green VL badge)
+        // The unfolded card offers the VL badge (green VL chip)
         const badges = screen.getAllByText('VL_BETA');
         // There should be at least one button element (the badge) with VL_BETA text
         const buttonBadges = badges.filter(el => el.tagName === 'BUTTON');
@@ -1178,13 +1181,13 @@ describe('ActionFeed', () => {
                     ],
                 }
             },
+            selectedActionId: actionId,
             selectedActionIds: new Set([actionId]),
         };
         render(<ActionFeed {...props} />);
 
-        // Find the VL button in the load shedding description area (not the badge)
+        // The VL chip of the unfolded card (the title names the load, not the VL)
         const vlButtons = screen.getAllByText('VL_GAMMA');
-        // Click the first one (description area)
         fireEvent.click(vlButtons[0]);
         expect(onAssetClick).toHaveBeenCalledWith(actionId, 'VL_GAMMA', 'action');
     });

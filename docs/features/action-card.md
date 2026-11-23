@@ -24,7 +24,7 @@ hand on the Mandarins 400 kV SLD):
 After:
 
 ```
-(x) #1 ┆ MANDARINS 400kV                                   ☆ ✕
+(x) #1 ┆ Substation - MANDARINS 400kV                      ☆ ✕
         Manoeuvre manuelle sur MANDARINS 400kV: disjoncteur MANDAL71WARAN ouvert
       ┌──────────────────────────────────────────────┐
       │ ◠ 138.6%  ATTAQL61MANDA                       │
@@ -42,17 +42,19 @@ After:
    edge.
 2. **What** — the title row: rank (`#1`, muted), the action-type
    pictogram(s) (`ActionTypeIcon`, tooltip `ACTION_TYPE_LABELS`), then the
-   **names of the elements the action acts on**. The raw action id is the
-   title's tooltip. The star / reject rail stays at the right, revealed on
-   hover.
+   **elements the action acts on, read `Type - Name`** (see *Title
+   convention* below). The raw action id is the title's tooltip. The star /
+   reject rail stays at the right, revealed on hover.
 3. **How** — the description, right under the title: one line at rest
    (ellipsis, full text on hover), in full on the viewing card (the raw
-   description on hover when names replaced ids). **At its end, the SLD
-   chips** — one green pin chip per voltage level the action acts on or sits
-   in (click: zoom, double-click: open its SLD). They share the description's
-   line when both fit and drop to the next one otherwise; at rest a very
-   long name is cut with an ellipsis, on the viewing card it wraps. They are
-   *not* in the loading frame below: that frame is figures only.
+   description on hover when names replaced ids). **On the viewing card
+   only, at its end, the SLD chips** — one green pin chip per voltage level
+   the action acts on or sits in (click: zoom, double-click: open its SLD).
+   They share the description's line when both fit and drop to the next one
+   otherwise, a long name wrapping. At rest the row is the description alone:
+   the chips are where the operator goes *next*, once the card is the one in
+   focus. They are *not* in the loading frame below: that frame is figures
+   only.
 4. **Outcome in figures** — one loading group: the max loading (gauge
    pictogram, value in the severity colour, the worst line as a link) and,
    on the viewing card, the loading after the action of each line the
@@ -72,8 +74,34 @@ After:
    for a recommender model) and the raw action id with a copy button.
 
 Progressive disclosure is kept: at rest a card is three lines (title,
-description, max loading); the editors, the overloads-after line and the
-provenance only open on the viewing card.
+description, max loading); the SLD chips, the editors, the overloads-after
+line and the provenance only open on the viewing card.
+
+## Title convention
+
+Every title reads **`Type - Name`**: the kind of element first, then its name
+or location after a dash, so a feed of mixed actions scans down one column of
+type words.
+
+| Action on | Title |
+|---|---|
+| a bus coupler (open / close) | `Coupling - MANDARINS 400kV` |
+| a line or transformer | `Branch - MANDAL71PEUP5` |
+| a phase shifter | `Phase shifter - …` |
+| a voltage level, by a manual SLD manoeuvre | `Substation - MANDARINS 400kV` |
+| a load | `Load - MANDARINS 400kV` (the backend's `Load — …` fallback name drops its noun) |
+| an exchange (fictitious boundary load) | `Exchange - with GB` |
+| a generator named after its carrier | `Solar - WARANDE 400kV`, `Reservoir - MALLEMORT 225kV` |
+| any other generator | `Production - Blayais 1` |
+
+The type of a generator comes from the carrier its display name ends with —
+the PyPSA-EUR pipeline names its synthetic generators `<voltage level>
+<carrier>` (`utils/actionLabels.describeTarget`, `CARRIER_SUFFIX`) — and is
+`Production` when the name carries none (a matched power plant, the backend's
+`Generator — …` fallback, the bare ids of the small grid). Consecutive
+elements of one type share its word (`Load - A, B`); a combined action
+chains its parts (`Branch - A + Coupling - B`). Past three elements the
+title shows the first two and `+N`.
 
 ## Design principles applied
 
@@ -85,10 +113,11 @@ principles explicitly:
 - **Each name once, except the way into an SLD.** The elements an action
   acts on form its title and are links (click: zoom; double-click a voltage
   level: its SLD), but a title link only underlines under the pointer, so
-  nothing on the card said it opened an SLD. The voltage level therefore also
+  nothing on the card said it opened an SLD. The unfolded card therefore also
   gets a visible chip (pin pictogram) after the description — for a shed load
   or a redispatched generator it is the only place the voltage level is named;
-  for a coupling or a manoeuvre it repeats the title, on purpose.
+  for a coupling or a manoeuvre it repeats the title, on purpose. A card at
+  rest carries no chip: the feed stays a list of titles to scan.
 - **Pictograms replace repeated labels** ("Max loading:", "Overload loading
   after:", "Source:"), each with a tooltip spelling out its meaning; no
   pictogram means two things (the overloads-after glyph is a line with a
@@ -104,8 +133,8 @@ principles explicitly:
 
 | On the card | Source |
 |---|---|
-| Title — lines, coupled voltage levels, shed loads, curtailed / redispatched generators | `utils/actionLabels.collectActionTargets` (the former badge logic, plus the voltage level a `user_topo_<vl>_<ts>` manoeuvre was built on) read through `displayName` |
-| SLD chips (after the description) | the voltage levels of the injection details; the voltage levels the title names (coupling hint, manoeuvre, description); the two ends of an opened transformer (`disco_T_…` / « transformateur ») or a tap-changed phase shifter, resolved through the NAD metadata (`edge.node1` / `node2` → voltage-level node) — so they appear once the diagram is loaded. A plain line opening gets none (two substations, no obvious one) |
+| Title — lines, coupled voltage levels, shed loads, curtailed / redispatched generators | `utils/actionLabels.collectActionTargets` (the former badge logic, plus the voltage level a `user_topo_<vl>_<ts>` manoeuvre was built on; each element carries its `role` — coupling / substation / branch / phaseShifter / load / generator) read through `displayName`, typed by `describeTarget` |
+| SLD chips (unfolded card, after the description) | the voltage levels of the injection details; the voltage levels the title names (coupling hint, manoeuvre, description); the two ends of an opened transformer (`disco_T_…` / « transformateur ») or a tap-changed phase shifter, resolved through the NAD metadata (`edge.node1` / `node2` → voltage-level node) — so they appear once the diagram is loaded. A plain line opening gets none (two substations, no obvious one) |
 | Description | the backend's `description_unitaire`, every known id replaced by its name (`humanizeIds`, display only) |
 | Manual-action description | built by the backend in names: `Manoeuvre manuelle sur MANDARINS 400kV: disjoncteur MANDAL71WARAN ouvert` (`simulation_helpers.describe_manual_action`) |
 | Dictionary coupling description | the step-2 enrichment drops the coupler's switch id (`action_enrichment.name_switches_in`): `Ouverture du couplage dans le poste 'MANDARINS 400kV'` |
@@ -125,9 +154,11 @@ they always carried; the action-type classifier still reads the description
 
 ## Tests
 
-`ActionCard.test.tsx` (layout order, readable title / manual title /
-description / SLD chip position and its click / double-click, coupler and
+`ActionCard.test.tsx` (layout order, readable title / manual title / the
+`Type - Name` convention for each kind of action, description, SLD chip
+position and its click / double-click, absent at rest, coupler and
 transformer chips, fallbacks, pictograms and their tooltips, the
-copy button), `utils/actionLabels.test.ts`, the progressive-disclosure spec
+copy button), `utils/actionLabels.test.ts` (roles, `describeTarget`), the
+progressive-disclosure spec
 in `uxConsistency.test.tsx`, and the provenance end-to-end
 `App.actionOrigin.test.tsx`.

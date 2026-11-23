@@ -11,7 +11,7 @@ import type { ModelDescriptor } from '../api';
 import { colors, radius, text } from '../styles/tokens';
 import { clampRedispatchDelta, redispatchTotal } from '../utils/injectionActions';
 import { ACTION_TYPE_LABELS, classifyActionTypes, type ActionTypeKind } from '../utils/actionTypes';
-import { collectActionTargets, humanizeIds, type ActionTarget } from '../utils/actionLabels';
+import { collectActionTargets, describeTarget, humanizeIds, type ActionLocation, type ActionTarget } from '../utils/actionLabels';
 import { SeverityIcon, type SeverityKind } from './SeverityIcon';
 import { ActionTypeIcon } from './ActionTypeIcon';
 import { Glyph } from './Glyph';
@@ -157,7 +157,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
         </span>
     );
 
-    const nameLink = (t: ActionTarget) => (
+    const nameLink = (t: ActionTarget, label: string) => (
         <button
             key={t.id}
             type="button"
@@ -166,17 +166,33 @@ const ActionCard: React.FC<ActionCardProps> = ({
             title={`${t.id} — click: zoom${t.kind === 'vl' ? ' · double-click: open SLD' : ''}`}
             onClick={(e) => { e.stopPropagation(); onAssetClick(id, t.id, 'action'); }}
             onDoubleClick={t.kind === 'vl' ? (e) => { e.stopPropagation(); onVlDoubleClick?.(id, t.id); } : undefined}
-        >{displayName(t.id)}</button>
+        >{label}</button>
     );
+    // The title reads ``<type> - <name>`` for every action; consecutive
+    // elements of one type share its word (``Load - A, B``), a combined
+    // action chains its parts (``Branch - A + Coupling - B``).
     const renderTitle = (): React.ReactNode => {
         const shown = targets.title.length > 3 ? targets.title.slice(0, 2) : targets.title;
         if (shown.length === 0) {
             return typeKinds.length > 0 ? ACTION_TYPE_LABELS[typeKinds[0]] : id;
         }
         const sep = id.includes('+') ? ' + ' : ', ';
+        const groups: { type: string; items: { t: ActionTarget; name: string }[] }[] = [];
+        shown.forEach(t => {
+            const { type, name } = describeTarget(t, displayName);
+            const last = groups[groups.length - 1];
+            if (last && last.type === type) last.items.push({ t, name });
+            else groups.push({ type, items: [{ t, name }] });
+        });
         return (
             <>
-                {shown.map((t, i) => <React.Fragment key={t.id}>{i > 0 && sep}{nameLink(t)}</React.Fragment>)}
+                {groups.map((g, gi) => (
+                    <React.Fragment key={`${g.type}-${g.items[0].t.id}`}>
+                        {gi > 0 && ' + '}
+                        <span data-testid={`action-card-${id}-title-type`}>{g.type}</span>{' - '}
+                        {g.items.map(({ t, name }, i) => <React.Fragment key={t.id}>{i > 0 && sep}{nameLink(t, name)}</React.Fragment>)}
+                    </React.Fragment>
+                ))}
                 {targets.title.length > shown.length && (
                     <span style={{ color: colors.textTertiary, fontWeight: 500 }}
                         title={targets.title.slice(shown.length).map(t => displayName(t.id)).join(', ')}>
@@ -235,10 +251,11 @@ const ActionCard: React.FC<ActionCardProps> = ({
     const maxIsOverload = overloadsAfter.some(isMaxRow);
     const otherOverloads = overloadsAfter.filter(o => !isMaxRow(o));
 
-    // The SLD chip of a voltage level the action acts on or sits in. It
-    // follows the description (see the row below), one name per chip: at
-    // rest a long name is cut, on the viewing card it wraps.
-    const locationChip = (t: ActionTarget) => (
+    // The SLD chip of a voltage level the action acts on or sits in. Only the
+    // viewing (unfolded) card shows them — that is where the operator goes on
+    // to open an SLD. They follow the description (see the row below), one
+    // name per chip, wrapping when a name is long.
+    const locationChip = (t: ActionLocation) => (
         <button key={t.id}
             type="button"
             data-testid={`action-card-${id}-location-${t.id}`}
@@ -246,8 +263,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
                 display: 'inline-block', padding: '1px 7px 1px 5px', maxWidth: '100%', minWidth: 0,
                 borderRadius: radius.lg, border: `1px solid ${colors.successSoft}`, cursor: 'pointer',
                 fontSize: text.xs, fontWeight: 600, lineHeight: 1.4, textAlign: 'left',
-                background: colors.successSoft, color: colors.successText,
-                ...(isViewing ? { overflowWrap: 'anywhere' } : { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }),
+                background: colors.successSoft, color: colors.successText, overflowWrap: 'anywhere',
             }}
             title={`${TIPS.location}: ${named(t.id)} — click: zoom · double-click: open SLD`}
             onClick={(e) => { e.stopPropagation(); onAssetClick(id, t.id, 'action'); }}
@@ -364,10 +380,11 @@ const ActionCard: React.FC<ActionCardProps> = ({
                 </div>
 
                 {/* How: the action's description, right under its title —
-                    one line at rest, in full on the viewing card — and, at
-                    its end, the SLD chips of the voltage levels it acts on
-                    (they drop to the next line when both do not fit). */}
-                {(description || targets.locations.length > 0) && (
+                    one line at rest, in full on the viewing card — and, on
+                    the viewing card only, at its end the SLD chips of the
+                    voltage levels it acts on (they drop to the next line
+                    when both do not fit). */}
+                {(description || (isViewing && targets.locations.length > 0)) && (
                     <div
                         data-testid={`action-card-${id}-how`}
                         style={{ margin: '2px 0 0', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px 6px', minWidth: 0 }}
@@ -382,7 +399,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
                                 }}
                             >{description}</p>
                         )}
-                        {targets.locations.map(locationChip)}
+                        {isViewing && targets.locations.map(locationChip)}
                     </div>
                 )}
 

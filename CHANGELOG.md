@@ -7,6 +7,24 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Action card — one title convention, the SLD chip on the unfolded card only
+
+- **`Type - Name` in every title**: the kind of element first, then its name
+  or location after a dash — `Coupling - MANDARINS 400kV`,
+  `Branch - MANDAL71PEUP5`, `Load - MANDARINS 400kV`,
+  `Solar - WARANDE 400kV`, `Exchange - with GB`, `Production - Blayais 1`,
+  `Phase shifter - …`, `Substation - …` (a manual manoeuvre). A generator
+  is typed by the carrier its name ends with (`MANDARINS 400kV Solar` →
+  `Solar - MANDARINS 400kV`, same for `Reservoir`, `Wind Offshore`, …) and is
+  a `Production` when its name carries none; the noun a name only restates
+  (`Load — …`) is dropped. A combined action chains its parts
+  (`Branch - A + Coupling - B`).
+- **The SLD chip appears only on the unfolded card**: at rest a card is the
+  title, the description and the max loading; the green pin chip (click:
+  zoom, double-click: open the SLD) shows once the card is the one in focus,
+  which is where the operator goes on to open an SLD. The name in the title
+  stays a link. See `docs/features/action-card.md`.
+
 ### Action card — the SLD chip follows the description
 
 - **The voltage-level chip moved out of the loading frame**: the green pin
