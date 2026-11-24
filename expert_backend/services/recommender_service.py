@@ -49,6 +49,7 @@ from expert_backend.services.sanitize import sanitize_for_json
 from expert_backend.services.paths import OVERFLOW_DIR
 from expert_backend.services.diagram_mixin import DiagramMixin
 from expert_backend.services.analysis_mixin import AnalysisMixin
+from expert_backend.services.analysis.mw_start_scoring import read_pst_taps
 from expert_backend.services.simulation_mixin import SimulationMixin
 from expert_backend.services.model_selection_mixin import ModelSelectionMixin
 
@@ -788,20 +789,9 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin, ModelSele
         Called once at network load time so the values are guaranteed to be
         the original N-state taps, unaffected by any subsequent simulation.
         """
-        import pandas as pd
-        self._initial_pst_taps = {}
-        try:
-            ptc = network.get_phase_tap_changers()
-            if ptc is not None and not ptc.empty:
-                for pst_name, row in ptc.iterrows():
-                    self._initial_pst_taps[pst_name] = {
-                        "tap": int(row["tap_position"]) if pd.notna(row.get("tap_position")) else 0,
-                        "low_tap": int(row["low_tap_position"]) if pd.notna(row.get("low_tap_position")) else None,
-                        "high_tap": int(row["high_tap_position"]) if pd.notna(row.get("high_tap_position")) else None,
-                    }
-                logger.info(f"[_capture_initial_pst_taps] Captured {len(self._initial_pst_taps)} PST tap positions")
-        except Exception as e:
-            logger.warning(f"[_capture_initial_pst_taps] Warning: could not read phase tap changers: {e}")
+        self._initial_pst_taps = read_pst_taps(network)
+        if self._initial_pst_taps:
+            logger.info(f"[_capture_initial_pst_taps] Captured {len(self._initial_pst_taps)} PST tap positions")
 
     def _get_n_variant(self):
         """Return the variant ID for the N state, creating and simulating it if necessary."""

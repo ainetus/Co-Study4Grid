@@ -302,6 +302,34 @@ def get_action_mw_start(
     return None
 
 
+def read_pst_taps(network: Any) -> dict[str, dict]:
+    """Snapshot ``{pst_name: {'tap', 'low_tap', 'high_tap'}}`` from a network.
+
+    pypowsybl names the ``get_phase_tap_changers()`` columns ``tap`` /
+    ``low_tap`` / ``high_tap`` (as ``NetworkManager.get_pst_tap_info`` reads
+    them) — not ``*_position``. A PST without a tap is left out: the readers
+    fall back on the live network, and a made-up tap of 0 would pass for the
+    N-state one. Returns ``{}`` when the tap changers cannot be read.
+    """
+    import pandas as pd
+
+    taps: dict[str, dict] = {}
+    try:
+        ptc = network.get_phase_tap_changers()
+        if ptc is not None and not ptc.empty:
+            for pst_name, row in ptc.iterrows():
+                if not pd.notna(row.get("tap")):
+                    continue
+                taps[pst_name] = {
+                    "tap": int(row["tap"]),
+                    "low_tap": int(row["low_tap"]) if pd.notna(row.get("low_tap")) else None,
+                    "high_tap": int(row["high_tap"]) if pd.notna(row.get("high_tap")) else None,
+                }
+    except Exception as e:
+        logger.warning("[read_pst_taps] could not read phase tap changers: %s", e)
+    return taps
+
+
 def get_pst_tap_start(
     action_entry: dict | None,
     initial_pst_taps: dict | None,

@@ -20,6 +20,15 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   snapshotted at network load), so it follows the action through manual
   simulation, combined actions and session save / reload; a session saved
   before shows no start tap. See `docs/features/action-card.md`.
+- **Fix — the taps snapshotted at network load were all 0**:
+  `_capture_initial_pst_taps` read `tap_position` / `low_tap_position` /
+  `high_tap_position`, columns pypowsybl does not have (they are `tap` /
+  `low_tap` / `high_tap`), so every PST was recorded at tap 0 without bounds.
+  The card's start tap showed that 0 (`.ARKA TD 661`: 0 instead of 27, as the
+  Manual Selection table's *Tap Start*, which read the recommender's
+  `previous tap`); the snapshot is also the fallback of that table's
+  `tap_start` and of the un-simulated pin tooltip. A PST with no tap is now
+  left out of the snapshot instead of being given a made-up 0.
 
 ### Action card — one title convention, the SLD chip on the unfolded card only
 
