@@ -540,11 +540,17 @@ def _gather_pst_targets(action_obj: Any, content: Any, action_topology: Any) -> 
 def compute_pst_details(
     action_data: dict,
     pst_tap_info_fn: Any,
+    initial_pst_taps: dict | None = None,
 ) -> list[dict] | None:
     """Per-PST tap change details, including current bounds.
 
     ``pst_tap_info_fn(pst_name) -> {'tap', 'low_tap', 'high_tap'} | None`` is
     injected so tests can run without a real network manager.
+
+    ``initial_pst_taps`` (pst_name → ``{'tap', …}``, snapshotted at network
+    load) gives each entry its ``tap_start`` — the N-state tap before the
+    action, shown on the action card next to the tap it sets. The key is left
+    out when the start tap is unknown.
     """
     action_obj = action_data.get("action")
     content = action_data.get("content")
@@ -567,12 +573,16 @@ def compute_pst_details(
                     high_tap = info.get("high_tap")
             except Exception as e:
                 logger.debug("Suppressed exception: %s", e)
-        details.append({
+        detail = {
             "pst_name": pst_name,
             "tap_position": tap_position,
             "low_tap": low_tap,
             "high_tap": high_tap,
-        })
+        }
+        start = (initial_pst_taps or {}).get(pst_name) or {}
+        if start.get("tap") is not None:
+            detail["tap_start"] = int(start["tap"])
+        details.append(detail)
     return details or None
 
 

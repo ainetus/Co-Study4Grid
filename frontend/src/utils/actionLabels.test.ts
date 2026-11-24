@@ -110,7 +110,7 @@ describe('collectActionTargets', () => {
         expect(t.title).toEqual([{ id: 'LOAD_1', kind: 'equipment', role: 'load' }]);
     });
 
-    describe('SLD chips of a transformer / phase shifter', () => {
+    describe('SLD chips of a branch', () => {
         const vl = (equipmentId: string, svgId: string) => [equipmentId, { equipmentId, svgId } as NodeMeta] as const;
         const nodes = new Map<string, NodeMeta>([vl('VL_400', '12'), vl('VL_225', '34'), vl('VL_OTHER', '56')]);
         const edge = (equipmentId: string, node1: string, node2: string) =>
@@ -130,9 +130,26 @@ describe('collectActionTargets', () => {
             expect(t.locations).toEqual([{ id: 'VL_225', kind: 'vl' }, { id: 'VL_OTHER', kind: 'vl' }]);
         });
 
-        it('leaves a plain line opening without chips — it has no single substation', () => {
+        it('offers both ends of a plain line opening, like a transformer', () => {
             const t = collectActionTargets('disco_L1', opening('L1', "Ouverture de la ligne 'L1'"), nodes, edges);
             expect(t.title).toEqual([{ id: 'L1', kind: 'line', role: 'branch' }]);
+            expect(t.locations).toEqual([{ id: 'VL_400', kind: 'vl' }, { id: 'VL_OTHER', kind: 'vl' }]);
+        });
+
+        it('offers the ends of every line of a combined opening, a shared voltage level once', () => {
+            const t = collectActionTargets('disco_L1+disco_PST_1', details({
+                description_unitaire: "[COMBINED] Ouverture de la ligne 'L1' + Ouverture de la ligne 'PST_1'",
+                action_topology: { ...topo, lines_or_bus: { L1: -1, PST_1: -1 } },
+            }), nodes, edges);
+            expect(t.title.map(x => x.id)).toEqual(['L1', 'PST_1']);
+            // L1: 400 / OTHER, PST_1: 225 / OTHER — VL_OTHER named once.
+            expect(t.locations).toEqual([
+                { id: 'VL_400', kind: 'vl' }, { id: 'VL_OTHER', kind: 'vl' }, { id: 'VL_225', kind: 'vl' },
+            ]);
+        });
+
+        it('waits for the metadata for a line too', () => {
+            const t = collectActionTargets('disco_L1', opening('L1', "Ouverture de la ligne 'L1'"), null, null);
             expect(t.locations).toEqual([]);
         });
 

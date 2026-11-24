@@ -177,6 +177,31 @@ class TestRecommenderService:
             assert config.ALLOWED_ACTION_TYPES == []
 
 
+class TestPstDetailsStartTap:
+    """The PST editor card shows the N-state tap beside the tap the action sets."""
+
+    def test_pst_details_carry_the_tap_captured_at_load(self):
+        from types import SimpleNamespace
+
+        service = RecommenderService()
+        service._initial_pst_taps = {"PST_A": {"tap": 12, "low_tap": -16, "high_tap": 16}}
+        action = SimpleNamespace(pst_tap={"PST_A": 20})
+        with patch.object(service, "_pst_tap_info_fn", return_value=None):
+            details = service._compute_pst_details({"action": action})
+        assert details == [{"pst_name": "PST_A", "tap_position": 20, "low_tap": None,
+                            "high_tap": None, "tap_start": 12}]
+
+    def test_no_start_tap_before_the_taps_are_captured(self):
+        from types import SimpleNamespace
+
+        service = RecommenderService()
+        assert service._initial_pst_taps is None
+        action = SimpleNamespace(pst_tap={"PST_A": 20})
+        with patch.object(service, "_pst_tap_info_fn", return_value=None):
+            details = service._compute_pst_details({"action": action})
+        assert "tap_start" not in details[0]
+
+
 class TestRestoreAnalysisContext:
     """Tests for RecommenderService.restore_analysis_context()."""
 

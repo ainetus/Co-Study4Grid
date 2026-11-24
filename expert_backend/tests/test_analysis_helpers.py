@@ -390,6 +390,26 @@ class TestComputePstDetails:
         assert details[0]["pst_name"] == "PST_B"
         assert details[0]["tap_position"] == 3
 
+    def test_adds_the_n_state_start_tap_from_the_initial_taps(self):
+        action = SimpleNamespace(pst_tap={"PST_A": 5, "PST_B": 2})
+        initial = {
+            "PST_A": {"tap": 12, "low_tap": -16, "high_tap": 16},
+            "PST_B": {"tap": 0, "low_tap": -8, "high_tap": 8},
+        }
+        details = action_enrichment.compute_pst_details(
+            {"action": action}, pst_tap_info_fn=None, initial_pst_taps=initial,
+        )
+        # Each PST carries its own start tap; a start of 0 is a real value.
+        assert [(d["pst_name"], d["tap_start"]) for d in details] == [("PST_A", 12), ("PST_B", 0)]
+
+    def test_leaves_the_start_tap_out_when_unknown(self):
+        action = SimpleNamespace(pst_tap={"PST_A": 5})
+        for initial in (None, {}, {"OTHER": {"tap": 3}}, {"PST_A": {"tap": None}}):
+            details = action_enrichment.compute_pst_details(
+                {"action": action}, pst_tap_info_fn=None, initial_pst_taps=initial,
+            )
+            assert "tap_start" not in details[0]
+
 
 # ----------------------------------------------------------------------
 # mw_start_scoring

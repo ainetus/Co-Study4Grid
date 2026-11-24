@@ -69,7 +69,8 @@ After:
    place.
 5. **The rest** — fault pills
    (load-flow failure, islanding, pre-existing N overloads), the parameter
-   editors (shedding / curtailment / redispatch MW, PST tap), and last the
+   editors (shedding / curtailment / redispatch MW, PST tap — with the tap
+   it **starts from** beside the input: `tap: [29] [0..32] start 24`), and last the
    provenance: source pictogram (a person for a manual simulation, a chip
    for a recommender model) and the raw action id with a copy button.
 
@@ -134,7 +135,8 @@ principles explicitly:
 | On the card | Source |
 |---|---|
 | Title — lines, coupled voltage levels, shed loads, curtailed / redispatched generators | `utils/actionLabels.collectActionTargets` (the former badge logic, plus the voltage level a `user_topo_<vl>_<ts>` manoeuvre was built on; each element carries its `role` — coupling / substation / branch / phaseShifter / load / generator) read through `displayName`, typed by `describeTarget` |
-| SLD chips (unfolded card, after the description) | the voltage levels of the injection details; the voltage levels the title names (coupling hint, manoeuvre, description); the two ends of an opened transformer (`disco_T_…` / « transformateur ») or a tap-changed phase shifter, resolved through the NAD metadata (`edge.node1` / `node2` → voltage-level node) — so they appear once the diagram is loaded. A plain line opening gets none (two substations, no obvious one) |
+| SLD chips (unfolded card, after the description) | the voltage levels of the injection details; the voltage levels the title names (coupling hint, manoeuvre, description); the two ends of **every branch the title names** — an opened / closed line, a transformer, a tap-changed phase shifter — resolved through the NAD metadata (`edge.node1` / `node2` → voltage-level node), so they appear once the diagram is loaded; a voltage level two branches share is offered once |
+| PST start tap (editor row) | `pst_details[].tap_start`, set by the backend (`action_enrichment.compute_pst_details`) from the taps snapshotted at network load (`_initial_pst_taps`) — the N-state tap, as the *Tap Start* column of the Manual Selection table. Absent (nothing shown) on a session saved before the field existed |
 | Description | the backend's `description_unitaire`, every known id replaced by its name (`humanizeIds`, display only) |
 | Manual-action description | built by the backend in names: `Manoeuvre manuelle sur MANDARINS 400kV: disjoncteur MANDAL71WARAN ouvert` (`simulation_helpers.describe_manual_action`) |
 | Dictionary coupling description | the step-2 enrichment drops the coupler's switch id (`action_enrichment.name_switches_in`): `Ouverture du couplage dans le poste 'MANDARINS 400kV'` |
