@@ -392,7 +392,7 @@ Saved `SavedActionEntry` objects carry the enrichment fields added by PRs #73, #
 - `lines_overloaded_after: string[]` — post-action overload list, used by SLD / NAD highlight clones on the Remedial Action tab.
 - `load_shedding_details: LoadSheddingDetail[]` — per-load MW values for the load-shedding editor card.
 - `curtailment_details: CurtailmentDetail[]` — per-generator MW values for the curtailment editor card.
-- `pst_details: PstDetail[]` — `{ pst_name, tap_position, low_tap, high_tap }` for the PST editor card.
+- `pst_details: PstDetail[]` — `{ pst_name, tap_position, low_tap, high_tap, tap_start? }` for the PST editor card (`tap_start`: the N-state tap before the action).
 
 All four are now **restored** into the live `ActionDetail` objects by `handleRestoreSession`. Previously they were dropped on reload, which caused:
 

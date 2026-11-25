@@ -67,6 +67,7 @@ const TIPS = {
     after: 'Loading after this action of the lines the contingency overloads',
     halfOpen: 'Line open at one end — this loading is the line\'s capacitive charging current (reactive power, the MVAr shown), not real power flow. The line carries no active power (the diagrams show 0).',
     location: 'Where the action acts',
+    tapStart: 'Tap start — the phase shifter\'s tap before the action (N state)',
 };
 
 /** Kinds the injection details name even when the id / description do not
@@ -597,6 +598,13 @@ const ActionCard: React.FC<ActionCardProps> = ({
                                             <span style={{ fontSize: '10px', color: colors.accent }}>
                                                 [{pst.low_tap}..{pst.high_tap}]
                                             </span>
+                                        )}
+                                        {pst.tap_start != null && (
+                                            <span
+                                                data-testid={`action-card-${id}-tap-start`}
+                                                title={TIPS.tapStart}
+                                                style={{ fontSize: text.xs, color: colors.accentText, cursor: 'help', whiteSpace: 'nowrap' }}
+                                            >start <strong>{pst.tap_start}</strong></span>
                                         )}
                                         <button
                                             data-testid={`resimulate-tap-${id}`}

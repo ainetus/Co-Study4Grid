@@ -73,6 +73,9 @@ export interface PstDetail {
     tap_position: number;
     low_tap: number | null;
     high_tap: number | null;
+    /** The N-state tap before the action (absent when the backend could not
+     *  read it, and on sessions saved before it was sent). */
+    tap_start?: number | null;
 }
 export interface RedispatchDetail {
     gen_name: string;

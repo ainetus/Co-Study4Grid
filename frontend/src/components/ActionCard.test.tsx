@@ -492,6 +492,34 @@ describe('ActionCard', () => {
         expect(screen.getByText('[-10..10]')).toBeInTheDocument();
     });
 
+    it('shows the tap the PST starts from beside the tap the action sets', () => {
+        const details: ActionDetail = {
+            ...baseDetails,
+            pst_details: [
+                { pst_name: 'PST_Z', tap_position: 29, low_tap: 0, high_tap: 32, tap_start: 24 }
+            ],
+        };
+        render(<ActionCard {...defaultProps} details={details} isViewing={true} />);
+        const start = screen.getByTestId('action-card-act_1-tap-start');
+        expect(start).toHaveTextContent('start 24');
+        expect(start).toHaveAttribute('title', expect.stringContaining('before the action'));
+        // The editable input still holds the tap the action sets.
+        expect(screen.getByTestId('edit-tap-act_1')).toHaveValue(29);
+    });
+
+    it('keeps a start tap of 0, and shows none when the backend sent none', () => {
+        const withStart = (tap_start?: number | null): ActionDetail => ({
+            ...baseDetails,
+            pst_details: [{ pst_name: 'PST_Z', tap_position: 5, low_tap: -10, high_tap: 10, tap_start }],
+        });
+        const { rerender } = render(<ActionCard {...defaultProps} details={withStart(0)} isViewing={true} />);
+        expect(screen.getByTestId('action-card-act_1-tap-start')).toHaveTextContent('start 0');
+        rerender(<ActionCard {...defaultProps} details={withStart(undefined)} isViewing={true} />);
+        expect(screen.queryByTestId('action-card-act_1-tap-start')).toBeNull();
+        rerender(<ActionCard {...defaultProps} details={withStart(null)} isViewing={true} />);
+        expect(screen.queryByTestId('action-card-act_1-tap-start')).toBeNull();
+    });
+
     it('calls onResimulate when load shedding re-simulate is clicked', () => {
         const onResimulate = vi.fn();
         const details: ActionDetail = {
@@ -783,14 +811,29 @@ describe('ActionCard', () => {
             expect(screen.getByTestId('action-card-disco_T_W-location-VL_N')).toBeInTheDocument();
         });
 
-        it('shows no chip for a plain line action', () => {
+        it('gives a line opening an SLD chip for each end of the line, once the metadata is there', () => {
+            const nodes = new Map<string, NodeMeta>([
+                ['VL_M', { equipmentId: 'VL_M', svgId: '1' } as NodeMeta],
+                ['VL_N', { equipmentId: 'VL_N', svgId: '2' } as NodeMeta],
+            ]);
+            const edges = new Map<string, EdgeMeta>([
+                ['LINE_W', { equipmentId: 'LINE_W', svgId: 'e1', node1: '1', node2: '2' } as EdgeMeta],
+            ]);
             const details: ActionDetail = {
                 ...baseDetails,
                 description_unitaire: "Ouverture de la ligne 'LINE_W'",
                 action_topology: { ...emptyTopo, lines_or_bus: { LINE_W: -1 }, lines_ex_bus: { LINE_W: -1 } },
             };
-            render(<ActionCard {...defaultProps} id="disco_LINE_W" details={details} displayName={displayName} isViewing />);
+            vi.mocked(getActionTargetLines).mockReturnValueOnce(['LINE_W']);
+            const { rerender } = render(<ActionCard {...defaultProps} id="disco_LINE_W" details={details}
+                displayName={displayName} isViewing />);
+            // No metadata yet: no chip, the title name stays a link.
             expect(screen.queryByTitle(/^Where the action acts/)).toBeNull();
+            vi.mocked(getActionTargetLines).mockReturnValueOnce(['LINE_W']);
+            rerender(<ActionCard {...defaultProps} id="disco_LINE_W" details={details} displayName={displayName}
+                isViewing nodesByEquipmentId={nodes} edgesByEquipmentId={edges} />);
+            expect(screen.getByTestId('action-card-disco_LINE_W-location-VL_M')).toHaveTextContent('MANDARINS 400kV');
+            expect(screen.getByTestId('action-card-disco_LINE_W-location-VL_N')).toBeInTheDocument();
         });
 
         it('shows no SLD chip until the card is unfolded', () => {

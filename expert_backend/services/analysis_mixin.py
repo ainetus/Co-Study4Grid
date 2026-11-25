@@ -207,8 +207,9 @@ class AnalysisMixin(_Base):
         )
 
     def _compute_pst_details(self, action_data):
-        """Per-PST tap details with current bounds (delegates to the stateless helper)."""
-        return compute_pst_details(action_data, self._pst_tap_info_fn())
+        """Per-PST tap details with current bounds and the N-state start tap
+        (delegates to the stateless helper)."""
+        return compute_pst_details(action_data, self._pst_tap_info_fn(), self._initial_pst_taps)
 
     def _is_renewable_gen(self, gen_name, obs=None) -> bool:
         """WIND / SOLAR generator check (delegates to the stateless helper)."""

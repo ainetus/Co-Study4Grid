@@ -187,7 +187,7 @@ Some pieces of in-memory state are deliberately ephemeral and will reset on relo
           { "gen_name": "GEN_3", "voltage_level_id": "VL_3", "delta_mw": -6.0, "target_mw": 42.0, "direction": "down" }
         ],
         "pst_details": [
-          { "pst_name": "PST_A", "tap_position": 5, "low_tap": -16, "high_tap": 16 }
+          { "pst_name": "PST_A", "tap_position": 5, "low_tap": -16, "high_tap": 16, "tap_start": 2 }
         ],
         "origin": "expert",
         "status": {
@@ -322,7 +322,7 @@ Each action entry mirrors the `ActionDetail` type plus a `status` object:
 | `load_shedding_details` | Per-load MW values for the load-shedding editor card. Array of `{ load_name, voltage_level_id, shedded_mw }` (PR #73). |
 | `curtailment_details` | Per-generator MW values for the renewable-curtailment editor card. Array of `{ gen_name, voltage_level_id, curtailed_mw }` (PR #73). |
 | `redispatch_details` | Per-generator values for the redispatch editor card — sibling of `curtailment_details`. Array of `{ gen_name, voltage_level_id, delta_mw, target_mw, direction }`: `delta_mw` is the **signed** MW change (`> 0` raises, `< 0` lowers), `target_mw` the resulting production magnitude, `direction` is `"up"` / `"down"`. May also carry optional `current_mw` / `max_raise_mw` / `max_lower_mw` bounds. |
-| `pst_details` | PST editor state: array of `{ pst_name, tap_position, low_tap, high_tap }`. `low_tap` / `high_tap` may be `null` if the network manager did not expose bounds (PR #78). |
+| `pst_details` | PST editor state: array of `{ pst_name, tap_position, low_tap, high_tap, tap_start? }`. `low_tap` / `high_tap` may be `null` if the network manager did not expose bounds (PR #78). `tap_start` is the N-state tap before the action, shown beside the tap input on the card; it is left out when unknown and on sessions saved before it existed. |
 | `origin` | *(optional)* Provenance of the action card — `"user"` (the operator simulated it themselves via the manual search / "Make a first guess") or a recommender model id (`"expert"`, `"random_overflow"`, … — the `active_model` that produced / scored it; this also covers an unsimulated pin the operator materialised). Distinct from the `is_manually_simulated` status flag, which also flips `true` when the operator merely *stars* a recommender suggestion. Surfaced as the "Source" row in the unfolded action card. Legacy dumps that predate the field get an `origin` **derived on reload** from the status flags + `analysis.active_model` (`is_manually_simulated` → `"user"`, else `is_suggested` → `active_model`). |
 
 > **Why the enrichment fields matter on reload:** the PST / load-shedding / curtailment / redispatch editor cards read directly from `pst_details` / `load_shedding_details` / `curtailment_details` / `redispatch_details` to populate their inputs, and the Remedial Action tab uses `lines_overloaded_after` to clone the post-action overload halos. Before PR #83, these fields were written to `session.json` but silently dropped on reload, which left the editor cards empty and wiped the overload halos until the user re-ran analysis. `redispatch_details` later hit the exact same "save-drop" trap (written by `buildSessionResult` but dropped on the reload path) until it was wired through `handleRestoreSession` alongside the others. They are now restored in full.

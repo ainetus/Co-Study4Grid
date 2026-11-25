@@ -41,8 +41,9 @@ export interface ActionTargets {
     /** The voltage levels the card offers as SLD chips, on its viewing
      *  (unfolded) form, at the end of its description: where its injections
      *  sit (shed loads, curtailed / redispatched generators), the voltage
-     *  levels the title names (coupling, manoeuvre) and the two ends of a
-     *  transformer / phase shifter the action opens or tap-changes. */
+     *  levels the title names (coupling, manoeuvre) and the two ends of each
+     *  branch (line, transformer, phase shifter) the action opens, closes or
+     *  tap-changes. */
     locations: ActionLocation[];
 }
 
@@ -120,12 +121,6 @@ const uniquePush = (list: ActionTarget[], seen: Set<string>, id: string | null |
     list.push({ id, kind, role });
 };
 
-/** A transformer opening / closing: ``disco_T_…`` ids and the dictionary's
- *  ``Ouverture du transformateur '…'`` — a transformer sits between two
- *  voltage levels, whose SLDs are what the operator opens next. */
-const isTransformerAction = (id: string, description?: string): boolean =>
-    id.split('+').some(part => /^(disco|reco)_T_/.test(part)) || /transformateur|transformer/i.test(description ?? '');
-
 // svgId → voltage-level node, built once per metadata index (an edge names
 // its two ends by svgId, the index is keyed by voltage-level id).
 const nodesBySvgIdCache = new WeakMap<Map<string, NodeMeta>, Map<string, NodeMeta>>();
@@ -139,7 +134,8 @@ const nodesBySvgId = (nodes: Map<string, NodeMeta>): Map<string, NodeMeta> => {
     return index;
 };
 
-/** The voltage levels at the two ends of a branch (transformer / PST). */
+/** The voltage levels at the two ends of a branch (line / transformer / PST):
+ *  the SLDs the operator opens next. */
 const branchVoltageLevels = (edge: EdgeMeta | undefined, nodes: Map<string, NodeMeta>): string[] => {
     if (!edge) return [];
     const bySvgId = nodesBySvgId(nodes);
@@ -200,7 +196,8 @@ export const collectActionTargets = (
 
     // The SLD chips: the injections' voltage levels, then the ones the title
     // names (the title link only underlines on hover — the chip is the
-    // visible way into the SLD), then the ends of a transformer / PST.
+    // visible way into the SLD), then the two ends of every branch the title
+    // names — line, transformer or PST.
     const seenLocation = new Set<string>();
     const addLocation = (vl: string) => {
         if (seenLocation.has(vl)) return;
@@ -210,8 +207,7 @@ export const collectActionTargets = (
     injectionVls.forEach(addLocation);
     title.filter(t => t.kind === 'vl').forEach(t => addLocation(t.id));
     if (nodesByEquipmentId && edgesByEquipmentId) {
-        const transformer = isTransformerAction(id, details.description_unitaire);
-        title.filter(t => t.kind === 'line' && (transformer || pstLines.has(t.id))).forEach(t =>
+        title.filter(t => t.kind === 'line').forEach(t =>
             branchVoltageLevels(edgesByEquipmentId.get(t.id), nodesByEquipmentId).forEach(addLocation));
     }
 

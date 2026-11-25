@@ -7,6 +7,29 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Action card — SLD chips for line openings, the PST's start tap
+
+- **Line openings get their SLD chips too**: an opened / closed line now
+  offers the voltage levels at both its ends on the unfolded card, like a
+  transformer or a phase shifter already did (a voltage level two lines of a
+  combined action share is offered once). They appear once the diagram is
+  loaded.
+- **The PST card shows the tap it starts from**: `tap: [29] [0..32] start 24`
+  — the N-state tap, as the *Tap Start* column of the Manual Selection table.
+  The backend now sends it as `pst_details[].tap_start` (from the taps
+  snapshotted at network load), so it follows the action through manual
+  simulation, combined actions and session save / reload; a session saved
+  before shows no start tap. See `docs/features/action-card.md`.
+- **Fix — the taps snapshotted at network load were all 0**:
+  `_capture_initial_pst_taps` read `tap_position` / `low_tap_position` /
+  `high_tap_position`, columns pypowsybl does not have (they are `tap` /
+  `low_tap` / `high_tap`), so every PST was recorded at tap 0 without bounds.
+  The card's start tap showed that 0 (`.ARKA TD 661`: 0 instead of 27, as the
+  Manual Selection table's *Tap Start*, which read the recommender's
+  `previous tap`); the snapshot is also the fallback of that table's
+  `tap_start` and of the un-simulated pin tooltip. A PST with no tap is now
+  left out of the snapshot instead of being given a made-up 0.
+
 ### Action card — one title convention, the SLD chip on the unfolded card only
 
 - **`Type - Name` in every title**: the kind of element first, then its name

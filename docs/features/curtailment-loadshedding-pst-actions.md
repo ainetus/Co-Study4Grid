@@ -409,7 +409,7 @@ When `target_tap` is provided:
 # Backend returns:
 {
     "pst_details": [
-        {"pst_name": ".ARKA TD 661", "tap_position": 32}
+        {"pst_name": ".ARKA TD 661", "tap_position": 32, "low_tap": 0, "high_tap": 32, "tap_start": 24}
     ]
 }
 ```

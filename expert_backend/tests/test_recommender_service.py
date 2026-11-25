@@ -177,6 +177,74 @@ class TestRecommenderService:
             assert config.ALLOWED_ACTION_TYPES == []
 
 
+class TestPstDetailsStartTap:
+    """The PST editor card shows the N-state tap beside the tap the action sets."""
+
+    def test_pst_details_carry_the_tap_captured_at_load(self):
+        from types import SimpleNamespace
+
+        service = RecommenderService()
+        service._initial_pst_taps = {"PST_A": {"tap": 12, "low_tap": -16, "high_tap": 16}}
+        action = SimpleNamespace(pst_tap={"PST_A": 20})
+        with patch.object(service, "_pst_tap_info_fn", return_value=None):
+            details = service._compute_pst_details({"action": action})
+        assert details == [{"pst_name": "PST_A", "tap_position": 20, "low_tap": None,
+                            "high_tap": None, "tap_start": 12}]
+
+    def test_no_start_tap_before_the_taps_are_captured(self):
+        from types import SimpleNamespace
+
+        service = RecommenderService()
+        assert service._initial_pst_taps is None
+        action = SimpleNamespace(pst_tap={"PST_A": 20})
+        with patch.object(service, "_pst_tap_info_fn", return_value=None):
+            details = service._compute_pst_details({"action": action})
+        assert "tap_start" not in details[0]
+
+
+class TestCaptureInitialPstTaps:
+    """The N-state taps are read with pypowsybl's real column names."""
+
+    @staticmethod
+    def _network(rows):
+        import pandas as pd
+
+        net = MagicMock()
+        # ``get_phase_tap_changers()`` of pypowsybl: ``tap`` / ``low_tap`` /
+        # ``high_tap`` (no ``*_position`` column).
+        net.get_phase_tap_changers.return_value = pd.DataFrame(
+            rows, columns=["tap", "low_tap", "high_tap", "step_count"],
+        ).rename_axis("id")
+        return net
+
+    def test_reads_tap_and_bounds_from_the_pypowsybl_columns(self):
+        import pandas as pd
+
+        net = self._network(pd.DataFrame(
+            {"tap": [27, 0], "low_tap": [0, -8], "high_tap": [32, 8], "step_count": [33, 17]},
+            index=pd.Index([".ARKA TD 661", "PST_B"], name="id"),
+        ))
+        service = RecommenderService()
+        service._capture_initial_pst_taps(net)
+        # A real tap of 0 stays 0; it is the 27 of the N state that must not become 0.
+        assert service._initial_pst_taps == {
+            ".ARKA TD 661": {"tap": 27, "low_tap": 0, "high_tap": 32},
+            "PST_B": {"tap": 0, "low_tap": -8, "high_tap": 8},
+        }
+
+    def test_a_pst_without_a_tap_is_left_out_not_set_to_zero(self):
+        import numpy as np
+        import pandas as pd
+
+        net = self._network(pd.DataFrame(
+            {"tap": [np.nan, 5], "low_tap": [0, 0], "high_tap": [32, 16], "step_count": [33, 17]},
+            index=pd.Index(["NO_TAP", "PST_C"], name="id"),
+        ))
+        service = RecommenderService()
+        service._capture_initial_pst_taps(net)
+        assert list(service._initial_pst_taps) == ["PST_C"]
+
+
 class TestRestoreAnalysisContext:
     """Tests for RecommenderService.restore_analysis_context()."""
 
