@@ -7,6 +7,22 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Context tab — the network outline and the consignations (Carte-Front)
+
+- **Consignations on the map**: the extra-high-voltage circuits the situation
+  takes out, by Carte-Front's rule on a situation — no current at either end
+  (`I` `NaN` or < 0.5 A) **and** isolated at both voltage levels (alone on
+  their node, or only with the substation's wiring and other consigned
+  circuits), read from the node-breaker topology. Drawn as a greyed core in a
+  casing of the voltage's colour (400 kV red and solid, 225 kV green and
+  dashed), a transformer as a point, hover names the circuit. On by default
+  when there are some; 26–71 on the four RTE7000 THT grids, +0.25 s on their
+  load.
+- **Network outline (liseré)**: a pastel 400 kV / 225 kV trace of the grid
+  under the flows, two legend boxes, off by default, read from the new
+  `GET /api/context-map/network` the first time one is ticked.
+- See `docs/features/context-tab.md` § *Network layers*.
+
 ### Action card — SLD chips for line openings, the PST's start tap
 
 - **Line openings get their SLD chips too**: an opened / closed line now

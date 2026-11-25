@@ -448,6 +448,30 @@ export interface ContextMapNuclearPlant {
     matched?: boolean;
 }
 
+/** The extra-high-voltage classes the network layers are drawn in. */
+export type ContextVoltage = '400 kV' | '225 kV';
+
+/**
+ * A consigned circuit (Carte-Front's rule: no current at either end and
+ * isolated at both substations): drawn between its two ends, a transformer —
+ * whose ends coincide — as a point.
+ */
+export interface ContextMapConsignation {
+    id: string;
+    name: string;
+    voltage: ContextVoltage;
+    kind: 'line' | 'transformer';
+    points: [[number, number], [number, number]];
+    /** The names of the two voltage levels it joins. */
+    vls: [string, string];
+}
+
+/** GET /api/context-map/network — Carte-Front's *liseré*: segments `[x1, y1, x2, y2]` per voltage. */
+export interface ContextMapNetwork {
+    capture_id?: number;
+    segments: Partial<Record<ContextVoltage, [number, number, number, number][]>>;
+}
+
 export interface ContextMapData {
     /** A network that meets the map's prerequisite (see `ContextMapUnavailable`). */
     available?: true;
@@ -465,6 +489,8 @@ export interface ContextMapData {
     zones: ContextMapZone[];
     flows: ContextMapFlow[];
     nuclear?: { plants: ContextMapNuclearPlant[]; units: ContextMapNuclearUnit[] };
+    /** The circuits the situation takes out: those the map can place, and how many it holds. */
+    consignations?: { items: ContextMapConsignation[]; total: number };
     /**
      * The plant database the network's untyped generators were typed from
      * (`power_plants.json` beside the network) — credited on the map.

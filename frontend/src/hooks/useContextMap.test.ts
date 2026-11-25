@@ -15,6 +15,7 @@ vi.mock('../api', () => ({
     api: {
         getContextMap: vi.fn(),
         getContextMapElements: vi.fn(),
+        getContextMapNetwork: vi.fn(),
     },
 }));
 import { api } from '../api';
@@ -22,6 +23,7 @@ import { api } from '../api';
 const mockApi = api as unknown as {
     getContextMap: ReturnType<typeof vi.fn>;
     getContextMapElements: ReturnType<typeof vi.fn>;
+    getContextMapNetwork: ReturnType<typeof vi.fn>;
 };
 
 const map = (captureId: number): ContextMapData => ({
@@ -52,6 +54,7 @@ describe('useContextMap', () => {
         vi.useRealTimers();
         mockApi.getContextMap.mockReset();
         mockApi.getContextMapElements.mockReset();
+        mockApi.getContextMapNetwork.mockReset();
         mockApi.getContextMapElements.mockImplementation(async (ids: string[]) => ids.map(element));
     });
     afterEach(() => vi.useRealTimers());
@@ -165,5 +168,57 @@ describe('useContextMap', () => {
         rerender(args({ studyGeneration: 1, selectedContingency: ['A'] }));
         await waitFor(() => expect(result.current.highlights[0]?.element.id).toBe('A'));
         expect(mockApi.getContextMapElements).toHaveBeenCalledTimes(2);
+    });
+
+    describe('network outline', () => {
+        const outline = (captureId: number) => ({ capture_id: captureId, segments: { '400 kV': [[0, 0, 1, 1]] } });
+
+        it('is read once, when asked for, and only for a loaded map', async () => {
+            mockApi.getContextMap.mockResolvedValue(map(1));
+            mockApi.getContextMapNetwork.mockResolvedValue(outline(1));
+            const { result } = renderHook(() => useContextMap(args({ studyGeneration: 1 })));
+            // No map yet: nothing to ask the backend about.
+            act(() => result.current.requestNetwork?.());
+            expect(mockApi.getContextMapNetwork).not.toHaveBeenCalled();
+            await waitFor(() => expect(result.current.data?.capture_id).toBe(1));
+            expect(result.current.network).toBeNull();
+            act(() => result.current.requestNetwork?.());
+            act(() => result.current.requestNetwork?.());
+            await waitFor(() => expect(result.current.network?.capture_id).toBe(1));
+            expect(mockApi.getContextMapNetwork).toHaveBeenCalledTimes(1);
+            expect(result.current.networkLoading).toBe(false);
+        });
+
+        it('is dropped with the study and read again for the next one', async () => {
+            mockApi.getContextMap.mockResolvedValue(map(1));
+            mockApi.getContextMapNetwork.mockResolvedValue(outline(1));
+            const { result, rerender } = renderHook((a: Args) => useContextMap(a), { initialProps: args({ studyGeneration: 1 }) });
+            await waitFor(() => expect(result.current.data?.capture_id).toBe(1));
+            act(() => result.current.requestNetwork?.());
+            await waitFor(() => expect(result.current.network).not.toBeNull());
+            mockApi.getContextMap.mockResolvedValue(map(2));
+            mockApi.getContextMapNetwork.mockResolvedValue(outline(2));
+            rerender(args({ studyGeneration: 2 }));
+            await waitFor(() => expect(result.current.data?.capture_id).toBe(2));
+            expect(result.current.network).toBeNull();
+            act(() => result.current.requestNetwork?.());
+            await waitFor(() => expect(result.current.network?.capture_id).toBe(2));
+            expect(mockApi.getContextMapNetwork).toHaveBeenCalledTimes(2);
+        });
+
+        it('can be asked for again after a failure', async () => {
+            mockApi.getContextMap.mockResolvedValue(map(1));
+            mockApi.getContextMapNetwork.mockRejectedValueOnce(new Error('down')).mockResolvedValue(outline(1));
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            const { result } = renderHook(() => useContextMap(args({ studyGeneration: 1 })));
+            await waitFor(() => expect(result.current.data).not.toBeNull());
+            act(() => result.current.requestNetwork?.());
+            await waitFor(() => expect(warn).toHaveBeenCalled());
+            await waitFor(() => expect(result.current.networkLoading).toBe(false));
+            expect(result.current.network).toBeNull();
+            act(() => result.current.requestNetwork?.());
+            await waitFor(() => expect(result.current.network?.capture_id).toBe(1));
+            warn.mockRestore();
+        });
     });
 });

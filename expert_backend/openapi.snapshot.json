@@ -1659,6 +1659,23 @@
         "summary": "Get Context Map Elements"
       }
     },
+    "/api/context-map/network": {
+      "get": {
+        "description": "The 400 / 225 kV network outline (Carte-Front's *liseré*) in the\nmap's frame — optional and heavy, so apart from ``/api/context-map``.",
+        "operationId": "get_context_map_network_api_context_map_network_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Context Map Network"
+      }
+    },
     "/api/contingency-diagram": {
       "post": {
         "operationId": "get_contingency_diagram_api_contingency_diagram_post",

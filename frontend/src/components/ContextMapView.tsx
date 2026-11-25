@@ -6,7 +6,7 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ContextFiliere, ContextMapData, ContextMapHighlight, ViewBox } from '../types';
+import type { ContextFiliere, ContextMapData, ContextMapHighlight, ContextVoltage, ViewBox } from '../types';
 import type { ContextMapState } from '../hooks/useContextMap';
 import { colors, contextFiliereColors, contextMapPalette as P, radius, space, text } from '../styles/tokens';
 import { formatMw, highlightBox, productionMix, renderScale } from '../utils/contextMapGeometry';
@@ -91,6 +91,22 @@ const HoverCard: React.FC<{ hover: ContextHover; monitoringFactor?: number }> = 
                         </span>
                     </div>
                 ))}
+            </>
+        );
+    }
+    if (hover.kind === 'consignation') {
+        const c = hover.consignation;
+        return (
+            <>
+                <div style={{ fontWeight: 700 }}>Consigned: {c.name}</div>
+                {c.name !== c.id && <div style={{ color: colors.textSecondary }}>{c.id}</div>}
+                <div>{c.voltage} {c.kind === 'transformer' ? 'transformer' : 'line'}, out of service</div>
+                <div style={{ color: colors.textSecondary }}>
+                    {c.kind === 'transformer' ? c.vls[0] : c.vls.join(' – ')}
+                </div>
+                <div style={{ color: colors.textSecondary, fontSize: text.xs }}>
+                    No current at either end, isolated at both substations
+                </div>
             </>
         );
     }
@@ -343,9 +359,72 @@ const Summary: React.FC<{ data: ContextMapData }> = ({ data }) => {
 };
 
 /** Bottom-left legend: generation-type colours (Carte-Front's production legend) and map symbols. */
-const Legend: React.FC<{ data: ContextMapData; showNuclear: boolean; onShowNuclear: (show: boolean) => void }> = ({
-    data, showNuclear, onShowNuclear,
-}) => {
+/** What the network-layers part of the legend toggles. */
+interface NetworkLayerControls {
+    showConsignations: boolean;
+    onShowConsignations: (show: boolean) => void;
+    showNetwork: Record<ContextVoltage, boolean>;
+    onShowNetwork: (voltage: ContextVoltage, show: boolean) => void;
+    networkLoading: boolean;
+    /** The outline cannot be drawn: the map has no georeference. */
+    networkDisabled: boolean;
+}
+
+const VOLTAGE_SWATCH: Record<ContextVoltage, { outline: string; consigned: string }> = {
+    '400 kV': { outline: P.network400, consigned: P.consignation400 },
+    '225 kV': { outline: P.network225, consigned: P.consignation225 },
+};
+
+/** Carte-Front's network layers: the outline per voltage (off by default, it densifies the map) and the consignations. */
+const NetworkLegend: React.FC<{ data: ContextMapData; controls: NetworkLayerControls }> = ({ data, controls }) => {
+    const consignations = data.consignations;
+    const count = consignations?.total ?? 0;
+    const placed = consignations?.items.length ?? 0;
+    return (
+        <div data-testid="context-map-network-legend"
+            style={{ marginTop: 4, borderTop: `1px solid ${colors.border}`, paddingTop: 4 }}>
+            {(['400 kV', '225 kV'] as const).map(voltage => (
+                <label key={voltage} style={{
+                    display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700,
+                    cursor: controls.networkDisabled ? 'default' : 'pointer', opacity: controls.networkDisabled ? 0.55 : 1,
+                }}>
+                    <input type="checkbox" data-testid={`context-map-network-${voltage.split(' ')[0]}-toggle`}
+                        checked={controls.showNetwork[voltage]} disabled={controls.networkDisabled}
+                        onChange={e => controls.onShowNetwork(voltage, e.target.checked)} style={{ margin: 0 }} />
+                    <Swatch color={VOLTAGE_SWATCH[voltage].outline} />Network {voltage}
+                    {controls.showNetwork[voltage] && controls.networkLoading && (
+                        <span style={{ fontWeight: 400, color: colors.textSecondary }}>loading…</span>
+                    )}
+                </label>
+            ))}
+            {consignations && (
+                <label data-testid="context-map-consignation-legend" style={{
+                    display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700,
+                    cursor: placed > 0 ? 'pointer' : 'default', opacity: placed > 0 ? 1 : 0.55,
+                }}>
+                    <input type="checkbox" data-testid="context-map-consignation-toggle"
+                        checked={controls.showConsignations && placed > 0} disabled={placed === 0}
+                        onChange={e => controls.onShowConsignations(e.target.checked)} style={{ margin: 0 }} />
+                    Consignations
+                    <span style={{ fontWeight: 400, color: colors.textSecondary }}>
+                        {count === 0 ? 'none' : placed < count ? `${placed} of ${count} placed` : count}
+                    </span>
+                </label>
+            )}
+            {controls.showConsignations && placed > 0 && (
+                <div style={{ paddingLeft: 18 }}>
+                    <Swatch color={VOLTAGE_SWATCH['400 kV'].consigned} />400 kV ·{' '}
+                    <Swatch color={VOLTAGE_SWATCH['225 kV'].consigned} dashed ring />225 kV
+                </div>
+            )}
+        </div>
+    );
+};
+
+const Legend: React.FC<{
+    data: ContextMapData; showNuclear: boolean; onShowNuclear: (show: boolean) => void;
+    network: NetworkLayerControls;
+}> = ({ data, showNuclear, onShowNuclear, network }) => {
     const mix = productionMix(data);
     const border = data.flows.some(f => f.kind === 'border');
     const hasNuclear = (data.nuclear?.units.length ?? 0) > 0;
@@ -376,6 +455,7 @@ const Legend: React.FC<{ data: ContextMapData; showNuclear: boolean; onShowNucle
                     )}
                 </div>
             )}
+            <NetworkLegend data={data} controls={network} />
         </div>
     );
 };
@@ -426,6 +506,15 @@ const ContextMapView: React.FC<ContextMapViewProps> = ({ state }) => {
     const drag = useRef<{ x: number; y: number; vb: ViewBox; a: number } | null>(null);
     const [dragging, setDragging] = useState(false);
     const [showNuclear, setShowNuclear] = useState(true);
+    // Carte-Front's defaults: the consignations drawn as soon as there are some, the outline —
+    // which densifies a map whose subject is elsewhere — only when asked for.
+    const [showConsignations, setShowConsignations] = useState(true);
+    const [showNetwork, setShowNetwork] = useState<Record<ContextVoltage, boolean>>({ '400 kV': false, '225 kV': false });
+    const { network = null, networkLoading = false, requestNetwork } = state;
+    const onShowNetwork = useCallback((voltage: ContextVoltage, show: boolean) => {
+        setShowNetwork(prev => ({ ...prev, [voltage]: show }));
+        if (show) requestNetwork?.();
+    }, [requestNetwork]);
 
     // A new map opens on its own frame.
     useEffect(() => { setViewBox(base); }, [base]);
@@ -533,7 +622,8 @@ const ContextMapView: React.FC<ContextMapViewProps> = ({ state }) => {
                 onPointerLeave={endDrag}
                 onDoubleClick={() => { movedRef.current = true; setViewBox(base); }}
             >
-                <ContextMapLayers data={data} showNuclear={showNuclear} zoom={base ? vb.w / base.w : 1}
+                <ContextMapLayers data={data} showNuclear={showNuclear} showConsignations={showConsignations}
+                    network={network} showNetwork={showNetwork} zoom={base ? vb.w / base.w : 1}
                     highlights={highlights} onHover={onHover} />
             </svg>
             {/* Top-left: the situation first, then the studied elements. */}
@@ -546,7 +636,12 @@ const ContextMapView: React.FC<ContextMapViewProps> = ({ state }) => {
                 <HighlightLegend highlights={highlights} onFocus={focusHighlights} />
             </div>
             <div style={{ position: 'absolute', left: space[2], bottom: space[2], zIndex: 20 }}>
-                <Legend data={data} showNuclear={showNuclear} onShowNuclear={setShowNuclear} />
+                <Legend data={data} showNuclear={showNuclear} onShowNuclear={setShowNuclear} network={{
+                    showConsignations, onShowConsignations: setShowConsignations,
+                    showNetwork, onShowNetwork, networkLoading,
+                    // Without a georeference no line has a place on the map.
+                    networkDisabled: !data.georef,
+                }} />
             </div>
             <div style={{ position: 'absolute', right: space[2], bottom: space[2], zIndex: 20, display: 'flex', gap: 4 }}>
                 {([['+', 'Zoom in', 1 / 1.4], ['−', 'Zoom out', 1.4], ['⟲', 'Reset view', null]] as const)

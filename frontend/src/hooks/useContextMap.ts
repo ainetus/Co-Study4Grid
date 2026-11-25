@@ -12,7 +12,8 @@ import { computeN1OverloadHighlights } from '../utils/overloadHighlights';
 import { onStudyLoad } from '../utils/studyLoadSignal';
 import type { Notice } from '../components/NoticesPanel';
 import type {
-    AnalysisResult, ContextMapData, ContextMapElement, ContextMapHighlight, ContextMapUnavailable, DiagramData,
+    AnalysisResult, ContextMapData, ContextMapElement, ContextMapHighlight, ContextMapNetwork, ContextMapUnavailable,
+    DiagramData,
 } from '../types';
 
 type ContextMapPayload = ContextMapData | ContextMapUnavailable;
@@ -31,6 +32,11 @@ export interface ContextMapState {
     unavailableReason: string | null;
     /** The contingency and its overloads, resolved on the map. */
     highlights: ContextMapHighlight[];
+    /** Carte-Front's network outline (liseré), once asked for with `requestNetwork`. */
+    network?: ContextMapNetwork | null;
+    networkLoading?: boolean;
+    /** Read the network outline of the loaded study (once; a no-op when already asked for). */
+    requestNetwork?: () => void;
     /** Share of a line's limit from which it counts as overloaded (the
      *  study's monitoring factor) — named in the overloads' hover card. */
     monitoringFactor?: number;
@@ -104,6 +110,10 @@ export function useContextMap({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [geometry, setGeometry] = useState<Record<string, ContextMapElement | null>>({});
+    const [network, setNetwork] = useState<ContextMapNetwork | null>(null);
+    const [networkLoading, setNetworkLoading] = useState(false);
+    /** The capture whose outline was asked for — `{}` once per map, `null` while none was. */
+    const networkAskedRef = useRef<{ capture?: number } | null>(null);
     const generationRef = useRef(studyGeneration);
     const payloadRef = useRef<ContextMapPayload | null>(null);
     /** Token of the live early read; bumping it stops that read. */
@@ -115,6 +125,8 @@ export function useContextMap({
         payloadRef.current = next;
         setPayload(next);
         setGeometry({});
+        networkAskedRef.current = null;
+        setNetwork(null);
         setError(null);
     }, []);
 
@@ -132,6 +144,8 @@ export function useContextMap({
         payloadRef.current = null;
         setPayload(null);
         setGeometry({});
+        networkAskedRef.current = null;
+        setNetwork(null);
         setError(null);
         setLoading(true);
         let attempts = 0;
@@ -171,6 +185,21 @@ export function useContextMap({
                 if (generationRef.current === studyGeneration) setLoading(false);
             });
     }, [studyGeneration, showMap]);
+
+    const requestNetwork = useCallback(() => {
+        const current = payloadRef.current;
+        if (!current || current.available === false || networkAskedRef.current) return;
+        const asked = { capture: current.capture_id };
+        networkAskedRef.current = asked;
+        setNetworkLoading(true);
+        api.getContextMapNetwork()
+            .then(next => { if (networkAskedRef.current === asked) setNetwork(next); })
+            .catch(err => {
+                console.warn('Context map: network outline failed', err);
+                if (networkAskedRef.current === asked) networkAskedRef.current = null;
+            })
+            .finally(() => { if (networkAskedRef.current === asked || networkAskedRef.current === null) setNetworkLoading(false); });
+    }, []);
 
     const data = payload && payload.available !== false ? payload : null;
     const unavailableReason = payload && payload.available === false ? payload.unavailable_reason : null;
@@ -216,5 +245,8 @@ export function useContextMap({
         return out;
     }, [selectedContingency, overloads, geometry]);
 
-    return { data, loading, error, available, unavailableReason, highlights, monitoringFactor };
+    return {
+        data, loading, error, available, unavailableReason, highlights, monitoringFactor,
+        network, networkLoading, requestNetwork,
+    };
 }

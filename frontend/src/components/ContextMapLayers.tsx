@@ -7,8 +7,8 @@
 
 import React, { memo, useMemo } from 'react';
 import type {
-    ContextFiliere, ContextMapData, ContextMapFlow, ContextMapHighlight, ContextMapNuclearPlant,
-    ContextMapNuclearUnit, ContextMapZone,
+    ContextFiliere, ContextMapConsignation, ContextMapData, ContextMapFlow, ContextMapHighlight,
+    ContextMapNetwork, ContextMapNuclearPlant, ContextMapNuclearUnit, ContextMapZone, ContextVoltage,
 } from '../types';
 import { contextFiliereColors, contextMapPalette as P } from '../styles/tokens';
 import {
@@ -24,12 +24,18 @@ export type ContextHover =
     | { kind: 'zone'; zone: ContextMapZone }
     | { kind: 'flow'; flow: ContextMapFlow; fromLabel: string; toLabel: string }
     | { kind: 'element'; highlight: ContextHighlight }
-    | { kind: 'plant'; plant: ContextMapNuclearPlant; units: ContextMapNuclearUnit[] };
+    | { kind: 'plant'; plant: ContextMapNuclearPlant; units: ContextMapNuclearUnit[] }
+    | { kind: 'consignation'; consignation: ContextMapConsignation };
 
 interface ContextMapLayersProps {
     data: ContextMapData;
     /** Draw the nuclear units layer. */
     showNuclear: boolean;
+    /** Draw the consigned circuits. */
+    showConsignations?: boolean;
+    /** Carte-Front's network outline (liseré), and the voltages drawn of it. */
+    network?: ContextMapNetwork | null;
+    showNetwork?: Record<ContextVoltage, boolean>;
     /** Current view width / full view width: symbols keep their size on
      *  screen as the map zooms, as Carte-Front's zoomed views do. */
     zoom: number;
@@ -354,6 +360,76 @@ const Nuclear: React.FC<{ data: ContextMapData; g: Geometry; onHover: ContextMap
     );
 };
 
+/** Carte-Front `_draw_network`: a thin pastel trace per voltage under everything but the basemap. The
+ *  225 kV goes beneath the 400 kV (five times denser, it would hide it). */
+const NETWORK_COLORS: Record<ContextVoltage, string> = { '400 kV': P.network400, '225 kV': P.network225 };
+const OUTLINE_WIDTH_PT = 0.5;
+
+const NetworkOutline: React.FC<{
+    network: ContextMapNetwork; show: Record<ContextVoltage, boolean>; g: Geometry;
+}> = ({ network, show, g }) => {
+    const paths = useMemo(() => (['225 kV', '400 kV'] as const).map(voltage => ({
+        voltage,
+        d: (network.segments[voltage] ?? [])
+            .map(([x1, y1, x2, y2]) => `M${x1 * g.k} ${y1 * g.k}L${x2 * g.k} ${y2 * g.k}`).join(''),
+    })), [network, g.k]);
+    return (
+        <g data-testid="context-map-network" style={{ pointerEvents: 'none' }}>
+            {paths.filter(p => show[p.voltage] && p.d).map(p => (
+                <path key={p.voltage} data-testid={`context-map-network-${p.voltage.split(' ')[0]}`} d={p.d}
+                    fill="none" stroke={NETWORK_COLORS[p.voltage]} strokeWidth={OUTLINE_WIDTH_PT * g.pt}
+                    strokeOpacity={0.75} />
+            ))}
+        </g>
+    );
+};
+
+/** Carte-Front `CONSIGNATION_COLORS` / `_STYLES`: the voltage is also read from the stroke — wide and solid
+ *  at 400 kV, narrower and dashed at 225 kV — because red and green are the pair deuteranopia confuses. */
+const CONSIGNATION_STYLE: Record<ContextVoltage, { color: string; fill: string; lw: number; halo: number; dash?: [number, number] }> = {
+    '400 kV': { color: P.consignation400, fill: P.consignation400Fill, lw: 3.2, halo: 5.2 },
+    '225 kV': { color: P.consignation225, fill: P.consignation225Fill, lw: 2.0, halo: 3.6, dash: [5, 2] },
+};
+/** Ends this close on screen (a transformer's) are one point. */
+const POINT_TOLERANCE_PT = 1.5;
+/** Carte-Front's scatter sizes: 18 (small) and 42 (highlighted) pt². */
+const CONSIGNATION_DOT_R_PT = Math.sqrt(18 / Math.PI);
+
+/** Carte-Front `_draw_consignations`: a greyed core inside a casing of its voltage's colour, a dot at each end. */
+const Consignations: React.FC<{
+    items: ContextMapConsignation[]; g: Geometry; onHover: ContextMapLayersProps['onHover'];
+}> = ({ items, g, onHover }) => (
+    <g data-testid="context-map-consignations">
+        {['225 kV', '400 kV'].flatMap(voltage => items.filter(c => c.voltage === voltage)).map(c => {
+            const style = CONSIGNATION_STYLE[c.voltage];
+            const [[x1, y1], [x2, y2]] = [c.points[0].map(v => v * g.k), c.points[1].map(v => v * g.k)];
+            const point = Math.hypot(x2 - x1, y2 - y1) < POINT_TOLERANCE_PT * g.pt;
+            const d = `M${x1} ${y1}L${x2} ${y2}`;
+            const dash = style.dash ? style.dash.map(n => n * style.lw * g.pt).join(' ') : undefined;
+            const enter = (e: React.MouseEvent) => onHover({ kind: 'consignation', consignation: c }, e);
+            return (
+                <g key={c.id} data-testid={`context-map-consignation-${c.id}`} data-voltage={c.voltage}
+                    style={{ cursor: 'help' }} onMouseEnter={enter} onMouseMove={enter} onMouseLeave={() => onHover(null)}>
+                    {!point && (
+                        <>
+                            <path d={d} fill="none" stroke={style.color} strokeWidth={style.halo * g.pt}
+                                strokeLinecap="round" strokeDasharray={dash} />
+                            <path d={d} fill="none" stroke={style.fill} strokeWidth={style.lw * g.pt}
+                                strokeLinecap="round" strokeDasharray={dash} strokeOpacity={0.97} />
+                            {/* A wider transparent hit area: a hairline is hard to hover. */}
+                            <path d={d} fill="none" stroke="transparent" strokeWidth={Math.max(style.halo, 6) * g.pt} />
+                        </>
+                    )}
+                    {(point ? [[x1, y1]] : [[x1, y1], [x2, y2]]).map(([x, y], i) => (
+                        <circle key={i} cx={x} cy={y} r={(point ? 1.5 : 1) * CONSIGNATION_DOT_R_PT * g.pt}
+                            fill={style.fill} stroke={style.color} strokeWidth={0.7 * g.pt} />
+                    ))}
+                </g>
+            );
+        })}
+    </g>
+);
+
 const AttentionRing: React.FC<{ data: ContextMapData; highlights: ContextHighlight[]; g: Geometry }> = ({ data, highlights, g }) => {
     const box = highlightBox(data, highlights);
     if (!box) return null;
@@ -515,18 +591,24 @@ const ZoneFallback: React.FC<{
 };
 
 /** The Context-tab map, every layer in Carte-Front's order (pies over arrows). */
-const ContextMapLayers: React.FC<ContextMapLayersProps> = ({ data, showNuclear, zoom, highlights, onHover }) => {
+const ContextMapLayers: React.FC<ContextMapLayersProps> = ({
+    data, showNuclear, showConsignations = false, network = null, showNetwork, zoom, highlights, onHover,
+}) => {
     const g = useGeometry(data, zoom);
     const [bx, by, bw, bh] = data.bounds.map(v => v * g.k);
     return (
         <g>
             <rect x={bx - 4 * bw} y={by - 4 * bh} width={9 * bw} height={9 * bh} fill={P.sea} />
             <Basemap data={data} g={g} />
+            {network && showNetwork && <NetworkOutline network={network} show={showNetwork} g={g} />}
             <Flows data={data} g={g} onHover={onHover} />
             <Badges data={data} g={g} />
             <FlowLabels data={data} g={g} />
             <Zones data={data} g={g} onHover={onHover} />
             {showNuclear && <Nuclear data={data} g={g} onHover={onHover} />}
+            {showConsignations && data.consignations && data.consignations.items.length > 0 && (
+                <Consignations items={data.consignations.items} g={g} onHover={onHover} />
+            )}
             <AttentionRing data={data} highlights={highlights} g={g} />
             <Highlights highlights={highlights} g={g} onHover={onHover} />
         </g>

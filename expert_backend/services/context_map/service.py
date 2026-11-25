@@ -32,6 +32,7 @@ from expert_backend.services.context_map.builder import (
     element_geometry,
 )
 from expert_backend.services.context_map.georef import load_layout_points
+from expert_backend.services.context_map.network_layers import grid_outline
 from expert_backend.services.context_map.plants import load_plant_matching, resolve_plants_path
 from expert_backend.services.context_map.situation import load_situation, resolve_situation_path
 from expert_backend.services.context_map.snapshot import NetworkSnapshot, capture_snapshot
@@ -103,6 +104,23 @@ class ContextMapService:
                 else:
                     logger.info("Context map: none for this network — %s", payload["unavailable_reason"])
             return self._map
+
+    def outline(self) -> dict | None:
+        """The 400 / 225 kV network outline of the built map (once per
+        capture); ``None`` before a load. Built from the snapshot, like the
+        map, so it needs no network lock either."""
+        cmap = self.get_map()
+        if cmap is None or self._snapshot is None:
+            return None
+        with self._lock:
+            if cmap.outline is None:
+                start = time.perf_counter()
+                cmap.outline = grid_outline(self._snapshot, cmap.vl_xy) if cmap.payload["available"] else {"segments": {}}
+                cmap.outline["capture_id"] = self._capture_id
+                logger.info("Context map: network outline built in %.3fs (%d segments)",
+                            time.perf_counter() - start,
+                            sum(len(s) for s in cmap.outline["segments"].values()))
+            return cmap.outline
 
     def elements(self, element_ids: list[str]) -> list[dict]:
         """Map geometry of the given elements (unknown ids are skipped)."""

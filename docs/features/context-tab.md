@@ -89,6 +89,8 @@ reloaded session keeps its own tab.
 | Border arrows | `fleches._draw_country_region_flows` | Dashed, teal (export) / orange (import), region ↔ neighbour anchor (`COUNTRY_BOX`). |
 | Neighbour badges | `etiquettes._label_box` | "Exports / Imports / Balanced" + the home country's net exchange with that neighbour. |
 | Nuclear units | `couches._draw_nuclear` | One dot per unit on a small ring around its plant, filled by output level (amber → orange-red ramp), hollow when stopped (< 1 MW); dashed outline per plant, hover for its units. Hideable from the legend. |
+| Network outline (*liseré*) | `fond._draw_network` | A thin pastel trace of the 400 kV (red `#e08b8b`) and 225 kV (green `#7fc39a`) circuits, under the transfers and the zones — to place flows and outages on the real grid. Two independent legend boxes, **off by default**. See *Network layers*. |
+| Consignations | `couches._draw_consignations` | The extra-high-voltage circuits the situation takes out: a greyed core inside a casing of the voltage's colour (400 kV red, wide and solid; 225 kV green, narrower and dashed — the second channel for colour-blind readers), a dot at each end, a transformer as a point; hover names the circuit. **On by default**; hideable from the legend. See *Network layers*. |
 | Highlights | — (Co-Study) | Contingency + overloads, dark casing under the signal colour, each overload's loading in an orange pill beside its line, an attention ring around them, auto-framing and a *Zoom to contingency* button. |
 
 Every drawn transfer carries its value. On the country mesh the value sits
@@ -103,7 +105,8 @@ The **situation card** sits top-left: case date, production with the national
 **mix bar** (one segment per generation type, its share written on it from 7 %
 up, MW on hover), consumption and net exports; the contingency card stacks
 under it. The **legend** sits bottom-left (Carte-Front's production legend):
-generation-type colours, consumption ring, arrows, nuclear units.
+generation-type colours, consumption ring, arrows, nuclear units, and the
+network layers' toggles.
 
 ## Mesh: regions, else countries
 
@@ -161,6 +164,78 @@ Per zone (`aggregate.production_and_consumption`, `zone_transfers`):
   two-winding transformers, tie lines, HVDC (converter stations' AC-side `p`)
   — contributes `(p1 − p2) / 2` (losses cancel); summed per zone pair,
   oriented, kept above 1 MW (`_SEUIL_MW`).
+
+## Network layers: the liseré and the consignations
+
+Two Carte-Front layers that situate the map on the grid itself
+(`services/context_map/network_layers.py`, `consignations.py`).
+
+### The network outline
+
+Carte-Front draws, under everything but the basemap, a thin pastel trace per
+voltage — rebuilt from its sold layout, one segment per pair of linked
+substations, parallel circuits melted into one. Here it comes **from the
+network**: every line (and tie line) between two georeferenced voltage levels
+of an extra-high-voltage *class* — nominal voltage ≥ 300 kV is "400 kV", 180
+to 300 kV is "225 kV" (RTE's levels and their European 380 / 220 kV
+neighbours share a class; transformers, HVDC links and anything under 180 kV
+are not traced) — with parallel circuits melted. The 225 kV goes under the
+400 kV (five times denser, it would hide it).
+
+It is **optional and heavy next to the map** (a few thousand segments: 1 600
+on the French THT grid, ~50 kB; 2 300 on the European 380 / 400 kV grid,
+~80 kB), so it has its own route, `GET /api/context-map/network`, read
+**once, when the operator first ticks a box** (`useContextMap.requestNetwork`;
+dropped with the study, asked again after a failure) and cached on the built
+map. Off by default, as Carte-Front: it densifies a map whose subject is
+elsewhere. Without a georeference there is nothing to draw and the boxes are
+disabled.
+
+### The consignations
+
+A circuit is *consigned* — taken out for work — by Carte-Front's rule on a
+situation (`maintenance.detect_consignations_via_I`, as `carte_front/situation`
+applies it to a *PtFige*), **ported** to the parsed network:
+
+1. **no current at either end** — `I` is `NaN` (the end is off voltage) or
+   below **0.5 A**. `I` is pypowsybl's; without it `√(P² + Q²) / (√3·V)` at
+   the nominal voltage, as Carte-Front falls back when a bus has no computed
+   voltage. A line energised from one end keeps its charging current at the
+   other (58 A on a 225 kV line): it is in service, not consigned;
+2. **isolated at both voltage levels**, in the topology the datalake calls
+   `TOPO`: a node is a component of closed switches and internal connections,
+   with ALL its elements. The circuit is alone on its node, or shares it only
+   with the substation's own wiring (busbar sections, `fict_…` /
+   `<voltage level>_…` elements) and with **other circuits that are
+   themselves consigned** — a group tied together (an antenna), none "alone".
+   A circuit open at one end only is therefore not consigned. A bus-breaker
+   voltage level has no switches: an end is isolated when its circuit is
+   disconnected.
+
+The perimeter is Carte-Front's: lines **and two-winding transformers** whose
+two ends are extra-high voltage (the `lines` / `2wt` of the datalake). A file
+that carries **no flow at all** (fewer than half of its extra-high-voltage
+circuits give a current or a power) cannot say which circuits are out of
+service — every one would read "without current" — so it gets none.
+
+Carte-Front reconstitutes `I` and `TOPO` from the XIIDM; the network being
+parsed already, `TOPO` is read per *candidate* voltage level from the
+node-breaker topology (`get_node_breaker_topology`, ~0.35 ms each — a few
+hundred reads at most). It runs in `capture_snapshot`, so inside the same
+network lock as the rest of the capture, and adds ~0.25 s on the 7 000-node
+French grid (nothing measurable elsewhere); a failure only leaves the layer
+out. The consigned circuits ride in the map payload (`consignations`:
+`items` placed on the map, `total` the situation holds — a circuit one of
+whose ends the map cannot place is counted, not drawn).
+
+On the four RTE7000 THT grids (reconstructed *recollements*): 26 to 71
+consigned circuits (21–57 at 225 kV, 5–28 at 400 kV, 3–7 of them
+transformers) in 0.15–0.3 s; none on the PyPSA-EUR grids, whose circuits are
+all in service. Carte-Front measures 58 to 169 on the real *PtFige*.
+
+The legend lists the count (`none` / `N of M placed` when relevant) and a
+voltage key. Hover: the circuit's name and id, its voltage, the two voltage
+levels it joins.
 
 ## Nuclear units
 
@@ -287,6 +362,9 @@ When fewer than two zones can be placed on the ground, there is no map at all
   from the map on screen (the backend keeps serving the previous study's map
   until its reset). `useSettings.studyGeneration`, bumped by
   `applyConfigResponse`, confirms it afterwards (a no-op when already shown).
+- The consignations are detected in that same capture (~0.25 s more on the
+  French THT grid, see *Network layers*); the network outline is built and read
+  only when asked for.
 - Element geometry (`POST /api/context-map/elements`) is fetched lazily for the
   contingency + overloads and cached per study.
 
@@ -294,7 +372,8 @@ When fewer than two zones can be placed on the ground, there is no map at all
 
 | Endpoint | Returns |
 |----------|---------|
-| `GET /api/context-map` | `ContextMapData` (`types.ts`): `available` (`true`), `mesh`, `home`, `frame`, `bounds` `[x, y, w, h]`, `georef`, `flows_available`, `case_date`, `capture_id`, `basemap`, `country_labels`, `zones`, `flows`, `nuclear`, `plant_source` (the plant database credited when matched types are used, else `null`), `situation` (`{at_utc, dispatch, sources}` of a rebuilt real hour, else `null`), `totals`. Every position is already projected (`x = lon·cos(lat0)`, `y = −lat`). A network without the prerequisite gets `ContextMapUnavailable`: `{available: false, unavailable_reason, mesh, case_date, capture_id}`. 404 before a study is loaded. |
+| `GET /api/context-map` | `ContextMapData` (`types.ts`): `available` (`true`), `mesh`, `home`, `frame`, `bounds` `[x, y, w, h]`, `georef`, `flows_available`, `case_date`, `capture_id`, `basemap`, `country_labels`, `zones`, `flows`, `nuclear`, `consignations` (`{items, total}`, see *Network layers*), `plant_source` (the plant database credited when matched types are used, else `null`), `situation` (`{at_utc, dispatch, sources}` of a rebuilt real hour, else `null`), `totals`. Every position is already projected (`x = lon·cos(lat0)`, `y = −lat`). A network without the prerequisite gets `ContextMapUnavailable`: `{available: false, unavailable_reason, mesh, case_date, capture_id}`. 404 before a study is loaded. |
+| `GET /api/context-map/network` | `ContextMapNetwork`: `{segments: {"400 kV": [[x1, y1, x2, y2], …], "225 kV": […]}, capture_id}` — the network outline in the map's frame, ~100 m precision. Gzipped. 404 before a study is loaded. |
 | `POST /api/context-map/elements` `{element_ids}` | `{elements: ContextMapElement[]}` — `points` (voltage-level positions, `null` without georeference), `zone_points`, `zones`, `kind`, `name`. At most 500 ids. |
 
 Overloads come from the same source and selection filter as the N-1 tab's
@@ -308,10 +387,10 @@ where unknown).
 
 | Side | File |
 |------|------|
-| Backend | `expert_backend/services/context_map/` — `snapshot.py` (capture), `aggregate.py` (mesh + balances), `nuclear.py` (units layer), `plants.py` (`power_plants.json` matching), `situation.py` (`situation.json` of a rebuilt hour), `regions.py` (RTE regions inferred for France alone, from `resources/rte_region_points.json`), `georef.py`, `geography.py` (ported constants, basemap, projection), `builder.py` (payload), `service.py` (singleton), `resources/europe_countries.geojson` |
+| Backend | `expert_backend/services/context_map/` — `snapshot.py` (capture), `aggregate.py` (mesh + balances), `nuclear.py` (units layer), `consignations.py` (the consignation rule), `network_layers.py` (outline + consignation payloads), `plants.py` (`power_plants.json` matching), `situation.py` (`situation.json` of a rebuilt hour), `regions.py` (RTE regions inferred for France alone, from `resources/rte_region_points.json`), `georef.py`, `geography.py` (ported constants, basemap, projection), `builder.py` (payload), `service.py` (singleton), `resources/europe_countries.geojson` |
 | Backend | `expert_backend/context_map_api.py` (routes), `main.py` (`/api/config` capture) |
 | Frontend | `hooks/useContextMap.ts`, `components/ContextMapView.tsx` (container, pan/zoom, cards), `components/ContextMapLayers.tsx` (SVG layers), `utils/contextMapGeometry.ts`, `utils/studyLoadSignal.ts`, `styles/tokens.ts` (`contextMapPalette`, `contextFiliereColors`) |
-| Tests | `expert_backend/tests/test_context_map.py`, `scripts/pypsa_eur/test_match_power_plants.py`, `scripts/pypsa_eur/test_build_situation.py`, `useContextMap.test.ts`, `ContextMapView.test.tsx`, `contextMapGeometry.test.ts`, `VisualizationPanel.test.tsx` |
+| Tests | `expert_backend/tests/test_context_map.py`, `expert_backend/tests/test_context_map_consignations.py`, `scripts/pypsa_eur/test_match_power_plants.py`, `scripts/pypsa_eur/test_build_situation.py`, `useContextMap.test.ts`, `ContextMapView.test.tsx`, `contextMapGeometry.test.ts`, `VisualizationPanel.test.tsx` |
 
 ## Game Mode grids
 
@@ -327,6 +406,15 @@ where unknown).
   the France THT grids' substations, placed on a drawing (~30 km): a
   substation no RTE line code names, near a regional boundary, may land in
   the neighbouring region (about 1 in 20).
+- The consignations are those of the file's instant (N state as loaded): they
+  do not follow a contingency or an action, and Carte-Front's day-long
+  detection (blocks of at least two steps) has no counterpart on one instant.
+  The datalake's own caveat applies: a generator stopped alone on its node
+  does not change a line's isolation unless it shares a de-energised busbar
+  section with it.
+- The outline is the *network's* lines between placed voltage levels, not
+  Carte-Front's reconstruction from the sold layout: a layout older than the
+  network leaves out the circuits of the voltage levels it misses.
 - The tab is not detachable.
 - The *Net exports* line needs a neighbour in the network: a home-only grid
   shows none.
