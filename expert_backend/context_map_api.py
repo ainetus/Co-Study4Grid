@@ -11,7 +11,7 @@ Registered on the app via :func:`install_context_map_routes` (same
 install-once pattern as ``game_api``), kept out of ``main.py`` for the
 module-size ceiling. Service: ``services/context_map``.
 
-Neither route takes the network lock: the map is built from the snapshot
+None of the routes takes the network lock: the map is built from the snapshot
 ``/api/config`` captured at load, so it is served while the NAD prefetch
 still holds the shared ``Network``.
 """
@@ -49,6 +49,15 @@ def install_context_map_routes(app: FastAPI) -> None:
             raise HTTPException(status_code=404, detail=_NO_STUDY_DETAIL)
         # The basemap makes the payload ~100 kB, which gzip divides by four.
         return maybe_gzip_json(cmap.payload, http_request)
+
+    @app.get("/api/context-map/network")
+    def get_context_map_network(http_request: Request) -> Response:
+        """The 400 / 225 kV network outline (Carte-Front's *liseré*) in the
+        map's frame — optional and heavy, so apart from ``/api/context-map``."""
+        outline = context_map_service.outline()
+        if outline is None:
+            raise HTTPException(status_code=404, detail=_NO_STUDY_DETAIL)
+        return maybe_gzip_json(outline, http_request)
 
     @app.post("/api/context-map/elements", response_model=ContextMapElementsResponse)
     def get_context_map_elements(request: ContextMapElementsRequest) -> dict:

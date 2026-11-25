@@ -7,7 +7,7 @@
 
 import axios from 'axios';
 import { signalStudyLoad } from './utils/studyLoadSignal';
-import type { ConfigRequest, BranchResponse, DiagramData, DiagramPatch, FlowDelta, AssetDelta, AvailableAction, SessionResult, VlInjection, FeederLabel, ContextMapData, ContextMapElement, ContextMapUnavailable } from './types';
+import type { ConfigRequest, BranchResponse, DiagramData, DiagramPatch, FlowDelta, AssetDelta, AvailableAction, SessionResult, VlInjection, FeederLabel, ContextMapData, ContextMapElement, ContextMapNetwork, ContextMapUnavailable } from './types';
 
 // Same-origin by default when built with `VITE_API_BASE_URL=''` (the
 // frontend is served by the backend, e.g. on a HuggingFace Docker Space):
@@ -142,6 +142,12 @@ export const api = {
     // answers while the base NAD is still being generated.
     getContextMap: async (): Promise<ContextMapData | ContextMapUnavailable> => {
         const response = await axios.get<ContextMapData | ContextMapUnavailable>(`${API_BASE_URL}/api/context-map`);
+        return response.data;
+    },
+    // Carte-Front's network outline (liseré): optional and heavier than the
+    // map, so read once the operator asks for it.
+    getContextMapNetwork: async (): Promise<ContextMapNetwork> => {
+        const response = await axios.get<ContextMapNetwork>(`${API_BASE_URL}/api/context-map/network`);
         return response.data;
     },
     getContextMapElements: async (elementIds: string[]): Promise<ContextMapElement[]> => {

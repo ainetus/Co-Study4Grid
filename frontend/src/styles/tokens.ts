@@ -185,6 +185,17 @@ export const contextMapPalette = {
   nuclearEdge: '#3a2a00',
   nuclearStoppedEdge: '#9aa7ad',
   nuclearPlant: '#5f8296',
+  /** Network outline (Carte-Front `NETWORK_COLORS`): the pastel of each
+   *  voltage's code, a backdrop under the flows. */
+  network400: '#e08b8b',
+  network225: '#7fc39a',
+  /** Consignations (Carte-Front `CONSIGNATION_COLORS` / `_FILL_COLORS`): a
+   *  vivid casing per voltage — 400 kV red, 225 kV green, also told apart by
+   *  width and dashes — around a greyed pastel core. */
+  consignation400: '#ff1744',
+  consignation225: '#00c853',
+  consignation400Fill: '#d5ccd1',
+  consignation225Fill: '#ccd6cf',
 } as const;
 
 /** Generation-type colours (Carte-Front `FILIERE_COLORS`, éco2mix-like). */

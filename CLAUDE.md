@@ -47,6 +47,10 @@ Co-Study4Grid/
 │   │   │                          # aggregate (RTE-region mesh via regionCvg, else
 │   │   │                          # countries; mix / consumption / transfers),
 │   │   │                          # nuclear (units layer, as Carte-Front),
+│   │   │                          # consignations (the Carte-Front consignation rule on
+│   │   │                          # a situation: no current at either end + isolated at
+│   │   │                          # both voltage levels) + network_layers (the 400/225 kV
+│   │   │                          # outline — liseré — and the consignation payload),
 │   │   │                          # plants (power_plants.json — real plants
 │   │   │                          # matched onto untyped PyPSA generators),
 │   │   │                          # situation (situation.json — the real hour
@@ -370,6 +374,7 @@ guards the reductions documented in
 | POST | `/api/simulate-and-variant-diagram` | NDJSON stream: `{type:"metrics"}` then `{type:"diagram"}` so sidebar updates ahead of the SVG |
 | POST | `/api/compute-superposition` | Compute combined effect of two actions (superposition theorem) |
 | GET  | `/api/context-map` | Context tab situation map: zones (RTE regions via `regionCvg`, else countries) with production mix / consumption, inter-zone transfers, neighbour exchanges, European basemap — projected, built from the snapshot taken at `/api/config` (no network lock; served while the NAD is still generating; `capture_id` tells studies apart) |
+| GET  | `/api/context-map/network` | Context tab network outline (Carte-Front's *liseré*): the 400 / 225 kV circuits as segments in the map's frame, parallel circuits melted — optional and heavier than the map, read once when the operator ticks it (the consignations ride in `/api/context-map`) |
 | POST | `/api/context-map/elements` | Map position (voltage-level points, else zone points) of the elements the Context tab highlights — the contingency and its overloads |
 | POST | `/api/game/log-solution` | Capitalise a Game Mode retained proposition into the shared solution base; returns the novelty verdict (+bonus points) and per-action usage frequencies |
 | GET  | `/api/game/lever-stats` | Most-used unitary levers of a (network, contingency) context in the shared solution base — the Game Mode beginner-assistance hints (top-N, tagged voltage_level / branch / generation / load) |

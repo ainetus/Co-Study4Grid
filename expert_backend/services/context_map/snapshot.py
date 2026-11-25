@@ -33,6 +33,8 @@ from typing import Any
 
 import pandas as pd
 
+from expert_backend.services.context_map.consignations import COLUMNS as CONSIGNATION_COLUMNS
+from expert_backend.services.context_map.consignations import detect_consignations
 from expert_backend.services.context_map.plants import PlantMatching
 from expert_backend.services.element_names import branch_display_name
 from expert_backend.services.equipment_names import VoltageLevelNames
@@ -55,7 +57,9 @@ class NetworkSnapshot:
 
     ``branches`` (index = element id): ``name``, ``vl1``, ``vl2``, ``p1``,
     ``p2`` (MW, IIDM convention: positive when power LEAVES the bus into
-    the branch; NaN when an end is open or the file carries no flow).
+    the branch; NaN when an end is open or the file carries no flow) and
+    ``kind`` (``line`` / ``transformer`` / ``tie_line`` / ``hvdc``; absent on
+    a hand-built table, where every branch reads as a line).
     ``generators`` / ``loads``: ``vl``, ``p`` (IIDM sign: a production is
     negative), ``target`` (``target_p`` / ``p0``, used when ``p`` is NaN)
     and, for generators, ``source`` (``energy_source``), ``genre``,
@@ -74,6 +78,13 @@ class NetworkSnapshot:
     exchanges: pd.DataFrame = field(default_factory=pd.DataFrame)
     injection_vl: dict[str, str] = field(default_factory=dict)
     names: dict[str, str] = field(default_factory=dict)
+    #: Nominal voltage (kV) of each voltage level — the network outline's
+    #: 400 / 225 kV classes and the consignations' perimeter.
+    vl_nominal: dict[str, float] = field(default_factory=dict)
+    #: The consigned extra-high-voltage circuits (``consignations.py``):
+    #: indexed by element id, ``vl1``, ``vl2``, ``voltage``, ``kind``.
+    consignations: pd.DataFrame = field(
+        default_factory=lambda: pd.DataFrame(columns=CONSIGNATION_COLUMNS))
     case_date: str | None = None
     #: Nuclear units, connected or NOT (a stopped unit is drawn hollow):
     #: ``vl``, ``p`` / ``target`` (NaN / 0 when disconnected), ``max_p``.
@@ -134,8 +145,8 @@ def _substation_positions(network: Any, snap: NetworkSnapshot) -> None:
             snap.substation_lonlat[str(sid)] = (lon, lat)
 
 
-def _two_ended(df: pd.DataFrame) -> pd.DataFrame:
-    """Lines / transformers / tie lines as ``name, vl1, vl2, p1, p2``."""
+def _two_ended(df: pd.DataFrame, kind: str = "line") -> pd.DataFrame:
+    """Lines / transformers / tie lines as ``name, vl1, vl2, p1, p2, kind``."""
     connected = _connected(df, "connected1", "connected2")
     out = pd.DataFrame({
         "name": _col(df, "name", "").fillna(""),
@@ -143,9 +154,20 @@ def _two_ended(df: pd.DataFrame) -> pd.DataFrame:
         "vl2": _col(df, "voltage_level2_id", ""),
         "p1": pd.to_numeric(_col(df, "p1"), errors="coerce"),
         "p2": pd.to_numeric(_col(df, "p2"), errors="coerce"),
+        "kind": kind,
     }, index=df.index.astype(str))
     out.loc[~connected.to_numpy(), ["p1", "p2"]] = float("nan")
     return out
+
+
+def _consignations(network: Any, lines: pd.DataFrame, transformers: pd.DataFrame,
+                   snap: NetworkSnapshot) -> None:
+    """The situation's consigned circuits. A failure only leaves the layer
+    out: it must not cost the map."""
+    try:
+        snap.consignations = detect_consignations(network, lines, transformers, snap.vl_nominal)
+    except Exception:
+        logger.exception("Context map: consignation detection failed")
 
 
 def _hvdc(network: Any) -> pd.DataFrame:
@@ -155,7 +177,7 @@ def _hvdc(network: Any) -> pd.DataFrame:
     power from the AC network), so it reads like a branch end."""
     lines = network.get_hvdc_lines()
     if lines.empty:
-        return pd.DataFrame(columns=["name", "vl1", "vl2", "p1", "p2"])
+        return pd.DataFrame(columns=["name", "vl1", "vl2", "p1", "p2", "kind"])
     stations = pd.concat([
         network.get_vsc_converter_stations(),
         network.get_lcc_converter_stations(),
@@ -167,7 +189,7 @@ def _hvdc(network: Any) -> pd.DataFrame:
     return pd.DataFrame({
         "name": _col(lines, "name", "").fillna(""),
         "vl1": cs1.map(vl), "vl2": cs2.map(vl),
-        "p1": cs1.map(p), "p2": cs2.map(p),
+        "p1": cs1.map(p), "p2": cs2.map(p), "kind": "hvdc",
     }, index=lines.index.astype(str))
 
 
@@ -209,14 +231,19 @@ def capture_snapshot(network: Any) -> NetworkSnapshot:
     _substations(network, snap)
     _substation_positions(network, snap)
 
-    branches = [_two_ended(network.get_lines()), _two_ended(network.get_2_windings_transformers())]
+    line_table = network.get_lines()
+    transformer_table = network.get_2_windings_transformers()
+    branches = [_two_ended(line_table), _two_ended(transformer_table, "transformer")]
     tie_lines = network.get_tie_lines() if hasattr(network, "get_tie_lines") else pd.DataFrame()
     if not tie_lines.empty:
-        branches.append(_two_ended(tie_lines))
+        branches.append(_two_ended(tie_lines, "tie_line"))
     branches.append(_hvdc(network))
     branches = [b for b in branches if not b.empty]
     snap.branches = (pd.concat(branches) if branches
-                     else pd.DataFrame(columns=["name", "vl1", "vl2", "p1", "p2"]))
+                     else pd.DataFrame(columns=["name", "vl1", "vl2", "p1", "p2", "kind"]))
+    snap.vl_nominal = {str(k): float(v) for k, v in
+                       pd.to_numeric(_col(vls, "nominal_v"), errors="coerce").dropna().items()}
+    _consignations(network, line_table, transformer_table, snap)
 
     gens = network.get_generators(all_attributes=True)
     loads = network.get_loads(all_attributes=True)

@@ -9,7 +9,7 @@ import { afterEach, describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import ContextMapView from './ContextMapView';
 import type { ContextMapState } from '../hooks/useContextMap';
-import type { ContextMapData, ContextMapHighlight } from '../types';
+import type { ContextMapConsignation, ContextMapData, ContextMapHighlight, ContextMapNetwork } from '../types';
 
 /** France frame, two regions, one neighbour — a trimmed real payload. */
 const payload = (): ContextMapData => ({
@@ -413,5 +413,126 @@ describe('ContextMapView', () => {
         expect(tip).toHaveTextContent('Net export: 300 MW');
         fireEvent.mouseLeave(screen.getByTestId('context-map-zone-LYON'));
         expect(screen.queryByTestId('context-map-tooltip')).toBeNull();
+    });
+
+    describe('consignations', () => {
+        const cons = (over: Partial<ContextMapConsignation> & { id: string }): ContextMapConsignation => ({
+            name: over.id, voltage: '400 kV', kind: 'line', points: [[1.6, -48.6], [3.3, -45.8]],
+            vls: ['PARIS 400kV', 'LYON 400kV'], ...over,
+        });
+        const withConsignations = (items: ContextMapConsignation[], total = items.length): ContextMapData =>
+            ({ ...payload(), consignations: { items, total } });
+
+        it('draws the consigned circuits by voltage, and can hide them', () => {
+            const data = withConsignations([
+                cons({ id: 'C400', name: 'PARIS — LYON' }),
+                cons({ id: 'C225', voltage: '225 kV', points: [[1.6, -48.6], [2.4, -47.0]] }),
+            ]);
+            render(<ContextMapView state={state({ data })} />);
+            const layer = screen.getByTestId('context-map-consignations');
+            expect(layer.querySelectorAll('g[data-voltage]')).toHaveLength(2);
+            // 400 kV: solid and wide, red casing; 225 kV: dashed and narrower, green casing.
+            const [casing400, core400] = screen.getByTestId('context-map-consignation-C400').querySelectorAll('path');
+            expect(casing400).toHaveAttribute('stroke', '#ff1744');
+            expect(core400).toHaveAttribute('stroke', '#d5ccd1');
+            expect(core400).not.toHaveAttribute('stroke-dasharray');
+            const [casing225, core225] = screen.getByTestId('context-map-consignation-C225').querySelectorAll('path');
+            expect(casing225).toHaveAttribute('stroke', '#00c853');
+            expect(core225).toHaveAttribute('stroke-dasharray');
+            expect(Number(casing225.getAttribute('stroke-width'))).toBeLessThan(Number(casing400.getAttribute('stroke-width')));
+            // 225 kV beneath 400 kV, whatever the payload order.
+            expect([...layer.querySelectorAll('g[data-voltage]')].map(g => g.getAttribute('data-voltage')))
+                .toEqual(['225 kV', '400 kV']);
+            fireEvent.click(screen.getByTestId('context-map-consignation-toggle'));
+            expect(screen.queryByTestId('context-map-consignations')).toBeNull();
+        });
+
+        it('names the circuit on hover', () => {
+            const data = withConsignations([cons({ id: 'ALBERL72BATHI', name: 'ALBERTVILLE — BATHIE' })]);
+            render(<ContextMapView state={state({ data })} />);
+            fireEvent.mouseEnter(screen.getByTestId('context-map-consignation-ALBERL72BATHI'), { clientX: 5, clientY: 5 });
+            const tip = screen.getByTestId('context-map-tooltip');
+            expect(tip).toHaveTextContent('Consigned: ALBERTVILLE — BATHIE');
+            expect(tip).toHaveTextContent('ALBERL72BATHI');
+            expect(tip).toHaveTextContent('400 kV line, out of service');
+            expect(tip).toHaveTextContent('PARIS 400kV – LYON 400kV');
+            expect(tip).toHaveTextContent('No current at either end, isolated at both substations');
+        });
+
+        it('draws a transformer, whose ends coincide, as a point', () => {
+            const data = withConsignations([cons({ id: 'TR', kind: 'transformer', points: [[3.3, -45.8], [3.3, -45.8]] })]);
+            render(<ContextMapView state={state({ data })} />);
+            const tr = screen.getByTestId('context-map-consignation-TR');
+            expect(tr.querySelectorAll('path')).toHaveLength(0);
+            expect(tr.querySelectorAll('circle')).toHaveLength(1);
+            fireEvent.mouseEnter(tr, { clientX: 5, clientY: 5 });
+            expect(screen.getByTestId('context-map-tooltip')).toHaveTextContent('400 kV transformer, out of service');
+        });
+
+        it('counts them in the legend, and says when there are none or some are unplaced', () => {
+            const { rerender } = render(<ContextMapView state={state({ data: withConsignations([cons({ id: 'A' })]) })} />);
+            const legend = screen.getByTestId('context-map-consignation-legend');
+            expect(legend).toHaveTextContent('Consignations');
+            expect(legend).toHaveTextContent('1');
+            expect(screen.getByTestId('context-map-network-legend')).toHaveTextContent('400 kV');
+            rerender(<ContextMapView state={state({ data: withConsignations([cons({ id: 'A' })], 3) })} />);
+            expect(screen.getByTestId('context-map-consignation-legend')).toHaveTextContent('1 of 3 placed');
+            rerender(<ContextMapView state={state({ data: withConsignations([]) })} />);
+            expect(screen.getByTestId('context-map-consignation-legend')).toHaveTextContent('none');
+            expect(screen.getByTestId('context-map-consignation-toggle')).toBeDisabled();
+            expect(screen.queryByTestId('context-map-consignations')).toBeNull();
+            // A payload without the layer (older backend): no row.
+            rerender(<ContextMapView state={state()} />);
+            expect(screen.queryByTestId('context-map-consignation-legend')).toBeNull();
+        });
+    });
+
+    describe('network outline', () => {
+        const network: ContextMapNetwork = {
+            capture_id: 1,
+            segments: {
+                '400 kV': [[1.6, -48.6, 3.3, -45.8], [3.3, -45.8, 2.0, -44.0]],
+                '225 kV': [[1.6, -48.6, 2.4, -47.0]],
+            },
+        };
+
+        it('is off until asked for, asks the backend once, and draws each voltage on its own', () => {
+            const requestNetwork = vi.fn();
+            const { rerender } = render(<ContextMapView state={state({ requestNetwork })} />);
+            expect(screen.queryByTestId('context-map-network')).toBeNull();
+            expect(screen.getByTestId('context-map-network-400-toggle')).not.toBeChecked();
+            fireEvent.click(screen.getByTestId('context-map-network-400-toggle'));
+            expect(requestNetwork).toHaveBeenCalledTimes(1);
+            // Asked for, not yet there: the legend says so, nothing is drawn.
+            rerender(<ContextMapView state={state({ requestNetwork, networkLoading: true })} />);
+            expect(screen.getByTestId('context-map-network-legend')).toHaveTextContent('loading');
+            // Arrived: the 400 kV trace only — the 225 kV box is still unchecked.
+            rerender(<ContextMapView state={state({ requestNetwork, network })} />);
+            const path400 = screen.getByTestId('context-map-network-400');
+            expect(path400).toHaveAttribute('stroke', '#e08b8b');
+            expect(path400.getAttribute('d')!.match(/M/g)).toHaveLength(2);
+            expect(screen.queryByTestId('context-map-network-225')).toBeNull();
+            fireEvent.click(screen.getByTestId('context-map-network-225-toggle'));
+            expect(screen.getByTestId('context-map-network-225')).toHaveAttribute('stroke', '#7fc39a');
+            fireEvent.click(screen.getByTestId('context-map-network-400-toggle'));
+            expect(screen.queryByTestId('context-map-network-400')).toBeNull();
+        });
+
+        it('lies under the transfers and the zones', () => {
+            render(<ContextMapView state={state({ network })} />);
+            fireEvent.click(screen.getByTestId('context-map-network-225-toggle'));
+            const order = [...screen.getByTestId('context-map').querySelectorAll('svg > g > g')]
+                .map(g => g.getAttribute('data-testid'));
+            expect(order.indexOf('context-map-network')).toBeGreaterThan(order.indexOf('context-map-basemap'));
+            expect(order.indexOf('context-map-network')).toBeLessThan(order.indexOf('context-map-flows'));
+            expect(order.indexOf('context-map-network')).toBeLessThan(order.indexOf('context-map-zones'));
+        });
+
+        it('cannot be drawn on a map without a georeference', () => {
+            const data: ContextMapData = { ...payload(), georef: null };
+            render(<ContextMapView state={state({ data })} />);
+            expect(screen.getByTestId('context-map-network-400-toggle')).toBeDisabled();
+            expect(screen.getByTestId('context-map-network-225-toggle')).toBeDisabled();
+        });
     });
 });

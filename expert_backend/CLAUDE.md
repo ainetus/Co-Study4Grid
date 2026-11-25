@@ -18,6 +18,7 @@ expert_backend/
 ├── main.py                    # FastAPI app: endpoints, CORS, gzip helpers,
 │                              # config-file persistence, NDJSON streaming
 ├── context_map_api.py         # Context tab routes (GET /api/context-map,
+│                              # GET /api/context-map/network — the liseré —,
 │                              # POST /api/context-map/elements), registered via
 │                              # install_context_map_routes(app). No network lock:
 │                              # served from the snapshot taken at /api/config.
@@ -134,6 +135,16 @@ expert_backend/
 │   │   │                          #   by type, consumption, inter-zone transfers
 │   │   ├── nuclear.py             # - nuclear units layer (plants at real coords,
 │   │   │                          #   RTE site → plant, level P / maxP)
+│   │   ├── consignations.py       # - the consignation rule (Carte-Front, on a
+│   │   │                          #   situation): 400/225 kV line or 2WT with no
+│   │   │                          #   current at either end (I NaN / < 0.5 A) AND
+│   │   │                          #   isolated at both VLs (TOPO read per candidate
+│   │   │                          #   VL from get_node_breaker_topology; alone, or
+│   │   │                          #   with node wiring / other consigned circuits).
+│   │   │                          #   Run by capture_snapshot (inside the network lock)
+│   │   ├── network_layers.py      # - payloads of the network layers: the 400/225 kV
+│   │   │                          #   outline (liseré, parallel circuits melted, own
+│   │   │                          #   route) and the consignations (in the map payload)
 │   │   ├── plants.py              # - power_plants.json beside an untyped network
 │   │   │                          #   (PyPSA-EUR; scripts/pypsa_eur/
 │   │   │                          #   match_power_plants.py): types each zone's

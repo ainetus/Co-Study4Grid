@@ -113,7 +113,9 @@ frontend/
     │   │                           # contingency + overload highlights with ρ;
     │   │                           # `available` (null while read, false = no
     │   │                           # tab: the network places < 2 zones on the
-    │   │                           # map) + contextUnavailableNotice
+    │   │                           # map) + contextUnavailableNotice + the
+    │   │                           # lazy network outline (`requestNetwork`,
+    │   │                           # read once when a legend box is ticked)
     │   │                           # (docs/features/context-tab.md)
     │   ├── useSldFeederRelabel.ts  # Relabel SLD branch feeders with the far-
     │   │                           # end VL name + wrap EVERY long feeder name
@@ -146,7 +148,8 @@ frontend/
     │   │                           # "Zoom to contingency"
     │   ├── ContextMapLayers.tsx    # Its SVG layers: basemap, transfer arrows,
     │   │                           # neighbour badges, pies + consumption
-    │   │                           # rings, contingency / overload highlights
+    │   │                           # rings, consignations, the network outline
+    │   │                           # (liseré), contingency / overload highlights
     │   ├── DiagramLegend.tsx, AdditionalLinesPicker.tsx,
     │   ├── ActionFilterRings.tsx       # Shared sidebar strip: severity ring
     │   │                               # (4 colour-coded pictogram toggles

@@ -41,6 +41,7 @@ from expert_backend.services.context_map.aggregate import (
     zone_transfers,
 )
 from expert_backend.services.context_map.georef import Georef, georeference
+from expert_backend.services.context_map.network_layers import consignation_layer
 from expert_backend.services.context_map.nuclear import nuclear_layer
 from expert_backend.services.context_map.regions import infer_regions
 from expert_backend.services.context_map.snapshot import NetworkSnapshot
@@ -68,6 +69,9 @@ class ContextMap:
     lat0: float
     vl_xy: dict[str, tuple[float, float]] = field(default_factory=dict)
     zone_xy: dict[str, tuple[float, float]] = field(default_factory=dict)
+    #: The network outline (``network_layers.grid_outline``), built once
+    #: when first asked for — see ``ContextMapService.outline``.
+    outline: dict | None = None
 
 
 def _centroid(points: list[tuple[float, float]]) -> tuple[float, float] | None:
@@ -272,6 +276,7 @@ def build_context_map(snap: NetworkSnapshot, layout: dict[str, tuple[float, floa
     neighbours = len(inside) < len(zones)
     home_export = (-sum(v for z, v in exports.items() if zoning.kind(z) == "neighbor")
                    if zoning.home is not None and neighbours else None)
+    vl_xy = {vl: geography.project(*p, lat0) for vl, p in frame.vl_ll.items()}
     payload = {
         "available": True,
         "mesh": zoning.mesh,
@@ -287,6 +292,9 @@ def build_context_map(snap: NetworkSnapshot, layout: dict[str, tuple[float, floa
         "flows": flow_entries,
         # Carte-Front's nuclear units layer.
         "nuclear": nuclear_layer(snap, zoning, frame.vl_ll, lat0),
+        # The circuits the situation takes out (the network outline, heavier,
+        # has its own route).
+        "consignations": consignation_layer(snap, vl_xy),
         # The database the untyped generators were typed from, when used
         # (credited on the map: CC BY).
         "plant_source": snap.plants.source if snap.plants and matched_fleets(snap, zoning) else None,
@@ -298,8 +306,7 @@ def build_context_map(snap: NetworkSnapshot, layout: dict[str, tuple[float, floa
             "net_export": round(home_export, 1) if home_export is not None else None,
         },
     }
-    return ContextMap(payload=payload, zoning=zoning, lat0=lat0,
-                      vl_xy={vl: geography.project(*p, lat0) for vl, p in frame.vl_ll.items()},
+    return ContextMap(payload=payload, zoning=zoning, lat0=lat0, vl_xy=vl_xy,
                       zone_xy={z: geography.project(*p, lat0) for z, p in frame.zone_ll.items()})
 
 
