@@ -14,6 +14,7 @@ import ActionOverviewDiagram from './ActionOverviewDiagram';
 import ActionCardPopover from './ActionCardPopover';
 import DiagramLegend from './DiagramLegend';
 import FlowViewToggles from './FlowViewToggles';
+import BranchLabelLayer from './BranchLabelLayer';
 import InspectSearchField from './InspectSearchField';
 import { filterInspectables } from '../utils/inspectables';
 import DetachedPlaceholder from './DetachedPlaceholder';
@@ -172,6 +173,8 @@ interface VisualizationPanelProps {
      *  window-scoped like the view mode. Without them: MW, no toggle effect. */
     flowMetricForTab?: (tab: TabId) => FlowMetric;
     onFlowMetricChangeForTab?: (tab: TabId, metric: FlowMetric) => void;
+    /** Each NAD tab's metadata index, for its readable flow labels (BranchLabelLayer). */
+    metaIndexes?: Partial<Record<TabId, MetadataIndex | null>>;
     /** Overflow Analysis tab wiring (layout toggle + action pins), grouped (D4). See OverflowControls. */
     overflow?: OverflowControls;
     inspectQuery: string;
@@ -265,6 +268,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     onViewModeChangeForTab,
     flowMetricForTab,
     onFlowMetricChangeForTab,
+    metaIndexes,
     showVoltageLevelNames = true,
     onToggleVoltageLevelNames,
 }) => {
@@ -477,9 +481,15 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
         // the toggle inside the popup only affects the popup, and
         // vice versa.
         const tabViewMode = viewModeForTabFn(tabId);
+        const tabDiagram = tabId === 'n' ? nDiagram : tabId === 'contingency' ? n1Diagram : actionDiagram;
+        const tabContainerRef = tabId === 'n' ? nSvgContainerRef : tabId === 'contingency' ? n1SvgContainerRef : actionSvgContainerRef;
 
         return (
             <>
+                {hasDiagramForTab && (
+                    <BranchLabelLayer containerRef={tabContainerRef} diagram={tabDiagram} metaIndex={metaIndexes?.[tabId] ?? null}
+                        mode={tabViewMode} metric={flowMetricForTabFn(tabId)} monitoringFactor={monitoringFactor ?? 0.95} displayName={displayName} />
+                )}
                 {/* Top-right cluster: Flow/Impacts + Tie button.
                     Only rendered when the tab actually has a
                     diagram so we don't clutter empty tabs. The Tie

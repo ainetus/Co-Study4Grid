@@ -1239,7 +1239,7 @@ function App() {
 
 
 
-  const { viewModeForTab, handleViewModeChangeForTab, flowMetricForTab, handleFlowMetricChangeForTab } = useDiagramHighlights({
+  const { viewModeForTab, handleViewModeChangeForTab, flowMetricForTab, handleFlowMetricChangeForTab, metaIndexes } = useDiagramHighlights({
     diagrams,
     result,
     selectedContingency,
@@ -1743,6 +1743,7 @@ function App() {
             onViewModeChangeForTab={handleViewModeChangeForTab}
             flowMetricForTab={flowMetricForTab}
             onFlowMetricChangeForTab={handleFlowMetricChangeForTab}
+            metaIndexes={metaIndexes}
             overflow={{
               overflowLayoutMode: diagrams.overflowLayoutMode,
               overflowLayoutLoading: diagrams.overflowLayoutLoading,

@@ -53,16 +53,25 @@ describe('loadingClass', () => {
 describe('applyLoadingVisuals', () => {
     it('colours each branch by its loading and labels it in percent', () => {
         const root = container('L1', 'L2', 'L3');
-        applyLoadingVisuals(root, { branch_loading: { L1: 42.0, L2: 70.6, L3: 101.2 } },
+        applyLoadingVisuals(root, { branch_loading: { L1: [42.0, 41.0], L2: [70.6, 69.8], L3: [101.2, 100.4] } },
             metaIndex('L1', 'L2', 'L3'), 'network', 0.95);
 
         expect(classesOf(root, 'L1')).toContain('nad-loading-low');
         expect(classesOf(root, 'L2')).toContain('nad-loading-warn-3');
         expect(classesOf(root, 'L3')).toContain('nad-loading-over');
+        // Each end reads its own loading; the colour follows the more loaded end.
         expect(labelOf(root, 'L2')).toBe('70%');
-        expect(labelOf(root, 'L2', 2)).toBe('70%');
+        expect(labelOf(root, 'L2', 2)).toBe('69%');
         expect(labelOf(root, 'L3')).toBe('101%');
         expect(root.querySelector('#info1-L2 text')!.getAttribute('data-original-text')).toBe('123');
+    });
+
+    it("reads a transformer's unlimited side as a dash, coloured by its limited one", () => {
+        const root = container('T1');
+        applyLoadingVisuals(root, { branch_loading: { T1: [null, 97.2] } }, metaIndex('T1'), 'network', 0.95);
+        expect(classesOf(root, 'T1')).toContain('nad-loading-over');
+        expect(labelOf(root, 'T1')).toBe('\u2014');
+        expect(labelOf(root, 'T1', 2)).toBe('97%');
     });
 
     it('greys a branch without a limit with a dash', () => {
@@ -75,7 +84,7 @@ describe('applyLoadingVisuals', () => {
     it('shows the loading change in Impacts mode, coloured like the flow deltas', () => {
         const root = container('L1', 'L2', 'L3');
         applyLoadingVisuals(root, {
-            branch_loading: { L1: 90, L2: 40, L3: 50 },
+            branch_loading: { L1: [90, 90], L2: [40, 40], L3: [50, 50] },
             loading_deltas: {
                 L1: { delta: 25.04, category: 'positive' },
                 L2: { delta: -12.5, category: 'negative' },
@@ -93,7 +102,7 @@ describe('applyLoadingVisuals', () => {
 
     it('falls back to the absolute loading in Impacts mode without deltas (N state)', () => {
         const root = container('L1');
-        applyLoadingVisuals(root, { branch_loading: { L1: 97 } }, metaIndex('L1'), 'delta', 0.95);
+        applyLoadingVisuals(root, { branch_loading: { L1: [97, 96] } }, metaIndex('L1'), 'delta', 0.95);
         expect(classesOf(root, 'L1')).toContain('nad-loading-over');
         expect(labelOf(root, 'L1')).toBe('97%');
     });
@@ -103,7 +112,7 @@ describe('applyLoadingVisuals', () => {
         const index = metaIndex('L1');
         const open = { ...edge('L1'), edgeInfo1: undefined, edgeInfo2: undefined } as EdgeMeta;
         index.edgesByEquipmentId.set('L1', open);
-        applyLoadingVisuals(root, { branch_loading: { L1: 0 } }, index, 'network', 0.95);
+        applyLoadingVisuals(root, { branch_loading: { L1: [0, 0] } }, index, 'network', 0.95);
         expect(classesOf(root, 'L1')).toContain('nad-loading-low');
         expect(labelOf(root, 'L1')).toBe('123');
     });
@@ -117,7 +126,7 @@ describe('applyLoadingVisuals', () => {
 
     it('back to MW: the delta pass restores the labels and the loading pass clears its classes', () => {
         const root = container('L1');
-        const diagram = { branch_loading: { L1: 85 }, flow_deltas: {} };
+        const diagram = { branch_loading: { L1: [85, 84] as [number, number] }, flow_deltas: {} };
         const index = metaIndex('L1');
         applyLoadingVisuals(root, diagram, index, 'network', 0.95);
 

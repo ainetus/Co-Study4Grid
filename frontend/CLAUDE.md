@@ -155,6 +155,15 @@ frontend/
     │   ├── FlowViewToggles.tsx     # Top-right diagram toggles: Flows /
     │   │                           # Impacts × MW / Loading % (per tab,
     │   │                           # per window — useDiagramHighlights)
+    │   ├── BranchLabelLayer.tsx    # Readable flow labels over each NAD tab,
+    │   │                           # in CSS px (pypowsybl's user-unit values
+    │   │                           # are hidden by `data-branch-labels`):
+    │   │                           # mid-branch when short on screen, per end
+    │   │                           # when long, coloured first, no overlap;
+    │   │                           # laid out on settle, hidden mid-gesture
+    │   │                           # (so the canvas proxy draws no values);
+    │   │                           # + the branch hover tooltip (both ends:
+    │   │                           # VL, MW, loading, Impacts change)
     │   ├── ActionFilterRings.tsx       # Shared sidebar strip: severity ring
     │   │                               # (4 colour-coded pictogram toggles
     │   │                               # with single-click toggle + double-
@@ -235,6 +244,9 @@ frontend/
         │   ├── loadingVisuals.ts      #   (+ loadingVisuals: Loading % view —
         │   │                          #   colour scale, % / Δ% labels, and
         │   │                          #   resetFlowVisuals for SVG clones)
+        │   ├── branchLabels.ts        #   (+ branchLabels: BranchLabelLayer's
+        │   │                          #   geometry read, per-view texts, label
+        │   │                          #   placement, hover index)
         │   ├── actionPinData.ts       # - deltaVisuals: flow-delta colouring
         │   ├── actionPinRender.ts     # - actionPin{Data,Render}: overview pin layer
         │   ├── highlights.ts          # - highlights: contingency / overload halos

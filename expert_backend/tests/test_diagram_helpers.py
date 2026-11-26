@@ -371,26 +371,52 @@ class TestGetNStateLoading:
         net.get_operational_limits.assert_not_called()
 
 
+def _side_limits(entries):
+    """Limits frame with a ``side`` column: ``{(element, side): value}``."""
+    rows = [{"element_id": e, "side": side, "type": "CURRENT", "acceptable_duration": -1, "value": v}
+            for (e, side), v in entries.items()]
+    return pd.DataFrame(rows).set_index(["element_id", "side", "type", "acceptable_duration"])[["value"]]
+
+
 class TestGetBranchLoading:
-    def test_percent_of_the_permanent_limit_for_lines_and_transformers(self):
+    def test_each_end_against_the_permanent_limit(self):
         lines = pd.DataFrame({"i1": [150.0, 10.0], "i2": [-160.0, 5.0]}, index=["L1", "L2"])
-        trafos = pd.DataFrame({"i1": [33.33], "i2": [0.0]}, index=["T1"])
-        net = _mock_network(lines_df=lines, trafos_df=trafos,
-                            limits_df=_limits({"L1": 200.0, "L2": 100.0, "T1": 100.0}))
-        # max(|i1|, |i2|) / limit, rounded to 0.1 %.
-        assert overloads.get_branch_loading(net) == {"L1": 80.0, "L2": 10.0, "T1": 33.3}
+        net = _mock_network(lines_df=lines, limits_df=_limits({"L1": 200.0, "L2": 100.0}))
+        # |i| / limit per end, rounded to 0.1 %.
+        assert overloads.get_branch_loading(net) == {"L1": [75.0, 80.0], "L2": [10.0, 5.0]}
+
+    def test_each_end_against_its_own_side(self):
+        lines = pd.DataFrame({"i1": [90.0, 50.0], "i2": [90.0, 50.0]}, index=["BOTH", "ONE_SIDE"])
+        trafos = pd.DataFrame({"i1": [688.0], "i2": [1162.0]}, index=["TR"])
+        net = _mock_network(lines_df=lines, trafos_df=trafos, limits_df=_side_limits({
+            ("BOTH", "ONE"): 100.0, ("BOTH", "TWO"): 90.0,
+            ("ONE_SIDE", "ONE"): 100.0,
+            ("TR", "TWO"): 1659.0,
+        }))
+        loading = overloads.get_branch_loading(net)
+        assert loading["BOTH"] == [90.0, 100.0]
+        # A line's ends share a voltage: one side's limit holds for both.
+        assert loading["ONE_SIDE"] == [50.0, 50.0]
+        # A transformer's side-1 current is at another voltage: no loading there.
+        assert loading["TR"] == [None, 70.0]
 
     def test_skips_branches_without_a_limit_and_reads_disconnected_as_zero(self):
         lines = pd.DataFrame({"i1": [500.0, float("nan")], "i2": [0.0, float("nan")]},
                              index=["NO_LIMIT", "OPEN"])
         net = _mock_network(lines_df=lines, limits_df=_limits({"OPEN": 100.0}))
-        assert overloads.get_branch_loading(net) == {"OPEN": 0.0}
+        assert overloads.get_branch_loading(net) == {"OPEN": [0.0, 0.0]}
 
     def test_no_limits_means_no_loading(self):
         lines = pd.DataFrame({"i1": [100.0], "i2": [0.0]}, index=["L1"])
         net = _mock_network(lines_df=lines)
         assert overloads.get_branch_loading(net) == {}
         net.get_lines.assert_not_called()
+
+    def test_max_loading_is_the_larger_known_end(self):
+        assert overloads.max_loading([None, 70.0]) == 70.0
+        assert overloads.max_loading([90.0, 100.0]) == 100.0
+        assert overloads.max_loading([None, None]) is None
+        assert overloads.max_loading(None) is None
 
 
 # ----------------------------------------------------------------------
@@ -565,9 +591,9 @@ class TestComputeAssetDeltas:
 
 
 class TestComputeLoadingDeltas:
-    def test_percentage_point_deltas_categorised_like_the_flows(self):
-        after = {"L1": 95.0, "L2": 40.0, "L3": 50.2}
-        before = {"L1": 70.0, "L2": 60.0, "L3": 50.0}
+    def test_percentage_point_deltas_of_the_larger_end_categorised_like_the_flows(self):
+        after = {"L1": [95.0, 90.0], "L2": [40.0, None], "L3": [50.2, 50.0]}
+        before = {"L1": [70.0, 60.0], "L2": [60.0, None], "L3": [50.0, 49.0]}
         result = deltas.compute_loading_deltas(after, before)
         assert result["L1"] == {"delta": 25.0, "category": "positive"}
         assert result["L2"] == {"delta": -20.0, "category": "negative"}
@@ -575,7 +601,10 @@ class TestComputeLoadingDeltas:
         assert result["L3"]["category"] == "grey"
 
     def test_only_branches_loaded_in_both_states(self):
-        result = deltas.compute_loading_deltas({"L1": 10.0, "NEW": 5.0}, {"L1": 5.0, "OLD": 1.0})
+        result = deltas.compute_loading_deltas(
+            {"L1": [10.0, 9.0], "NEW": [5.0, 5.0], "NONE": [None, None]},
+            {"L1": [5.0, 4.0], "OLD": [1.0, 1.0], "NONE": [3.0, 3.0]},
+        )
         assert set(result) == {"L1"}
 
 

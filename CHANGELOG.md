@@ -25,6 +25,26 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 - Fix on the way: the svgPatch clone of the N diagram (and the action
   overview's clone of the N-1) now drops the N tab's decoration, so a
   decorated N could not leak its labels into the N-1 / action flows.
+- **Loading at each end**: `branch_loading` is a pair per branch, each end's
+  current against its own side's permanent limit (a line's single-side limit
+  holds for both ends; a transformer's side without one has no loading — RTE
+  grids limit most transformers on side 2 only). The colour, the label and
+  the Impacts delta use the more loaded end. The limits are read once per
+  network (~0.2 s on the 11 k-branch RTE grid).
+- **Readable flow labels** (`BranchLabelLayer`, `utils/svg/branchLabels.ts`):
+  on the N, N-1 and action NADs the values are written in CSS px over the
+  diagram — 11–12 px pills whatever the zoom — instead of pypowsybl's
+  user-unit text (hidden; its arrows stay). A branch short on screen gets one
+  label at its middle (its larger end), a long one a label beside each arrow.
+  The coloured branches (loaded from 50 %, a significant Impacts change) are
+  labelled first and always; a grey / MW one once long enough on screen; no
+  label overlaps another. Laid out when the view settles (≈ 5–25 ms on the
+  RTE grid), hidden during a pan / zoom gesture. Same for MW, Loading % and
+  Impacts.
+- **Branch hover**: hovering a branch (within 8 px — no hit test of the
+  diagram) shows both ends — voltage level, active power, loading — and its
+  Impacts change; parallel circuits drawn over each other are all listed,
+  the most loaded first.
 
 ### Context tab — a consigned twin beside the highlighted circuit
 

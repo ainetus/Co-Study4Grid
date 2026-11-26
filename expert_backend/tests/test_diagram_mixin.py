@@ -390,8 +390,8 @@ class TestLoadingAttachment:
     state, read on the right variant and the shared Network restored."""
 
     LOADING = {
-        "N": {"L1": 50.0, "L2": 80.0},
-        "N-1": {"L1": 0.0, "L2": 110.0},
+        "N": {"L1": [50.0, 49.0], "L2": [80.0, None]},
+        "N-1": {"L1": [0.0, 0.0], "L2": [110.0, None]},
     }
 
     def _mixin(self):
@@ -410,7 +410,7 @@ class TestLoadingAttachment:
         mixin, network = self._mixin()
         diagram: dict = {}
         mixin._attach_loading_vs_base(diagram, network)
-        assert diagram["branch_loading"] == {"L1": 0.0, "L2": 110.0}
+        assert diagram["branch_loading"] == {"L1": [0.0, 0.0], "L2": [110.0, None]}
         assert diagram["loading_deltas"]["L1"] == {"delta": -50.0, "category": "negative"}
         assert diagram["loading_deltas"]["L2"] == {"delta": 30.0, "category": "positive"}
         assert network.variant == "N-1"
@@ -420,8 +420,8 @@ class TestLoadingAttachment:
         mixin._last_disconnected_elements = ["L1"]
         network.variant = "ACTION"
         diagram: dict = {}
-        mixin._attach_action_loading(diagram, {"L1": 0.0, "L2": 90.0})
-        assert diagram["branch_loading"] == {"L1": 0.0, "L2": 90.0}
+        mixin._attach_action_loading(diagram, {"L1": [0.0, 0.0], "L2": [90.0, None]})
+        assert diagram["branch_loading"] == {"L1": [0.0, 0.0], "L2": [90.0, None]}
         assert diagram["loading_deltas"]["L2"] == {"delta": -20.0, "category": "negative"}
         assert diagram["loading_deltas"]["L1"]["category"] == "grey"
         assert network.variant == "ACTION"
@@ -434,3 +434,29 @@ class TestLoadingAttachment:
         diagram: dict = {}
         mixin._attach_loading_vs_base(diagram, network)
         assert "branch_loading" not in diagram and "loading_deltas" not in diagram
+
+
+class TestSideLimitsCache:
+    """The current limits are read once per network object (they do not change
+    with the variant); a new network — a study reload — reads them again."""
+
+    @staticmethod
+    def _network():
+        network = MagicMock()
+        rows = [{"element_id": "L1", "side": "ONE", "type": "CURRENT", "acceptable_duration": -1, "value": 100.0}]
+        network.get_operational_limits.return_value = (
+            pd.DataFrame(rows).set_index(["element_id", "side", "type", "acceptable_duration"])[["value"]])
+        network.get_lines.return_value = pd.DataFrame({"i1": [50.0], "i2": [40.0]}, index=["L1"])
+        network.get_2_windings_transformers.return_value = pd.DataFrame(columns=["i1", "i2"])
+        return network
+
+    def test_read_once_per_network(self):
+        mixin = DiagramMixin()
+        network = self._network()
+        assert mixin._get_branch_loading(network) == {"L1": [50.0, 40.0]}
+        assert mixin._get_branch_loading(network) == {"L1": [50.0, 40.0]}
+        assert network.get_operational_limits.call_count == 1
+
+        other = self._network()
+        mixin._get_branch_loading(other)
+        assert other.get_operational_limits.call_count == 1

@@ -4,7 +4,7 @@
 // you can obtain one at http://mozilla.org/MPL/2.0/.
 // SPDX-License-Identifier: MPL-2.0
 
-import type { FlowDelta, MetadataIndex, ViewMode } from '../../types';
+import type { BranchLoading, FlowDelta, MetadataIndex, ViewMode } from '../../types';
 import { getIdMap } from './idMap';
 import { DELTA_CLASSES } from './deltaVisuals';
 
@@ -32,13 +32,19 @@ export const loadingClass = (percent: number, monitoringFactor: number): string 
     return `nad-loading-warn-${Math.min(LOADING_WARN_STEPS, Math.floor(t * LOADING_WARN_STEPS) + 1)}`;
 };
 
-// Floored, so a branch never reads at the monitoring factor before its colour says so.
-const formatLoading = (percent: number): string => `${Math.floor(percent)}%`;
+/** A branch's loading: its more loaded end (an end without a limit has none). */
+export const maxLoading = (ends: BranchLoading | undefined): number | undefined => {
+    const known = ends ? ends.filter((v): v is number => v !== null) : [];
+    return known.length ? Math.max(...known) : undefined;
+};
 
-const formatLoadingDelta = (delta: number): string =>
+// Floored, so a branch never reads at the monitoring factor before its colour says so.
+export const formatLoading = (percent: number): string => `${Math.floor(percent)}%`;
+
+export const formatLoadingDelta = (delta: number): string =>
     `Δ ${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%`;
 
-const NO_LOADING = '—';
+export const NO_LOADING = '—';
 
 /**
  * Strip the Flows / Impacts × MW / Loading decoration from a copy of a
@@ -59,9 +65,9 @@ export const resetFlowVisuals = (root: Element) => {
 };
 
 /**
- * Loading-rate view of a NAD: each branch is coloured by its loading
- * and its flow labels read in percent of the permanent limit instead
- * of MW. In Impacts mode (`view === 'delta'`, when the diagram carries
+ * Loading-rate view of a NAD: each branch is coloured by its loading (its
+ * more loaded end) and each end's flow label reads that end's loading, in
+ * percent of its permanent limit, instead of MW. In Impacts mode (`view === 'delta'`, when the diagram carries
  * `loading_deltas`) the branches show the loading change in percentage
  * points, coloured like the flow deltas (orange up / blue down / grey
  * negligible). A branch without a limit greys out with a dash.
@@ -74,7 +80,7 @@ export const resetFlowVisuals = (root: Element) => {
 export const applyLoadingVisuals = (
     container: HTMLElement | null,
     diagram: {
-        branch_loading?: Record<string, number>;
+        branch_loading?: Record<string, BranchLoading>;
         loading_deltas?: Record<string, FlowDelta>;
     } | null,
     metaIndex: MetadataIndex | null,
@@ -91,16 +97,14 @@ export const applyLoadingVisuals = (
     const deltas = view === 'delta' ? diagram.loading_deltas : undefined;
     const idMap = getIdMap(container);
 
-    const setLabels = (edgeInfoIds: (string | undefined)[], label: string) => {
-        for (const svgId of edgeInfoIds) {
-            if (!svgId) continue;
-            idMap.get(svgId)?.querySelectorAll('foreignObject, text').forEach(t => {
-                if (!t.hasAttribute('data-original-text')) {
-                    t.setAttribute('data-original-text', t.textContent || '');
-                }
-                t.textContent = label;
-            });
-        }
+    const setLabel = (edgeInfoId: string | undefined, label: string) => {
+        if (!edgeInfoId) return;
+        idMap.get(edgeInfoId)?.querySelectorAll('foreignObject, text').forEach(t => {
+            if (!t.hasAttribute('data-original-text')) {
+                t.setAttribute('data-original-text', t.textContent || '');
+            }
+            t.textContent = label;
+        });
     };
 
     for (const [equipmentId, edge] of metaIndex.edgesByEquipmentId) {
@@ -108,16 +112,20 @@ export const applyLoadingVisuals = (
         // is still recoloured, or it would keep its voltage colour.
         if (!edge.svgId) continue;
         const el = idMap.get(edge.svgId);
-        const infoIds = [edge.edgeInfo1?.svgId, edge.edgeInfo2?.svgId];
 
         if (deltas) {
             const d = deltas[equipmentId];
             el?.classList.add(DELTA_CLASSES[d?.category ?? 'grey']);
-            setLabels(infoIds, d ? formatLoadingDelta(d.delta) : NO_LOADING);
+            const label = d ? formatLoadingDelta(d.delta) : NO_LOADING;
+            setLabel(edge.edgeInfo1?.svgId, label);
+            setLabel(edge.edgeInfo2?.svgId, label);
             continue;
         }
-        const percent = loading[equipmentId];
+        const ends = loading[equipmentId];
+        const percent = maxLoading(ends);
         el?.classList.add(percent === undefined ? 'nad-loading-low' : loadingClass(percent, monitoringFactor));
-        setLabels(infoIds, percent === undefined ? NO_LOADING : formatLoading(percent));
+        const endLabel = (v: number | null | undefined) => (v === null || v === undefined ? NO_LOADING : formatLoading(v));
+        setLabel(edge.edgeInfo1?.svgId, endLabel(ends?.[0]));
+        setLabel(edge.edgeInfo2?.svgId, endLabel(ends?.[1]));
     }
 };

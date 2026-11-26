@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   applyContingencyHighlight,
   applyDeltaVisuals,
@@ -32,6 +32,8 @@ interface UseDiagramHighlightsReturn {
   handleViewModeChangeForTab: (tab: TabId, mode: 'network' | 'delta') => void;
   flowMetricForTab: (tab: TabId) => FlowMetric;
   handleFlowMetricChangeForTab: (tab: TabId, metric: FlowMetric) => void;
+  /** Each NAD tab's metadata index, for its readable flow labels. */
+  metaIndexes: Partial<Record<TabId, MetadataIndex | null>>;
 }
 
 /**
@@ -300,5 +302,9 @@ export function useDiagramHighlights({
     }
   }, [nDiagram, n1Diagram, actionDiagram, diagrams.nMetaIndex, diagrams.n1MetaIndex, diagrams.actionMetaIndex, result, selectedActionId, actionViewMode, detachedViewModes, flowMetric, detachedFlowMetrics, detachedTabs, activeTab, selectedContingency, selectedOverloads, applyHighlightsForTab]);
 
-  return { viewModeForTab, handleViewModeChangeForTab, flowMetricForTab, handleFlowMetricChangeForTab };
+  const metaIndexes = useMemo(() => ({
+    n: diagrams.nMetaIndex, contingency: diagrams.n1MetaIndex, action: diagrams.actionMetaIndex,
+  }), [diagrams.nMetaIndex, diagrams.n1MetaIndex, diagrams.actionMetaIndex]);
+
+  return { viewModeForTab, handleViewModeChangeForTab, flowMetricForTab, handleFlowMetricChangeForTab, metaIndexes };
 }

@@ -28,6 +28,7 @@ helpers, and mutates the per-service caches (``_layout_cache``,
 
 import logging
 import time
+import weakref
 
 from expert_op4grid_recommender import config
 from expert_op4grid_recommender.utils.make_env_utils import create_olf_rte_parameter
@@ -57,6 +58,7 @@ from expert_backend.services.diagram.nad_render import generate_diagram
 from expert_backend.services.diagram.obs_prewarm import build_prewarmed_obs
 from expert_backend.services.diagram.overloads import (
     get_branch_loading,
+    side_limits,
     get_element_max_currents,
     get_n_state_loading,
     get_overloaded_lines,
@@ -174,8 +176,19 @@ class DiagramMixin(_Base):
     def _get_network_flows(self, network):
         return get_network_flows(network)
 
-    def _get_branch_loading(self, network):
-        return get_branch_loading(network)
+    def _get_branch_loading(self, network) -> dict[str, list[float | None]]:
+        return get_branch_loading(network, self._side_limits_for(network))
+
+    def _side_limits_for(self, network) -> dict[str, dict[str, float]]:
+        """The network's current limits by side, read once per network object:
+        they do not change with the variant, and reading them is most of a
+        branch-loading pass. A study reload brings a new network object."""
+        cached = getattr(self, "_side_limits_cache", None)
+        if cached is not None and cached[0]() is network:
+            return cached[1]
+        limits = side_limits(network)
+        self._side_limits_cache = (weakref.ref(network), limits)
+        return limits
 
     def _get_asset_flows(self, network):
         return get_asset_flows(network)

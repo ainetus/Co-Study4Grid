@@ -266,13 +266,17 @@ export interface DiagramData {
     /** N-1 diagrams: each overload's loading in N (before the contingency),
      *  parallel to `lines_overloaded`; null where unknown. */
     lines_overloaded_rho_before?: (number | null)[];
-    /** Loading of every branch with a permanent current limit, in % of
-     *  that limit (`max(|i1|, |i2|) / limit`) — the Loading view. */
-    branch_loading?: Record<string, number>;
+    /** Loading of each end of every branch with a permanent current limit,
+     *  in % of that end's limit — the Loading view. */
+    branch_loading?: Record<string, BranchLoading>;
     /** Loading change vs the reference state (N for N-1, N-1 for an
      *  action), in percentage points — the Loading view in Impacts mode. */
     loading_deltas?: Record<string, FlowDelta>;
 }
+
+/** Loading of a branch's two ends, in % of each end's permanent limit;
+ *  null for an end without one (a transformer's unlimited side). */
+export type BranchLoading = [number | null, number | null];
 
 /** Flows (absolute state) or Impacts (change vs the reference state). */
 export type ViewMode = 'network' | 'delta';
@@ -361,7 +365,7 @@ export interface DiagramPatch {
     flow_deltas?: Record<string, FlowDelta>;
     reactive_flow_deltas?: Record<string, FlowDelta>;
     asset_deltas?: Record<string, AssetDelta>;
-    branch_loading?: Record<string, number>;
+    branch_loading?: Record<string, BranchLoading>;
     loading_deltas?: Record<string, FlowDelta>;
     vl_subtrees?: Record<string, {
         node_svg: string;

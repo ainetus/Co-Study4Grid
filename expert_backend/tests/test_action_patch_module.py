@@ -129,7 +129,7 @@ class TestCaptureActionSnapshots:
         service = MagicMock()
         service._get_network_flows.return_value = {"p1": {"L1": 1.0}}
         service._get_asset_flows.return_value = {"GEN1": 50.0}
-        service._get_branch_loading.return_value = {"L1": 42.0}
+        service._get_branch_loading.return_value = {"L1": [42.0, 41.0]}
 
         snaps = _capture_action_snapshots(service, action_network)
         assert set(snaps.keys()) == {"lines_conn", "trafos_conn", "buses", "flows", "assets", "loading"}
@@ -140,7 +140,7 @@ class TestCaptureActionSnapshots:
         assert snaps["lines_conn"] is not lines_df
         assert snaps["flows"] == {"p1": {"L1": 1.0}}
         assert snaps["assets"] == {"GEN1": 50.0}
-        assert snaps["loading"] == {"L1": 42.0}
+        assert snaps["loading"] == {"L1": [42.0, 41.0]}
 
     def test_each_snapshot_failure_independently_yields_none(self):
         # Pypowsybl can raise on any individual frame; the helper must

@@ -431,6 +431,48 @@ circle.nad-highlight {
     stroke: var(--signal-loading-over) !important;
 }
 
+/* ===== Readable branch labels (components/BranchLabelLayer.tsx) =====
+   The layer writes the flow values in CSS px over the diagram, so
+   pypowsybl's own (user-unit, unreadable on a large grid) values are
+   hidden; their arrows stay. Colours: the Loading view's scale and the
+   Impacts deltas; a grey / MW label is a light pill. */
+.svg-container[data-branch-labels] .nad-edge-infos text {
+    display: none !important;
+}
+
+.branch-label rect {
+    fill: var(--color-surface);
+    fill-opacity: 0.9;
+    stroke: var(--color-border);
+    stroke-width: 0.75px;
+}
+
+.branch-label text {
+    font: 600 11px Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+    fill: var(--color-text-primary);
+}
+
+.branch-label--important text {
+    font-size: 12px;
+    font-weight: 700;
+    fill: var(--color-text-on-bright);
+}
+
+.branch-label--important rect {
+    fill-opacity: 1;
+    stroke: rgba(0, 0, 0, 0.35);
+}
+
+.branch-label--loading-warn-1 rect { fill: var(--signal-loading-warn-1); }
+.branch-label--loading-warn-2 rect { fill: var(--signal-loading-warn-2); }
+.branch-label--loading-warn-3 rect { fill: var(--signal-loading-warn-3); }
+.branch-label--loading-warn-4 rect { fill: var(--signal-loading-warn-4); }
+.branch-label--loading-warn-5 rect { fill: var(--signal-loading-warn-5); }
+.branch-label--loading-over rect { fill: var(--signal-loading-over); }
+.branch-label--delta-positive rect { fill: var(--signal-delta-positive); }
+.branch-label--delta-negative rect { fill: var(--signal-delta-negative); }
+.branch-label--delta-negative text { fill: var(--color-text-on-brand); }
+
 /* ===== SLD overlay delta flow visualization ===== */
 /* Applied to feeder group elements (sld-top-feeder / sld-bottom-feeder) inside
    the Single Line Diagram overlay when in Impacts mode.  Cascades into child
