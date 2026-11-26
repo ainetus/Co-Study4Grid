@@ -36,9 +36,10 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   diagram — 11–12 px pills whatever the zoom — instead of pypowsybl's
   user-unit text (hidden; its arrows stay). A branch short on screen gets one
   label at its middle (its larger end), a long one a label beside each arrow.
-  The coloured branches (loaded from 50 %, a significant Impacts change) are
-  labelled first and always; a grey / MW one once long enough on screen; no
-  label overlaps another. Laid out when the view settles (≈ 5–25 ms on the
+  In Loading %, only the coloured branches are labelled (from 50 %, or a
+  significant change in Impacts) — the grey ones would crowd the reading, the
+  hover still tells them; in MW, a branch once long enough on screen, the
+  significant changes first in Impacts. No label overlaps another. Laid out when the view settles (≈ 5–25 ms on the
   RTE grid), hidden during a pan / zoom gesture. Same for MW, Loading % and
   Impacts.
 - **Branch hover**: hovering a branch (within 8 px — no hit test of the

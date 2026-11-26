@@ -159,7 +159,8 @@ frontend/
     │   │                           # in CSS px (pypowsybl's user-unit values
     │   │                           # are hidden by `data-branch-labels`):
     │   │                           # mid-branch when short on screen, per end
-    │   │                           # when long, coloured first, no overlap;
+    │   │                           # when long, coloured first (only those in
+    │   │                           # Loading %), no overlap;
     │   │                           # laid out on settle, hidden mid-gesture
     │   │                           # (so the canvas proxy draws no values);
     │   │                           # + the branch hover tooltip (both ends:

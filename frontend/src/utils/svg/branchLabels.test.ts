@@ -78,8 +78,18 @@ describe('buildLabelItems', () => {
     it('Loading %: each end, the larger at the middle, coloured from 50 %', () => {
         const [it] = buildLabelItems([g], { branch_loading: { L1: [96.4, 88.0] } }, 'network', 'loading', 0.95);
         expect(it).toMatchObject({ ends: ['96%', '88%'], mid: '96%', tone: 'loading-over', important: true, weight: 96.4 });
-        const [low] = buildLabelItems([g], { branch_loading: { L1: [31, 30] } }, 'network', 'loading', 0.95);
-        expect(low).toMatchObject({ tone: 'loading-low', important: false });
+        // An end below 50 % of a coloured branch still reads its own loading.
+        const [warn] = buildLabelItems([g], { branch_loading: { L1: [31, 52] } }, 'network', 'loading', 0.95);
+        expect(warn).toMatchObject({ ends: ['31%', '52%'], tone: 'loading-warn-1' });
+    });
+
+    it('Loading %: no label for a grey branch, in Flows or in Impacts', () => {
+        expect(buildLabelItems([g], { branch_loading: { L1: [31, 30] } }, 'network', 'loading', 0.95)).toEqual([]);
+        const deltas = { loading_deltas: { L1: { delta: 0.4, category: 'grey' as const } } };
+        expect(buildLabelItems([g], deltas, 'delta', 'loading', 0.95)).toEqual([]);
+        // MW keeps its grey changes (labelled once long enough on screen).
+        const flows = { flow_deltas: { L1: { delta: 0.4, category: 'grey' as const } } };
+        expect(buildLabelItems([g], flows, 'delta', 'p', 0.95)).toHaveLength(1);
     });
 
     it("Loading %: a transformer's unlimited end has no label", () => {
