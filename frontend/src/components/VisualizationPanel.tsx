@@ -6,7 +6,7 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study. 
 
 import React, { useState, useMemo, type RefObject } from 'react';
-import type { DiagramData, AnalysisResult, TabId, VlOverlay, SldTab, MetadataIndex, ActionOverviewFilters, UnsimulatedActionScoreInfo, FeedRevealState, FlowMetric } from '../types';
+import type { DiagramData, AnalysisResult, TabId, VlOverlay, SldTab, MetadataIndex, ActionOverviewFilters, UnsimulatedActionScoreInfo, FeedRevealState, FlowMetric, BranchLabelControls } from '../types';
 import MemoizedSvgContainer from './MemoizedSvgContainer';
 import SldOverlay from './SldOverlay';
 import DetachableTabHost from './DetachableTabHost';
@@ -15,6 +15,7 @@ import ActionCardPopover from './ActionCardPopover';
 import DiagramLegend from './DiagramLegend';
 import FlowViewToggles from './FlowViewToggles';
 import BranchLabelLayer from './BranchLabelLayer';
+import DiagramLabelToggles from './DiagramLabelToggles';
 import InspectSearchField from './InspectSearchField';
 import { filterInspectables } from '../utils/inspectables';
 import DetachedPlaceholder from './DetachedPlaceholder';
@@ -173,8 +174,8 @@ interface VisualizationPanelProps {
      *  window-scoped like the view mode. Without them: MW, no toggle effect. */
     flowMetricForTab?: (tab: TabId) => FlowMetric;
     onFlowMetricChangeForTab?: (tab: TabId, metric: FlowMetric) => void;
-    /** Each NAD tab's metadata index, for its readable flow labels (BranchLabelLayer). */
-    metaIndexes?: Partial<Record<TabId, MetadataIndex | null>>;
+    /** The readable flow labels (BranchLabelLayer): each tab's metadata index, the mid-branch values toggle. */
+    branchLabels?: BranchLabelControls;
     /** Overflow Analysis tab wiring (layout toggle + action pins), grouped (D4). See OverflowControls. */
     overflow?: OverflowControls;
     inspectQuery: string;
@@ -268,7 +269,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     onViewModeChangeForTab,
     flowMetricForTab,
     onFlowMetricChangeForTab,
-    metaIndexes,
+    branchLabels,
     showVoltageLevelNames = true,
     onToggleVoltageLevelNames,
 }) => {
@@ -487,8 +488,9 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
         return (
             <>
                 {hasDiagramForTab && (
-                    <BranchLabelLayer containerRef={tabContainerRef} diagram={tabDiagram} metaIndex={metaIndexes?.[tabId] ?? null}
-                        mode={tabViewMode} metric={flowMetricForTabFn(tabId)} monitoringFactor={monitoringFactor ?? 0.95} displayName={displayName} />
+                    <BranchLabelLayer containerRef={tabContainerRef} diagram={tabDiagram} metaIndex={branchLabels?.metaIndexes[tabId] ?? null}
+                        mode={tabViewMode} metric={flowMetricForTabFn(tabId)} monitoringFactor={monitoringFactor ?? 0.95} displayName={displayName}
+                        midLabels={branchLabels?.showMidValues ?? true} />
                 )}
                 {/* Top-right cluster: Flow/Impacts + Tie button.
                     Only rendered when the tab actually has a
@@ -592,29 +594,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                                     filteredInspectables={filteredInspectables}
                                     displayName={displayName}
                                 />
-                                {onToggleVoltageLevelNames && (
-                                    <button
-                                        onClick={() => onToggleVoltageLevelNames(!showVoltageLevelNames)}
-                                        title={showVoltageLevelNames
-                                            ? 'Hide voltage-level names on the diagram (hover bus circles to see them as tooltips)'
-                                            : 'Show voltage-level names on the diagram'}
-                                        aria-pressed={showVoltageLevelNames}
-                                        data-testid="toggle-vl-names"
-                                        style={{
-                                            background: showVoltageLevelNames ? colors.brand : colors.surface,
-                                            color: showVoltageLevelNames ? colors.textOnBrand : colors.textSecondary,
-                                            border: `1px solid ${showVoltageLevelNames ? colors.brand : colors.border}`,
-                                            borderRadius: '4px',
-                                            padding: '4px 8px',
-                                            cursor: 'pointer',
-                                            fontSize: '12px',
-                                            fontWeight: 600,
-                                            boxShadow: '0 2px 5px rgba(0,0,0,0.15)',
-                                        }}
-                                    >
-                                        {'\u{1F3F7} VL'}
-                                    </button>
-                                )}
+                                <DiagramLabelToggles
+                                    showVlNames={showVoltageLevelNames} onToggleVlNames={onToggleVoltageLevelNames}
+                                    showMidValues={branchLabels?.showMidValues ?? true} onToggleMidValues={branchLabels?.onToggleMidValues}
+                                />
                                 {inspectQuery && voltageLevels.includes(inspectQuery) && (
                                     <button
                                         onClick={() => onVlOpen(inspectQuery)}

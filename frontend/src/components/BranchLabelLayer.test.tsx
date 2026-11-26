@@ -42,13 +42,13 @@ const DIAGRAM = {
     branch_loading: { LONG: [41.2, 70.4], SHORT: [97.3, 96.8] },
 } as unknown as DiagramData;
 
-function Harness({ mode = 'network', metric = 'loading' }: { mode?: ViewMode; metric?: FlowMetric }) {
+function Harness({ mode = 'network', metric = 'loading', midLabels = true }: { mode?: ViewMode; metric?: FlowMetric; midLabels?: boolean }) {
     const ref = useRef<HTMLDivElement>(null);
     return (
         <div>
             <div ref={ref} data-testid="container" className="svg-container" dangerouslySetInnerHTML={{ __html: SVG }} />
             <BranchLabelLayer containerRef={ref} diagram={DIAGRAM} metaIndex={META} mode={mode} metric={metric}
-                monitoringFactor={0.95} displayName={id => (id === 'LONG' ? 'CANTEY761' : id)} />
+                monitoringFactor={0.95} displayName={id => (id === 'LONG' ? 'CANTEY761' : id)} midLabels={midLabels} />
         </div>
     );
 }
@@ -84,6 +84,13 @@ describe('BranchLabelLayer', () => {
         expect(layer.getByText('-410')).toBeInTheDocument();
         // SHORT is too short on screen for a grey (MW) label.
         expect(layer.queryByText('55')).toBeNull();
+    });
+
+    it('without the zoomed-out values, only the ends of the long branch are labelled', async () => {
+        render(<Harness midLabels={false} />);
+        await waitFor(() => expect(screen.getByText('41%')).toBeInTheDocument());
+        expect(screen.getByText('70%')).toBeInTheDocument();
+        expect(screen.queryByText('97%')).toBeNull();
     });
 
     it('hovering a branch tells both its ends: voltage level, MW and loading', async () => {

@@ -15,7 +15,7 @@ import {
 } from '../utils/svgUtils';
 import { computeActionOverloadHighlights, computeN1OverloadHighlights } from '../utils/overloadHighlights';
 import { interactionLogger } from '../utils/interactionLogger';
-import type { AnalysisResult, DiagramData, FlowMetric, MetadataIndex, TabId, ViewMode } from '../types';
+import type { AnalysisResult, BranchLabelControls, DiagramData, FlowMetric, MetadataIndex, TabId, ViewMode } from '../types';
 import type { DiagramsState } from './useDiagrams';
 
 interface UseDiagramHighlightsArgs {
@@ -32,8 +32,8 @@ interface UseDiagramHighlightsReturn {
   handleViewModeChangeForTab: (tab: TabId, mode: 'network' | 'delta') => void;
   flowMetricForTab: (tab: TabId) => FlowMetric;
   handleFlowMetricChangeForTab: (tab: TabId, metric: FlowMetric) => void;
-  /** Each NAD tab's metadata index, for its readable flow labels. */
-  metaIndexes: Partial<Record<TabId, MetadataIndex | null>>;
+  /** The readable flow labels: each NAD tab's metadata index and the mid-branch values toggle. */
+  branchLabels: BranchLabelControls;
 }
 
 /**
@@ -302,9 +302,16 @@ export function useDiagramHighlights({
     }
   }, [nDiagram, n1Diagram, actionDiagram, diagrams.nMetaIndex, diagrams.n1MetaIndex, diagrams.actionMetaIndex, result, selectedActionId, actionViewMode, detachedViewModes, flowMetric, detachedFlowMetrics, detachedTabs, activeTab, selectedContingency, selectedOverloads, applyHighlightsForTab]);
 
-  const metaIndexes = useMemo(() => ({
-    n: diagrams.nMetaIndex, contingency: diagrams.n1MetaIndex, action: diagrams.actionMetaIndex,
-  }), [diagrams.nMetaIndex, diagrams.n1MetaIndex, diagrams.actionMetaIndex]);
+  // The values at the middle of the branches (zoomed out): every tab and window alike, like the VL names.
+  const [showMidValues, setShowMidValues] = useState(true);
+  const onToggleMidValues = useCallback((show: boolean) => {
+    interactionLogger.record('value_labels_toggled', { show });
+    setShowMidValues(show);
+  }, []);
+  const branchLabels = useMemo<BranchLabelControls>(() => ({
+    metaIndexes: { n: diagrams.nMetaIndex, contingency: diagrams.n1MetaIndex, action: diagrams.actionMetaIndex },
+    showMidValues, onToggleMidValues,
+  }), [diagrams.nMetaIndex, diagrams.n1MetaIndex, diagrams.actionMetaIndex, showMidValues, onToggleMidValues]);
 
-  return { viewModeForTab, handleViewModeChangeForTab, flowMetricForTab, handleFlowMetricChangeForTab, metaIndexes };
+  return { viewModeForTab, handleViewModeChangeForTab, flowMetricForTab, handleFlowMetricChangeForTab, branchLabels };
 }

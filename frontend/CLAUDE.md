@@ -155,6 +155,9 @@ frontend/
     │   ├── FlowViewToggles.tsx     # Top-right diagram toggles: Flows /
     │   │                           # Impacts × MW / Loading % (per tab,
     │   │                           # per window — useDiagramHighlights)
+    │   ├── DiagramLabelToggles.tsx # `🏷 VL` names + `🏷 Values` (the
+    │   │                           # zoomed-out mid-branch values) toggles
+    │   │                           # beside the Inspect field
     │   ├── BranchLabelLayer.tsx    # Readable flow labels over each NAD tab,
     │   │                           # in CSS px (pypowsybl's user-unit values
     │   │                           # are hidden by `data-branch-labels`):

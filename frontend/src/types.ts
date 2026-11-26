@@ -278,6 +278,15 @@ export interface DiagramData {
  *  null for an end without one (a transformer's unlimited side). */
 export type BranchLoading = [number | null, number | null];
 
+/** The readable flow labels over the NAD tabs (components/BranchLabelLayer.tsx). */
+export interface BranchLabelControls {
+    /** Each NAD tab's metadata index. */
+    metaIndexes: Partial<Record<TabId, MetadataIndex | null>>;
+    /** The values at the middle of the branches (the zoomed-out labels); off for a lighter reading. */
+    showMidValues: boolean;
+    onToggleMidValues: (show: boolean) => void;
+}
+
 /** Flows (absolute state) or Impacts (change vs the reference state). */
 export type ViewMode = 'network' | 'delta';
 /** What the branch labels and colours measure: active power or loading rate. */
@@ -919,6 +928,7 @@ export type InteractionType =
     | 'zoom_reset'
     | 'inspect_query_changed'
     | 'vl_names_toggled'
+    | 'value_labels_toggled'
     | 'sld_overlay_opened'
     | 'sld_overlay_tab_changed'
     | 'sld_overlay_closed'

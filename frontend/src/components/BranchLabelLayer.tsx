@@ -35,6 +35,8 @@ interface BranchLabelLayerProps {
     metric: FlowMetric;
     monitoringFactor: number;
     displayName?: (id: string) => string;
+    /** The values at the middle of the branches (zoomed out); false for a lighter reading. */
+    midLabels?: boolean;
 }
 
 interface ViewState {
@@ -43,6 +45,7 @@ interface ViewState {
     mode: ViewMode;
     metric: FlowMetric;
     monitoringFactor: number;
+    midLabels: boolean;
 }
 
 /** What the layout read from the mounted diagram, and the labels of its view. */
@@ -90,7 +93,7 @@ const measureLabel = (label: string, important: boolean): number => {
  * their voltage level, active power and loading.
  */
 export default function BranchLabelLayer({
-    containerRef, diagram, metaIndex, mode, metric, monitoringFactor, displayName,
+    containerRef, diagram, metaIndex, mode, metric, monitoringFactor, displayName, midLabels = true,
 }: BranchLabelLayerProps) {
     const wrapRef = useRef<HTMLDivElement>(null);
     const tooltipRef = useRef<HTMLDivElement>(null);
@@ -98,9 +101,9 @@ export default function BranchLabelLayer({
     const [hovered, setHovered] = useState<BranchGeometry[]>([]);
 
     // The callbacks below (timer, observers, pointer) read the latest view from here.
-    const latest = useRef<ViewState>({ diagram, metaIndex, mode, metric, monitoringFactor });
+    const latest = useRef<ViewState>({ diagram, metaIndex, mode, metric, monitoringFactor, midLabels });
     useLayoutEffect(() => {
-        latest.current = { diagram, metaIndex, mode, metric, monitoringFactor };
+        latest.current = { diagram, metaIndex, mode, metric, monitoringFactor, midLabels };
     });
     const cache = useRef<Cache>({ svg: null, metaIndex: null, geoms: [], index: null, itemsOf: [], items: [] });
     // The settled view's client → user mapping, for the hover.
@@ -126,7 +129,7 @@ export default function BranchLabelLayer({
         // The view moved under a still pointer: the tooltip is stale.
         showHover([]);
         const svg = container.querySelector<SVGSVGElement>(':scope > svg');
-        const { diagram: d, metaIndex: meta, mode: m, metric: k, monitoringFactor: mf } = latest.current;
+        const { diagram: d, metaIndex: meta, mode: m, metric: k, monitoringFactor: mf, midLabels: mid } = latest.current;
         const c = cache.current;
         if (!svg || !d || !meta) {
             viewRef.current = null;
@@ -152,7 +155,7 @@ export default function BranchLabelLayer({
         const project = (p: Point) => applyAffine(toLayer, p);
         const pxPerUnit = Math.hypot(ctm.a, ctm.b);
         viewRef.current = { inverse, pxPerUnit };
-        setPlaced(layoutLabels(c.items, { width: rect.width, height: rect.height, project, pxPerUnit, measure: measureLabel }));
+        setPlaced(layoutLabels(c.items, { width: rect.width, height: rect.height, project, pxPerUnit, measure: measureLabel, mid }));
         wrap.style.visibility = '';
     }, [containerRef, showHover]);
 
@@ -165,7 +168,7 @@ export default function BranchLabelLayer({
             relayout();
         }, 0);
     }, [relayout]);
-    useEffect(() => { schedule(); }, [diagram, metaIndex, mode, metric, monitoringFactor, schedule]);
+    useEffect(() => { schedule(); }, [diagram, metaIndex, mode, metric, monitoringFactor, midLabels, schedule]);
 
     useEffect(() => {
         const container = containerRef.current;

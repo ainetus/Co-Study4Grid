@@ -205,6 +205,7 @@ SPEC_DETAILS: dict[str, dict] = {
     "zoom_reset":               _spec_row({"tab"}),
     "inspect_query_changed":    _spec_row({"query"}, optional={"target_tab"}),
     "vl_names_toggled":         _spec_row({"show"}),
+    "value_labels_toggled":     _spec_row({"show"}),
     # --- Action Overview Diagram ---
     "overview_shown":           _spec_row({"has_pins", "pin_count"}),
     "overview_hidden":          _spec_row(set()),

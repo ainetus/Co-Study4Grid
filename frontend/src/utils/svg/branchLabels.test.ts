@@ -137,6 +137,13 @@ describe('layoutLabels', () => {
         expect(a.y).toBe(300);
     });
 
+    it('without the zoomed-out values: no middle label, the ends of a long branch still', () => {
+        const short = item(geom('S', [100, 100], [160, 100]));
+        const long = item(geom('L', [100, 300], [100 + ENDS_MIN_PX + 100, 300]));
+        const placed = layoutLabels([short, long], { ...identity, mid: false });
+        expect(placed.map(p => p.key)).toEqual(['L:0', 'L:1']);
+    });
+
     it('labels a grey branch only once it is long enough on screen', () => {
         const short = item(geom('G1', [0, 50], [PLAIN_MIN_PX - 10, 50]), { important: false });
         const long = item(geom('G2', [0, 200], [PLAIN_MIN_PX + 10, 200]), { important: false });

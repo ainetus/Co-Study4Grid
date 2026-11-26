@@ -240,6 +240,17 @@ describe('useDiagramHighlights — active power vs loading rate', () => {
             diagrams.nSvgContainerRef.current, diagrams.nDiagram, diagrams.nMetaIndex, null, 0.9);
     });
 
+    it('toggles the zoomed-out values for every tab, and logs it', async () => {
+        const { interactionLogger } = await import('../utils/interactionLogger');
+        const record = vi.spyOn(interactionLogger, 'record');
+        const { result } = render(makeDiagramsState({ activeTab: 'n' }));
+        expect(result.current.branchLabels.showMidValues).toBe(true);
+        act(() => result.current.branchLabels.onToggleMidValues(false));
+        expect(result.current.branchLabels.showMidValues).toBe(false);
+        expect(record).toHaveBeenCalledWith('value_labels_toggled', { show: false });
+        expect(result.current.branchLabels.metaIndexes.n).toBeDefined();
+    });
+
     it('routes the toggle to the main window, or to the detached tab only', () => {
         const diagrams = makeDiagramsState({ activeTab: 'n' });
         const { result } = render(diagrams, { action: {} });
