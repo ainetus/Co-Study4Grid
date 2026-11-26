@@ -423,6 +423,26 @@ describe('ContextMapView', () => {
         const withConsignations = (items: ContextMapConsignation[], total = items.length): ContextMapData =>
             ({ ...payload(), consignations: { items, total } });
 
+        it('pulls a consigned circuit aside from its overloaded twin, leaving the other consignations straight', () => {
+            // Parallel transformers between the same two posts: one consigned, the other overloaded.
+            const overloadedTwin: ContextMapHighlight = {
+                role: 'overload', rho: 1.09,
+                element: { ...contingency.element, id: 'TR_OVER', name: 'TR 761', points: [[3.4, -45.9], [3.0, -45.5]] },
+            };
+            const data = withConsignations([
+                cons({ id: 'TR_CONS', points: [[3.0, -45.5], [3.4, -45.9]] }),
+                cons({ id: 'ELSEWHERE' }),
+            ]);
+            render(<ContextMapView state={state({ data, highlights: [overloadedTwin] })} />);
+            const pathOf = (el: HTMLElement) => el.querySelector('path')!.getAttribute('d')!;
+            const consigned = pathOf(screen.getByTestId('context-map-consignation-TR_CONS'));
+            const overloaded = pathOf(screen.getByTestId('context-map-highlight-TR_OVER'));
+            // Each runs its own lens course between the shared ends.
+            expect(consigned.split('L')).toHaveLength(4);
+            expect(consigned.split('L')[1]).not.toEqual(overloaded.split('L')[1]);
+            expect(pathOf(screen.getByTestId('context-map-consignation-ELSEWHERE')).split('L')).toHaveLength(2);
+        });
+
         it('draws the consigned circuits by voltage, and can hide them', () => {
             const data = withConsignations([
                 cons({ id: 'C400', name: 'PARIS — LYON' }),

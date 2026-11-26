@@ -26,6 +26,14 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   overview's clone of the N-1) now drops the N tab's decoration, so a
   decorated N could not leak its labels into the N-1 / action flows.
 
+### Context tab — a consigned twin beside the highlighted circuit
+
+- A consignation whose ends are those of the contingency or of an overload
+  (parallel transformers, one consigned, the other overloaded — CANTEY762 /
+  CANTEY761 on the RTE grid) was hidden under the highlight: it is now pulled
+  aside into the same lens as twin contingency / overload circuits, the
+  loading pill on the overload's side.
+
 ### Context tab — the network outline and the consignations (Carte-Front)
 
 - **Consignations on the map**: the extra-high-voltage circuits the situation

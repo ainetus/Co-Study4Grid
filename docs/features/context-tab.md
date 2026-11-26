@@ -19,7 +19,10 @@ the same way as on the N-1 diagram. A contingency and an overload on twin
 circuits (the same two substations) would cover each other: such lines are
 drawn side by side, leaving and rejoining their shared substations
 (`separateCoincident` in `contextMapGeometry.ts`), the contingency in the
-middle and on top. On the N-1 diagram the contingency halo is the widest and
+middle and on top. A consigned circuit twin of a highlighted one — parallel
+transformers, one consigned and the other overloaded — is pulled aside the
+same way (`useSeparatedLines` in `ContextMapLayers.tsx`); the other
+consignations stay straight. On the N-1 diagram the contingency halo is the widest and
 lies beneath the others, so an overload halo on its twin leaves a yellow band
 visible.
 

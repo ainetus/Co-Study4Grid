@@ -244,6 +244,13 @@ const centreOut = (n: number, gap: number): number[] =>
         .sort((a, b) => Math.abs(a.o) - Math.abs(b.o) || a.k - b.k)
         .map(({ o }) => o);
 
+/** Two-point segments whose ends both lie within `tolerance` of each other, either way round. */
+export const segmentsCoincide = (s: readonly Point[], t: readonly Point[], tolerance: number): boolean => {
+    if (s.length !== 2 || t.length !== 2) return false;
+    const near = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1]) <= tolerance;
+    return (near(s[0], t[0]) && near(s[1], t[1])) || (near(s[0], t[1]) && near(s[1], t[0]));
+};
+
 /**
  * Segments drawn over each other — a contingency and the overload it causes
  * on a twin circuit, or parallel overloaded circuits — pulled apart into a
@@ -261,7 +268,7 @@ export const separateCoincident = (
     lines.forEach((pts, i) => {
         if (!pts || pts.length !== 2) return;
         const [a, b] = pts;
-        const group = groups.find(({ ends: [p, q] }) => (near(a, p) && near(b, q)) || (near(a, q) && near(b, p)));
+        const group = groups.find(({ ends }) => segmentsCoincide(ends, [a, b], tolerance));
         if (group) group.members.push(i);
         else groups.push({ ends: [a, b], members: [i] });
     });
