@@ -32,6 +32,7 @@ import {
     spreadPins,
     type PinFeedState,
 } from './pinGlyph';
+import { LOADING_CLASSES } from './loadingVisuals';
 
 /**
  * Apply contingency + overload halo highlights to the
@@ -94,7 +95,7 @@ export const applyActionOverviewHighlights = (
         const clone = original.cloneNode(true) as SVGGraphicsElement;
         clone.removeAttribute('id');
         clone.classList.add(klass, 'nad-highlight-clone');
-        clone.classList.remove('nad-delta-positive', 'nad-delta-negative', 'nad-delta-grey');
+        clone.classList.remove('nad-delta-positive', 'nad-delta-negative', 'nad-delta-grey', ...LOADING_CLASSES);
 
         let transform: string | null = null;
         try {

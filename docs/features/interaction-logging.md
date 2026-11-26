@@ -82,6 +82,7 @@ type InteractionType =
   | 'tab_tied'                     // User tied a detached tab's viewBox to the main window
   | 'tab_untied'                   // User untied a previously-tied detached tab
   | 'view_mode_changed'            // User switched Flows/Impacts mode
+  | 'flow_metric_changed'          // User switched MW / Loading % (active power vs loading rate)
   | 'voltage_range_changed'        // User adjusted voltage filter slider
   | 'asset_clicked'                // User clicked a line/asset badge to zoom
   | 'zoom_in'                      // User clicked zoom-in button
@@ -210,6 +211,7 @@ Each event's `details` field contains **all parameters needed to replay** the us
 | `tab_tied` | `{ tab: TabId }` — starts mirroring the detached tab's viewBox one-way into the main window's active tab. | Click "Tie" on a detached tab header |
 | `tab_untied` | `{ tab: TabId }` — stops mirroring. Also fired automatically when a tied tab is reattached. | Click "Untie" on a detached tab header |
 | `view_mode_changed` | `{ mode: 'network'\|'delta', tab: TabId, scope: 'main'\|'detached' }` — Flow/Impacts is now per-tab AND per-window: toggling in a detached popup only affects that popup's tab. | Click Flows/Impacts toggle |
+| `flow_metric_changed` | `{ metric: 'p'\|'loading', tab: TabId, scope: 'main'\|'detached' }` — active power (MW) vs loading rate (% of the permanent limit), orthogonal to Flows/Impacts and scoped the same way (per tab, per window). | Click MW / Loading % toggle |
 | `voltage_range_changed` | `{ min: number, max: number }` (kV) | Drag voltage slider |
 | `asset_clicked` | `{ action_id: string, asset_name: string, tab: 'n'\|'n-1'\|'action' }` — `tab` is the destination tab for the zoom. When the click comes from the sticky contingency / overloads sidebar (`handleZoomOnActiveTab`), `tab` is set to the **currently active** diagram tab and `action_id` is the empty string — meaning "zoom this asset in place without switching tabs". | Click a rho-line badge or a sticky contingency / overload link |
 | `zoom_in` | `{ tab: TabId }` | Click + button |

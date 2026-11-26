@@ -27,6 +27,7 @@ export {
     applyContingencyHighlight,
 } from './svg/highlights';
 export { applyDeltaVisuals } from './svg/deltaVisuals';
+export { applyLoadingVisuals } from './svg/loadingVisuals';
 export { attachVlInteractions } from './svg/vlInteractions';
 export {
     severityFill,

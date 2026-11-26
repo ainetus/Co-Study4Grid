@@ -371,6 +371,28 @@ class TestGetNStateLoading:
         net.get_operational_limits.assert_not_called()
 
 
+class TestGetBranchLoading:
+    def test_percent_of_the_permanent_limit_for_lines_and_transformers(self):
+        lines = pd.DataFrame({"i1": [150.0, 10.0], "i2": [-160.0, 5.0]}, index=["L1", "L2"])
+        trafos = pd.DataFrame({"i1": [33.33], "i2": [0.0]}, index=["T1"])
+        net = _mock_network(lines_df=lines, trafos_df=trafos,
+                            limits_df=_limits({"L1": 200.0, "L2": 100.0, "T1": 100.0}))
+        # max(|i1|, |i2|) / limit, rounded to 0.1 %.
+        assert overloads.get_branch_loading(net) == {"L1": 80.0, "L2": 10.0, "T1": 33.3}
+
+    def test_skips_branches_without_a_limit_and_reads_disconnected_as_zero(self):
+        lines = pd.DataFrame({"i1": [500.0, float("nan")], "i2": [0.0, float("nan")]},
+                             index=["NO_LIMIT", "OPEN"])
+        net = _mock_network(lines_df=lines, limits_df=_limits({"OPEN": 100.0}))
+        assert overloads.get_branch_loading(net) == {"OPEN": 0.0}
+
+    def test_no_limits_means_no_loading(self):
+        lines = pd.DataFrame({"i1": [100.0], "i2": [0.0]}, index=["L1"])
+        net = _mock_network(lines_df=lines)
+        assert overloads.get_branch_loading(net) == {}
+        net.get_lines.assert_not_called()
+
+
 # ----------------------------------------------------------------------
 # flows
 # ----------------------------------------------------------------------
@@ -540,6 +562,21 @@ class TestComputeAssetDeltas:
 
     def test_empty_inputs_return_empty_result(self):
         assert deltas.compute_asset_deltas({}, {}) == {}
+
+
+class TestComputeLoadingDeltas:
+    def test_percentage_point_deltas_categorised_like_the_flows(self):
+        after = {"L1": 95.0, "L2": 40.0, "L3": 50.2}
+        before = {"L1": 70.0, "L2": 60.0, "L3": 50.0}
+        result = deltas.compute_loading_deltas(after, before)
+        assert result["L1"] == {"delta": 25.0, "category": "positive"}
+        assert result["L2"] == {"delta": -20.0, "category": "negative"}
+        # 0.2 pt < 5 % of the largest delta (25 pt) → grey.
+        assert result["L3"]["category"] == "grey"
+
+    def test_only_branches_loaded_in_both_states(self):
+        result = deltas.compute_loading_deltas({"L1": 10.0, "NEW": 5.0}, {"L1": 5.0, "OLD": 1.0})
+        assert set(result) == {"L1"}
 
 
 class TestComputeDeltaVectorized:

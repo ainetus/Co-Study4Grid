@@ -6,13 +6,14 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study. 
 
 import React, { useState, useMemo, type RefObject } from 'react';
-import type { DiagramData, AnalysisResult, TabId, VlOverlay, SldTab, MetadataIndex, ActionOverviewFilters, UnsimulatedActionScoreInfo, FeedRevealState } from '../types';
+import type { DiagramData, AnalysisResult, TabId, VlOverlay, SldTab, MetadataIndex, ActionOverviewFilters, UnsimulatedActionScoreInfo, FeedRevealState, FlowMetric } from '../types';
 import MemoizedSvgContainer from './MemoizedSvgContainer';
 import SldOverlay from './SldOverlay';
 import DetachableTabHost from './DetachableTabHost';
 import ActionOverviewDiagram from './ActionOverviewDiagram';
 import ActionCardPopover from './ActionCardPopover';
 import DiagramLegend from './DiagramLegend';
+import FlowViewToggles from './FlowViewToggles';
 import InspectSearchField from './InspectSearchField';
 import { filterInspectables } from '../utils/inspectables';
 import DetachedPlaceholder from './DetachedPlaceholder';
@@ -167,6 +168,10 @@ interface VisualizationPanelProps {
      * is currently detached.
      */
     onViewModeChangeForTab?: (tab: TabId, mode: 'network' | 'delta') => void;
+    /** Active power vs loading rate of a tab, and its toggle handler —
+     *  window-scoped like the view mode. Without them: MW, no toggle effect. */
+    flowMetricForTab?: (tab: TabId) => FlowMetric;
+    onFlowMetricChangeForTab?: (tab: TabId, metric: FlowMetric) => void;
     /** Overflow Analysis tab wiring (layout toggle + action pins), grouped (D4). See OverflowControls. */
     overflow?: OverflowControls;
     inspectQuery: string;
@@ -258,6 +263,8 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     onInspectQueryChangeFor,
     viewModeForTab,
     onViewModeChangeForTab,
+    flowMetricForTab,
+    onFlowMetricChangeForTab,
     showVoltageLevelNames = true,
     onToggleVoltageLevelNames,
 }) => {
@@ -340,6 +347,8 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     // state passed in as a prop. That preserves backward compatibility.
     const viewModeForTabFn = viewModeForTab ?? (() => actionViewMode);
     const viewModeChangeForTabCb = onViewModeChangeForTab ?? ((_tab: TabId, mode: 'network' | 'delta') => onViewModeChange(mode));
+    const flowMetricForTabFn = flowMetricForTab ?? ((): FlowMetric => 'p');
+    const flowMetricChangeForTabCb = onFlowMetricChangeForTab ?? (() => {});
     const isTabTiedFn = isTabTied ?? (() => false);
     const toggleTabTieCb = onToggleTabTie ?? (() => {});
 
@@ -478,44 +487,13 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                     to the controls it actually synchronises
                     (zoom / inspect), not here. */}
                 {hasDiagramForTab && supportsViewMode && (
-                    <div style={{
-                        position: 'absolute', top: '10px', right: '10px', zIndex: 100,
-                        display: 'flex', alignItems: 'center', gap: '6px',
-                    }}>
-                        <div style={{
-                            display: 'flex',
-                            borderRadius: '6px',
-                            overflow: 'hidden',
-                            border: `1px solid ${colors.border}`,
-                            boxShadow: '0 2px 5px rgba(0,0,0,0.15)',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            backgroundColor: colors.surface,
-                        }}>
-                            <button
-                                onClick={() => viewModeChangeForTabCb(tabId, 'network')}
-                                style={{
-                                    padding: '4px 12px', border: 'none', cursor: 'pointer',
-                                    backgroundColor: tabViewMode === 'network' ? colors.brand : colors.surface,
-                                    color: tabViewMode === 'network' ? colors.textOnBrand : colors.textSecondary,
-                                    transition: 'all 0.15s ease'
-                                }}
-                            >
-                                Flows
-                            </button>
-                            <button
-                                onClick={() => viewModeChangeForTabCb(tabId, 'delta')}
-                                style={{
-                                    padding: '4px 12px', border: 'none', borderLeft: `1px solid ${colors.border}`, cursor: 'pointer',
-                                    backgroundColor: tabViewMode === 'delta' ? colors.brand : colors.surface,
-                                    color: tabViewMode === 'delta' ? colors.textOnBrand : colors.textSecondary,
-                                    transition: 'all 0.15s ease'
-                                }}
-                            >
-                                Impacts
-                            </button>
-                        </div>
-                    </div>
+                    <FlowViewToggles
+                        tabId={tabId}
+                        viewMode={tabViewMode}
+                        onViewModeChange={viewModeChangeForTabCb}
+                        metric={flowMetricForTabFn(tabId)}
+                        onMetricChange={flowMetricChangeForTabCb}
+                    />
                 )}
 
                 {/* Bottom-left cluster: Tie (detached only) + zoom
@@ -1152,7 +1130,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         )}
                         {renderTabOverlay('n', true)}
                         {nDiagram?.svg && (
-                            <DiagramLegend tabId="n" uniqueVoltages={uniqueVoltages} vlNamesHidden={!showVoltageLevelNames} />
+                            <DiagramLegend tabId="n" uniqueVoltages={uniqueVoltages} vlNamesHidden={!showVoltageLevelNames} flowMetric={flowMetricForTabFn('n')} />
                         )}
                     </div>
                 </DetachableTabHost>
@@ -1205,7 +1183,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         )}
                         {renderTabOverlay('contingency', true)}
                         {n1Diagram?.svg && (
-                            <DiagramLegend tabId="contingency" uniqueVoltages={uniqueVoltages} vlNamesHidden={!showVoltageLevelNames} />
+                            <DiagramLegend tabId="contingency" uniqueVoltages={uniqueVoltages} vlNamesHidden={!showVoltageLevelNames} flowMetric={flowMetricForTabFn('contingency')} />
                         )}
                     </div>
                 </DetachableTabHost>
@@ -1300,7 +1278,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         */}
                         {renderTabOverlay('action', true)}
                         {(actionDiagram?.svg || (n1Diagram?.svg && !selectedActionId)) && (
-                            <DiagramLegend tabId="action" uniqueVoltages={uniqueVoltages} vlNamesHidden={!showVoltageLevelNames} />
+                            <DiagramLegend tabId="action" uniqueVoltages={uniqueVoltages} vlNamesHidden={!showVoltageLevelNames} flowMetric={flowMetricForTabFn('action')} />
                         )}
                     </div>
                 </DetachableTabHost>

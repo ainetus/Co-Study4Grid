@@ -266,7 +266,18 @@ export interface DiagramData {
     /** N-1 diagrams: each overload's loading in N (before the contingency),
      *  parallel to `lines_overloaded`; null where unknown. */
     lines_overloaded_rho_before?: (number | null)[];
+    /** Loading of every branch with a permanent current limit, in % of
+     *  that limit (`max(|i1|, |i2|) / limit`) — the Loading view. */
+    branch_loading?: Record<string, number>;
+    /** Loading change vs the reference state (N for N-1, N-1 for an
+     *  action), in percentage points — the Loading view in Impacts mode. */
+    loading_deltas?: Record<string, FlowDelta>;
 }
+
+/** Flows (absolute state) or Impacts (change vs the reference state). */
+export type ViewMode = 'network' | 'delta';
+/** What the branch labels and colours measure: active power or loading rate. */
+export type FlowMetric = 'p' | 'loading';
 
 export interface FlowDelta {
     delta: number;
@@ -350,6 +361,8 @@ export interface DiagramPatch {
     flow_deltas?: Record<string, FlowDelta>;
     reactive_flow_deltas?: Record<string, FlowDelta>;
     asset_deltas?: Record<string, AssetDelta>;
+    branch_loading?: Record<string, number>;
+    loading_deltas?: Record<string, FlowDelta>;
     vl_subtrees?: Record<string, {
         node_svg: string;
         node_sub_svg_id: string;
@@ -887,6 +900,7 @@ export type InteractionType =
     | 'tab_tied'
     | 'tab_untied'
     | 'view_mode_changed'
+    | 'flow_metric_changed'
     | 'overflow_layout_mode_toggled'
     | 'overflow_pins_toggled'
     | 'overflow_pin_clicked'

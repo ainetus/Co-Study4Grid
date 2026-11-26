@@ -382,3 +382,55 @@ class TestGetNStateLoading:
     def test_unknown_before_the_n_diagram(self):
         mixin = DiagramMixin()
         assert mixin._get_n_state_loading(self._network({"L1": 100.0}), ["L1"]) == [None]
+
+
+class TestLoadingAttachment:
+    """`_attach_loading_vs_base` / `_attach_action_loading` give the Loading
+    view its data: the state's branch loading and its delta vs the reference
+    state, read on the right variant and the shared Network restored."""
+
+    LOADING = {
+        "N": {"L1": 50.0, "L2": 80.0},
+        "N-1": {"L1": 0.0, "L2": 110.0},
+    }
+
+    def _mixin(self):
+        network = MagicMock()
+        network.variant = "N-1"
+        network.get_working_variant_id.side_effect = lambda: network.variant
+        network.set_working_variant.side_effect = lambda v: setattr(network, "variant", v)
+        mixin = DiagramMixin()
+        mixin._get_base_network = lambda: network
+        mixin._get_n_variant = lambda: "N"
+        mixin._get_contingency_variant = lambda elements: "N-1"
+        mixin._get_branch_loading = lambda net: dict(self.LOADING[net.variant])
+        return mixin, network
+
+    def test_contingency_loading_and_deltas_vs_n(self):
+        mixin, network = self._mixin()
+        diagram: dict = {}
+        mixin._attach_loading_vs_base(diagram, network)
+        assert diagram["branch_loading"] == {"L1": 0.0, "L2": 110.0}
+        assert diagram["loading_deltas"]["L1"] == {"delta": -50.0, "category": "negative"}
+        assert diagram["loading_deltas"]["L2"] == {"delta": 30.0, "category": "positive"}
+        assert network.variant == "N-1"
+
+    def test_action_deltas_vs_the_contingency(self):
+        mixin, network = self._mixin()
+        mixin._last_disconnected_elements = ["L1"]
+        network.variant = "ACTION"
+        diagram: dict = {}
+        mixin._attach_action_loading(diagram, {"L1": 0.0, "L2": 90.0})
+        assert diagram["branch_loading"] == {"L1": 0.0, "L2": 90.0}
+        assert diagram["loading_deltas"]["L2"] == {"delta": -20.0, "category": "negative"}
+        assert diagram["loading_deltas"]["L1"]["category"] == "grey"
+        assert network.variant == "ACTION"
+
+    def test_a_failed_read_leaves_the_diagram_without_loading(self):
+        mixin, network = self._mixin()
+        def boom(net):
+            raise RuntimeError("no limits")
+        mixin._get_branch_loading = boom
+        diagram: dict = {}
+        mixin._attach_loading_vs_base(diagram, network)
+        assert "branch_loading" not in diagram and "loading_deltas" not in diagram

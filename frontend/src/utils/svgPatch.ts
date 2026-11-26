@@ -45,14 +45,18 @@
 
 import type { DiagramPatch, MetadataIndex } from '../types';
 import { invalidateIdMapCache } from './svgUtils';
+import { resetFlowVisuals } from './svg/loadingVisuals';
 
 /**
- * Deep-clone the pristine N-state SVGSVGElement. The N tab keeps the
- * original; the returned clone is the one that gets patched and then
- * injected into the N-1 or Action containers.
+ * Deep-clone the N-state SVGSVGElement. The N tab keeps the original;
+ * the returned clone is the one that gets patched and then injected
+ * into the N-1 or Action containers. The N tab may be decorated (Loading
+ * view), so the clone is reset to pypowsybl's own labels first.
  */
 export const cloneBaseSvg = (baseSvg: SVGSVGElement): SVGSVGElement => {
-    return baseSvg.cloneNode(true) as SVGSVGElement;
+    const clone = baseSvg.cloneNode(true) as SVGSVGElement;
+    resetFlowVisuals(clone);
+    return clone;
 };
 
 /**

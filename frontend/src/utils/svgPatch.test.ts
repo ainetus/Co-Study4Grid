@@ -81,6 +81,21 @@ describe('cloneBaseSvg', () => {
 
         expect(baseAEl.classList.contains('nad-disconnected')).toBe(false);
     });
+
+    it('drops the Loading / Impacts decoration of the N tab so the patch starts from MW labels', () => {
+        const base = buildBaseSvg();
+        base.querySelector('#nad-l-LINE_A')!.classList.add('nad-loading-over');
+        const label = base.querySelector('#nad-ei-LINE_A-1 text')!;
+        label.setAttribute('data-original-text', '111');
+        label.textContent = '97%';
+
+        const clone = cloneBaseSvg(base);
+
+        expect(clone.querySelector('#nad-l-LINE_A')!.classList.contains('nad-loading-over')).toBe(false);
+        expect(clone.querySelector('#nad-ei-LINE_A-1 text')!.textContent).toBe('111');
+        expect(clone.querySelector('[data-original-text]')).toBeNull();
+        expect(label.textContent).toBe('97%');
+    });
 });
 
 describe('applyPatchToClone', () => {

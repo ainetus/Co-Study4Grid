@@ -28,6 +28,7 @@ vi.mock('../utils/svgUtils', () => ({
     buildMetadataIndex: vi.fn(),
     applyOverloadedHighlights: vi.fn(),
     applyDeltaVisuals: vi.fn(),
+    applyLoadingVisuals: vi.fn(),
     applyActionTargetHighlights: vi.fn(),
     applyContingencyHighlight: vi.fn(),
     isCouplingAction: vi.fn(() => false),

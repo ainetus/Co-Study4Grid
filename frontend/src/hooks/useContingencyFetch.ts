@@ -164,6 +164,8 @@ export function useContingencyFetch({
               flow_deltas: patch.flow_deltas,
               reactive_flow_deltas: patch.reactive_flow_deltas,
               asset_deltas: patch.asset_deltas,
+              branch_loading: patch.branch_loading,
+              loading_deltas: patch.loading_deltas,
               lf_converged: patch.lf_converged,
               lf_status: patch.lf_status,
             });

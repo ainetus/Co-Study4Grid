@@ -6,7 +6,7 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
 import { useMemo, useState } from 'react';
-import type { TabId } from '../types';
+import type { FlowMetric, TabId } from '../types';
 import { colors, radius, space, text } from '../styles/tokens';
 
 interface DiagramLegendProps {
@@ -27,6 +27,9 @@ interface DiagramLegendProps {
    * absence of labels is intentional, not a render bug.
    */
   vlNamesHidden?: boolean;
+  /** Active power (default) or loading rate: the branch colours the
+   *  legend explains. */
+  flowMetric?: FlowMetric;
 }
 
 interface LegendRow {
@@ -54,7 +57,7 @@ interface LegendRow {
  * scanning. State is local; collapse preference is not persisted
  * (across sessions) so each tab open starts in the compact state.
  */
-export default function DiagramLegend({ tabId, uniqueVoltages, vlNamesHidden }: DiagramLegendProps) {
+export default function DiagramLegend({ tabId, uniqueVoltages, vlNamesHidden, flowMetric = 'p' }: DiagramLegendProps) {
   const [open, setOpen] = useState(false);
 
   const rows = useMemo<LegendRow[]>(() => {
@@ -66,13 +69,22 @@ export default function DiagramLegend({ tabId, uniqueVoltages, vlNamesHidden }: 
       list.push({ color: 'var(--signal-action-target)', label: 'Action target', detail: 'pink halo on the remedial action' });
     }
     list.push({ color: 'var(--signal-overload)', label: 'Overloaded line', detail: 'orange halo (ρ ≥ 100% of monitoring factor)' });
+    if (flowMetric === 'loading') {
+      list.push({ color: 'var(--signal-loading-low)', label: 'Loading below 50 %', detail: 'grey line, % of the permanent limit' });
+      list.push({
+        color: 'linear-gradient(90deg, var(--signal-loading-warn-1), var(--signal-loading-warn-5))',
+        label: 'Loading 50 % → monitoring factor', detail: 'pale yellow to orange line',
+      });
+      list.push({ color: 'var(--signal-loading-over)', label: 'Loading ≥ monitoring factor', detail: 'vivid orange line' });
+    }
     if (tabId === 'contingency' || tabId === 'action') {
-      list.push({ color: 'var(--signal-delta-positive)', label: 'Flow up after change', detail: 'orange line in delta view' });
-      list.push({ color: 'var(--signal-delta-negative)', label: 'Flow down after change', detail: 'blue line in delta view' });
+      const what = flowMetric === 'loading' ? 'Loading' : 'Flow';
+      list.push({ color: 'var(--signal-delta-positive)', label: `${what} up after change`, detail: 'orange line in Impacts view' });
+      list.push({ color: 'var(--signal-delta-negative)', label: `${what} down after change`, detail: 'blue line in Impacts view' });
     }
     list.push({ color: colors.textTertiary, label: 'Disconnected branch', detail: 'dashed grey segment', dashed: true });
     return list;
-  }, [tabId]);
+  }, [tabId, flowMetric]);
 
   // For voltage levels we restrict to the most populated handful so
   // the legend stays compact. The diagram's pypowsybl palette assigns

@@ -38,13 +38,16 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const TOKEN_NAMES = [
     '--signal-overload', '--signal-action-target', '--signal-contingency',
     '--signal-delta-positive', '--signal-delta-negative', '--signal-delta-neutral',
+    '--signal-loading-low', '--signal-loading-warn-1', '--signal-loading-warn-2',
+    '--signal-loading-warn-3', '--signal-loading-warn-4', '--signal-loading-warn-5',
+    '--signal-loading-over',
     '--color-text-primary', '--color-diagram-surface', '--color-danger',
 ];
 
 /** Class fragments whose App.css rules paint things absent from inline attrs. */
 const SELECTOR_HINTS = [
     'nad-overloaded', 'nad-action-target', 'nad-contingency-highlight',
-    'nad-delta-', 'nad-disconnected', 'nad-highlight', 'nad-edge-infos', 'nad-active',
+    'nad-delta-', 'nad-loading-', 'nad-disconnected', 'nad-highlight', 'nad-edge-infos', 'nad-active',
 ];
 
 /**

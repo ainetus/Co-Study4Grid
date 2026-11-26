@@ -7,6 +7,25 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Diagrams — a Loading % view next to MW
+
+- **MW / Loading % toggle** on the N, N-1 and action NADs, beside Flows /
+  Impacts and scoped the same way (per tab, per window): the branches read
+  their loading rate — `max(|i1|, |i2|)` in % of the permanent limit — instead
+  of their active power. Grey below 50 %, five pale yellow → orange steps up to
+  the monitoring factor, vivid orange at or above it
+  (overloaded); an open branch is greyed too, a branch without a limit
+  greys out with a dash.
+- **Impacts in Loading %**: the loading change vs the reference state (N for
+  the N-1, N-1 for an action) in percentage points, coloured like the flow
+  deltas (orange up, blue down, grey under 5 % of the largest change).
+- The NAD responses (full and patch) carry `branch_loading` and
+  `loading_deltas`; the legend explains the scale; the interaction log records
+  `flow_metric_changed { metric, tab, scope }`.
+- Fix on the way: the svgPatch clone of the N diagram (and the action
+  overview's clone of the N-1) now drops the N tab's decoration, so a
+  decorated N could not leak its labels into the N-1 / action flows.
+
 ### Context tab — the network outline and the consignations (Carte-Front)
 
 - **Consignations on the map**: the extra-high-voltage circuits the situation

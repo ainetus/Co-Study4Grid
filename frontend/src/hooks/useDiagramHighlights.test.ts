@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { useDiagramHighlights } from './useDiagramHighlights';
 import type { AnalysisResult, DiagramData, MetadataIndex } from '../types';
 import type { DiagramsState } from './useDiagrams';
@@ -13,6 +13,7 @@ import type { DiagramsState } from './useDiagrams';
 vi.mock('../utils/svgUtils', () => ({
     applyContingencyHighlight: vi.fn(),
     applyDeltaVisuals: vi.fn(),
+    applyLoadingVisuals: vi.fn(),
     applyOverloadedHighlights: vi.fn(),
     applyActionTargetHighlights: vi.fn(),
 }));
@@ -33,6 +34,7 @@ vi.mock('../utils/overloadHighlights', async () => {
 import {
     applyContingencyHighlight,
     applyDeltaVisuals,
+    applyLoadingVisuals,
     applyOverloadedHighlights,
     applyActionTargetHighlights,
 } from '../utils/svgUtils';
@@ -66,6 +68,8 @@ const makeDiagramsState = (overrides: Partial<DiagramsState> = {}): DiagramsStat
         n1SvgContainerRef: makeContainer(),
         actionSvgContainerRef: makeContainer(),
         setActionViewMode: vi.fn(),
+        flowMetric: 'p',
+        setFlowMetric: vi.fn(),
     } as unknown as DiagramsState;
     return { ...base, ...overrides } as DiagramsState;
 };
@@ -202,5 +206,50 @@ describe('useDiagramHighlights — no re-run on pan/zoom settle (QW14)', () => {
         expect(callCount(applyContingencyHighlight)).toBe(0);
         expect(callCount(applyOverloadedHighlights)).toBe(0);
         expect(callCount(applyDeltaVisuals)).toBe(0);
+    });
+});
+
+describe('useDiagramHighlights — active power vs loading rate', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    const render = (diagrams: DiagramsState, detachedTabs: Partial<Record<string, unknown>> = {}) =>
+        renderHook(() => useDiagramHighlights({
+            diagrams,
+            result: null,
+            selectedContingency: [],
+            selectedOverloads: new Set<string>(),
+            monitoringFactor: 0.9,
+            detachedTabs,
+        }));
+
+    it('Loading % in Impacts mode: the P deltas stay off, the loading pass gets the view mode', () => {
+        const diagrams = makeDiagramsState({ activeTab: 'contingency', actionViewMode: 'delta', flowMetric: 'loading' });
+        render(diagrams);
+        expect(applyDeltaVisuals).toHaveBeenCalledWith(
+            diagrams.n1SvgContainerRef.current, diagrams.n1Diagram, diagrams.n1MetaIndex, false);
+        expect(applyLoadingVisuals).toHaveBeenCalledWith(
+            diagrams.n1SvgContainerRef.current, diagrams.n1Diagram, diagrams.n1MetaIndex, 'delta', 0.9);
+    });
+
+    it('MW: the loading pass only clears, and the N tab is decorated too', () => {
+        const diagrams = makeDiagramsState({ activeTab: 'n' });
+        render(diagrams);
+        expect(applyLoadingVisuals).toHaveBeenCalledWith(
+            diagrams.nSvgContainerRef.current, diagrams.nDiagram, diagrams.nMetaIndex, null, 0.9);
+    });
+
+    it('routes the toggle to the main window, or to the detached tab only', () => {
+        const diagrams = makeDiagramsState({ activeTab: 'n' });
+        const { result } = render(diagrams, { action: {} });
+
+        act(() => result.current.handleFlowMetricChangeForTab('n', 'loading'));
+        expect(diagrams.setFlowMetric).toHaveBeenCalledWith('loading');
+
+        act(() => result.current.handleFlowMetricChangeForTab('action', 'loading'));
+        expect(diagrams.setFlowMetric).toHaveBeenCalledTimes(1);
+        expect(result.current.flowMetricForTab('action')).toBe('loading');
+        expect(result.current.flowMetricForTab('n')).toBe('p');
     });
 });

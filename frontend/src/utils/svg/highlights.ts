@@ -6,6 +6,7 @@
 
 import type { ActionDetail, EdgeMeta, MetadataIndex, NodeMeta } from '../../types';
 import { getIdMap } from './idMap';
+import { LOADING_CLASSES } from './loadingVisuals';
 
 /**
  * Create or find the background layer at the root of the SVG. Highlight
@@ -65,7 +66,7 @@ export const applyOverloadedHighlights = (
                     const clone = el.cloneNode(true) as SVGGraphicsElement;
                     clone.classList.add('nad-overloaded');
                     clone.classList.add('nad-highlight-clone');
-                    clone.classList.remove('nad-delta-positive', 'nad-delta-negative', 'nad-delta-grey');
+                    clone.classList.remove('nad-delta-positive', 'nad-delta-negative', 'nad-delta-grey', ...LOADING_CLASSES);
                     clone.removeAttribute('id');
                     clone.style.display = 'block';
                     clone.style.visibility = 'visible';
@@ -330,7 +331,7 @@ export const applyActionTargetHighlights = (
             clone.removeAttribute('id');
             clone.classList.add('nad-action-target');
             clone.classList.add('nad-highlight-clone');
-            clone.classList.remove('nad-delta-positive', 'nad-delta-negative', 'nad-delta-grey');
+            clone.classList.remove('nad-delta-positive', 'nad-delta-negative', 'nad-delta-grey', ...LOADING_CLASSES);
 
             try {
                 const elCTM = (el as SVGGraphicsElement).getScreenCTM();
@@ -411,7 +412,7 @@ export const applyContingencyHighlight = (
             const clone = el.cloneNode(true) as SVGGraphicsElement;
             clone.classList.add('nad-contingency-highlight');
             clone.classList.add('nad-highlight-clone');
-            clone.classList.remove('nad-delta-positive', 'nad-delta-negative', 'nad-delta-grey');
+            clone.classList.remove('nad-delta-positive', 'nad-delta-negative', 'nad-delta-grey', ...LOADING_CLASSES);
             clone.removeAttribute('id');
 
             clone.style.display = 'block';

@@ -114,7 +114,7 @@ class TestExtractConvergenceStatus:
 # ---------------------------------------------------------------------
 
 class TestCaptureActionSnapshots:
-    def test_happy_path_returns_five_snapshots(self):
+    def test_happy_path_returns_six_snapshots(self):
         action_network = MagicMock()
         lines_df = pd.DataFrame(
             {"connected1": [True, False], "connected2": [True, True]},
@@ -129,9 +129,10 @@ class TestCaptureActionSnapshots:
         service = MagicMock()
         service._get_network_flows.return_value = {"p1": {"L1": 1.0}}
         service._get_asset_flows.return_value = {"GEN1": 50.0}
+        service._get_branch_loading.return_value = {"L1": 42.0}
 
         snaps = _capture_action_snapshots(service, action_network)
-        assert set(snaps.keys()) == {"lines_conn", "trafos_conn", "buses", "flows", "assets"}
+        assert set(snaps.keys()) == {"lines_conn", "trafos_conn", "buses", "flows", "assets", "loading"}
         # ``.copy()`` discipline: the captured DataFrames must be a
         # fresh copy so a subsequent variant switch on the shared
         # network doesn't poison them.
@@ -139,6 +140,7 @@ class TestCaptureActionSnapshots:
         assert snaps["lines_conn"] is not lines_df
         assert snaps["flows"] == {"p1": {"L1": 1.0}}
         assert snaps["assets"] == {"GEN1": 50.0}
+        assert snaps["loading"] == {"L1": 42.0}
 
     def test_each_snapshot_failure_independently_yields_none(self):
         # Pypowsybl can raise on any individual frame; the helper must

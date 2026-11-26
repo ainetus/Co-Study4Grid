@@ -186,6 +186,7 @@ SPEC_DETAILS: dict[str, dict] = {
     "tab_tied":                 _spec_row({"tab"}),
     "tab_untied":               _spec_row({"tab"}),
     "view_mode_changed":        _spec_row({"mode", "tab", "scope"}),
+    "flow_metric_changed":      _spec_row({"metric", "tab", "scope"}),
     # Overflow Analysis tab layout toggle ("Hierarchical" / "Geo").
     # Start event carries the target mode; completion event adds
     # `cached` (boolean) or `error` (string).

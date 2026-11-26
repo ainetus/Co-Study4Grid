@@ -239,3 +239,19 @@ def compute_asset_deltas(after_asset_flows: dict, before_asset_flows: dict) -> d
             "category_q": cat_q,
         }
     return result
+
+
+def compute_loading_deltas(after_loading: dict, before_loading: dict) -> dict:
+    """Per-branch loading-rate deltas, in percentage points, between two
+    :func:`~expert_backend.services.diagram.overloads.get_branch_loading`
+    snapshots — the Loading view's Impacts mode.
+
+    Loading is a magnitude, so no terminal / direction convention is
+    needed: ``delta = after - before``. Categories follow the flow deltas
+    (5 % of the largest absolute delta). Only branches loaded in both
+    states are compared — both snapshots carry the same limits.
+
+    Returns ``{id: {"delta", "category"}}``.
+    """
+    common = [lid for lid in after_loading if lid in before_loading]
+    return apply_threshold({lid: after_loading[lid] - before_loading[lid] for lid in common})

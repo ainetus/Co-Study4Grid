@@ -36,6 +36,7 @@ from expert_backend.services.diagram.deltas import (
     apply_threshold,
     compute_asset_deltas,
     compute_deltas,
+    compute_loading_deltas,
     select_terminal_for_branch,
     terminal_aware_delta,
 )
@@ -55,6 +56,7 @@ from expert_backend.services.diagram.nad_params import default_nad_parameters
 from expert_backend.services.diagram.nad_render import generate_diagram
 from expert_backend.services.diagram.obs_prewarm import build_prewarmed_obs
 from expert_backend.services.diagram.overloads import (
+    get_branch_loading,
     get_element_max_currents,
     get_n_state_loading,
     get_overloaded_lines,
@@ -172,6 +174,9 @@ class DiagramMixin(_Base):
     def _get_network_flows(self, network):
         return get_network_flows(network)
 
+    def _get_branch_loading(self, network):
+        return get_branch_loading(network)
+
     def _get_asset_flows(self, network):
         return get_asset_flows(network)
 
@@ -249,6 +254,7 @@ class DiagramMixin(_Base):
             )
             diagram["lines_overloaded"] = names
             diagram["lines_overloaded_rho"] = rhos
+            diagram["branch_loading"] = self._get_branch_loading(n)
             # Cache N-state element currents for N-1 comparison
             self._n_state_currents = self._get_element_max_currents(n)
             return diagram
@@ -282,6 +288,7 @@ class DiagramMixin(_Base):
             diagram["lf_status"] = lf_status
 
             self._attach_flow_deltas_vs_base(diagram, n, voltage_level_ids=None)
+            self._attach_loading_vs_base(diagram, n)
 
             # Exclude pre-existing overloads (already overloaded in N) unless worsened.
             names, rhos = self._get_overloaded_lines(
@@ -342,6 +349,10 @@ class DiagramMixin(_Base):
         diagram["action_id"] = action_id
         self._attach_convergence_from_obs(diagram, obs)
 
+        # Read before the deltas below move the shared Network to the
+        # contingency variant.
+        action_loading = self._safe_branch_loading(network)
+
         # Always include flow deltas so mode switching is instant on the frontend.
         try:
             action_flows = get_network_flows(network)
@@ -357,6 +368,7 @@ class DiagramMixin(_Base):
             diagram["reactive_flow_deltas"] = {}
             diagram["asset_deltas"] = {}
 
+        self._attach_action_loading(diagram, action_loading)
         return diagram
 
     # ------------------------------------------------------------------
@@ -448,6 +460,8 @@ class DiagramMixin(_Base):
                 payload["flow_deltas"] = {}
                 payload["reactive_flow_deltas"] = {}
                 payload["asset_deltas"] = {}
+
+            self._attach_loading_vs_base(payload, n)
 
             n_state_currents = getattr(self, '_n_state_currents', None)
             names, rhos = self._get_overloaded_lines(
@@ -922,6 +936,62 @@ class DiagramMixin(_Base):
             diagram["flow_deltas"] = {}
             diagram["reactive_flow_deltas"] = {}
             diagram["asset_deltas"] = {}
+
+    def _safe_branch_loading(self, network) -> dict | None:
+        """Branch loading of ``network``'s working variant; ``None`` (logged)
+        when it cannot be read — the Loading view then has nothing to show,
+        the rest of the diagram is unaffected."""
+        try:
+            return self._get_branch_loading(network)
+        except Exception as e:
+            logger.warning("Warning: Failed to compute branch loading: %s", e)
+            return None
+
+    def _attach_loading_vs_base(self, diagram: dict, n_contingency_network) -> None:
+        """Populate ``branch_loading`` (contingency state) and ``loading_deltas``
+        (vs N) on ``diagram`` — the Loading view of the N-1 tab.
+
+        Same variant discipline as :meth:`_attach_flow_deltas_vs_base`:
+        ``n_contingency_network`` MUST be on the contingency variant; the
+        base network visits N and is restored.
+        """
+        n1_loading = self._safe_branch_loading(n_contingency_network)
+        if n1_loading is None:
+            return
+        diagram["branch_loading"] = n1_loading
+        try:
+            n_base = self._get_base_network()
+            original_variant_base = n_base.get_working_variant_id()
+            n_base.set_working_variant(self._get_n_variant())
+            try:
+                base_loading = self._safe_branch_loading(n_base)
+            finally:
+                n_base.set_working_variant(original_variant_base)
+        except Exception as e:
+            logger.warning("Warning: Failed to compute loading deltas: %s", e)
+            return
+        if base_loading is not None:
+            diagram["loading_deltas"] = compute_loading_deltas(n1_loading, base_loading)
+
+    def _attach_action_loading(self, diagram: dict, action_loading: dict | None) -> None:
+        """Populate ``branch_loading`` (post-action state, read beforehand by the
+        caller) and ``loading_deltas`` (vs the contingency state) on ``diagram``."""
+        if action_loading is None:
+            return
+        diagram["branch_loading"] = action_loading
+        try:
+            cont_network = self._get_base_network()
+            original_variant = cont_network.get_working_variant_id()
+            cont_network.set_working_variant(self._get_contingency_variant(self._last_disconnected_elements))
+            try:
+                cont_loading = self._safe_branch_loading(cont_network)
+            finally:
+                cont_network.set_working_variant(original_variant)
+        except Exception as e:
+            logger.warning("Warning: Failed to compute loading deltas: %s", e)
+            return
+        if cont_loading is not None:
+            diagram["loading_deltas"] = compute_loading_deltas(action_loading, cont_loading)
 
     @staticmethod
     def _attach_convergence_from_obs(diagram: dict, obs) -> None:

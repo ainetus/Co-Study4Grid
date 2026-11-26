@@ -133,6 +133,16 @@ remaining hex-literal count after each migration.
   --signal-delta-positive: #ff9800;
   --signal-delta-negative: #2196f3;
   --signal-delta-neutral: #999999;
+  /* Loading-rate view (utils/svg/loadingVisuals.ts): grey below 50 %,
+     five steps from pale yellow (50 %) to orange up to the monitoring
+     factor, vivid orange at or above it (overloaded). */
+  --signal-loading-low: #9e9e9e;
+  --signal-loading-warn-1: #fff176;
+  --signal-loading-warn-2: #ffe066;
+  --signal-loading-warn-3: #ffc940;
+  --signal-loading-warn-4: #ffad33;
+  --signal-loading-warn-5: #ff9326;
+  --signal-loading-over: #ff6000;
 
   /* ----- SLD interactive topology-edit highlight -----
      The interactive SLD-edit feature (useSldTopologyEdit + SldEditPanel)

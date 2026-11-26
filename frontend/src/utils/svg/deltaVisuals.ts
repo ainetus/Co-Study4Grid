@@ -4,8 +4,14 @@
 // you can obtain one at http://mozilla.org/MPL/2.0/.
 // SPDX-License-Identifier: MPL-2.0
 
-import type { AssetDelta, MetadataIndex } from '../../types';
+import type { AssetDelta, FlowDelta, MetadataIndex } from '../../types';
 import { getIdMap } from './idMap';
+
+export const DELTA_CLASSES: Record<FlowDelta['category'], string> = {
+    positive: 'nad-delta-positive',
+    negative: 'nad-delta-negative',
+    grey: 'nad-delta-grey',
+};
 
 /**
  * Apply delta flow visualizations (coloring + text replacement) on a container.
@@ -45,11 +51,7 @@ export const applyDeltaVisuals = (
     const assetDeltas = diagram.asset_deltas || {};
     const idMap = getIdMap(container);
 
-    const classMap: Record<string, string> = {
-        positive: 'nad-delta-positive',
-        negative: 'nad-delta-negative',
-        grey: 'nad-delta-grey',
-    };
+    const classMap: Record<string, string> = DELTA_CLASSES;
 
     // --- Branch (edge) deltas ---
     for (const [lineId, deltaInfo] of Object.entries(flowDeltas)) {

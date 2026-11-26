@@ -146,6 +146,36 @@ def get_overloaded_lines(
     return sanitize_for_json(overloaded)
 
 
+def get_branch_loading(network: Any) -> dict[str, float]:
+    """Loading rate, in percent of the permanent current limit, of every
+    line and 2-winding transformer that has one — ``max(|i1|, |i2|) / limit``,
+    the same measure as the overload scan. A disconnected branch (NaN
+    currents) reads 0 %. Rounded to 0.1 % to keep the payload light: the
+    whole grid rides in every NAD response for the Loading view."""
+    limit_dict = _limit_dict(network)
+    loading: dict[str, float] = {}
+    if not limit_dict:
+        return loading
+    for df in (
+        network.get_lines(attributes=["i1", "i2"]),
+        network.get_2_windings_transformers(attributes=["i1", "i2"]),
+    ):
+        if len(df.index) == 0:
+            continue
+        idx = df.index.values
+        max_i = np.maximum(
+            np.abs(np.nan_to_num(df["i1"].values, nan=0.0)),
+            np.abs(np.nan_to_num(df["i2"].values, nan=0.0)),
+        )
+        limits = np.array([limit_dict.get(e, np.nan) for e in idx], dtype=float)
+        mask = np.isfinite(limits) & (limits > 0)
+        if not mask.any():
+            continue
+        pct = np.round(max_i[mask] / limits[mask] * 100.0, 1)
+        loading.update(zip(idx[mask].tolist(), pct.tolist()))
+    return loading
+
+
 def get_n_state_loading(
     network: Any,
     element_ids: list[str],

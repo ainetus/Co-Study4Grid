@@ -99,8 +99,9 @@ frontend/
     │   │                           # glow (.tab-attention) until visited
     │   ├── useDiagramHighlights.ts # Per-tab SVG highlight pipeline
     │   │                           # (overload halos, contingency highlight,
-    │   │                           # action targets, delta visuals) + the
-    │   │                           # per-tab Flow/Impacts view-mode state
+    │   │                           # action targets, delta / loading visuals)
+    │   │                           # + the per-tab Flow/Impacts view-mode and
+    │   │                           # MW / Loading % metric state
     │   ├── useOverflowIframe.ts    # Interactive overflow viewer: iframe
     │   │                           # lifecycle, layer toggles, hierarchical ↔
     │   │                           # geo switch, postMessage bridge, pin overlay
@@ -151,6 +152,9 @@ frontend/
     │   │                           # rings, consignations, the network outline
     │   │                           # (liseré), contingency / overload highlights
     │   ├── DiagramLegend.tsx, AdditionalLinesPicker.tsx,
+    │   ├── FlowViewToggles.tsx     # Top-right diagram toggles: Flows /
+    │   │                           # Impacts × MW / Loading % (per tab,
+    │   │                           # per window — useDiagramHighlights)
     │   ├── ActionFilterRings.tsx       # Shared sidebar strip: severity ring
     │   │                               # (4 colour-coded pictogram toggles
     │   │                               # with single-click toggle + double-
@@ -228,6 +232,9 @@ frontend/
         │   ├── svgBoost.ts            # - metadataIndex: O(1) equipment-metadata lookup
         │   ├── fitRect.ts             # - svgBoost: dynamic font/radius scale for big grids
         │   ├── deltaVisuals.ts        # - fitRect: bounding-box auto-zoom
+        │   ├── loadingVisuals.ts      #   (+ loadingVisuals: Loading % view —
+        │   │                          #   colour scale, % / Δ% labels, and
+        │   │                          #   resetFlowVisuals for SVG clones)
         │   ├── actionPinData.ts       # - deltaVisuals: flow-delta colouring
         │   ├── actionPinRender.ts     # - actionPin{Data,Render}: overview pin layer
         │   ├── highlights.ts          # - highlights: contingency / overload halos
@@ -1001,17 +1008,13 @@ architectural bet than Option 1+2 was.
   the shared `utils/ndjsonStream.ts` generator; see
   [`docs/architecture/notifications-and-streaming.md`](../docs/architecture/notifications-and-streaming.md).
 
-### One-off ESLint exception
+### ESLint exceptions
 
-`useDiagramHighlights.ts` has one `eslint-disable-next-line
-react-hooks/set-state-in-effect` on the reattach-prune effect.
-The pre-extraction code in `App.tsx` was not flagged by the same
-rule (position-sensitive analyser heuristic), but the behavior —
-"re-detach after reattach restarts from the main-window mode rather
-than resuming the previous detached mode" — must be preserved
-byte-for-byte. The guarded `setDetachedViewModes` call sits behind
-a `hasStale` short-circuit, so we accept the suppression rather
-than change observable UX to placate the rule.
+The reattach-prune effect in `useDiagramHighlights.ts` (drops a
+reattached tab's detached view-mode / flow-metric entry) used to need
+an `eslint-disable-next-line react-hooks/set-state-in-effect`. Since
+both maps go through a shared `prune()` helper whose stale check guards
+each `setState`, the rule no longer fires and the suppression is gone.
 
 No manual mirror in any separate HTML file. The React source is
 the single source of truth.

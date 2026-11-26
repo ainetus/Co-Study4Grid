@@ -6,7 +6,7 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study. 
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
@@ -254,6 +254,20 @@ describe('VisualizationPanel', () => {
 
         await user.click(screen.getByText('Impacts'));
         expect(onViewModeChange).toHaveBeenCalledWith('delta');
+    });
+
+    it('routes the MW / Loading % toggle to the tab', async () => {
+        const user = userEvent.setup();
+        const onFlowMetricChangeForTab = vi.fn();
+        const nDiagram: DiagramData = { svg: '<svg>test</svg>', metadata: null };
+        render(<VisualizationPanel {...createDefaultProps({
+            nDiagram, onFlowMetricChangeForTab, flowMetricForTab: () => 'p',
+        })} />);
+
+        const toggle = screen.getByTestId('flow-metric-toggle-n');
+        expect(within(toggle).getByText('MW')).toHaveAttribute('aria-pressed', 'true');
+        await user.click(within(toggle).getByText('Loading %'));
+        expect(onFlowMetricChangeForTab).toHaveBeenCalledWith('n', 'loading');
     });
 
     // Regression tests for the Tie button location (third
