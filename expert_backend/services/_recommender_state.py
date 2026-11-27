@@ -60,6 +60,7 @@ class RecommenderState:
     _prefetched_base_nad_event: Any
     _prefetched_base_nad_thread: Any
     _saved_computed_pairs: Any
+    _side_limits_cache: Any
     _simulation_env: Any
     # --- concurrency ownership (D3, set in RecommenderService.__init__) ---
     _network_lock: Any
