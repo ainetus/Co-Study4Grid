@@ -51,9 +51,11 @@ export interface LabelItem {
     important: boolean;
     /** Order among the labels of the same importance. */
     weight: number;
-    /** Text colour at each end and at the middle (MW Flows: the voltage's), null for the tone's own. */
+    /** The voltage's colour at each end and at the middle: every label's outline, and its text in MW Flows. */
     inks: [string | null, string | null];
     midInk: string | null;
+    /** The text in that colour too (MW Flows, where the lines keep their voltage colours). */
+    inkText: boolean;
 }
 
 export interface PlacedLabel {
@@ -66,8 +68,10 @@ export interface PlacedLabel {
     text: string;
     tone: string;
     important: boolean;
-    /** Text and outline colour, null for the tone's own. */
+    /** Outline colour (the voltage's), null for the tone's own. */
     ink: string | null;
+    /** The text in that colour too. */
+    inkText: boolean;
 }
 
 export const LABEL_HEIGHT_PX = 16;
@@ -183,12 +187,16 @@ export const readBranchGeometry = (container: HTMLElement, metaIndex: MetadataIn
 const formatMw = (v: number | null): string | null => (v === null ? null : `${Math.round(v)}`);
 const formatFlowDelta = (delta: number): string => `Δ ${delta >= 0 ? '+' : ''}${delta.toFixed(1)}`;
 
+/** The voltage colour of the end carrying the larger flow — a transformer's middle label. */
+const largerFlowInk = (geom: BranchGeometry): string | null =>
+    Math.abs(geom.mw[1] ?? 0) > Math.abs(geom.mw[0] ?? 0) ? geom.inks[1] : geom.inks[0];
+
 const deltaItem = (geom: BranchGeometry, d: FlowDelta, format: (v: number) => string): LabelItem => {
     const text = format(d.delta);
     return {
         geom, ends: [text, text], mid: text,
         tone: `delta-${d.category}`, important: d.category !== 'grey', weight: Math.abs(d.delta),
-        inks: [null, null], midInk: null,
+        inks: geom.inks, midInk: largerFlowInk(geom), inkText: false,
     };
 };
 
@@ -224,7 +232,9 @@ export const buildLabelItems = (
                 geom,
                 ends: [ends[0] === null ? null : formatLoading(ends[0]), ends[1] === null ? null : formatLoading(ends[1])],
                 mid: formatLoading(max), tone, important: tone !== 'loading-low', weight: max,
-                inks: [null, null], midInk: null,
+                // The middle reads the more loaded end: its voltage's colour.
+                inks: geom.inks, midInk: ends[1] !== null && (ends[0] === null || ends[1] > ends[0]) ? geom.inks[1] : geom.inks[0],
+                inkText: false,
             });
         } else if (mode === 'delta' && diagram.flow_deltas) {
             const d = diagram.flow_deltas[geom.id];
@@ -236,7 +246,7 @@ export const buildLabelItems = (
             // Written in the voltage's colour, as the line: the middle in its larger end's.
             items.push({
                 geom, ends: [formatMw(m1), formatMw(m2)], mid: `${Math.round(big)}`, tone: 'plain', important: false, weight: big,
-                inks: geom.inks, midInk: Math.abs(m2 ?? 0) > Math.abs(m1 ?? 0) ? geom.inks[1] : geom.inks[0],
+                inks: geom.inks, midInk: largerFlowInk(geom), inkText: true,
             });
         }
     }
@@ -311,7 +321,7 @@ export const layoutLabels = (items: readonly LabelItem[], opts: LayoutOptions): 
         const w = measure(text, item.important) + 8;
         const h = LABEL_HEIGHT_PX;
         return [
-            { key, id: item.geom.id, x: centre[0], y: centre[1], w, text, tone: item.tone, important: item.important, ink },
+            { key, id: item.geom.id, x: centre[0], y: centre[1], w, text, tone: item.tone, important: item.important, ink, inkText: item.inkText },
             { x0: centre[0] - w / 2, y0: centre[1] - h / 2, x1: centre[0] + w / 2, y1: centre[1] + h / 2 },
         ];
     };

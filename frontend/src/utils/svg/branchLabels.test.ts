@@ -34,7 +34,7 @@ const geom = (id: string, from: Point, to: Point, over: Partial<BranchGeometry> 
 
 const item = (g: BranchGeometry, over: Partial<LabelItem> = {}): LabelItem => ({
     geom: g, ends: ['80%', '79%'], mid: '80%', tone: 'loading-warn-3', important: true, weight: 80,
-    inks: [null, null], midInk: null, ...over,
+    inks: [null, null], midInk: null, inkText: false, ...over,
 });
 
 const identity = { width: 1000, height: 800, project: (p: Point) => p, pxPerUnit: 1, measure: (t: string) => t.length * 7 };
@@ -124,9 +124,18 @@ describe('buildLabelItems', () => {
         const [it] = buildLabelItems([tr], {}, 'network', 'p', 0.95);
         expect(it.inks).toEqual(['rgb(211, 47, 47)', 'rgb(46, 125, 50)']);
         expect(it.midInk).toBe('rgb(46, 125, 50)');
-        // The other views keep their tone's colours.
+        expect(it.inkText).toBe(true);
+    });
+
+    it('Loading % and Impacts: outlined in the voltage colour, the text in the scale\'s', () => {
+        const tr = geom('TR', [0, 0], [100, 0], { mw: [250, -80], inks: ['rgb(211, 47, 47)', 'rgb(46, 125, 50)'] });
         const [loading] = buildLabelItems([tr], { branch_loading: { TR: [null, 96] } }, 'network', 'loading', 0.95);
-        expect(loading.midInk).toBeNull();
+        // The middle reads the loaded end (side 2): its colour.
+        expect(loading).toMatchObject({ inks: ['rgb(211, 47, 47)', 'rgb(46, 125, 50)'], midInk: 'rgb(46, 125, 50)', inkText: false });
+        const deltas = { flow_deltas: { TR: { delta: 40, category: 'positive' as const } } };
+        const [impact] = buildLabelItems([tr], deltas, 'delta', 'p', 0.95);
+        // A change reads the same at both ends: the middle in the larger flow's end colour.
+        expect(impact).toMatchObject({ midInk: 'rgb(211, 47, 47)', inkText: false });
     });
 
     it('leaves out a branch with nothing to say', () => {
@@ -147,6 +156,7 @@ describe('layoutLabels', () => {
         const placed = layoutLabels([item(g, { inks: ['rgb(1, 1, 1)', 'rgb(2, 2, 2)'] })], identity);
         expect(placed.map(p => p.text)).toEqual(['80%', '79%']);
         expect(placed.map(p => p.ink)).toEqual(['rgb(1, 1, 1)', 'rgb(2, 2, 2)']);
+        expect(placed.every(p => !p.inkText)).toBe(true);
         const [a, b] = placed;
         expect(a.x).toBeGreaterThan(g.anchors[0]![0] + g.arrow);
         expect(b.x).toBeLessThan(g.anchors[1]![0] - g.arrow);

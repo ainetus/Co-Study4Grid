@@ -73,6 +73,10 @@ describe('BranchLabelLayer', () => {
         await waitFor(() => expect(screen.getByText('41%')).toBeInTheDocument());
         expect(screen.getByText('70%')).toBeInTheDocument();
         expect(screen.getByText('97%').closest('g')).toHaveClass('branch-label--loading-over', 'branch-label--important');
+        // Outlined in the 400 kV line's colour; the text keeps the scale's.
+        const pill = screen.getByText('41%').closest('g')!;
+        expect(pill.querySelector('rect')).toHaveStyle({ stroke: 'rgb(211, 47, 47)' });
+        expect(screen.getByText('41%').style.fill).toBe('');
         expect(screen.queryByText('96%')).toBeNull();
     });
 
