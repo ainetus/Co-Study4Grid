@@ -58,6 +58,11 @@ def _column(df: Any, name: str) -> list:
 
 #: Real substations a nameless bus names at most — the nearest first.
 _MAX_PLACES = 3
+#: Real substations after which the walk from a nameless bus stops, at the
+#: end of a hop. ``_pick`` names the nearest, completed with the next nearest
+#: up to two: three found over whole hops settle it, even with one of them
+#: left out (``seen_from``).
+_ENOUGH_PLACES = 3
 #: A raw bus id inside a name (``G.SOL - virtual_relation_19888985_1-225``).
 _RAW_BUS_TOKEN = re.compile(r"(?:virtual_)?(?:relation|way)_[\w-]+")
 
@@ -118,9 +123,11 @@ class VoltageLevelNames:
                 if is_real_name(name, vl) and not _is_virtual(vl):
                     self._own[vl] = str(name).strip()
                 self._kv[vl] = kv_label(nominal)
-        self._places: dict[str, list[tuple[int, str]]] = {}
         nameless = [vl for vl in self.network_names if vl not in self._own]
-        if nameless:
+        self._places: dict[str, list[tuple[int, str]]] = {vl: [] for vl in nameless}
+        # No real substation to find when no voltage level has a name of its
+        # own (an RTE grid's names are all empty): skip the walks.
+        if nameless and self._own:
             adjacent = _branch_adjacency(network)
             for vl in nameless:
                 self._places[vl] = self._reach(vl, adjacent)
@@ -142,10 +149,11 @@ class VoltageLevelNames:
 
     def _reach(self, start: str, adjacent: dict[str, set[str]]) -> list[tuple[int, str]]:
         """``[(hops, substation)]`` of the real substations ``start`` ties,
-        nearest first."""
+        nearest first — up to the hop that finds ``_ENOUGH_PLACES`` of them:
+        ``_pick`` reads no further."""
         best: dict[str, int] = {}
         seen, frontier, hops = {start}, [start], 0
-        while frontier:
+        while frontier and len(best) < _ENOUGH_PLACES:
             hops += 1
             further = []
             for vl in frontier:

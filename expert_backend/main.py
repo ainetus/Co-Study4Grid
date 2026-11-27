@@ -389,9 +389,12 @@ def update_config(config: ConfigRequest) -> dict:
             context_map_service.reset()
             network_service.load_network(config.network_path)
             # Snapshot for the Context tab, before the NAD prefetch starts
-            # switching variants (fast; never raises).
+            # switching variants (fast; never raises). It names the voltage
+            # levels with the network service's namer — the one
+            # /api/branches and /api/voltage-levels read next.
             context_map_service.capture(network_service.network, config.layout_path,
-                                        config.network_path)
+                                        config.network_path,
+                                        vl_names=network_service.voltage_level_namer())
             last_network_path = config.network_path
             recommender_service.update_config(config)
 

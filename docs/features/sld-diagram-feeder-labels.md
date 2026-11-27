@@ -178,6 +178,15 @@ every view):
   serves the voltage-level name map (`/api/voltage-levels`), the line names
   (`/api/branches`, the Context tab), the SLD far ends and the injection
   fallbacks — cached per study by `network_service.voltage_level_namer`.
+  It is built once per network, under a lock: the Context tab's snapshot
+  gets it at load (`/api/config`), `/api/branches` and `/api/voltage-levels`
+  share it, and a build for a network replaced meanwhile is never served.
+  The walk stops at the end of the hop that finds three substations
+  (`_ENOUGH_PLACES`) — all `_pick` reads, the nearest completed with the next
+  nearest up to two, even with one left out by `seen_from` — and is skipped
+  when no voltage level has a name of its own: the RTE 7000 grid's names are
+  all empty, and walks from its 6 835 voltage levels crossed the whole
+  network for nothing (19 s per build, built three times per load).
 
 **Where they show**:
 
@@ -207,8 +216,12 @@ the `/api/branches` name map, so the action cards name injections too.
   (injection / busbar / switch names on a node-breaker layout, plant names,
   the manual description, `name_switches_in`, the SLD payload's
   `switch_labels` + injection labels, the nameless buses: taps, chains,
-  numbering, `seen_from`, `rewrite`, the line names and the SLD far end),
-  plus the virtual-bus case of `test_context_map.py`.
+  numbering, `seen_from`, `rewrite`, the line names and the SLD far end; the
+  bounded walk against an unbounded one — ties, a substation at two
+  voltages, far taps, seeded random grids, every substation left out — the
+  walk skipped on a grid without names, the namer built once per network),
+  plus the virtual-bus case of `test_context_map.py` and its snapshot reading
+  the namer it is handed.
 - Frontend: `utils/svg/feederLabels.test.ts` (relabel + `wrapFeederLabel` +
   `data-feeder-nav` tagging, injections / busbars / tooltips / preview
   group-id lookup), the "feeder relabelling" / "overload halo via friendly

@@ -11,6 +11,7 @@ import gzip
 import logging
 import os
 import tempfile
+import threading
 import zipfile
 
 from expert_backend.services.context_map.plants import load_plant_names, resolve_plants_path
@@ -44,7 +45,8 @@ class NetworkService:
         # beside it) and the display names of its branches + injections.
         self._source_path = None     # str | None
         self._display_names = None   # dict[str, str] | None
-        self._vl_names = None        # VoltageLevelNames | None
+        self._vl_names = None        # (Network, VoltageLevelNames) | None
+        self._vl_names_lock = threading.Lock()
 
     def _invalidate_equipment_caches(self) -> None:
         """Drop the cached generator / load tables (called when the Network changes)."""
@@ -331,12 +333,22 @@ class NetworkService:
     def voltage_level_namer(self) -> VoltageLevelNames:
         """The display names of the voltage levels — a nameless bus (PyPSA
         virtual bus, substation OSM never named) reads by the substations it
-        ties (``Piquage EMALES(LES) / RANVILLE 225kV``). Cached per network."""
-        if not self.network:
+        ties (``Piquage EMALES(LES) / RANVILLE 225kV``). Built once per
+        network, under a lock: the Context tab's snapshot builds it at load
+        and every later reader shares it — ``/api/branches`` and
+        ``/api/voltage-levels`` arrive together. Kept with its network, so
+        one built for a network replaced meanwhile is never served."""
+        network = self.network
+        if not network:
             raise ValueError("Network not loaded")
-        if self._vl_names is None:
-            self._vl_names = VoltageLevelNames(self.network)
-        return self._vl_names
+        cached = self._vl_names
+        if cached is None or cached[0] is not network:
+            with self._vl_names_lock:
+                cached = self._vl_names
+                if cached is None or cached[0] is not network:
+                    cached = (network, VoltageLevelNames(network))
+                    self._vl_names = cached
+        return cached[1]
 
     def get_display_names(self) -> dict[str, str]:
         """Display names of the branches, generators and loads — the

@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import math
 from datetime import datetime, timezone
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
@@ -45,6 +45,7 @@ from expert_backend.services.context_map.situation import (
     load_situation,
 )
 from expert_backend.services.context_map.snapshot import capture_snapshot
+from expert_backend.services.equipment_names import VoltageLevelNames
 
 NAN = float("nan")
 
@@ -275,6 +276,27 @@ def _country_network(positions=None) -> FakeNetwork:
     )
 
 
+TAP = "VL_virtual_relation_1_a_1-400"
+
+
+def _tap_network() -> FakeNetwork:
+    """PONTEAU and REALTOR tied through a PyPSA virtual bus (a tap) named by
+    its raw id, the lines to it by their raw OSM ids."""
+    return FakeNetwork(
+        substations={"S_FR": {"name": "", "country": "FR", "regionCvg": None},
+                     "S_DE": {"name": "", "country": "DE", "regionCvg": None},
+                     "SS_TAP": {"name": "", "country": "FR", "regionCvg": None}},
+        vls={"V_FR": "S_FR", "V_DE": "S_DE", TAP: "SS_TAP"},
+        vl_names={"V_FR": "PONTEAU 400kV", "V_DE": "REALTOR 400kV",
+                  TAP: "virtual_relation_1_a_1-400 400kV"},
+        lines={
+            "relation_1_a-400": dict(_line("V_FR", TAP, -50.0, 50.0), name="relation/1:a-400"),
+            "relation_1_b-400": dict(_line(TAP, "V_DE", -50.0, 50.0), name="relation/1:b-400"),
+        },
+        generators={"G1": _gen("V_DE", -500.0)},
+    )
+
+
 class TestCountryMesh:
     def test_falls_back_to_countries_without_regions(self):
         cmap = build_context_map(capture_snapshot(_country_network()), layout={})
@@ -335,22 +357,8 @@ class TestCountryMesh:
     def test_a_virtual_bus_reads_by_the_substations_it_ties(self):
         """A PyPSA virtual bus (a tap on a line) named by its raw id reads by
         the substations it ties, and the lines to it by their ends."""
-        tap = "VL_virtual_relation_1_a_1-400"
-        net = FakeNetwork(
-            substations={"S_FR": {"name": "", "country": "FR", "regionCvg": None},
-                         "S_DE": {"name": "", "country": "DE", "regionCvg": None},
-                         "SS_TAP": {"name": "", "country": "FR", "regionCvg": None}},
-            vls={"V_FR": "S_FR", "V_DE": "S_DE", tap: "SS_TAP"},
-            vl_names={"V_FR": "PONTEAU 400kV", "V_DE": "REALTOR 400kV",
-                      tap: "virtual_relation_1_a_1-400 400kV"},
-            lines={
-                "relation_1_a-400": dict(_line("V_FR", tap, -50.0, 50.0), name="relation/1:a-400"),
-                "relation_1_b-400": dict(_line(tap, "V_DE", -50.0, 50.0), name="relation/1:b-400"),
-            },
-            generators={"G1": _gen("V_DE", -500.0)},
-        )
-        snap = capture_snapshot(net)
-        assert snap.names[tap] == "Piquage PONTEAU / REALTOR"
+        snap = capture_snapshot(_tap_network())
+        assert snap.names[TAP] == "Piquage PONTEAU / REALTOR"
         assert snap.names["relation_1_a-400"] == "PONTEAU \u2014 Piquage REALTOR"
         assert snap.names["relation_1_b-400"] == "Piquage PONTEAU \u2014 REALTOR"
 
@@ -851,6 +859,18 @@ class TestService:
         assert [e["id"] for e in service.elements(["L_LYON_PARIS", "NOPE"])] == ["L_LYON_PARIS"]
         service.capture(french_network)
         assert service.get_map().payload["capture_id"] == 2
+
+    def test_the_voltage_level_names_handed_over_are_not_rebuilt(self):
+        """``/api/config`` hands the network service's names to the capture:
+        a study load names its voltage levels once."""
+        net = _tap_network()
+        names = VoltageLevelNames(net)
+        service = ContextMapService()
+        with patch("expert_backend.services.context_map.snapshot.VoltageLevelNames") as build:
+            service.capture(net, vl_names=names)
+        build.assert_not_called()
+        assert service._snapshot.names == capture_snapshot(net).names
+        assert service._snapshot.names[TAP] == "Piquage PONTEAU / REALTOR"
 
     def test_capture_never_raises(self):
         broken = MagicMock()

@@ -36,6 +36,7 @@ from expert_backend.services.context_map.network_layers import grid_outline
 from expert_backend.services.context_map.plants import load_plant_matching, resolve_plants_path
 from expert_backend.services.context_map.situation import load_situation, resolve_situation_path
 from expert_backend.services.context_map.snapshot import NetworkSnapshot, capture_snapshot
+from expert_backend.services.equipment_names import VoltageLevelNames
 
 logger = logging.getLogger(__name__)
 
@@ -70,13 +71,16 @@ class ContextMapService:
             self._snapshot, self._layout_path, self._map = None, None, None
 
     def capture(self, network: Any, layout_path: str | None = None,
-                network_path: str | None = None) -> None:
+                network_path: str | None = None,
+                vl_names: VoltageLevelNames | None = None) -> None:
         """Snapshot a freshly loaded network. Never raises: a failure only
-        leaves the Context tab empty, it must not fail the study load."""
+        leaves the Context tab empty, it must not fail the study load.
+        ``vl_names``: the network's voltage-level names, when the caller has
+        them (the network service's — built once per study)."""
         self.reset()
         try:
             start = time.perf_counter()
-            snapshot = capture_snapshot(network)
+            snapshot = capture_snapshot(network, vl_names)
             snapshot.plants = load_plant_matching(resolve_plants_path(network_path))
             snapshot.situation = load_situation(resolve_situation_path(network_path))
             logger.info("Context map: network captured in %.3fs%s", time.perf_counter() - start,
