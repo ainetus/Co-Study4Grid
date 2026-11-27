@@ -87,9 +87,11 @@ describe('buildLabelItems', () => {
         expect(buildLabelItems([g], { branch_loading: { L1: [31, 30] } }, 'network', 'loading', 0.95)).toEqual([]);
         const deltas = { loading_deltas: { L1: { delta: 0.4, category: 'grey' as const } } };
         expect(buildLabelItems([g], deltas, 'delta', 'loading', 0.95)).toEqual([]);
-        // MW keeps its grey changes (labelled once long enough on screen).
+    });
+
+    it('Impacts in MW: no label for an insignificant change either', () => {
         const flows = { flow_deltas: { L1: { delta: 0.4, category: 'grey' as const } } };
-        expect(buildLabelItems([g], flows, 'delta', 'p', 0.95)).toHaveLength(1);
+        expect(buildLabelItems([g], flows, 'delta', 'p', 0.95)).toEqual([]);
     });
 
     it("Loading %: a transformer's unlimited end has no label", () => {
@@ -101,12 +103,12 @@ describe('buildLabelItems', () => {
     it('Impacts: the change at both ends, important when significant', () => {
         const diagram = {
             loading_deltas: { L1: { delta: 12.34, category: 'positive' as const } },
-            flow_deltas: { L1: { delta: -5, category: 'grey' as const } },
+            flow_deltas: { L1: { delta: -58, category: 'negative' as const } },
         };
         const [loading] = buildLabelItems([g], diagram, 'delta', 'loading', 0.95);
         expect(loading).toMatchObject({ ends: ['Δ +12.3%', 'Δ +12.3%'], tone: 'delta-positive', important: true });
         const [mw] = buildLabelItems([g], diagram, 'delta', 'p', 0.95);
-        expect(mw).toMatchObject({ mid: 'Δ -5.0', tone: 'delta-grey', important: false });
+        expect(mw).toMatchObject({ mid: 'Δ -58.0', tone: 'delta-negative', important: true });
     });
 
     it('MW: each end as printed, the larger magnitude at the middle', () => {

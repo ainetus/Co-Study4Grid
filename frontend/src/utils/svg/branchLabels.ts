@@ -170,11 +170,11 @@ const deltaItem = (geom: BranchGeometry, d: FlowDelta, format: (v: number) => st
 
 /**
  * The labels of a view. Loading %: each end's loading, the branch's
- * (larger end) at its middle — only the branches coloured (from 50 %), the
- * grey ones would only crowd the reading (the hover still tells them).
- * Impacts: the change, the same at both ends, coloured when significant —
- * in Loading %, only then. MW: each end's power as pypowsybl prints it, the
- * larger magnitude at the middle.
+ * (larger end) at its middle — only the branches coloured (from 50 %).
+ * Impacts (MW or Loading %): the change, the same at both ends — only the
+ * significant ones (coloured). The grey ones would only crowd the reading;
+ * the hover still tells them. MW: each end's power as pypowsybl prints it,
+ * the larger magnitude at the middle.
  */
 export const buildLabelItems = (
     geoms: readonly BranchGeometry[],
@@ -203,7 +203,7 @@ export const buildLabelItems = (
             });
         } else if (mode === 'delta' && diagram.flow_deltas) {
             const d = diagram.flow_deltas[geom.id];
-            if (d) items.push(deltaItem(geom, d, formatFlowDelta));
+            if (d && d.category !== 'grey') items.push(deltaItem(geom, d, formatFlowDelta));
         } else {
             const [m1, m2] = geom.mw;
             if (m1 === null && m2 === null) continue;
