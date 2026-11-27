@@ -269,7 +269,7 @@ export default function BranchLabelLayer({
                     transform={`translate(${l.x.toFixed(1)},${l.y.toFixed(1)})`}>
                     {/* Outlined in the line's voltage colour, whatever the view; MW Flows writes the text in it too. */}
                     <rect x={-l.w / 2} y={-LABEL_HEIGHT_PX / 2} width={l.w} height={LABEL_HEIGHT_PX} rx={4}
-                        style={l.ink ? { stroke: l.ink, strokeWidth: 1.5 } : undefined} />
+                        style={l.ink ? { stroke: l.ink, strokeWidth: 2.5 } : undefined} />
                     <text textAnchor="middle" dominantBaseline="central"
                         style={l.ink && l.inkText ? { fill: l.ink, fontWeight: 700 } : undefined}>{l.text}</text>
                 </g>

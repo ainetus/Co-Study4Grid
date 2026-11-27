@@ -17,7 +17,7 @@
 
 import type { DiagramData, FlowDelta, FlowMetric, MetadataIndex, ViewMode } from '../../types';
 import { getIdMap } from './idMap';
-import { formatLoading, formatLoadingDelta, loadingClass, maxLoading } from './loadingVisuals';
+import { formatLoading, loadingClass, maxLoading } from './loadingVisuals';
 
 export type Point = [number, number];
 
@@ -185,7 +185,11 @@ export const readBranchGeometry = (container: HTMLElement, metaIndex: MetadataIn
 };
 
 const formatMw = (v: number | null): string | null => (v === null ? null : `${Math.round(v)}`);
-const formatFlowDelta = (delta: number): string => `Δ ${delta >= 0 ? '+' : ''}${delta.toFixed(1)}`;
+// A change on the map, rounded, its sign telling up from down (the hover keeps a decimal).
+const formatChange = (unit: string) => (delta: number): string =>
+    `${delta >= 0 ? '+' : '-'}${Math.abs(Math.round(delta))}${unit}`;
+const formatFlowChange = formatChange('');
+const formatLoadingChange = formatChange('%');
 
 /** The voltage colour of the end carrying the larger flow — a transformer's middle label. */
 const largerFlowInk = (geom: BranchGeometry): string | null =>
@@ -220,7 +224,7 @@ export const buildLabelItems = (
         if (metric === 'loading') {
             if (mode === 'delta' && diagram.loading_deltas) {
                 const d = diagram.loading_deltas[geom.id];
-                if (d && d.category !== 'grey') items.push(deltaItem(geom, d, formatLoadingDelta));
+                if (d && d.category !== 'grey') items.push(deltaItem(geom, d, formatLoadingChange));
                 continue;
             }
             const ends = diagram.branch_loading?.[geom.id];
@@ -238,7 +242,7 @@ export const buildLabelItems = (
             });
         } else if (mode === 'delta' && diagram.flow_deltas) {
             const d = diagram.flow_deltas[geom.id];
-            if (d && d.category !== 'grey') items.push(deltaItem(geom, d, formatFlowDelta));
+            if (d && d.category !== 'grey') items.push(deltaItem(geom, d, formatFlowChange));
         } else {
             const [m1, m2] = geom.mw;
             if (m1 === null && m2 === null) continue;

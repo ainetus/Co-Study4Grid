@@ -109,9 +109,10 @@ describe('buildLabelItems', () => {
             flow_deltas: { L1: { delta: -58, category: 'negative' as const } },
         };
         const [loading] = buildLabelItems([g], diagram, 'delta', 'loading', 0.95);
-        expect(loading).toMatchObject({ ends: ['Δ +12.3%', 'Δ +12.3%'], tone: 'delta-positive', important: true });
+        // Rounded, the sign alone telling up from down.
+        expect(loading).toMatchObject({ ends: ['+12%', '+12%'], tone: 'delta-positive', important: true });
         const [mw] = buildLabelItems([g], diagram, 'delta', 'p', 0.95);
-        expect(mw).toMatchObject({ mid: 'Δ -58.0', tone: 'delta-negative', important: true });
+        expect(mw).toMatchObject({ mid: '-58', tone: 'delta-negative', important: true });
     });
 
     it('MW: each end as printed, the larger magnitude at the middle', () => {

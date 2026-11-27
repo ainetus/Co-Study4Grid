@@ -42,7 +42,9 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   once long enough on screen. Every label is outlined in its line's voltage
   colour (a transformer's ends each in theirs, read from the diagram), so the
   voltage still shows in Loading % and Impacts; MW Flows, where the lines keep
-  those colours, writes the value in it too. No label overlaps another. Laid out when the view settles (≈ 5–25 ms on the
+  those colours, writes the value in it too. Impacts read rounded, their sign
+  alone telling up from down (`+40%`, `-58`); the hover keeps a decimal. No
+  label overlaps another. Laid out when the view settles (≈ 5–25 ms on the
   RTE grid), hidden during a pan / zoom gesture. Same for MW, Loading % and
   Impacts.
 - **`🏷 Values` toggle** beside `🏷 VL`: off, no value label at all for a
