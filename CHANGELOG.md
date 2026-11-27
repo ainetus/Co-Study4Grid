@@ -7,58 +7,50 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Diagrams — a Loading % view next to MW
+### Diagrams — a Loading % view, readable flow labels, a branch hover
 
-- **MW / Loading % toggle** on the N, N-1 and action NADs, beside Flows /
-  Impacts and scoped the same way (per tab, per window): the branches read
-  their loading rate — `max(|i1|, |i2|)` in % of the permanent limit — instead
-  of their active power. Grey below 50 %, five pale yellow → orange steps up to
-  the monitoring factor, vivid orange at or above it
-  (overloaded); an open branch is greyed too, a branch without a limit
-  greys out with a dash.
-- **Impacts in Loading %**: the loading change vs the reference state (N for
-  the N-1, N-1 for an action) in percentage points, coloured like the flow
-  deltas (orange up, blue down, grey under 5 % of the largest change).
-- The NAD responses (full and patch) carry `branch_loading` and
-  `loading_deltas`; the legend explains the scale; the interaction log records
-  `flow_metric_changed { metric, tab, scope }`.
-- Fix on the way: the svgPatch clone of the N diagram (and the action
-  overview's clone of the N-1) now drops the N tab's decoration, so a
-  decorated N could not leak its labels into the N-1 / action flows.
-- **Loading at each end**: `branch_loading` is a pair per branch, each end's
-  current against its own side's permanent limit (a line's single-side limit
-  holds for both ends; a transformer's side without one has no loading — RTE
-  grids limit most transformers on side 2 only). The colour, the label and
-  the Impacts delta use the more loaded end. The limits are read once per
-  network (~0.2 s on the 11 k-branch RTE grid).
-- **Readable flow labels** (`BranchLabelLayer`, `utils/svg/branchLabels.ts`):
-  on the N, N-1 and action NADs the values are written in CSS px over the
-  diagram — 11–12 px pills whatever the zoom — instead of pypowsybl's
+- **Views**: each network diagram (N, N-1, action) reads in **MW | Loading %**
+  × **Flows | Impacts**, the two toggles stacked at the top right, per tab and
+  per window. The N tab, the reference the Impacts compare against, has no
+  Impacts. The toggles and the legend keep clear of the kV filter strip,
+  folded or open.
+- **Loading %**: each branch end's current in % of **that end's** permanent
+  limit — a line's single-side limit holds for both ends; a transformer's
+  unlimited side has none (RTE grids limit most transformers on side 2 only).
+  A branch reads its more loaded end: grey below 50 %, five pale yellow →
+  orange steps up to the monitoring factor, vivid orange at or above it. In
+  **Impacts**, the change in percentage points vs N (N-1 tab) or vs N-1
+  (action tab), coloured like the flow deltas (orange up, blue down).
+- **Readable flow labels** (`BranchLabelLayer`): the values are written in
+  11–12 px pills over the diagram whatever the zoom, instead of pypowsybl's
   user-unit text (hidden; its arrows stay). A branch short on screen gets one
-  label at its middle (its larger end), a long one a label beside each arrow.
-  In Loading %, only the coloured branches are labelled (from 50 %), and in
-  Impacts (MW or Loading %) only the significant changes — the grey ones
-  would crowd the reading, the hover still tells them; in MW Flows, a branch
-  once long enough on screen. Every label is outlined in its line's voltage
-  colour (a transformer's ends each in theirs, read from the diagram), so the
-  voltage still shows in Loading % and Impacts; MW Flows, where the lines keep
-  those colours, writes the value in it too. Impacts read rounded, their sign
-  alone telling up from down (`+40%`, `-58`); the hover keeps a decimal. No
-  label overlaps another. Laid out when the view settles (≈ 5–25 ms on the
-  RTE grid), hidden during a pan / zoom gesture. Same for MW, Loading % and
-  Impacts.
-- **`🏷 Values` toggle** beside `🏷 VL`: off, no value label at all for a
-  lighter reading — the colours stay and the hover tells any branch. Every
-  tab and window alike; logged as `value_labels_toggled { show }`.
-- The two top-right toggles stack one under the other (MW / Loading %, then
-  Flows / Impacts), and the **N tab has no Flows / Impacts**: it is the
-  reference the Impacts compare against, so it always shows its absolute
-  state. They — and the legend — keep clear of the kV filter strip on the
-  right edge, folded or open (`--kv-filter-w`).
-- **Branch hover**: hovering a branch (within 8 px — no hit test of the
-  diagram) shows both ends — voltage level, active power, loading — and its
-  Impacts change; parallel circuits drawn over each other are all listed,
-  the most loaded first.
+  label at its middle (its larger end); a long one a label beside each arrow.
+  Labelled: in Loading %, the coloured branches only; in Impacts (MW or
+  Loading %), the significant changes only; in MW Flows, the branches long
+  enough on screen. Coloured labels first, none over another. Every label is
+  outlined in its line's voltage colour (a transformer's ends each in theirs),
+  so the voltage still reads in Loading % and Impacts; MW Flows also writes
+  the value in it. Loading floored (`88%`), changes rounded with their sign
+  alone (`+40%`, `-58`). Laid out when the view settles (≈ 5–25 ms on the RTE
+  grid), hidden during a pan / zoom gesture.
+- **`🏷 Values`** beside `🏷 VL`: off, no value label at all for a lighter
+  reading — the colours and the hover stay. Every tab and window alike.
+- **Branch hover** (within 8 px, a grid lookup — no hit test of the diagram):
+  both ends' voltage level, active power and loading, plus the Impacts
+  change; parallel circuits drawn over each other are all listed, the most
+  loaded first.
+- **Data**: every NAD response, full and patch, carries `branch_loading`
+  (`{branch: [end1 %, end2 %]}`) and, for N-1 / action, `loading_deltas`. The
+  limits are read once per network (~0.2 s on the RTE grid, then ~20–40 ms a
+  pass). The legend explains the scale; the log records
+  `flow_metric_changed { metric, tab, scope }` and
+  `value_labels_toggled { show }`. Reference:
+  `docs/features/loading-view-and-flow-labels.md`.
+- **Fixes on the way**: the svgPatch clone of the N diagram (and the action
+  overview's clone of the N-1) drops the N tab's decoration, so a decorated
+  N can no longer leak its labels into the N-1 / action flows; the N-1 and
+  action patch paths share one copy of the patch's data fields
+  (`patchDiagramFields`).
 
 ### Context tab — a consigned twin beside the highlighted circuit
 

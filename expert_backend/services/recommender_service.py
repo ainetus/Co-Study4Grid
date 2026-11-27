@@ -117,6 +117,9 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin, ModelSele
         # NAD whose `fixed_positions` reference the previous grid's substations.
         self._layout_cache = None
         self._completed_layout_cache = None
+        # The current limits by side the Loading view divides each branch end by
+        # (`DiagramMixin._side_limits_for`): read once per network object.
+        self._side_limits_cache = None
         # Pre-fetched base NAD (populated by `prefetch_base_nad_async` during
         # `update_config`, consumed by `/api/network-diagram`). See
         # docs/performance/history/nad-prefetch.md.
@@ -218,6 +221,7 @@ class RecommenderService(DiagramMixin, AnalysisMixin, SimulationMixin, ModelSele
         # `fixed_positions`, referencing substation IDs from the wrong grid.
         self._layout_cache = None
         self._completed_layout_cache = None
+        self._side_limits_cache = None
 
         self._prefetched_base_nad = None
         self._prefetched_base_nad_error = None

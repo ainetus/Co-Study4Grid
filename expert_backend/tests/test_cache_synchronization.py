@@ -149,6 +149,8 @@ class TestCacheSynchronization:
             "contingency_state_DISCO_A": {"converged": True, "lf_status": "CONVERGED"},
             "contingency_state_DISCO_B": {"converged": False, "lf_status": "FAILED"},
         }
+        # The Loading view's current limits by side, read once per network.
+        service._side_limits_cache = (MagicMock(), {"L1": {"ONE": 100.0}})
 
         service.reset()
 
@@ -160,6 +162,7 @@ class TestCacheSynchronization:
         # None) so later `_get_contingency_variant` calls on the fresh study
         # can still use `dict.get()` / `dict[key] = ...` safely.
         assert service._lf_status_by_variant == {}
+        assert service._side_limits_cache is None
 
     @patch.object(RecommenderService, '_get_simulation_env')
     def test_isolation_simulation_does_not_modify_cache_fields(self, mock_get_env):

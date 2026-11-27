@@ -651,6 +651,10 @@ Modes:
     generation token drops builds queued before a dispose (tab hidden,
     diagram replaced). Owner-window rAF / idle callbacks, so detached
     windows work.
+  - **On the NAD tabs the flow values are the `BranchLabelLayer`'s** (CSS-px
+    labels, hidden during a gesture; pypowsybl's own text is hidden by
+    `data-branch-labels`), so the proxy draws their arrows and the VL labels,
+    not the values — see `docs/features/loading-view-and-flow-labels.md`.
   - **Flow values and VL labels are drawn too, once readable**
     (`utils/svg/canvasProxyText.ts`, `TEXT_MIN_PX` = 4 px on screen): they
     stay on screen through the gesture and the settle instead of coming back
@@ -723,6 +727,18 @@ Modes:
   - **No ghost on settle.** The target viewBox is baked onto the still-hidden
     live SVG and the bitmap is kept on top for ~2 frames before the swap, so
     the SVG layer's stale base-zoom paint never flashes during its repaint.
+
+## Loading view and readable flow labels
+
+The NAD tabs read in **MW | Loading %** × **Flows | Impacts** (no Impacts on
+the N tab, the reference state), per tab and per window
+(`useDiagramHighlights`). Their values are written by `BranchLabelLayer` in
+CSS px over the diagram — one label mid-branch when zoomed out, one per end
+when zoomed in, coloured branches first, no overlap, outlined in the voltage
+colour — and hovering a branch tells both its ends. `🏷 Values` hides the
+labels. The backend sends `branch_loading` (per end, against each end's own
+limit) and `loading_deltas` with every NAD. Full reference:
+[`docs/features/loading-view-and-flow-labels.md`](../docs/features/loading-view-and-flow-labels.md).
 
 ## Detached tabs
 

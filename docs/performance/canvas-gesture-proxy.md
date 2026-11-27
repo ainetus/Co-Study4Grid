@@ -245,6 +245,14 @@ at once: the canvas is cleared and the jump applied to the live SVG.
 
 ### 3.4 Flow values and labels
 
+> **Since the readable flow labels** (`docs/features/loading-view-and-flow-labels.md`),
+> the NAD tabs hide pypowsybl's flow-value `<text>`
+> (`.svg-container[data-branch-labels] .nad-edge-infos text`) and write the
+> values in CSS-px labels laid out on each settle, hidden during a gesture. The
+> proxy therefore reads no flow text there (its style resolves to
+> `display: none`) and draws the arrows and the VL labels only; the flow-text
+> path below still serves any diagram without the label layer.
+
 Read after the network, in idle slices (`step(budget)`, 5–40 ms each — about a
 dozen slices of 12–27 ms on the European grid, ~180 ms in all; read with the
 network, they made one 410 ms task). The slices pause while the proxy covers
