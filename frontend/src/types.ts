@@ -282,9 +282,9 @@ export type BranchLoading = [number | null, number | null];
 export interface BranchLabelControls {
     /** Each NAD tab's metadata index. */
     metaIndexes: Partial<Record<TabId, MetadataIndex | null>>;
-    /** The values at the middle of the branches (the zoomed-out labels); off for a lighter reading. */
-    showMidValues: boolean;
-    onToggleMidValues: (show: boolean) => void;
+    /** The value labels on the branches; off for a lighter reading (colours and hover stay). */
+    showValues: boolean;
+    onToggleValues: (show: boolean) => void;
 }
 
 /** Flows (absolute state) or Impacts (change vs the reference state). */

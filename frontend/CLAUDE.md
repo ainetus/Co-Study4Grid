@@ -152,12 +152,14 @@ frontend/
     │   │                           # rings, consignations, the network outline
     │   │                           # (liseré), contingency / overload highlights
     │   ├── DiagramLegend.tsx, AdditionalLinesPicker.tsx,
-    │   ├── FlowViewToggles.tsx     # Top-right diagram toggles: Flows /
-    │   │                           # Impacts × MW / Loading % (per tab,
-    │   │                           # per window — useDiagramHighlights)
+    │   ├── FlowViewToggles.tsx     # Top-right diagram toggles, stacked:
+    │   │                           # MW / Loading %, then Flows / Impacts
+    │   │                           # (not on the N tab, the reference
+    │   │                           # state); per tab, per window —
+    │   │                           # useDiagramHighlights
     │   ├── DiagramLabelToggles.tsx # `🏷 VL` names + `🏷 Values` (the
-    │   │                           # zoomed-out mid-branch values) toggles
-    │   │                           # beside the Inspect field
+    │   │                           # branch value labels) toggles beside
+    │   │                           # the Inspect field
     │   ├── BranchLabelLayer.tsx    # Readable flow labels over each NAD tab,
     │   │                           # in CSS px (pypowsybl's user-unit values
     │   │                           # are hidden by `data-branch-labels`):

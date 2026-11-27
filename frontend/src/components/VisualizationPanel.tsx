@@ -174,7 +174,7 @@ interface VisualizationPanelProps {
      *  window-scoped like the view mode. Without them: MW, no toggle effect. */
     flowMetricForTab?: (tab: TabId) => FlowMetric;
     onFlowMetricChangeForTab?: (tab: TabId, metric: FlowMetric) => void;
-    /** The readable flow labels (BranchLabelLayer): each tab's metadata index, the mid-branch values toggle. */
+    /** The readable flow labels (BranchLabelLayer): each tab's metadata index, the value labels toggle. */
     branchLabels?: BranchLabelControls;
     /** Overflow Analysis tab wiring (layout toggle + action pins), grouped (D4). See OverflowControls. */
     overflow?: OverflowControls;
@@ -490,7 +490,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                 {hasDiagramForTab && (
                     <BranchLabelLayer containerRef={tabContainerRef} diagram={tabDiagram} metaIndex={branchLabels?.metaIndexes[tabId] ?? null}
                         mode={tabViewMode} metric={flowMetricForTabFn(tabId)} monitoringFactor={monitoringFactor ?? 0.95} displayName={displayName}
-                        midLabels={branchLabels?.showMidValues ?? true} />
+                        values={branchLabels?.showValues ?? true} />
                 )}
                 {/* Top-right cluster: Flow/Impacts + Tie button.
                     Only rendered when the tab actually has a
@@ -505,6 +505,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         onViewModeChange={viewModeChangeForTabCb}
                         metric={flowMetricForTabFn(tabId)}
                         onMetricChange={flowMetricChangeForTabCb}
+                        impacts={tabId !== 'n'}
                     />
                 )}
 
@@ -596,7 +597,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                                 />
                                 <DiagramLabelToggles
                                     showVlNames={showVoltageLevelNames} onToggleVlNames={onToggleVoltageLevelNames}
-                                    showMidValues={branchLabels?.showMidValues ?? true} onToggleMidValues={branchLabels?.onToggleMidValues}
+                                    showValues={branchLabels?.showValues ?? true} onToggleValues={branchLabels?.onToggleValues}
                                 />
                                 {inspectQuery && voltageLevels.includes(inspectQuery) && (
                                     <button

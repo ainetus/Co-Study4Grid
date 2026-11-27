@@ -42,13 +42,13 @@ const DIAGRAM = {
     branch_loading: { LONG: [41.2, 70.4], SHORT: [97.3, 96.8] },
 } as unknown as DiagramData;
 
-function Harness({ mode = 'network', metric = 'loading', midLabels = true }: { mode?: ViewMode; metric?: FlowMetric; midLabels?: boolean }) {
+function Harness({ mode = 'network', metric = 'loading', values = true }: { mode?: ViewMode; metric?: FlowMetric; values?: boolean }) {
     const ref = useRef<HTMLDivElement>(null);
     return (
         <div>
             <div ref={ref} data-testid="container" className="svg-container" dangerouslySetInnerHTML={{ __html: SVG }} />
             <BranchLabelLayer containerRef={ref} diagram={DIAGRAM} metaIndex={META} mode={mode} metric={metric}
-                monitoringFactor={0.95} displayName={id => (id === 'LONG' ? 'CANTEY761' : id)} midLabels={midLabels} />
+                monitoringFactor={0.95} displayName={id => (id === 'LONG' ? 'CANTEY761' : id)} values={values} />
         </div>
     );
 }
@@ -86,11 +86,14 @@ describe('BranchLabelLayer', () => {
         expect(layer.queryByText('55')).toBeNull();
     });
 
-    it('without the zoomed-out values, only the ends of the long branch are labelled', async () => {
-        render(<Harness midLabels={false} />);
-        await waitFor(() => expect(screen.getByText('41%')).toBeInTheDocument());
-        expect(screen.getByText('70%')).toBeInTheDocument();
-        expect(screen.queryByText('97%')).toBeNull();
+    it('Values off: no label at all, the hover still tells a branch', async () => {
+        render(<Harness values={false} />);
+        // The view is read when the layout pass runs (a timer after mount), labels or not.
+        await act(async () => { await new Promise(r => setTimeout(r, 0)); });
+        fireEvent.mouseMove(screen.getByTestId('container'), { clientX: 300, clientY: 303 });
+        const tip = await screen.findByTestId('branch-tooltip');
+        expect(tip).toHaveTextContent('CANTEY761');
+        expect(screen.getByTestId('branch-label-layer').querySelectorAll('g.branch-label')).toHaveLength(0);
     });
 
     it('hovering a branch tells both its ends: voltage level, MW and loading', async () => {

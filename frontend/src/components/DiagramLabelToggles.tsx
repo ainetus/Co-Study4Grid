@@ -21,15 +21,14 @@ const toggleStyle = (on: boolean) => ({
 
 /**
  * The diagram's label toggles beside the Inspect field: voltage-level names
- * (`🏷 VL`) and the values written at the middle of the branches when zoomed
- * out (`🏷 Values`) — off for a lighter reading, the ends' values still show
- * once a branch is long enough on screen, and the hover tells any branch.
+ * (`🏷 VL`) and the value labels on the branches (`🏷 Values`) — off for a
+ * lighter reading: the colours stay and the hover tells any branch.
  */
-export default function DiagramLabelToggles({ showVlNames, onToggleVlNames, showMidValues, onToggleMidValues }: {
+export default function DiagramLabelToggles({ showVlNames, onToggleVlNames, showValues, onToggleValues }: {
     showVlNames: boolean;
     onToggleVlNames?: (show: boolean) => void;
-    showMidValues: boolean;
-    onToggleMidValues?: (show: boolean) => void;
+    showValues: boolean;
+    onToggleValues?: (show: boolean) => void;
 }) {
     return (
         <>
@@ -46,15 +45,15 @@ export default function DiagramLabelToggles({ showVlNames, onToggleVlNames, show
                     {'\u{1F3F7} VL'}
                 </button>
             )}
-            {onToggleMidValues && (
+            {onToggleValues && (
                 <button
-                    onClick={() => onToggleMidValues(!showMidValues)}
-                    title={showMidValues
-                        ? 'Hide the values at the middle of the branches (zoomed-out reading): the ends’ values still show once zoomed in, and on hover'
-                        : 'Show the values at the middle of the branches when zoomed out'}
-                    aria-pressed={showMidValues}
-                    data-testid="toggle-mid-values"
-                    style={toggleStyle(showMidValues)}
+                    onClick={() => onToggleValues(!showValues)}
+                    title={showValues
+                        ? 'Hide the value labels on the branches (lighter reading): the colours stay, hover a branch for its values'
+                        : 'Show the value labels on the branches'}
+                    aria-pressed={showValues}
+                    data-testid="toggle-values"
+                    style={toggleStyle(showValues)}
                 >
                     {'\u{1F3F7} Values'}
                 </button>

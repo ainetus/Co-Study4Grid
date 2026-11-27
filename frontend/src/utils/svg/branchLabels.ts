@@ -251,19 +251,17 @@ export interface LayoutOptions {
     pxPerUnit: number;
     /** A label's text width, CSS px. */
     measure: (text: string, important: boolean) => number;
-    /** The values at the middle of the branches short on screen (zoomed out); false for a lighter reading. */
-    mid?: boolean;
 }
 
 /**
  * Where the labels go for the current view: every branch in view that is
  * coloured, or long enough on screen; the coloured ones first, by value,
  * then the rest; a label per end on a branch long enough to hold two (beside
- * pypowsybl's arrow, towards the middle), else one at its middle — unless
- * `mid` is off (the zoomed-out values hidden); none over another.
+ * pypowsybl's arrow, towards the middle), else one at its middle; none over
+ * another.
  */
 export const layoutLabels = (items: readonly LabelItem[], opts: LayoutOptions): PlacedLabel[] => {
-    const { width, height, project, pxPerUnit, measure, mid: midLabels = true } = opts;
+    const { width, height, project, pxPerUnit, measure } = opts;
     const inView = (p: Point) => p[0] >= 0 && p[0] <= width && p[1] >= 0 && p[1] <= height;
     const candidates: { item: LabelItem; len: number; mid: Point }[] = [];
     for (const item of items) {
@@ -274,7 +272,6 @@ export const layoutLabels = (items: readonly LabelItem[], opts: LayoutOptions): 
         if (!inView(mid) && !inView(a) && !inView(b)) continue;
         const len = dist(a, b);
         if (!item.important && len < PLAIN_MIN_PX) continue;
-        if (!midLabels && len < ENDS_MIN_PX) continue;
         candidates.push({ item, len, mid });
     }
     candidates.sort((p, q) => Number(q.item.important) - Number(p.item.important) || q.item.weight - p.item.weight || q.len - p.len);
@@ -315,7 +312,7 @@ export const layoutLabels = (items: readonly LabelItem[], opts: LayoutOptions): 
             }
             if (tryPlace(ends)) continue;
         }
-        if (midLabels) tryPlace([label(item, `${geom.id}:mid`, mid, item.mid)]);
+        tryPlace([label(item, `${geom.id}:mid`, mid, item.mid)]);
     }
     return placed;
 };

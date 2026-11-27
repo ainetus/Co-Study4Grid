@@ -234,23 +234,30 @@ describe('VisualizationPanel', () => {
     });
 
     it('shows view mode toggle when diagram is loaded', () => {
-        const nDiagram: DiagramData = {
+        const n1Diagram: DiagramData = {
             svg: '<svg>test</svg>',
             metadata: null,
         };
-        render(<VisualizationPanel {...createDefaultProps({ nDiagram })} />);
+        render(<VisualizationPanel {...createDefaultProps({ activeTab: 'contingency', n1Diagram })} />);
         expect(screen.getByText('Flows')).toBeInTheDocument();
         expect(screen.getByText('Impacts')).toBeInTheDocument();
+    });
+
+    it('offers no Flows / Impacts on the N tab, the reference state itself', () => {
+        const nDiagram: DiagramData = { svg: '<svg>test</svg>', metadata: null };
+        render(<VisualizationPanel {...createDefaultProps({ nDiagram })} />);
+        expect(screen.getByTestId('flow-metric-toggle-n')).toBeInTheDocument();
+        expect(screen.queryByTestId('view-mode-toggle-n')).toBeNull();
     });
 
     it('calls onViewModeChange when toggle clicked', async () => {
         const user = userEvent.setup();
         const onViewModeChange = vi.fn();
-        const nDiagram: DiagramData = {
+        const n1Diagram: DiagramData = {
             svg: '<svg>test</svg>',
             metadata: null,
         };
-        render(<VisualizationPanel {...createDefaultProps({ nDiagram, onViewModeChange })} />);
+        render(<VisualizationPanel {...createDefaultProps({ activeTab: 'contingency', n1Diagram, onViewModeChange })} />);
 
         await user.click(screen.getByText('Impacts'));
         expect(onViewModeChange).toHaveBeenCalledWith('delta');
@@ -342,9 +349,10 @@ describe('VisualizationPanel', () => {
 
             const tieButton = mountNode.querySelector('button[title^="Tie"]') as HTMLElement | null;
             const zoomInButton = mountNode.querySelector('button[title="Zoom In"]') as HTMLElement | null;
+            // The N tab's top-right cluster holds the MW / Loading % toggle (no Flows / Impacts there).
             const flowsButton = Array.from(
                 mountNode.querySelectorAll('button')
-            ).find(b => b.textContent === 'Flows') as HTMLElement | undefined;
+            ).find(b => b.textContent === 'MW') as HTMLElement | undefined;
 
             expect(tieButton).not.toBeNull();
             expect(zoomInButton).not.toBeNull();
@@ -448,27 +456,24 @@ describe('VisualizationPanel', () => {
         it('routes the Impacts click through onViewModeChangeForTab with the tab id', async () => {
             const user = userEvent.setup();
             const onViewModeChangeForTab = vi.fn();
-            const nDiagram: DiagramData = { svg: '<svg>n</svg>', metadata: null };
+            const n1Diagram: DiagramData = { svg: '<svg>n1</svg>', metadata: null };
             render(<VisualizationPanel {...createDefaultProps({
-                activeTab: 'n',
-                nDiagram,
+                activeTab: 'contingency',
+                n1Diagram,
                 onViewModeChangeForTab,
                 // When the per-tab getter exists, the overlay reads
                 // from it rather than the global actionViewMode.
                 viewModeForTab: () => 'network' as const,
             })} />);
 
-            // All three tabs render an overlay (n / n-1 / action);
-            // only the active one (n) is actually visible, but all
-            // three buttons are in the DOM.
+            // Only the N-1 tab has a diagram, so its overlay holds the only Impacts button.
             const impactsButtons = screen.getAllByText('Impacts');
-            // Click the first one (the active N tab's overlay).
             await user.click(impactsButtons[0]);
             // The call must include the tab id, proving that the
             // router can dispatch to the right per-window state.
             expect(onViewModeChangeForTab).toHaveBeenCalled();
             const [firstCall] = onViewModeChangeForTab.mock.calls;
-            expect(firstCall[0]).toBe('n');
+            expect(firstCall[0]).toBe('contingency');
             expect(firstCall[1]).toBe('delta');
         });
     });

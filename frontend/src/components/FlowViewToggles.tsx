@@ -63,26 +63,32 @@ function Segmented<T extends string>({ options, value, onChange, testId }: {
 }
 
 /**
- * Top-right toggles of a diagram tab: Flows / Impacts (absolute state vs
- * change) and MW / Loading % (active power vs loading rate). Both are
- * per tab and per window — the handlers route the change.
+ * Top-right toggles of a diagram tab, one under the other: MW / Loading %
+ * (active power vs loading rate) and Flows / Impacts (absolute state vs
+ * change) — the latter left out where there is no reference state to
+ * compare with (the N tab). Both are per tab and per window — the handlers
+ * route the change.
  */
-export default function FlowViewToggles({ tabId, viewMode, onViewModeChange, metric, onMetricChange }: {
+export default function FlowViewToggles({ tabId, viewMode, onViewModeChange, metric, onMetricChange, impacts = true }: {
     tabId: TabId;
     viewMode: ViewMode;
     onViewModeChange: (tab: TabId, mode: ViewMode) => void;
     metric: FlowMetric;
     onMetricChange: (tab: TabId, metric: FlowMetric) => void;
+    /** Offer Flows / Impacts: false on the N tab, the reference state itself. */
+    impacts?: boolean;
 }) {
     return (
         <div style={{
             position: 'absolute', top: '10px', right: '10px', zIndex: 100,
-            display: 'flex', alignItems: 'center', gap: '6px',
+            display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px',
         }}>
             <Segmented testId={`flow-metric-toggle-${tabId}`} options={METRICS} value={metric}
                 onChange={m => onMetricChange(tabId, m)} />
-            <Segmented testId={`view-mode-toggle-${tabId}`} options={VIEW_MODES} value={viewMode}
-                onChange={m => onViewModeChange(tabId, m)} />
+            {impacts && (
+                <Segmented testId={`view-mode-toggle-${tabId}`} options={VIEW_MODES} value={viewMode}
+                    onChange={m => onViewModeChange(tabId, m)} />
+            )}
         </div>
     );
 }

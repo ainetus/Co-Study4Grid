@@ -42,11 +42,13 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   significant changes first in Impacts. No label overlaps another. Laid out when the view settles (≈ 5–25 ms on the
   RTE grid), hidden during a pan / zoom gesture. Same for MW, Loading % and
   Impacts.
-- **`🏷 Values` toggle** beside `🏷 VL`: off, the values at the middle of
-  the branches (the zoomed-out labels) are hidden for a lighter reading — the
-  colours stay, a branch long enough on screen still shows its ends' values,
-  and the hover tells any branch. Every tab and window alike; logged as
-  `value_labels_toggled { show }`.
+- **`🏷 Values` toggle** beside `🏷 VL`: off, no value label at all for a
+  lighter reading — the colours stay and the hover tells any branch. Every
+  tab and window alike; logged as `value_labels_toggled { show }`.
+- The two top-right toggles stack one under the other (MW / Loading %, then
+  Flows / Impacts), and the **N tab has no Flows / Impacts**: it is the
+  reference the Impacts compare against, so it always shows its absolute
+  state.
 - **Branch hover**: hovering a branch (within 8 px — no hit test of the
   diagram) shows both ends — voltage level, active power, loading — and its
   Impacts change; parallel circuits drawn over each other are all listed,

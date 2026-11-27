@@ -32,7 +32,7 @@ interface UseDiagramHighlightsReturn {
   handleViewModeChangeForTab: (tab: TabId, mode: 'network' | 'delta') => void;
   flowMetricForTab: (tab: TabId) => FlowMetric;
   handleFlowMetricChangeForTab: (tab: TabId, metric: FlowMetric) => void;
-  /** The readable flow labels: each NAD tab's metadata index and the mid-branch values toggle. */
+  /** The readable flow labels: each NAD tab's metadata index and the value labels toggle. */
   branchLabels: BranchLabelControls;
 }
 
@@ -104,11 +104,14 @@ export function useDiagramHighlights({
   const [detachedViewModes, setDetachedViewModes] = useState<Partial<Record<TabId, 'network' | 'delta'>>>({});
 
   const viewModeForTab = useCallback((tab: TabId): 'network' | 'delta' => {
+    // The N state is what the Impacts compare against: it has no change of its own.
+    if (tab === 'n') return 'network';
     if (detachedTabs[tab]) return detachedViewModes[tab] ?? 'network';
     return actionViewMode;
   }, [detachedTabs, detachedViewModes, actionViewMode]);
 
   const handleViewModeChangeForTab = useCallback((tab: TabId, mode: 'network' | 'delta') => {
+    if (tab === 'n') return;
     interactionLogger.record('view_mode_changed', { mode, tab, scope: detachedTabs[tab] ? 'detached' : 'main' });
     if (detachedTabs[tab]) {
       setDetachedViewModes(prev => ({ ...prev, [tab]: mode }));
@@ -302,16 +305,16 @@ export function useDiagramHighlights({
     }
   }, [nDiagram, n1Diagram, actionDiagram, diagrams.nMetaIndex, diagrams.n1MetaIndex, diagrams.actionMetaIndex, result, selectedActionId, actionViewMode, detachedViewModes, flowMetric, detachedFlowMetrics, detachedTabs, activeTab, selectedContingency, selectedOverloads, applyHighlightsForTab]);
 
-  // The values at the middle of the branches (zoomed out): every tab and window alike, like the VL names.
-  const [showMidValues, setShowMidValues] = useState(true);
-  const onToggleMidValues = useCallback((show: boolean) => {
+  // The value labels on the branches: every tab and window alike, like the VL names.
+  const [showValues, setShowValues] = useState(true);
+  const onToggleValues = useCallback((show: boolean) => {
     interactionLogger.record('value_labels_toggled', { show });
-    setShowMidValues(show);
+    setShowValues(show);
   }, []);
   const branchLabels = useMemo<BranchLabelControls>(() => ({
     metaIndexes: { n: diagrams.nMetaIndex, contingency: diagrams.n1MetaIndex, action: diagrams.actionMetaIndex },
-    showMidValues, onToggleMidValues,
-  }), [diagrams.nMetaIndex, diagrams.n1MetaIndex, diagrams.actionMetaIndex, showMidValues, onToggleMidValues]);
+    showValues, onToggleValues,
+  }), [diagrams.nMetaIndex, diagrams.n1MetaIndex, diagrams.actionMetaIndex, showValues, onToggleValues]);
 
   return { viewModeForTab, handleViewModeChangeForTab, flowMetricForTab, handleFlowMetricChangeForTab, branchLabels };
 }

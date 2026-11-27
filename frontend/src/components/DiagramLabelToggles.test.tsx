@@ -9,16 +9,16 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import DiagramLabelToggles from './DiagramLabelToggles';
 
 describe('DiagramLabelToggles', () => {
-    it('flips the VL names and the zoomed-out values independently', () => {
+    it('flips the VL names and the value labels independently', () => {
         const onToggleVlNames = vi.fn();
-        const onToggleMidValues = vi.fn();
+        const onToggleValues = vi.fn();
         render(<DiagramLabelToggles showVlNames onToggleVlNames={onToggleVlNames}
-            showMidValues onToggleMidValues={onToggleMidValues} />);
+            showValues onToggleValues={onToggleValues} />);
 
-        const values = screen.getByTestId('toggle-mid-values');
+        const values = screen.getByTestId('toggle-values');
         expect(values).toHaveAttribute('aria-pressed', 'true');
         fireEvent.click(values);
-        expect(onToggleMidValues).toHaveBeenCalledWith(false);
+        expect(onToggleValues).toHaveBeenCalledWith(false);
         expect(onToggleVlNames).not.toHaveBeenCalled();
 
         fireEvent.click(screen.getByTestId('toggle-vl-names'));
@@ -26,8 +26,8 @@ describe('DiagramLabelToggles', () => {
     });
 
     it('shows a toggle only when it is wired', () => {
-        render(<DiagramLabelToggles showVlNames={false} showMidValues={false} onToggleMidValues={vi.fn()} />);
+        render(<DiagramLabelToggles showVlNames={false} showValues={false} onToggleValues={vi.fn()} />);
         expect(screen.queryByTestId('toggle-vl-names')).toBeNull();
-        expect(screen.getByTestId('toggle-mid-values')).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByTestId('toggle-values')).toHaveAttribute('aria-pressed', 'false');
     });
 });

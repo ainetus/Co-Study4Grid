@@ -240,15 +240,24 @@ describe('useDiagramHighlights — active power vs loading rate', () => {
             diagrams.nSvgContainerRef.current, diagrams.nDiagram, diagrams.nMetaIndex, null, 0.9);
     });
 
-    it('toggles the zoomed-out values for every tab, and logs it', async () => {
+    it('toggles the value labels for every tab, and logs it', async () => {
         const { interactionLogger } = await import('../utils/interactionLogger');
         const record = vi.spyOn(interactionLogger, 'record');
         const { result } = render(makeDiagramsState({ activeTab: 'n' }));
-        expect(result.current.branchLabels.showMidValues).toBe(true);
-        act(() => result.current.branchLabels.onToggleMidValues(false));
-        expect(result.current.branchLabels.showMidValues).toBe(false);
+        expect(result.current.branchLabels.showValues).toBe(true);
+        act(() => result.current.branchLabels.onToggleValues(false));
+        expect(result.current.branchLabels.showValues).toBe(false);
         expect(record).toHaveBeenCalledWith('value_labels_toggled', { show: false });
         expect(result.current.branchLabels.metaIndexes.n).toBeDefined();
+    });
+
+    it('keeps the N tab in Flows: it is the reference the Impacts compare against', () => {
+        const diagrams = makeDiagramsState({ activeTab: 'n', actionViewMode: 'delta' });
+        const { result } = render(diagrams);
+        expect(result.current.viewModeForTab('n')).toBe('network');
+        expect(result.current.viewModeForTab('contingency')).toBe('delta');
+        act(() => result.current.handleViewModeChangeForTab('n', 'delta'));
+        expect(diagrams.setActionViewMode).not.toHaveBeenCalled();
     });
 
     it('routes the toggle to the main window, or to the detached tab only', () => {
