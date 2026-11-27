@@ -64,6 +64,16 @@ describe('readBranchGeometry', () => {
         expect(g.inks).toEqual(['rgb(211, 47, 47)', 'rgb(46, 125, 50)']);
     });
 
+    it('reads a value pypowsybl printed with its thousands grouped (-1,297 MW, not -1)', () => {
+        const container = document.createElement('div');
+        container.innerHTML = `<svg>
+            <g id="e3"><polyline class="nad-edge-path" points="0,0 40,0"/><polyline class="nad-edge-path" points="100,0 60,0"/></g>
+            <g id="e3-i1"><text>-1,297</text></g><g id="e3-i2"><text>1,301</text></g>
+        </svg>`;
+        const [g] = readBranchGeometry(container, metaIndex(edge('BIG', 'e3')));
+        expect(g.mw).toEqual([-1297, 1301]);
+    });
+
     it('keeps an open branch (no flow arrows) with its middle, and skips one not drawn', () => {
         const container = document.createElement('div');
         container.innerHTML = '<svg><g id="e2"><polyline class="nad-edge-path" points="0,0 10,0 30,0"/></g></svg>';

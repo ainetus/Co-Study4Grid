@@ -105,7 +105,8 @@ def apply_threshold(deltas: dict[str, float]) -> dict[str, dict]:
 
     result: dict[str, dict] = {}
     for lid, delta in deltas.items():
-        if abs(delta) < threshold:
+        # No change is grey, even when nothing changed at all (threshold 0).
+        if delta == 0 or abs(delta) < threshold:
             cat = "grey"
         elif delta > 0:
             cat = "positive"
@@ -252,7 +253,9 @@ def compute_loading_deltas(after_loading: dict, before_loading: dict) -> dict:
     direction convention is needed, ``delta = after - before``. Categories
     follow the flow deltas (5 % of the largest absolute delta). Only
     branches loaded in both states are compared — both snapshots carry the
-    same limits.
+    same limits. The loadings are rounded to 0.1 %, so is their difference:
+    two equal states must not read the float noise of a subtraction as
+    changes (that noise would be "the largest delta").
 
     Returns ``{id: {"delta", "category"}}``.
     """
@@ -261,5 +264,5 @@ def compute_loading_deltas(after_loading: dict, before_loading: dict) -> dict:
         after = max_loading(ends)
         before = max_loading(before_loading.get(lid))
         if after is not None and before is not None:
-            deltas[lid] = after - before
+            deltas[lid] = round(after - before, 1)
     return apply_threshold(deltas)

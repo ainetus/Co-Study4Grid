@@ -52,6 +52,32 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   action patch paths share one copy of the patch's data fields
   (`patchDiagramFields`).
 
+### Single line diagram — in the Loading % view too
+
+- The SLD overlay follows the main window's **MW | Loading %** toggle as it
+  followed **Flows | Impacts**, on its N, N-1 and action sub-tabs; its header
+  says `Loading %` beside `Flows` / `Impacts` (Flows on its N sub-tab, the
+  Impacts' reference, as on the N tab).
+- **Loading % Flows**: each branch feeder reads the loading of the end it
+  draws (pypowsybl's `side`; a transformer's side without a limit reads the
+  other end's), its cell in the NAD's scale, the value on a pill of that
+  colour from 50 %. **Loading % Impacts**: the branch's change (`+12%`),
+  coloured like the deltas. The Q arrow is hidden — one figure per end; loads
+  and generators keep their MW (and MW change: a shed load still shows its
+  MW). A branch without a limit reads `—`.
+- **Data**: `/api/n-sld`, `/api/contingency-sld` and `/api/action-variant-sld`
+  carry `branch_loading` and, for N-1 / action, `loading_deltas`, read
+  grid-wide (the NAD's Impacts categories) and narrowed to the voltage level's
+  branches. The painting moved out of `SldOverlay` into
+  `utils/svg/sldFlowVisuals.ts` + `hooks/useSldFlowVisuals.ts`, self-gated on
+  its inputs' identity (no per-render JSON signature of the grid-wide deltas).
+- **Fixes on the way**: values pypowsybl prints with their thousands grouped
+  (`-1,297`) read as numbers — a 1 297 MW branch read `-1` in the NAD's MW
+  labels and hover, and a ≥ 1 000 MW SLD feeder kept its flow in MW Impacts;
+  a change that is exactly zero reads grey even when nothing changed at all,
+  and a loading change rounds to 0.1 point like the loadings (float noise no
+  longer coloured as "the largest change").
+
 ### Context tab — a consigned twin beside the highlighted circuit
 
 - A consignation whose ends are those of the contingency or of an overload

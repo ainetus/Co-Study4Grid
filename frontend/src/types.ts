@@ -621,6 +621,8 @@ export interface SldFeederNode {
     equipmentId: string;
     componentType?: string;
     direction?: string;
+    /** A branch end's side (`ONE` / `TWO`) on its feeder infos (the P / Q arrows). */
+    side?: string;
 }
 
 /**
@@ -709,6 +711,14 @@ export interface VlOverlay {
      * ``switch_names``).
      */
     switch_labels?: Record<string, string>;
+    /**
+     * The Loading view of the SLD: the loading of the displayed VL's branches
+     * in this state, per end (``[end1 %, end2 %]``, as on the NAD), and on
+     * N-1 / action their change vs N / vs N-1 (categorised grid-wide, as on
+     * the NAD).
+     */
+    branch_loading?: Record<string, BranchLoading>;
+    loading_deltas?: Record<string, FlowDelta>;
 }
 
 // ===== Session Save =====

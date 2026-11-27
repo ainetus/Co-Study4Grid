@@ -101,7 +101,9 @@ Co-Study4Grid/
 │       │                          # literals outside these two files.
 │       ├── hooks/                 # useSettings / useActions / useAnalysis / useDiagrams /
 │       │                          # useSession / useDetachedTabs / useTiedTabsSync /
-│       │                          # usePanZoom / useSldOverlay / useContingencyFetch (svgPatch fast-
+│       │                          # usePanZoom / useSldOverlay / useSldFlowVisuals (the
+│       │                          # SLD's values in the diagrams' view) /
+│       │                          # useContingencyFetch (svgPatch fast-
 │       │                          # path + full fallback) / useDiagramHighlights (per-tab
 │       │                          # highlight pipeline + Flow/Impacts view-mode state) /
 │       │                          # useOverflowIframe (PR #116 — iframe lifecycle, layer
@@ -180,7 +182,9 @@ Co-Study4Grid/
 │                                  # iframe-overlay pin pipeline)
 │                                  # + loadingVisuals (Loading % colours) +
 │                                  # branchLabels (label geometry / texts /
-│                                  # placement / hover index) — see
+│                                  # placement / hover index) + sldFlowVisuals
+│                                  # (the SLD in MW / Loading % × Flows /
+│                                  # Impacts) — see
 │                                  # docs/features/loading-view-and-flow-labels.md
 ├── standalone_interface_legacy.html  # DECOMMISSIONED 2026-04-20 — hand-maintained
 │                              # single-file mirror frozen at its last version and
@@ -245,7 +249,7 @@ Co-Study4Grid/
 | `docs/features/interaction-logging.md` | Replay-ready event log contract |
 | `docs/features/sld-topology-edit.md` | Interactive SLD topology edit → manual action card |
 | `docs/features/sld-diagram-feeder-labels.md` | SLD feeders relabelled by far-end VL name (+ parallel index); generators / loads / busbars / switches / the title by display name (ids on hover / copy); overload-halo friendly-name↔IIDM-id bridge; the charging-current annotation explaining the "after" loading of a line opened at one end |
-| `docs/features/loading-view-and-flow-labels.md` | NAD views MW / Loading % × Flows / Impacts (none on N): per-end `branch_loading` against each end's limit, `loading_deltas`, the colour scale, readable CSS-px flow labels (`BranchLabelLayer`: mid-branch zoomed out, per end zoomed in, voltage-coloured outline), the `🏷 Values` toggle, branch hover tooltip |
+| `docs/features/loading-view-and-flow-labels.md` | NAD views MW / Loading % × Flows / Impacts (none on N): per-end `branch_loading` against each end's limit, `loading_deltas`, the colour scale, readable CSS-px flow labels (`BranchLabelLayer`: mid-branch zoomed out, per end zoomed in, voltage-coloured outline), the `🏷 Values` toggle, branch hover tooltip; the SLD overlay in the same view (each branch feeder's end loading, its change in Impacts) |
 | `docs/features/action-card.md` | Remedial-action card: title = the names of what the action acts on, pictograms with tooltips (type, severity, loading, source), description under the title, max loading + overloads after grouped, raw id on hover / copy |
 | `docs/features/context-tab.md` | Context tab (leftmost): the Carte-Front situation map ported in — region mesh (`regionCvg`) else countries, mix pies / consumption rings / transfers / neighbour badges, contingency + overload highlights, snapshot at `/api/config` + early read, layout georeferencing |
 | `docs/performance/canvas-gesture-proxy.md` | Default pan/zoom renderer on large grids: canvas gesture proxy design, time budget on the European grid, decision log (never restyle the canvas, pointer capture, settle on a pause), next levers, probes |
@@ -374,9 +378,9 @@ guards the reductions documented in
 | POST | `/api/action-variant-diagram-patch` | Per-branch delta + VL-subtree splice for action DOM recycling, with `branch_loading` / `loading_deltas` |
 | POST | `/api/focused-diagram` | Generate NAD sub-diagram focused on a specific element |
 | POST | `/api/action-variant-focused-diagram` | Focused NAD for specific VL in post-action state |
-| POST | `/api/n-sld` | Single Line Diagram for voltage level in N state. Response includes `switch_states` (per-switch open/closed map), `injections` (per-load/generator active-power baseline) used by the interactive SLD-edit feature, `feeder_labels` (per-feeder `{name, other_vl, label, kind}` — a branch's `label` = far-end VL name + parallel index, used to relabel feeders and bridge friendly-named overloads to the SLD cell; a generator / load / busbar's = its display name) **and** `switch_labels` (per-switch display name, `disjoncteur ATTAQL61MANDA`, read by the maneuver list). |
-| POST | `/api/contingency-sld` | Single Line Diagram in N-1 state (with flow deltas + `switch_states` + `injections` + `feeder_labels` + `switch_labels`). |
-| POST | `/api/action-variant-sld` | SLD in post-action state (with flow deltas, `changed_switches`, `switch_states`, `injections`, `feeder_labels`, `switch_labels`). |
+| POST | `/api/n-sld` | Single Line Diagram for voltage level in N state. Response includes `switch_states` (per-switch open/closed map), `injections` (per-load/generator active-power baseline) used by the interactive SLD-edit feature, `feeder_labels` (per-feeder `{name, other_vl, label, kind}` — a branch's `label` = far-end VL name + parallel index, used to relabel feeders and bridge friendly-named overloads to the SLD cell; a generator / load / busbar's = its display name) **and** `switch_labels` (per-switch display name, `disjoncteur ATTAQL61MANDA`, read by the maneuver list). `branch_loading` (per end, the voltage level's branches) gives the SLD its Loading % view. |
+| POST | `/api/contingency-sld` | Single Line Diagram in N-1 state (with flow deltas + `switch_states` + `injections` + `feeder_labels` + `switch_labels` + `branch_loading` / `loading_deltas` vs N for the Loading % view). |
+| POST | `/api/action-variant-sld` | SLD in post-action state (with flow deltas, `changed_switches`, `switch_states`, `injections`, `feeder_labels`, `switch_labels`, `branch_loading` / `loading_deltas` vs N-1). |
 | POST | `/api/sld-topology-preview` | Target-topology preview SLD for the interactive SLD-edit feature: applies staged switch overrides on a throwaway variant and re-renders with topological colouring (no load flow; `stale_flows: true`). |
 | GET  | `/api/actions` | Return all available action IDs and descriptions |
 | POST | `/api/regenerate-overflow-graph` | Regenerate (or serve from cache) the overflow graph in hierarchical / geo layout — drives the toggle on the Overflow Analysis tab |

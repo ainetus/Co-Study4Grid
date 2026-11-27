@@ -44,7 +44,35 @@ export const formatLoading = (percent: number): string => `${Math.floor(percent)
 export const formatLoadingDelta = (delta: number): string =>
     `Δ ${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%`;
 
+/**
+ * A change as the diagrams print it (branch labels, the SLD's Loading view):
+ * rounded, its sign telling up from down — `+40%`, `-58`. Under one unit it
+ * keeps a decimal (`-0.4%`), or a change coloured as a decrease would read
+ * `0`; none at all reads `0`. The hover keeps a decimal.
+ */
+export const formatChange = (unit: string) => (delta: number): string => {
+    const rounded = Math.round(delta);
+    const shown = rounded !== 0 ? rounded : Math.round(delta * 10) / 10;
+    return shown === 0 ? `0${unit}` : `${shown > 0 ? '+' : '-'}${Math.abs(shown)}${unit}`;
+};
+
 export const NO_LOADING = '—';
+
+// pypowsybl groups the thousands of the values it prints: `-1,297` (SLD, NAD).
+const GROUPED_NUMBER = /^-?\d{1,3}(?:[,\u00a0\u202f ]\d{3})+(?:\.\d+)?$/;
+const PLAIN_NUMBER = /^-?\d+(?:\.\d+)?$/;
+
+/** Whether a diagram text is a number pypowsybl printed (`-19`, `1,550`). */
+export const isPrintedNumber = (text: string): boolean => {
+    const t = text.trim();
+    return PLAIN_NUMBER.test(t) || GROUPED_NUMBER.test(t);
+};
+
+/** The number a diagram text prints — `-1,297` is -1297, not -1. */
+export const parsePrintedNumber = (text: string): number => {
+    const t = text.trim();
+    return parseFloat(GROUPED_NUMBER.test(t) ? t.replace(/[,\u00a0\u202f ]/g, '') : t);
+};
 
 /**
  * Strip the Flows / Impacts × MW / Loading decoration from a copy of a

@@ -1738,6 +1738,7 @@ function App() {
             voltageRange={voltageRange}
             onVoltageRangeChange={handleVoltageRangeChange}
             actionViewMode={actionViewMode}
+            flowMetric={diagrams.flowMetric}
             onViewModeChange={handleViewModeChange}
             viewModeForTab={viewModeForTab}
             onViewModeChangeForTab={handleViewModeChangeForTab}

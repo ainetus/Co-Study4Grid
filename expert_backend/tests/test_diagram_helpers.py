@@ -538,6 +538,10 @@ class TestApplyThreshold:
     def test_handles_empty_input(self):
         assert deltas.apply_threshold({}) == {}
 
+    def test_no_change_is_grey_even_when_nothing_changed(self):
+        result = deltas.apply_threshold({"A": 0.0, "B": 0.0})
+        assert result["A"]["category"] == "grey" and result["B"]["category"] == "grey"
+
     def test_rounds_delta_to_one_decimal(self):
         result = deltas.apply_threshold({"A": 10.123})
         assert result["A"]["delta"] == 10.1
@@ -606,6 +610,15 @@ class TestComputeLoadingDeltas:
             {"L1": [5.0, 4.0], "OLD": [1.0, 1.0], "NONE": [3.0, 3.0]},
         )
         assert set(result) == {"L1"}
+
+    def test_equal_states_read_grey(self):
+        # 7.0 - 7.000000000000001: float noise, not a change — it would
+        # otherwise be "the largest delta" and colour itself.
+        result = deltas.compute_loading_deltas(
+            {"L1": [7.000000000000001, 6.9], "L2": [14.3, 14.3]},
+            {"L1": [7.0, 6.9], "L2": [14.3, 14.3]},
+        )
+        assert result == {"L1": {"delta": 0.0, "category": "grey"}, "L2": {"delta": 0.0, "category": "grey"}}
 
 
 class TestComputeDeltaVectorized:

@@ -72,8 +72,9 @@ This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface t
    labels are dark <text> → recolour them to light. We exclude the
    flow-delta text classes (`sld-delta-text-*`) because those carry a
    meaningful positive / negative / neutral colour applied by
-   SldOverlay. Scoped to the overlay root so nothing else is touched. */
-[data-theme="dark"] [data-testid="sld-overlay"] text:not([class*="sld-delta-text"]) {
+   SldOverlay, and the Loading view's values, dark on their bright pill.
+   Scoped to the overlay root so nothing else is touched. */
+[data-theme="dark"] [data-testid="sld-overlay"] text:not([class*="sld-delta-text"]):not(.sld-loading-text) {
     fill: var(--color-text-primary) !important;
 }
 
@@ -600,6 +601,42 @@ circle.nad-highlight {
     fill-opacity: 0.5 !important;
 }
 
+/* ===== SLD overlay — Loading % view (utils/svg/sldFlowVisuals.ts) =====
+   A branch feeder's cell in the NAD's loading colours, its value on a pill
+   of the same colour from 50 % (dark text, both themes). Its Q arrow is
+   hidden: the loading is one figure per end. */
+.sld-loading-low path, .sld-loading-low line, .sld-loading-low polyline,
+.sld-loading-low rect:not(.sld-loading-pill), .sld-loading-low circle {
+    stroke: var(--signal-loading-low) !important;
+    stroke-opacity: 0.5 !important;
+}
+.sld-loading-warn-1 :is(path, line, polyline, rect:not(.sld-loading-pill), circle) { stroke: var(--signal-loading-warn-1) !important; stroke-width: 2px !important; }
+.sld-loading-warn-2 :is(path, line, polyline, rect:not(.sld-loading-pill), circle) { stroke: var(--signal-loading-warn-2) !important; stroke-width: 2px !important; }
+.sld-loading-warn-3 :is(path, line, polyline, rect:not(.sld-loading-pill), circle) { stroke: var(--signal-loading-warn-3) !important; stroke-width: 2px !important; }
+.sld-loading-warn-4 :is(path, line, polyline, rect:not(.sld-loading-pill), circle) { stroke: var(--signal-loading-warn-4) !important; stroke-width: 2px !important; }
+.sld-loading-warn-5 :is(path, line, polyline, rect:not(.sld-loading-pill), circle) { stroke: var(--signal-loading-warn-5) !important; stroke-width: 2px !important; }
+.sld-loading-over :is(path, line, polyline, rect:not(.sld-loading-pill), circle) { stroke: var(--signal-loading-over) !important; stroke-width: 2px !important; }
+
+.sld-loading-pill {
+    stroke: rgba(0, 0, 0, 0.35);
+    stroke-width: 0.5px;
+}
+.sld-loading-pill--warn-1 { fill: var(--signal-loading-warn-1); }
+.sld-loading-pill--warn-2 { fill: var(--signal-loading-warn-2); }
+.sld-loading-pill--warn-3 { fill: var(--signal-loading-warn-3); }
+.sld-loading-pill--warn-4 { fill: var(--signal-loading-warn-4); }
+.sld-loading-pill--warn-5 { fill: var(--signal-loading-warn-5); }
+.sld-loading-pill--over { fill: var(--signal-loading-over); }
+
+.sld-loading-text {
+    fill: var(--color-text-on-bright) !important;
+    font-weight: 700;
+}
+
+.sld-loading-hidden {
+    display: none;
+}
+
 /* ===== SLD impact highlights ===== */
 /* These classes are applied to CLONED elements placed in a background layer,
    so they don't affect the original SLD rendering (flows/impacts modes). */
@@ -672,6 +709,7 @@ circle.nad-highlight {
 /* Hide text/labels in cloned highlight elements */
 .sld-highlight-clone text,
 .sld-highlight-clone .sld-label,
+.sld-highlight-clone .sld-loading-pill,
 .sld-highlight-clone foreignObject {
     display: none !important;
 }

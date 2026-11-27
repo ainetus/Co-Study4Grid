@@ -156,6 +156,8 @@ interface VisualizationPanelProps {
     voltageRange: [number, number];
     onVoltageRangeChange: (range: [number, number]) => void;
     actionViewMode: 'network' | 'delta';
+    /** The main window's MW / Loading % metric — the SLD overlay follows it, as it follows `actionViewMode`. */
+    flowMetric?: FlowMetric;
     onViewModeChange: (mode: 'network' | 'delta') => void;
     /**
      * Resolves the Flow/Impacts view mode for a specific tab. A
@@ -242,6 +244,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     voltageRange,
     onVoltageRangeChange,
     actionViewMode,
+    flowMetric,
     onViewModeChange,
     inspectQuery,
     onInspectQueryChange,
@@ -1378,6 +1381,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         key={vlOverlay.vlName}
                         vlOverlay={vlOverlay}
                         actionViewMode={actionViewMode}
+                        flowMetric={flowMetric}
                         onOverlayClose={onOverlayClose}
                         onOverlaySldTabChange={onOverlaySldTabChange}
                         n1Diagram={n1Diagram}
