@@ -186,6 +186,7 @@ SPEC_DETAILS: dict[str, dict] = {
     "tab_tied":                 _spec_row({"tab"}),
     "tab_untied":               _spec_row({"tab"}),
     "view_mode_changed":        _spec_row({"mode", "tab", "scope"}),
+    "flow_metric_changed":      _spec_row({"metric", "tab", "scope"}),
     # Overflow Analysis tab layout toggle ("Hierarchical" / "Geo").
     # Start event carries the target mode; completion event adds
     # `cached` (boolean) or `error` (string).
@@ -204,6 +205,7 @@ SPEC_DETAILS: dict[str, dict] = {
     "zoom_reset":               _spec_row({"tab"}),
     "inspect_query_changed":    _spec_row({"query"}, optional={"target_tab"}),
     "vl_names_toggled":         _spec_row({"show"}),
+    "value_labels_toggled":     _spec_row({"show"}),
     # --- Action Overview Diagram ---
     "overview_shown":           _spec_row({"has_pins", "pin_count"}),
     "overview_hidden":          _spec_row(set()),

@@ -99,8 +99,9 @@ frontend/
     │   │                           # glow (.tab-attention) until visited
     │   ├── useDiagramHighlights.ts # Per-tab SVG highlight pipeline
     │   │                           # (overload halos, contingency highlight,
-    │   │                           # action targets, delta visuals) + the
-    │   │                           # per-tab Flow/Impacts view-mode state
+    │   │                           # action targets, delta / loading visuals)
+    │   │                           # + the per-tab Flow/Impacts view-mode and
+    │   │                           # MW / Loading % metric state
     │   ├── useOverflowIframe.ts    # Interactive overflow viewer: iframe
     │   │                           # lifecycle, layer toggles, hierarchical ↔
     │   │                           # geo switch, postMessage bridge, pin overlay
@@ -151,6 +152,26 @@ frontend/
     │   │                           # rings, consignations, the network outline
     │   │                           # (liseré), contingency / overload highlights
     │   ├── DiagramLegend.tsx, AdditionalLinesPicker.tsx,
+    │   ├── FlowViewToggles.tsx     # Top-right diagram toggles, stacked:
+    │   │                           # MW / Loading %, then Flows / Impacts
+    │   │                           # (not on the N tab, the reference
+    │   │                           # state); per tab, per window —
+    │   │                           # useDiagramHighlights
+    │   ├── DiagramLabelToggles.tsx # `🏷 VL` names + `🏷 Values` (the
+    │   │                           # branch value labels) toggles beside
+    │   │                           # the Inspect field
+    │   ├── BranchLabelLayer.tsx    # Readable flow labels over each NAD tab,
+    │   │                           # in CSS px (pypowsybl's user-unit values
+    │   │                           # are hidden by `data-branch-labels`):
+    │   │                           # mid-branch when short on screen, per end
+    │   │                           # when long, coloured first (only those in
+    │   │                           # Loading % and in Impacts), outlined in
+    │   │                           # the voltage's colour (MW Flows: text
+    │   │                           # too), no overlap;
+    │   │                           # laid out on settle, hidden mid-gesture
+    │   │                           # (so the canvas proxy draws no values);
+    │   │                           # + the branch hover tooltip (both ends:
+    │   │                           # VL, MW, loading, Impacts change)
     │   ├── ActionFilterRings.tsx       # Shared sidebar strip: severity ring
     │   │                               # (4 colour-coded pictogram toggles
     │   │                               # with single-click toggle + double-
@@ -228,6 +249,12 @@ frontend/
         │   ├── svgBoost.ts            # - metadataIndex: O(1) equipment-metadata lookup
         │   ├── fitRect.ts             # - svgBoost: dynamic font/radius scale for big grids
         │   ├── deltaVisuals.ts        # - fitRect: bounding-box auto-zoom
+        │   ├── loadingVisuals.ts      #   (+ loadingVisuals: Loading % view —
+        │   │                          #   colour scale, % / Δ% labels, and
+        │   │                          #   resetFlowVisuals for SVG clones)
+        │   ├── branchLabels.ts        #   (+ branchLabels: BranchLabelLayer's
+        │   │                          #   geometry read, per-view texts, label
+        │   │                          #   placement, hover index)
         │   ├── actionPinData.ts       # - deltaVisuals: flow-delta colouring
         │   ├── actionPinRender.ts     # - actionPin{Data,Render}: overview pin layer
         │   ├── highlights.ts          # - highlights: contingency / overload halos
@@ -624,6 +651,10 @@ Modes:
     generation token drops builds queued before a dispose (tab hidden,
     diagram replaced). Owner-window rAF / idle callbacks, so detached
     windows work.
+  - **On the NAD tabs the flow values are the `BranchLabelLayer`'s** (CSS-px
+    labels, hidden during a gesture; pypowsybl's own text is hidden by
+    `data-branch-labels`), so the proxy draws their arrows and the VL labels,
+    not the values — see `docs/features/loading-view-and-flow-labels.md`.
   - **Flow values and VL labels are drawn too, once readable**
     (`utils/svg/canvasProxyText.ts`, `TEXT_MIN_PX` = 4 px on screen): they
     stay on screen through the gesture and the settle instead of coming back
@@ -696,6 +727,18 @@ Modes:
   - **No ghost on settle.** The target viewBox is baked onto the still-hidden
     live SVG and the bitmap is kept on top for ~2 frames before the swap, so
     the SVG layer's stale base-zoom paint never flashes during its repaint.
+
+## Loading view and readable flow labels
+
+The NAD tabs read in **MW | Loading %** × **Flows | Impacts** (no Impacts on
+the N tab, the reference state), per tab and per window
+(`useDiagramHighlights`). Their values are written by `BranchLabelLayer` in
+CSS px over the diagram — one label mid-branch when zoomed out, one per end
+when zoomed in, coloured branches first, no overlap, outlined in the voltage
+colour — and hovering a branch tells both its ends. `🏷 Values` hides the
+labels. The backend sends `branch_loading` (per end, against each end's own
+limit) and `loading_deltas` with every NAD. Full reference:
+[`docs/features/loading-view-and-flow-labels.md`](../docs/features/loading-view-and-flow-labels.md).
 
 ## Detached tabs
 
@@ -1001,17 +1044,13 @@ architectural bet than Option 1+2 was.
   the shared `utils/ndjsonStream.ts` generator; see
   [`docs/architecture/notifications-and-streaming.md`](../docs/architecture/notifications-and-streaming.md).
 
-### One-off ESLint exception
+### ESLint exceptions
 
-`useDiagramHighlights.ts` has one `eslint-disable-next-line
-react-hooks/set-state-in-effect` on the reattach-prune effect.
-The pre-extraction code in `App.tsx` was not flagged by the same
-rule (position-sensitive analyser heuristic), but the behavior —
-"re-detach after reattach restarts from the main-window mode rather
-than resuming the previous detached mode" — must be preserved
-byte-for-byte. The guarded `setDetachedViewModes` call sits behind
-a `hasStale` short-circuit, so we accept the suppression rather
-than change observable UX to placate the rule.
+The reattach-prune effect in `useDiagramHighlights.ts` (drops a
+reattached tab's detached view-mode / flow-metric entry) used to need
+an `eslint-disable-next-line react-hooks/set-state-in-effect`. Since
+both maps go through a shared `prune()` helper whose stale check guards
+each `setState`, the rule no longer fires and the suppression is gone.
 
 No manual mirror in any separate HTML file. The React source is
 the single source of truth.

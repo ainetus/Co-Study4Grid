@@ -82,6 +82,7 @@ type InteractionType =
   | 'tab_tied'                     // User tied a detached tab's viewBox to the main window
   | 'tab_untied'                   // User untied a previously-tied detached tab
   | 'view_mode_changed'            // User switched Flows/Impacts mode
+  | 'flow_metric_changed'          // User switched MW / Loading % (active power vs loading rate)
   | 'voltage_range_changed'        // User adjusted voltage filter slider
   | 'asset_clicked'                // User clicked a line/asset badge to zoom
   | 'zoom_in'                      // User clicked zoom-in button
@@ -89,6 +90,7 @@ type InteractionType =
   | 'zoom_reset'                   // User clicked zoom reset button
   | 'inspect_query_changed'        // User typed in search/inspect box
   | 'vl_names_toggled'             // User toggled the 🏷 VL labels visibility on an NAD tab
+  | 'value_labels_toggled'         // User toggled the 🏷 Values (the branch value labels) on the NAD tabs
   // === Action Overview Diagram ===
   | 'overview_shown'               // Overview view became visible (no card selected)
   | 'overview_hidden'              // Overview view hidden (card selected / tab switched)
@@ -209,7 +211,8 @@ Each event's `details` field contains **all parameters needed to replay** the us
 | `tab_reattached` | `{ tab: TabId }` | Click the "Reattach" badge in the popup (or "Reattach" in the main window placeholder) |
 | `tab_tied` | `{ tab: TabId }` — starts mirroring the detached tab's viewBox one-way into the main window's active tab. | Click "Tie" on a detached tab header |
 | `tab_untied` | `{ tab: TabId }` — stops mirroring. Also fired automatically when a tied tab is reattached. | Click "Untie" on a detached tab header |
-| `view_mode_changed` | `{ mode: 'network'\|'delta', tab: TabId, scope: 'main'\|'detached' }` — Flow/Impacts is now per-tab AND per-window: toggling in a detached popup only affects that popup's tab. | Click Flows/Impacts toggle |
+| `view_mode_changed` | `{ mode: 'network'\|'delta', tab: TabId, scope: 'main'\|'detached' }` — Flow/Impacts is now per-tab AND per-window: toggling in a detached popup only affects that popup's tab. Never for the N tab, which has no Impacts (the reference state). | Click Flows/Impacts toggle |
+| `flow_metric_changed` | `{ metric: 'p'\|'loading', tab: TabId, scope: 'main'\|'detached' }` — active power (MW) vs loading rate (% of the permanent limit), orthogonal to Flows/Impacts and scoped the same way (per tab, per window). | Click MW / Loading % toggle |
 | `voltage_range_changed` | `{ min: number, max: number }` (kV) | Drag voltage slider |
 | `asset_clicked` | `{ action_id: string, asset_name: string, tab: 'n'\|'n-1'\|'action' }` — `tab` is the destination tab for the zoom. When the click comes from the sticky contingency / overloads sidebar (`handleZoomOnActiveTab`), `tab` is set to the **currently active** diagram tab and `action_id` is the empty string — meaning "zoom this asset in place without switching tabs". | Click a rho-line badge or a sticky contingency / overload link |
 | `zoom_in` | `{ tab: TabId }` | Click + button |
@@ -217,6 +220,7 @@ Each event's `details` field contains **all parameters needed to replay** the us
 | `zoom_reset` | `{ tab: TabId }` | Click reset button |
 | `inspect_query_changed` | `{ query: string, target_tab?: TabId }` — `target_tab` is only present when the inspect field was triggered from a detached-tab overlay (per-tab inspect routing). Absent = main-window active tab. | Type in search box |
 | `vl_names_toggled` | `{ show: boolean }` — new visibility state of the `🏷 VL` toggle (default ON). Toggles the `nad-hide-vl-labels` CSS class on every NAD tab; while hidden, the labels remain reachable via the per-disk hover tooltip injected by `attachVlInteractions` (`utils/svg/vlInteractions.ts`). | Click `🏷 VL` next to the bottom-left Inspect field. |
+| `value_labels_toggled` | `{ show: boolean }` — new state of the `🏷 Values` toggle (default ON): the value labels the branch-label layer writes on the branches. Off, none at all (a lighter reading): the colours and the hover tooltip stay. Every NAD tab and window alike. | Click `🏷 Values` next to the bottom-left Inspect field. |
 
 ### Action Overview Diagram
 

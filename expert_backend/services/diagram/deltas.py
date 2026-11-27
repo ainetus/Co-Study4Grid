@@ -22,6 +22,8 @@ from typing import Any
 
 import numpy as np
 
+from expert_backend.services.diagram.overloads import max_loading
+
 # Deltas below 5% of the maximum absolute delta are silenced as "grey"
 # — matches the category colouring the frontend uses.
 CATEGORY_THRESHOLD_RATIO = 0.05
@@ -239,3 +241,25 @@ def compute_asset_deltas(after_asset_flows: dict, before_asset_flows: dict) -> d
             "category_q": cat_q,
         }
     return result
+
+
+def compute_loading_deltas(after_loading: dict, before_loading: dict) -> dict:
+    """Per-branch loading-rate deltas, in percentage points, between two
+    :func:`~expert_backend.services.diagram.overloads.get_branch_loading`
+    snapshots — the Loading view's Impacts mode.
+
+    A branch's loading is its larger end, a magnitude: no terminal /
+    direction convention is needed, ``delta = after - before``. Categories
+    follow the flow deltas (5 % of the largest absolute delta). Only
+    branches loaded in both states are compared — both snapshots carry the
+    same limits.
+
+    Returns ``{id: {"delta", "category"}}``.
+    """
+    deltas: dict[str, float] = {}
+    for lid, ends in after_loading.items():
+        after = max_loading(ends)
+        before = max_loading(before_loading.get(lid))
+        if after is not None and before is not None:
+            deltas[lid] = after - before
+    return apply_threshold(deltas)

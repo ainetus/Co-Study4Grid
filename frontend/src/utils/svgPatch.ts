@@ -43,16 +43,39 @@
 // See docs/performance/history/svg-dom-recycling.md for the full
 // rationale and benchmark results.
 
-import type { DiagramPatch, MetadataIndex } from '../types';
+import type { DiagramData, DiagramPatch, MetadataIndex } from '../types';
 import { invalidateIdMapCache } from './svgUtils';
+import { resetFlowVisuals } from './svg/loadingVisuals';
 
 /**
- * Deep-clone the pristine N-state SVGSVGElement. The N tab keeps the
- * original; the returned clone is the one that gets patched and then
- * injected into the N-1 or Action containers.
+ * The data a patched diagram carries from its patch — overloads, flow and
+ * asset deltas, the Loading view's loading and its deltas, the load-flow
+ * status — next to the cloned SVG. One place for the N-1 and the action
+ * paths, so a field the patch gains cannot reach one and miss the other.
+ */
+export const patchDiagramFields = (patch: DiagramPatch): Omit<DiagramData, 'svg' | 'metadata'> => ({
+    lines_overloaded: patch.lines_overloaded,
+    lines_overloaded_rho: patch.lines_overloaded_rho,
+    lines_overloaded_rho_before: patch.lines_overloaded_rho_before,
+    flow_deltas: patch.flow_deltas,
+    reactive_flow_deltas: patch.reactive_flow_deltas,
+    asset_deltas: patch.asset_deltas,
+    branch_loading: patch.branch_loading,
+    loading_deltas: patch.loading_deltas,
+    lf_converged: patch.lf_converged,
+    lf_status: patch.lf_status,
+});
+
+/**
+ * Deep-clone the N-state SVGSVGElement. The N tab keeps the original;
+ * the returned clone is the one that gets patched and then injected
+ * into the N-1 or Action containers. The N tab may be decorated (Loading
+ * view), so the clone is reset to pypowsybl's own labels first.
  */
 export const cloneBaseSvg = (baseSvg: SVGSVGElement): SVGSVGElement => {
-    return baseSvg.cloneNode(true) as SVGSVGElement;
+    const clone = baseSvg.cloneNode(true) as SVGSVGElement;
+    resetFlowVisuals(clone);
+    return clone;
 };
 
 /**

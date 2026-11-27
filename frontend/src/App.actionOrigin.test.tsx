@@ -40,6 +40,7 @@ vi.mock('./utils/svgUtils', () => ({
   buildMetadataIndex: () => null,
   applyOverloadedHighlights: vi.fn(),
   applyDeltaVisuals: vi.fn(),
+  applyLoadingVisuals: vi.fn(),
   applyActionTargetHighlights: vi.fn(),
   applyContingencyHighlight: vi.fn(),
   getIdMap: () => new Map(),

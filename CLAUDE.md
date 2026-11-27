@@ -139,7 +139,12 @@ Co-Study4Grid/
 │       │                          # MemoizedSvgContainer, ErrorBoundary, NoticesPanel
 │       │                          # (PR #122 tier system), DiagramLegend (PR #122),
 │       │                          # InspectSearchField + DetachedPlaceholder (PR #116
-│       │                          # — extracted from VisualizationPanel)
+│       │                          # — extracted from VisualizationPanel),
+│       │                          # BranchLabelLayer (readable CSS-px flow
+│       │                          # labels + branch hover tooltip),
+│       │                          # FlowViewToggles (MW / Loading % ×
+│       │                          # Flows / Impacts), DiagramLabelToggles
+│       │                          # (🏷 VL + 🏷 Values)
 │       │                          # + modals/ (SettingsModal, ReloadSessionModal,
 │       │                          #            ConfirmationDialog)
 │       ├── game/                  # Timed, scored Game Mode (0.8.0; active only
@@ -173,6 +178,10 @@ Co-Study4Grid/
 │                                  # it draws once readable)
 │                                  # + overflowOverlayRender + pinGlyph (PR #116 —
 │                                  # iframe-overlay pin pipeline)
+│                                  # + loadingVisuals (Loading % colours) +
+│                                  # branchLabels (label geometry / texts /
+│                                  # placement / hover index) — see
+│                                  # docs/features/loading-view-and-flow-labels.md
 ├── standalone_interface_legacy.html  # DECOMMISSIONED 2026-04-20 — hand-maintained
 │                              # single-file mirror frozen at its last version and
 │                              # tracked here for reference only. Replaced by the
@@ -236,6 +245,7 @@ Co-Study4Grid/
 | `docs/features/interaction-logging.md` | Replay-ready event log contract |
 | `docs/features/sld-topology-edit.md` | Interactive SLD topology edit → manual action card |
 | `docs/features/sld-diagram-feeder-labels.md` | SLD feeders relabelled by far-end VL name (+ parallel index); generators / loads / busbars / switches / the title by display name (ids on hover / copy); overload-halo friendly-name↔IIDM-id bridge; the charging-current annotation explaining the "after" loading of a line opened at one end |
+| `docs/features/loading-view-and-flow-labels.md` | NAD views MW / Loading % × Flows / Impacts (none on N): per-end `branch_loading` against each end's limit, `loading_deltas`, the colour scale, readable CSS-px flow labels (`BranchLabelLayer`: mid-branch zoomed out, per end zoomed in, voltage-coloured outline), the `🏷 Values` toggle, branch hover tooltip |
 | `docs/features/action-card.md` | Remedial-action card: title = the names of what the action acts on, pictograms with tooltips (type, severity, loading, source), description under the title, max loading + overloads after grouped, raw id on hover / copy |
 | `docs/features/context-tab.md` | Context tab (leftmost): the Carte-Front situation map ported in — region mesh (`regionCvg`) else countries, mix pies / consumption rings / transfers / neighbour badges, contingency + overload highlights, snapshot at `/api/config` + early read, layout georeferencing |
 | `docs/performance/canvas-gesture-proxy.md` | Default pan/zoom renderer on large grids: canvas gesture proxy design, time budget on the European grid, decision log (never restyle the canvas, pointer capture, settle on a pause), next levers, probes |
@@ -357,11 +367,11 @@ guards the reductions documented in
 | POST | `/api/run-analysis` | Run full N-1 contingency analysis (streaming NDJSON, legacy) |
 | POST | `/api/run-analysis-step1` | Two-step analysis Part 1: detect overloads |
 | POST | `/api/run-analysis-step2` | Two-step analysis Part 2: resolve with actions (streaming NDJSON) |
-| GET  | `/api/network-diagram` | Get N-state network SVG diagram (NAD) |
-| POST | `/api/contingency-diagram` | Get post-contingency N-1 diagram with flow deltas |
-| POST | `/api/contingency-diagram-patch` | SVG-less per-branch delta for DOM-recycling fast path (PR #108) |
-| POST | `/api/action-variant-diagram` | Get network state after applying a remedial action |
-| POST | `/api/action-variant-diagram-patch` | Per-branch delta + VL-subtree splice for action DOM recycling |
+| GET  | `/api/network-diagram` | Get N-state network SVG diagram (NAD), with `branch_loading` (each branch's loading at each end, % of that end's permanent limit) |
+| POST | `/api/contingency-diagram` | Get post-contingency N-1 diagram with flow deltas, `branch_loading` and `loading_deltas` (vs N) |
+| POST | `/api/contingency-diagram-patch` | SVG-less per-branch delta for DOM-recycling fast path (PR #108), with `branch_loading` / `loading_deltas` |
+| POST | `/api/action-variant-diagram` | Get network state after applying a remedial action, with `branch_loading` / `loading_deltas` (vs N-1) |
+| POST | `/api/action-variant-diagram-patch` | Per-branch delta + VL-subtree splice for action DOM recycling, with `branch_loading` / `loading_deltas` |
 | POST | `/api/focused-diagram` | Generate NAD sub-diagram focused on a specific element |
 | POST | `/api/action-variant-focused-diagram` | Focused NAD for specific VL in post-action state |
 | POST | `/api/n-sld` | Single Line Diagram for voltage level in N state. Response includes `switch_states` (per-switch open/closed map), `injections` (per-load/generator active-power baseline) used by the interactive SLD-edit feature, `feeder_labels` (per-feeder `{name, other_vl, label, kind}` — a branch's `label` = far-end VL name + parallel index, used to relabel feeders and bridge friendly-named overloads to the SLD cell; a generator / load / busbar's = its display name) **and** `switch_labels` (per-switch display name, `disjoncteur ATTAQL61MANDA`, read by the maneuver list). |

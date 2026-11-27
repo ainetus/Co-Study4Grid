@@ -92,6 +92,7 @@ const SPEC: Record<string, SpecRow> = {
   tab_tied:                       { required: new Set(['tab']) },
   tab_untied:                     { required: new Set(['tab']) },
   view_mode_changed:              { required: new Set(['mode', 'tab', 'scope']) },
+  flow_metric_changed:            { required: new Set(['metric', 'tab', 'scope']) },
   // Overflow Analysis tab layout toggle. `to` = target mode ('hierarchical' | 'geo');
   // start event only. Completion event carries `cached` or `error`.
   overflow_layout_mode_toggled:   { required: new Set(['to']) },
@@ -120,6 +121,7 @@ const SPEC: Record<string, SpecRow> = {
   zoom_reset:                     { required: new Set(['tab']) },
   inspect_query_changed:          { required: new Set(['query']), optional: new Set(['target_tab']) },
   vl_names_toggled:               { required: new Set(['show']) },
+  value_labels_toggled:           { required: new Set(['show']) },
   // --- Action Overview Diagram ---
   overview_shown:                 { required: new Set(['has_pins', 'pin_count']) },
   overview_hidden:                { required: new Set() },

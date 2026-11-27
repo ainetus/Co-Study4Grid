@@ -48,6 +48,7 @@ vi.mock('./utils/svgUtils', async () => {
         // come through unmodified from `actual`.
         applyOverloadedHighlights: vi.fn(),
         applyDeltaVisuals: vi.fn(),
+        applyLoadingVisuals: vi.fn(),
         applyActionTargetHighlights: vi.fn(),
         applyContingencyHighlight: vi.fn(),
         applyActionOverviewHighlights: vi.fn(),

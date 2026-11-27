@@ -57,7 +57,10 @@ expert_backend/
 │   │   │                          #   generator active-power baseline) used
 │   │   │                          #   by the interactive SLD-edit feature,
 │   │   │                          #   see docs/features/sld-topology-edit.md)
-│   │   ├── overloads.py           # - overload filtering, element-currents
+│   │   ├── overloads.py           # - overload filtering, element-currents,
+│   │   │                          #   branch loading per end against each
+│   │   │                          #   end's own limit (side_limits,
+│   │   │                          #   get_branch_loading — the Loading view)
 │   │   ├── flows.py               # - branch + asset flow extractors (vectorised)
 │   │   ├── deltas.py              # - terminal-aware flow-delta math (pure)
 │   │   ├── obs_prewarm.py         # - post-contingency obs prewarm helper
@@ -646,6 +649,20 @@ no prefetch was ever started (e.g. tests bypassing `update_config`).
    `AppHTTPException(status, detail, code)` when the frontend must branch
    on the failure — see "API error contract" above. Never `str(e)` an
    unexpected error into the client detail.
+
+## Loading view data (`branch_loading`, `_side_limits_cache`)
+
+Every NAD response carries `branch_loading` — `{branch: [end1 %, end2 %]}`,
+each end's current against that end's permanent limit (a line's single-side
+limit holds for both ends; a transformer's unlimited side is `null`) — and,
+from the N-1 / action diagrams, `loading_deltas` (the larger end's change vs
+N / vs N-1, categorised like the flow deltas). Reading the limits costs
+~0.2 s on the RTE grid; they do not change with the variant, so
+`DiagramMixin._side_limits_for` caches them per network object
+(`_side_limits_cache`, a weak reference + the table; cleared by `reset()`).
+The action patch snapshots the action variant's loading with its flows,
+before the variant switch. See
+[`docs/features/loading-view-and-flow-labels.md`](../docs/features/loading-view-and-flow-labels.md).
 
 ## Adding a new per-study cache
 

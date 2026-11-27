@@ -140,7 +140,10 @@ The `RecommenderService.reset()` method clears, in order:
    study loaded from a different grid does not reuse the previous
    grid's substation coordinates. `_completed_layout_cache` — that
    layout completed with positions for the voltage levels it misses
-   (`services/diagram/layout_completion.py`) — is cleared with it.
+   (`services/diagram/layout_completion.py`) — is cleared with it, and
+   so is `_side_limits_cache`, the current limits by side the Loading
+   view divides each branch end by (already keyed by the network object,
+   so a new network re-reads them anyway).
 5. NAD-prefetch state: `_prefetched_base_nad`,
    `_prefetched_base_nad_error`, `_prefetched_base_nad_event`,
    `_prefetched_base_nad_thread`.

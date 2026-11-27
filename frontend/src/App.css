@@ -408,6 +408,71 @@ circle.nad-highlight {
     stroke-opacity: 0.4 !important;
 }
 
+/* ===== Loading-rate visualization (utils/svg/loadingVisuals.ts) ===== */
+
+.nad-loading-low path,
+.nad-loading-low line,
+.nad-loading-low polyline {
+    stroke: var(--signal-loading-low) !important;
+    stroke-opacity: 0.4 !important;
+}
+
+.nad-loading-warn-1 path, .nad-loading-warn-1 line, .nad-loading-warn-1 polyline { stroke: var(--signal-loading-warn-1) !important; }
+.nad-loading-warn-2 path, .nad-loading-warn-2 line, .nad-loading-warn-2 polyline { stroke: var(--signal-loading-warn-2) !important; }
+.nad-loading-warn-3 path, .nad-loading-warn-3 line, .nad-loading-warn-3 polyline { stroke: var(--signal-loading-warn-3) !important; }
+.nad-loading-warn-4 path, .nad-loading-warn-4 line, .nad-loading-warn-4 polyline { stroke: var(--signal-loading-warn-4) !important; }
+.nad-loading-warn-5 path, .nad-loading-warn-5 line, .nad-loading-warn-5 polyline { stroke: var(--signal-loading-warn-5) !important; }
+
+/* No stroke-width override: the loaded branches keep pypowsybl's width,
+   while the faded grey ones recede. */
+.nad-loading-over path,
+.nad-loading-over line,
+.nad-loading-over polyline {
+    stroke: var(--signal-loading-over) !important;
+}
+
+/* ===== Readable branch labels (components/BranchLabelLayer.tsx) =====
+   The layer writes the flow values in CSS px over the diagram, so
+   pypowsybl's own (user-unit, unreadable on a large grid) values are
+   hidden; their arrows stay. Colours: the Loading view's scale and the
+   Impacts deltas; a grey / MW label is a light pill. */
+.svg-container[data-branch-labels] .nad-edge-infos text {
+    display: none !important;
+}
+
+.branch-label rect {
+    fill: var(--color-surface);
+    fill-opacity: 0.9;
+    stroke: var(--color-border);
+    stroke-width: 0.75px;
+}
+
+.branch-label text {
+    font: 600 11px Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+    fill: var(--color-text-primary);
+}
+
+.branch-label--important text {
+    font-size: 12px;
+    font-weight: 700;
+    fill: var(--color-text-on-bright);
+}
+
+.branch-label--important rect {
+    fill-opacity: 1;
+    stroke: rgba(0, 0, 0, 0.35);
+}
+
+.branch-label--loading-warn-1 rect { fill: var(--signal-loading-warn-1); }
+.branch-label--loading-warn-2 rect { fill: var(--signal-loading-warn-2); }
+.branch-label--loading-warn-3 rect { fill: var(--signal-loading-warn-3); }
+.branch-label--loading-warn-4 rect { fill: var(--signal-loading-warn-4); }
+.branch-label--loading-warn-5 rect { fill: var(--signal-loading-warn-5); }
+.branch-label--loading-over rect { fill: var(--signal-loading-over); }
+.branch-label--delta-positive rect { fill: var(--signal-delta-positive); }
+.branch-label--delta-negative rect { fill: var(--signal-delta-negative); }
+.branch-label--delta-negative text { fill: var(--color-text-on-brand); }
+
 /* ===== SLD overlay delta flow visualization ===== */
 /* Applied to feeder group elements (sld-top-feeder / sld-bottom-feeder) inside
    the Single Line Diagram overlay when in Impacts mode.  Cascades into child
@@ -611,13 +676,21 @@ circle.nad-highlight {
     display: none !important;
 }
 
-/* ===== Voltage Range Slider (vertical, right sidebar) ===== */
+/* ===== Voltage Range Slider (vertical, right sidebar) =====
+   Its width, open and folded, is also the `--kv-filter-w` the diagram
+   panel sets for the controls along the right edge (FlowViewToggles,
+   DiagramLegend), so they stay clear of it. */
+:root {
+    --kv-filter-open-w: 62px;
+    --kv-filter-closed-w: 24px;
+}
+
 .voltage-sidebar {
     position: absolute;
     top: 0;
     right: 0;
     bottom: 0;
-    width: 62px;
+    width: var(--kv-filter-open-w);
     background: var(--color-surface-muted);
     border-left: 1px solid var(--color-border);
     display: flex;
@@ -745,7 +818,7 @@ input[data-testid="sidebar-filter-threshold-input"]::-webkit-outer-spin-button {
     top: 0;
     right: 0;
     bottom: 0;
-    width: 24px;
+    width: var(--kv-filter-closed-w);
     background: var(--color-surface-muted);
     border: none;
     border-left: 1px solid var(--color-border);

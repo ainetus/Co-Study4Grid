@@ -13,11 +13,11 @@ import {
   getIdMap, invalidateIdMapCache,
 } from '../utils/svgUtils';
 import { processSvg } from '../utils/svgUtils';
-import { cloneBaseSvg, applyPatchToClone } from '../utils/svgPatch';
+import { cloneBaseSvg, applyPatchToClone, patchDiagramFields } from '../utils/svgPatch';
 import { parseNdjsonStream } from '../utils/ndjsonStream';
 import { useOverflowLayout } from './useOverflowLayout';
 import { useActionDiagramCache } from './useActionDiagramCache';
-import type { DiagramData, ViewBox, MetadataIndex, TabId, VlOverlay, SldTab, AnalysisResult, ActionDetail } from '../types';
+import type { DiagramData, ViewBox, MetadataIndex, TabId, VlOverlay, SldTab, AnalysisResult, ActionDetail, FlowMetric } from '../types';
 import { interactionLogger } from '../utils/interactionLogger';
 import { useSldOverlay } from './useSldOverlay';
 
@@ -87,6 +87,10 @@ export interface DiagramsState {
   actionViewMode: 'network' | 'delta';
   setActionViewMode: (v: 'network' | 'delta') => void;
   handleViewModeChange: (mode: 'network' | 'delta') => void;
+  // Active power vs loading rate — orthogonal to the view mode, and
+  // window-scoped the same way (see useDiagramHighlights).
+  flowMetric: FlowMetric;
+  setFlowMetric: (v: FlowMetric) => void;
 
   // Voltage-level name labels: when false, the per-node labels rendered
   // by pypowsybl inside the NAD's `<foreignObject class="nad-text-nodes">`
@@ -254,6 +258,7 @@ export function useDiagrams(
   const handleViewModeChange = useCallback((mode: 'network' | 'delta') => {
     setActionViewMode(mode);
   }, []);
+  const [flowMetric, setFlowMetric] = useState<FlowMetric>('p');
 
 
   const [showVoltageLevelNames, setShowVoltageLevelNames] = useState<boolean>(true);
@@ -516,13 +521,7 @@ export function useDiagrams(
             metadata: baseMetadataRaw,
             originalViewBox: baseViewBox,
             action_id: actionId,
-            lines_overloaded: patch.lines_overloaded,
-            lines_overloaded_rho: patch.lines_overloaded_rho,
-            flow_deltas: patch.flow_deltas,
-            reactive_flow_deltas: patch.reactive_flow_deltas,
-            asset_deltas: patch.asset_deltas,
-            lf_converged: patch.lf_converged,
-            lf_status: patch.lf_status,
+            ...patchDiagramFields(patch),
           });
           setActionDiagramLoading(false);
           return;
@@ -1105,6 +1104,7 @@ export function useDiagrams(
     actionDiagramLoading, setActionDiagramLoading,
     actionViewMode, setActionViewMode,
     handleViewModeChange,
+    flowMetric, setFlowMetric,
     showVoltageLevelNames, setShowVoltageLevelNames,
     overflowLayoutMode, setOverflowLayoutMode,
     overflowLayoutLoading,
@@ -1139,6 +1139,7 @@ export function useDiagrams(
   }), [
     activeTab, nDiagram, n1Diagram, n1Loading, n1Pending,
     selectedActionId, actionDiagram, actionDiagramLoading, actionViewMode, handleViewModeChange,
+    flowMetric,
     showVoltageLevelNames,
     overflowLayoutMode, setOverflowLayoutMode, overflowLayoutLoading, handleOverflowLayoutChange,
     originalViewBox, inspectQuery,

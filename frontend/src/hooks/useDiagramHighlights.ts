@@ -5,16 +5,17 @@
 // SPDX-License-Identifier: MPL-2.0
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   applyContingencyHighlight,
   applyDeltaVisuals,
+  applyLoadingVisuals,
   applyOverloadedHighlights,
   applyActionTargetHighlights,
 } from '../utils/svgUtils';
 import { computeActionOverloadHighlights, computeN1OverloadHighlights } from '../utils/overloadHighlights';
 import { interactionLogger } from '../utils/interactionLogger';
-import type { AnalysisResult, TabId } from '../types';
+import type { AnalysisResult, BranchLabelControls, DiagramData, FlowMetric, MetadataIndex, TabId, ViewMode } from '../types';
 import type { DiagramsState } from './useDiagrams';
 
 interface UseDiagramHighlightsArgs {
@@ -29,6 +30,28 @@ interface UseDiagramHighlightsArgs {
 interface UseDiagramHighlightsReturn {
   viewModeForTab: (tab: TabId) => 'network' | 'delta';
   handleViewModeChangeForTab: (tab: TabId, mode: 'network' | 'delta') => void;
+  flowMetricForTab: (tab: TabId) => FlowMetric;
+  handleFlowMetricChangeForTab: (tab: TabId, metric: FlowMetric) => void;
+  /** The readable flow labels: each NAD tab's metadata index and the value labels toggle. */
+  branchLabels: BranchLabelControls;
+}
+
+/**
+ * Branch colours + flow labels of one NAD: Flows / Impacts × active power /
+ * loading rate. The P-delta pass always runs first — it restores the
+ * original labels and owns the `nad-delta-*` classes the loading view of
+ * Impacts reuses (see `applyLoadingVisuals`).
+ */
+function applyFlowVisuals(
+  container: HTMLElement | null,
+  diagram: DiagramData | null,
+  metaIndex: MetadataIndex | null,
+  mode: ViewMode,
+  metric: FlowMetric,
+  monitoringFactor: number,
+) {
+  applyDeltaVisuals(container, diagram, metaIndex, mode === 'delta' && metric === 'p');
+  applyLoadingVisuals(container, diagram, metaIndex, metric === 'loading' ? mode : null, monitoringFactor);
 }
 
 /**
@@ -37,7 +60,9 @@ interface UseDiagramHighlightsReturn {
  *   - Per-tab Flow/Impacts view-mode state (`detachedViewModes` +
  *     `viewModeForTab`). Each detached popup keeps its own entry so
  *     toggling Impacts in a detached window leaves the main window's
- *     mode untouched, and reattaching drops the detached entry.
+ *     mode untouched, and reattaching drops the detached entry. The
+ *     active power / loading-rate metric (`flowMetricForTab`) is scoped
+ *     the same way.
  *   - `applyHighlightsForTab` — the DOM mutation pass that adds
  *     overload halos, contingency highlights, action-target halos,
  *     and delta visuals to the N-1 and action SVGs. Ordering matters:
@@ -50,8 +75,8 @@ interface UseDiagramHighlightsReturn {
  *     double-rAF on tab switches so `getScreenCTM()` reads settled
  *     layout.
  *
- * Re-exports `viewModeForTab` / `handleViewModeChangeForTab` so App
- * can pass them down to `<VisualizationPanel>`.
+ * Re-exports `viewModeForTab` / `handleViewModeChangeForTab` (and their
+ * flow-metric twins) so App can pass them down to `<VisualizationPanel>`.
  */
 export function useDiagramHighlights({
   diagrams,
@@ -63,7 +88,7 @@ export function useDiagramHighlights({
 }: UseDiagramHighlightsArgs): UseDiagramHighlightsReturn {
   const {
     activeTab, nDiagram, n1Diagram, actionDiagram,
-    selectedActionId, actionViewMode,
+    selectedActionId, actionViewMode, flowMetric,
   } = diagrams;
 
   const staleHighlights = useRef<Set<TabId>>(new Set());
@@ -79,11 +104,14 @@ export function useDiagramHighlights({
   const [detachedViewModes, setDetachedViewModes] = useState<Partial<Record<TabId, 'network' | 'delta'>>>({});
 
   const viewModeForTab = useCallback((tab: TabId): 'network' | 'delta' => {
+    // The N state is what the Impacts compare against: it has no change of its own.
+    if (tab === 'n') return 'network';
     if (detachedTabs[tab]) return detachedViewModes[tab] ?? 'network';
     return actionViewMode;
   }, [detachedTabs, detachedViewModes, actionViewMode]);
 
   const handleViewModeChangeForTab = useCallback((tab: TabId, mode: 'network' | 'delta') => {
+    if (tab === 'n') return;
     interactionLogger.record('view_mode_changed', { mode, tab, scope: detachedTabs[tab] ? 'detached' : 'main' });
     if (detachedTabs[tab]) {
       setDetachedViewModes(prev => ({ ...prev, [tab]: mode }));
@@ -92,34 +120,51 @@ export function useDiagramHighlights({
     }
   }, [detachedTabs, diagrams]);
 
-  // On reattach, drop the tab's detached view-mode entry so the main
-  // window's `actionViewMode` takes over for that tab from that
-  // point onward. Computed off a ref to avoid an effect→state cycle
-  // on every render. The setState call is guarded by a stale check,
-  // but the react-hooks `set-state-in-effect` rule can't see through
-  // that (it bans setState in effects categorically), and the behavior
-  // — a re-detach after reattach must restart from the main-window
-  // mode rather than resume the previous detached mode — must be
-  // preserved byte-for-byte, so we suppress the rule for this one call.
+  // Active power vs loading rate: same window scoping as the view mode.
+  const [detachedFlowMetrics, setDetachedFlowMetrics] = useState<Partial<Record<TabId, FlowMetric>>>({});
+
+  const flowMetricForTab = useCallback((tab: TabId): FlowMetric => {
+    if (detachedTabs[tab]) return detachedFlowMetrics[tab] ?? 'p';
+    return flowMetric;
+  }, [detachedTabs, detachedFlowMetrics, flowMetric]);
+
+  const handleFlowMetricChangeForTab = useCallback((tab: TabId, metric: FlowMetric) => {
+    interactionLogger.record('flow_metric_changed', { metric, tab, scope: detachedTabs[tab] ? 'detached' : 'main' });
+    if (detachedTabs[tab]) {
+      setDetachedFlowMetrics(prev => ({ ...prev, [tab]: metric }));
+    } else {
+      diagrams.setFlowMetric(metric);
+    }
+  }, [detachedTabs, diagrams]);
+
+  // On reattach, drop the tab's detached view-mode and flow-metric
+  // entries so the main window's state takes over for that tab from
+  // that point onward — a re-detach after reattach restarts from the
+  // main-window mode rather than resuming the previous detached one.
+  // Computed off refs to avoid an effect→state cycle on every render;
+  // each setState is guarded by the stale check in prune().
   const detachedViewModesRef = useRef(detachedViewModes);
   useLayoutEffect(() => { detachedViewModesRef.current = detachedViewModes; }, [detachedViewModes]);
+  const detachedFlowMetricsRef = useRef(detachedFlowMetrics);
+  useLayoutEffect(() => { detachedFlowMetricsRef.current = detachedFlowMetrics; }, [detachedFlowMetrics]);
   useEffect(() => {
-    const current = detachedViewModesRef.current;
-    let hasStale = false;
-    for (const tabId of Object.keys(current) as TabId[]) {
-      if (!detachedTabs[tabId]) { hasStale = true; break; }
-    }
-    if (!hasStale) return;
-    const next: Partial<Record<TabId, 'network' | 'delta'>> = {};
-    for (const tabId of Object.keys(current) as TabId[]) {
-      if (detachedTabs[tabId]) next[tabId] = current[tabId];
-    }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- preserves the reattach-prune behavior from the pre-extraction App.tsx; guarded by the hasStale short-circuit above.
-    setDetachedViewModes(next);
+    const prune = <T,>(current: Partial<Record<TabId, T>>): Partial<Record<TabId, T>> | null => {
+      if ((Object.keys(current) as TabId[]).every(tabId => detachedTabs[tabId])) return null;
+      const next: Partial<Record<TabId, T>> = {};
+      for (const tabId of Object.keys(current) as TabId[]) {
+        if (detachedTabs[tabId]) next[tabId] = current[tabId];
+      }
+      return next;
+    };
+    const nextModes = prune(detachedViewModesRef.current);
+    if (nextModes) setDetachedViewModes(nextModes);
+    const nextMetrics = prune(detachedFlowMetricsRef.current);
+    if (nextMetrics) setDetachedFlowMetrics(nextMetrics);
   }, [detachedTabs]);
 
   const applyHighlightsForTab = useCallback((tab: TabId, mode?: 'network' | 'delta') => {
     const effectiveMode = mode ?? viewModeForTab(tab);
+    const metric = flowMetricForTab(tab);
     const overloadedLines = result?.lines_overloaded || [];
 
     // For the N-1 tab, the overloads are known as soon as the N-1
@@ -137,6 +182,9 @@ export function useDiagramHighlights({
       selectedOverloads,
     );
 
+    if (tab === 'n') {
+      applyFlowVisuals(diagrams.nSvgContainerRef.current, nDiagram, diagrams.nMetaIndex, effectiveMode, metric, monitoringFactor);
+    }
     if (tab === 'contingency') {
       if (diagrams.n1SvgContainerRef.current) {
         // IMPORTANT: run highlight CLONES before applyDeltaVisuals.
@@ -165,7 +213,7 @@ export function useDiagramHighlights({
         if (diagrams.n1MetaIndex && n1OverloadedLines.length > 0) {
           applyOverloadedHighlights(diagrams.n1SvgContainerRef.current, diagrams.n1MetaIndex, n1OverloadedLines);
         }
-        applyDeltaVisuals(diagrams.n1SvgContainerRef.current, n1Diagram, diagrams.n1MetaIndex, effectiveMode === 'delta');
+        applyFlowVisuals(diagrams.n1SvgContainerRef.current, n1Diagram, diagrams.n1MetaIndex, effectiveMode, metric, monitoringFactor);
       }
     }
     if (tab === 'action') {
@@ -207,7 +255,7 @@ export function useDiagramHighlights({
       // Delta visuals run LAST so they decorate the originals without
       // contaminating the highlight clones already in the background
       // layer.
-      applyDeltaVisuals(diagrams.actionSvgContainerRef.current, actionDiagram, diagrams.actionMetaIndex, effectiveMode === 'delta');
+      applyFlowVisuals(diagrams.actionSvgContainerRef.current, actionDiagram, diagrams.actionMetaIndex, effectiveMode, metric, monitoringFactor);
     }
     // QW14: depend on the SPECIFIC `diagrams` members this callback reads, not
     // the whole `diagrams` object — its identity churns on every pan/zoom
@@ -217,10 +265,10 @@ export function useDiagramHighlights({
     // ref objects and the two *MetaIndex values are memoized off diagram
     // metadata, so no legitimate trigger is lost (the driving effect also lists
     // nDiagram/n1Diagram/actionDiagram + the metaIndexes directly).
-  }, [n1Diagram, actionDiagram, result, selectedActionId, selectedContingency,
-      diagrams.n1SvgContainerRef, diagrams.actionSvgContainerRef,
-      diagrams.n1MetaIndex, diagrams.actionMetaIndex,
-      monitoringFactor, viewModeForTab, selectedOverloads]);
+  }, [nDiagram, n1Diagram, actionDiagram, result, selectedActionId, selectedContingency,
+      diagrams.nSvgContainerRef, diagrams.n1SvgContainerRef, diagrams.actionSvgContainerRef,
+      diagrams.nMetaIndex, diagrams.n1MetaIndex, diagrams.actionMetaIndex,
+      monitoringFactor, viewModeForTab, flowMetricForTab, selectedOverloads]);
 
   useEffect(() => {
     const isTabSwitch = prevHighlightTabRef.current !== activeTab;
@@ -255,7 +303,18 @@ export function useDiagramHighlights({
     } else {
       applyAll();
     }
-  }, [nDiagram, n1Diagram, actionDiagram, diagrams.nMetaIndex, diagrams.n1MetaIndex, diagrams.actionMetaIndex, result, selectedActionId, actionViewMode, detachedViewModes, detachedTabs, activeTab, selectedContingency, selectedOverloads, applyHighlightsForTab]);
+  }, [nDiagram, n1Diagram, actionDiagram, diagrams.nMetaIndex, diagrams.n1MetaIndex, diagrams.actionMetaIndex, result, selectedActionId, actionViewMode, detachedViewModes, flowMetric, detachedFlowMetrics, detachedTabs, activeTab, selectedContingency, selectedOverloads, applyHighlightsForTab]);
 
-  return { viewModeForTab, handleViewModeChangeForTab };
+  // The value labels on the branches: every tab and window alike, like the VL names.
+  const [showValues, setShowValues] = useState(true);
+  const onToggleValues = useCallback((show: boolean) => {
+    interactionLogger.record('value_labels_toggled', { show });
+    setShowValues(show);
+  }, []);
+  const branchLabels = useMemo<BranchLabelControls>(() => ({
+    metaIndexes: { n: diagrams.nMetaIndex, contingency: diagrams.n1MetaIndex, action: diagrams.actionMetaIndex },
+    showValues, onToggleValues,
+  }), [diagrams.nMetaIndex, diagrams.n1MetaIndex, diagrams.actionMetaIndex, showValues, onToggleValues]);
+
+  return { viewModeForTab, handleViewModeChangeForTab, flowMetricForTab, handleFlowMetricChangeForTab, branchLabels };
 }

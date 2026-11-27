@@ -7,6 +7,59 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Diagrams — a Loading % view, readable flow labels, a branch hover
+
+- **Views**: each network diagram (N, N-1, action) reads in **MW | Loading %**
+  × **Flows | Impacts**, the two toggles stacked at the top right, per tab and
+  per window. The N tab, the reference the Impacts compare against, has no
+  Impacts. The toggles and the legend keep clear of the kV filter strip,
+  folded or open.
+- **Loading %**: each branch end's current in % of **that end's** permanent
+  limit — a line's single-side limit holds for both ends; a transformer's
+  unlimited side has none (RTE grids limit most transformers on side 2 only).
+  A branch reads its more loaded end: grey below 50 %, five pale yellow →
+  orange steps up to the monitoring factor, vivid orange at or above it. In
+  **Impacts**, the change in percentage points vs N (N-1 tab) or vs N-1
+  (action tab), coloured like the flow deltas (orange up, blue down).
+- **Readable flow labels** (`BranchLabelLayer`): the values are written in
+  11–12 px pills over the diagram whatever the zoom, instead of pypowsybl's
+  user-unit text (hidden; its arrows stay). A branch short on screen gets one
+  label at its middle (its larger end); a long one a label beside each arrow.
+  Labelled: in Loading %, the coloured branches only; in Impacts (MW or
+  Loading %), the significant changes only; in MW Flows, the branches long
+  enough on screen. Coloured labels first, none over another. Every label is
+  outlined in its line's voltage colour (a transformer's ends each in theirs),
+  so the voltage still reads in Loading % and Impacts; MW Flows also writes
+  the value in it. Loading floored (`88%`), changes rounded with their sign
+  alone (`+40%`, `-58`). Laid out when the view settles (≈ 5–25 ms on the RTE
+  grid), hidden during a pan / zoom gesture.
+- **`🏷 Values`** beside `🏷 VL`: off, no value label at all for a lighter
+  reading — the colours and the hover stay. Every tab and window alike.
+- **Branch hover** (within 8 px, a grid lookup — no hit test of the diagram):
+  both ends' voltage level, active power and loading, plus the Impacts
+  change; parallel circuits drawn over each other are all listed, the most
+  loaded first.
+- **Data**: every NAD response, full and patch, carries `branch_loading`
+  (`{branch: [end1 %, end2 %]}`) and, for N-1 / action, `loading_deltas`. The
+  limits are read once per network (~0.2 s on the RTE grid, then ~20–40 ms a
+  pass). The legend explains the scale; the log records
+  `flow_metric_changed { metric, tab, scope }` and
+  `value_labels_toggled { show }`. Reference:
+  `docs/features/loading-view-and-flow-labels.md`.
+- **Fixes on the way**: the svgPatch clone of the N diagram (and the action
+  overview's clone of the N-1) drops the N tab's decoration, so a decorated
+  N can no longer leak its labels into the N-1 / action flows; the N-1 and
+  action patch paths share one copy of the patch's data fields
+  (`patchDiagramFields`).
+
+### Context tab — a consigned twin beside the highlighted circuit
+
+- A consignation whose ends are those of the contingency or of an overload
+  (parallel transformers, one consigned, the other overloaded — CANTEY762 /
+  CANTEY761 on the RTE grid) was hidden under the highlight: it is now pulled
+  aside into the same lens as twin contingency / overload circuits, the
+  loading pill on the overload's side.
+
 ### Study load — the RTE 7000 grid loads in ~11 s again (was ~80 s)
 
 - **Voltage-level names built once, and cheaply**: naming the nameless buses

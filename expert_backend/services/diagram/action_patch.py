@@ -37,6 +37,7 @@ import logging
 import time
 from typing import Any, Callable
 
+from expert_backend.services.diagram.deltas import compute_loading_deltas
 from expert_backend.services.sanitize import sanitize_for_json
 
 logger = logging.getLogger(__name__)
@@ -271,8 +272,8 @@ def _capture_action_snapshots(service: Any, action_network: Any) -> dict:
     pypowsybl Network is switched to the contingency variant — see
     the long block comment in ``build_action_patch_payload``.
 
-    Returns a dict with five keys (``lines_conn``, ``trafos_conn``,
-    ``buses``, ``flows``, ``assets``); each entry is ``None`` when its
+    Returns a dict with six keys (``lines_conn``, ``trafos_conn``,
+    ``buses``, ``flows``, ``assets``, ``loading``); each entry is ``None`` when its
     underlying pypowsybl query raised (logged at DEBUG).
     """
     def _safe(label: str, fn):
@@ -301,6 +302,7 @@ def _capture_action_snapshots(service: Any, action_network: Any) -> dict:
         # which return plain dicts — variant-independent once taken.
         "flows": _safe("flow", lambda: service._get_network_flows(action_network)),
         "assets": _safe("asset", lambda: service._get_asset_flows(action_network)),
+        "loading": _safe("loading", lambda: service._get_branch_loading(action_network)),
     }
 
 
@@ -494,6 +496,17 @@ def build_action_patch_payload(service: Any, action_id: str) -> dict:
             payload["flow_deltas"] = {}
             payload["reactive_flow_deltas"] = {}
             payload["asset_deltas"] = {}
+
+        # Loading view: the action variant's loading (snapshot) and its
+        # delta vs the contingency variant, still active here.
+        if snaps["loading"] is not None:
+            payload["branch_loading"] = snaps["loading"]
+            try:
+                payload["loading_deltas"] = compute_loading_deltas(
+                    snaps["loading"], service._get_branch_loading(cont_network),
+                )
+            except Exception as e:
+                logger.warning(f"Warning: Failed to compute action patch loading deltas: {e}")
 
         # Overloads on the action variant. Filter against N-state to
         # exclude pre-existing ones (same convention as

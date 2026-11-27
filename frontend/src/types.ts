@@ -266,7 +266,31 @@ export interface DiagramData {
     /** N-1 diagrams: each overload's loading in N (before the contingency),
      *  parallel to `lines_overloaded`; null where unknown. */
     lines_overloaded_rho_before?: (number | null)[];
+    /** Loading of each end of every branch with a permanent current limit,
+     *  in % of that end's limit — the Loading view. */
+    branch_loading?: Record<string, BranchLoading>;
+    /** Loading change vs the reference state (N for N-1, N-1 for an
+     *  action), in percentage points — the Loading view in Impacts mode. */
+    loading_deltas?: Record<string, FlowDelta>;
 }
+
+/** Loading of a branch's two ends, in % of each end's permanent limit;
+ *  null for an end without one (a transformer's unlimited side). */
+export type BranchLoading = [number | null, number | null];
+
+/** The readable flow labels over the NAD tabs (components/BranchLabelLayer.tsx). */
+export interface BranchLabelControls {
+    /** Each NAD tab's metadata index. */
+    metaIndexes: Partial<Record<TabId, MetadataIndex | null>>;
+    /** The value labels on the branches; off for a lighter reading (colours and hover stay). */
+    showValues: boolean;
+    onToggleValues: (show: boolean) => void;
+}
+
+/** Flows (absolute state) or Impacts (change vs the reference state). */
+export type ViewMode = 'network' | 'delta';
+/** What the branch labels and colours measure: active power or loading rate. */
+export type FlowMetric = 'p' | 'loading';
 
 export interface FlowDelta {
     delta: number;
@@ -350,6 +374,8 @@ export interface DiagramPatch {
     flow_deltas?: Record<string, FlowDelta>;
     reactive_flow_deltas?: Record<string, FlowDelta>;
     asset_deltas?: Record<string, AssetDelta>;
+    branch_loading?: Record<string, BranchLoading>;
+    loading_deltas?: Record<string, FlowDelta>;
     vl_subtrees?: Record<string, {
         node_svg: string;
         node_sub_svg_id: string;
@@ -887,6 +913,7 @@ export type InteractionType =
     | 'tab_tied'
     | 'tab_untied'
     | 'view_mode_changed'
+    | 'flow_metric_changed'
     | 'overflow_layout_mode_toggled'
     | 'overflow_pins_toggled'
     | 'overflow_pin_clicked'
@@ -901,6 +928,7 @@ export type InteractionType =
     | 'zoom_reset'
     | 'inspect_query_changed'
     | 'vl_names_toggled'
+    | 'value_labels_toggled'
     | 'sld_overlay_opened'
     | 'sld_overlay_tab_changed'
     | 'sld_overlay_closed'

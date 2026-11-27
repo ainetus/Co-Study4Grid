@@ -6,13 +6,16 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study. 
 
 import React, { useState, useMemo, type RefObject } from 'react';
-import type { DiagramData, AnalysisResult, TabId, VlOverlay, SldTab, MetadataIndex, ActionOverviewFilters, UnsimulatedActionScoreInfo, FeedRevealState } from '../types';
+import type { DiagramData, AnalysisResult, TabId, VlOverlay, SldTab, MetadataIndex, ActionOverviewFilters, UnsimulatedActionScoreInfo, FeedRevealState, FlowMetric, BranchLabelControls } from '../types';
 import MemoizedSvgContainer from './MemoizedSvgContainer';
 import SldOverlay from './SldOverlay';
 import DetachableTabHost from './DetachableTabHost';
 import ActionOverviewDiagram from './ActionOverviewDiagram';
 import ActionCardPopover from './ActionCardPopover';
 import DiagramLegend from './DiagramLegend';
+import FlowViewToggles from './FlowViewToggles';
+import BranchLabelLayer from './BranchLabelLayer';
+import DiagramLabelToggles from './DiagramLabelToggles';
 import InspectSearchField from './InspectSearchField';
 import { filterInspectables } from '../utils/inspectables';
 import DetachedPlaceholder from './DetachedPlaceholder';
@@ -167,6 +170,12 @@ interface VisualizationPanelProps {
      * is currently detached.
      */
     onViewModeChangeForTab?: (tab: TabId, mode: 'network' | 'delta') => void;
+    /** Active power vs loading rate of a tab, and its toggle handler —
+     *  window-scoped like the view mode. Without them: MW, no toggle effect. */
+    flowMetricForTab?: (tab: TabId) => FlowMetric;
+    onFlowMetricChangeForTab?: (tab: TabId, metric: FlowMetric) => void;
+    /** The readable flow labels (BranchLabelLayer): each tab's metadata index, the value labels toggle. */
+    branchLabels?: BranchLabelControls;
     /** Overflow Analysis tab wiring (layout toggle + action pins), grouped (D4). See OverflowControls. */
     overflow?: OverflowControls;
     inspectQuery: string;
@@ -258,6 +267,9 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     onInspectQueryChangeFor,
     viewModeForTab,
     onViewModeChangeForTab,
+    flowMetricForTab,
+    onFlowMetricChangeForTab,
+    branchLabels,
     showVoltageLevelNames = true,
     onToggleVoltageLevelNames,
 }) => {
@@ -340,6 +352,8 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     // state passed in as a prop. That preserves backward compatibility.
     const viewModeForTabFn = viewModeForTab ?? (() => actionViewMode);
     const viewModeChangeForTabCb = onViewModeChangeForTab ?? ((_tab: TabId, mode: 'network' | 'delta') => onViewModeChange(mode));
+    const flowMetricForTabFn = flowMetricForTab ?? ((): FlowMetric => 'p');
+    const flowMetricChangeForTabCb = onFlowMetricChangeForTab ?? (() => {});
     const isTabTiedFn = isTabTied ?? (() => false);
     const toggleTabTieCb = onToggleTabTie ?? (() => {});
 
@@ -468,9 +482,16 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
         // the toggle inside the popup only affects the popup, and
         // vice versa.
         const tabViewMode = viewModeForTabFn(tabId);
+        const tabDiagram = tabId === 'n' ? nDiagram : tabId === 'contingency' ? n1Diagram : actionDiagram;
+        const tabContainerRef = tabId === 'n' ? nSvgContainerRef : tabId === 'contingency' ? n1SvgContainerRef : actionSvgContainerRef;
 
         return (
             <>
+                {hasDiagramForTab && (
+                    <BranchLabelLayer containerRef={tabContainerRef} diagram={tabDiagram} metaIndex={branchLabels?.metaIndexes[tabId] ?? null}
+                        mode={tabViewMode} metric={flowMetricForTabFn(tabId)} monitoringFactor={monitoringFactor ?? 0.95} displayName={displayName}
+                        values={branchLabels?.showValues ?? true} />
+                )}
                 {/* Top-right cluster: Flow/Impacts + Tie button.
                     Only rendered when the tab actually has a
                     diagram so we don't clutter empty tabs. The Tie
@@ -478,44 +499,14 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                     to the controls it actually synchronises
                     (zoom / inspect), not here. */}
                 {hasDiagramForTab && supportsViewMode && (
-                    <div style={{
-                        position: 'absolute', top: '10px', right: '10px', zIndex: 100,
-                        display: 'flex', alignItems: 'center', gap: '6px',
-                    }}>
-                        <div style={{
-                            display: 'flex',
-                            borderRadius: '6px',
-                            overflow: 'hidden',
-                            border: `1px solid ${colors.border}`,
-                            boxShadow: '0 2px 5px rgba(0,0,0,0.15)',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            backgroundColor: colors.surface,
-                        }}>
-                            <button
-                                onClick={() => viewModeChangeForTabCb(tabId, 'network')}
-                                style={{
-                                    padding: '4px 12px', border: 'none', cursor: 'pointer',
-                                    backgroundColor: tabViewMode === 'network' ? colors.brand : colors.surface,
-                                    color: tabViewMode === 'network' ? colors.textOnBrand : colors.textSecondary,
-                                    transition: 'all 0.15s ease'
-                                }}
-                            >
-                                Flows
-                            </button>
-                            <button
-                                onClick={() => viewModeChangeForTabCb(tabId, 'delta')}
-                                style={{
-                                    padding: '4px 12px', border: 'none', borderLeft: `1px solid ${colors.border}`, cursor: 'pointer',
-                                    backgroundColor: tabViewMode === 'delta' ? colors.brand : colors.surface,
-                                    color: tabViewMode === 'delta' ? colors.textOnBrand : colors.textSecondary,
-                                    transition: 'all 0.15s ease'
-                                }}
-                            >
-                                Impacts
-                            </button>
-                        </div>
-                    </div>
+                    <FlowViewToggles
+                        tabId={tabId}
+                        viewMode={tabViewMode}
+                        onViewModeChange={viewModeChangeForTabCb}
+                        metric={flowMetricForTabFn(tabId)}
+                        onMetricChange={flowMetricChangeForTabCb}
+                        impacts={tabId !== 'n'}
+                    />
                 )}
 
                 {/* Bottom-left cluster: Tie (detached only) + zoom
@@ -604,29 +595,10 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                                     filteredInspectables={filteredInspectables}
                                     displayName={displayName}
                                 />
-                                {onToggleVoltageLevelNames && (
-                                    <button
-                                        onClick={() => onToggleVoltageLevelNames(!showVoltageLevelNames)}
-                                        title={showVoltageLevelNames
-                                            ? 'Hide voltage-level names on the diagram (hover bus circles to see them as tooltips)'
-                                            : 'Show voltage-level names on the diagram'}
-                                        aria-pressed={showVoltageLevelNames}
-                                        data-testid="toggle-vl-names"
-                                        style={{
-                                            background: showVoltageLevelNames ? colors.brand : colors.surface,
-                                            color: showVoltageLevelNames ? colors.textOnBrand : colors.textSecondary,
-                                            border: `1px solid ${showVoltageLevelNames ? colors.brand : colors.border}`,
-                                            borderRadius: '4px',
-                                            padding: '4px 8px',
-                                            cursor: 'pointer',
-                                            fontSize: '12px',
-                                            fontWeight: 600,
-                                            boxShadow: '0 2px 5px rgba(0,0,0,0.15)',
-                                        }}
-                                    >
-                                        {'\u{1F3F7} VL'}
-                                    </button>
-                                )}
+                                <DiagramLabelToggles
+                                    showVlNames={showVoltageLevelNames} onToggleVlNames={onToggleVoltageLevelNames}
+                                    showValues={branchLabels?.showValues ?? true} onToggleValues={branchLabels?.onToggleValues}
+                                />
                                 {inspectQuery && voltageLevels.includes(inspectQuery) && (
                                     <button
                                         onClick={() => onVlOpen(inspectQuery)}
@@ -881,7 +853,12 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
             </div>
 
             {/* Content area */}
-            <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+            {/* `--kv-filter-w`: the kV filter strip on the right edge, which the diagram controls keep clear of. */}
+            <div style={{
+                flex: 1, position: 'relative', overflow: 'hidden',
+                '--kv-filter-w': uniqueVoltages.length < 2 ? '0px'
+                    : voltageFilterExpanded ? 'var(--kv-filter-open-w)' : 'var(--kv-filter-closed-w)',
+            } as React.CSSProperties}>
                 {/* Flow/Impacts, zoom, inspect and tie controls now
                     live INSIDE each tab container (see renderTabOverlay).
                     That way they move with the tab into a detached
@@ -1152,7 +1129,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         )}
                         {renderTabOverlay('n', true)}
                         {nDiagram?.svg && (
-                            <DiagramLegend tabId="n" uniqueVoltages={uniqueVoltages} vlNamesHidden={!showVoltageLevelNames} />
+                            <DiagramLegend tabId="n" uniqueVoltages={uniqueVoltages} vlNamesHidden={!showVoltageLevelNames} flowMetric={flowMetricForTabFn('n')} />
                         )}
                     </div>
                 </DetachableTabHost>
@@ -1205,7 +1182,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         )}
                         {renderTabOverlay('contingency', true)}
                         {n1Diagram?.svg && (
-                            <DiagramLegend tabId="contingency" uniqueVoltages={uniqueVoltages} vlNamesHidden={!showVoltageLevelNames} />
+                            <DiagramLegend tabId="contingency" uniqueVoltages={uniqueVoltages} vlNamesHidden={!showVoltageLevelNames} flowMetric={flowMetricForTabFn('contingency')} />
                         )}
                     </div>
                 </DetachableTabHost>
@@ -1300,7 +1277,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                         */}
                         {renderTabOverlay('action', true)}
                         {(actionDiagram?.svg || (n1Diagram?.svg && !selectedActionId)) && (
-                            <DiagramLegend tabId="action" uniqueVoltages={uniqueVoltages} vlNamesHidden={!showVoltageLevelNames} />
+                            <DiagramLegend tabId="action" uniqueVoltages={uniqueVoltages} vlNamesHidden={!showVoltageLevelNames} flowMetric={flowMetricForTabFn('action')} />
                         )}
                     </div>
                 </DetachableTabHost>

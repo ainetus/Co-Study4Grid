@@ -14,7 +14,7 @@ import { contextFiliereColors, contextMapPalette as P } from '../styles/tokens';
 import {
     DENSE_SCALE, DENSE_ZONE_COUNT, PIE_GAP_PT, PROD_REF_MW,
     arrowHead, arrowWidthPt, formatMw, highlightBox, highlightPoints, pieSlices, polylinePath,
-    polylineMidpoint, ptUnit, rampColor, renderScale, ringPath, separateCoincident, trimmedArc, volumeRadiusPt,
+    polylineMidpoint, ptUnit, rampColor, renderScale, ringPath, segmentsCoincide, separateCoincident, trimmedArc, volumeRadiusPt,
     type Point, type SeparatedLine,
 } from '../utils/contextMapGeometry';
 
@@ -48,7 +48,8 @@ const SIGNAL = { contingency: 'var(--signal-contingency)', overload: 'var(--sign
 /** Transfer labels on a dense map (many zones): smaller, so all fit. */
 const DENSE_LABEL_PT = 5.2;
 /** Highlighted lines whose ends both lie this close on screen (twin
- *  circuits) are drawn LENS_GAP_PT apart, so neither hides the other. */
+ *  circuits) are drawn LENS_GAP_PT apart, so neither hides the other —
+ *  and so is a consigned circuit twin of a highlighted one. */
 const LENS_TOLERANCE_PT = 6;
 const LENS_GAP_PT = 6;
 
@@ -398,13 +399,16 @@ const CONSIGNATION_DOT_R_PT = Math.sqrt(18 / Math.PI);
 /** Carte-Front `_draw_consignations`: a greyed core inside a casing of its voltage's colour, a dot at each end. */
 const Consignations: React.FC<{
     items: ContextMapConsignation[]; g: Geometry; onHover: ContextMapLayersProps['onHover'];
-}> = ({ items, g, onHover }) => (
+    /** Consignations pulled aside from a highlighted twin (see `useSeparatedLines`). */
+    moved: Map<string, SeparatedLine | null>;
+}> = ({ items, g, onHover, moved }) => (
     <g data-testid="context-map-consignations">
         {['225 kV', '400 kV'].flatMap(voltage => items.filter(c => c.voltage === voltage)).map(c => {
             const style = CONSIGNATION_STYLE[c.voltage];
             const [[x1, y1], [x2, y2]] = [c.points[0].map(v => v * g.k), c.points[1].map(v => v * g.k)];
             const point = Math.hypot(x2 - x1, y2 - y1) < POINT_TOLERANCE_PT * g.pt;
-            const d = `M${x1} ${y1}L${x2} ${y2}`;
+            const lens = moved.get(c.id);
+            const d = lens ? polylinePath(lens.points) : `M${x1} ${y1}L${x2} ${y2}`;
             const dash = style.dash ? style.dash.map(n => n * style.lw * g.pt).join(' ') : undefined;
             const enter = (e: React.MouseEvent) => onHover({ kind: 'consignation', consignation: c }, e);
             return (
@@ -498,21 +502,39 @@ const RhoLabel: React.FC<{
     );
 };
 
+/**
+ * Lines drawn over each other pulled apart into a lens (`separateCoincident`):
+ * a contingency and an overload on twin circuits, and a consigned circuit
+ * twin of either — parallel transformers, one consigned, the other
+ * overloaded. The contingency keeps the corridor's middle, then the
+ * overloads; a consignation only moves beside a highlighted twin.
+ */
+const useSeparatedLines = (
+    highlights: ContextHighlight[], consignations: ContextMapConsignation[], g: Geometry,
+) => useMemo(() => {
+    const listed = [...highlights.filter(h => h.role === 'contingency'), ...highlights.filter(h => h.role !== 'contingency')];
+    const lines = listed.map(h => (h.element.points ? highlightPoints(h, g.k) : null));
+    const tolerance = LENS_TOLERANCE_PT * g.pt;
+    const twins = consignations
+        .map(c => ({ id: c.id, points: c.points.map(([x, y]) => [x * g.k, y * g.k] as Point) }))
+        .filter(c => lines.some(l => l && segmentsCoincide(l, c.points, tolerance)));
+    const separated = separateCoincident([...lines, ...twins.map(c => c.points)], tolerance, LENS_GAP_PT * g.pt);
+    return {
+        highlights: new Map(listed.map((h, i) => [h.element.id, separated[i]])),
+        consignations: new Map(twins.map((c, i) => [c.id, separated[listed.length + i]])),
+    };
+}, [highlights, consignations, g]);
+
 /** The contingency (yellow) and its overloads (orange, their loading beside
  *  them), Co-Study's halo colours. */
-const Highlights: React.FC<{ highlights: ContextHighlight[]; g: Geometry; onHover: ContextMapLayersProps['onHover'] }> = ({ highlights, g, onHover }) => {
+const Highlights: React.FC<{
+    highlights: ContextHighlight[]; g: Geometry; onHover: ContextMapLayersProps['onHover'];
+    lineOf: Map<string, SeparatedLine | null>;
+}> = ({ highlights, g, onHover, lineOf }) => {
     const contingencies = highlights.filter(h => h.role === 'contingency');
     const overloads = highlights.filter(h => h.role !== 'contingency');
-    // A contingency and an overload on twin circuits would cover each other:
-    // pull coincident lines apart, the contingency keeping the corridor's middle…
-    const listed = [...contingencies, ...overloads];
-    const lines = separateCoincident(
-        listed.map(h => (h.element.points ? highlightPoints(h, g.k) : null)),
-        LENS_TOLERANCE_PT * g.pt, LENS_GAP_PT * g.pt,
-    );
-    const lineOf = new Map(listed.map((h, i) => [h.element.id, lines[i]]));
     const line = (h: ContextHighlight) => lineOf.get(h.element.id) ?? null;
-    // …and drawn last, on top where lines still cross.
+    // The contingencies drawn last, on top where lines still cross.
     return (
         <g data-testid="context-map-highlights">
             {[...overloads, ...contingencies].map(h => (
@@ -595,6 +617,9 @@ const ContextMapLayers: React.FC<ContextMapLayersProps> = ({
     data, showNuclear, showConsignations = false, network = null, showNetwork, zoom, highlights, onHover,
 }) => {
     const g = useGeometry(data, zoom);
+    const consignations = useMemo(
+        () => (showConsignations ? data.consignations?.items ?? [] : []), [showConsignations, data.consignations]);
+    const separated = useSeparatedLines(highlights, consignations, g);
     const [bx, by, bw, bh] = data.bounds.map(v => v * g.k);
     return (
         <g>
@@ -606,11 +631,11 @@ const ContextMapLayers: React.FC<ContextMapLayersProps> = ({
             <FlowLabels data={data} g={g} />
             <Zones data={data} g={g} onHover={onHover} />
             {showNuclear && <Nuclear data={data} g={g} onHover={onHover} />}
-            {showConsignations && data.consignations && data.consignations.items.length > 0 && (
-                <Consignations items={data.consignations.items} g={g} onHover={onHover} />
+            {consignations.length > 0 && (
+                <Consignations items={consignations} g={g} onHover={onHover} moved={separated.consignations} />
             )}
             <AttentionRing data={data} highlights={highlights} g={g} />
-            <Highlights highlights={highlights} g={g} onHover={onHover} />
+            <Highlights highlights={highlights} g={g} onHover={onHover} lineOf={separated.highlights} />
         </g>
     );
 };

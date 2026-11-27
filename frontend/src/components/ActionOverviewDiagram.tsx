@@ -33,6 +33,7 @@ import {
     decidePopoverPlacement,
     computePopoverStyle,
 } from '../utils/popoverPlacement';
+import { resetFlowVisuals } from '../utils/svg/loadingVisuals';
 
 /** Measure a named code section and log it to the console + Performance timeline. */
 const perfMeasure = (name: string, startMark: string, endMark: string) => {
@@ -233,8 +234,10 @@ const ActionOverviewDiagram: React.FC<ActionOverviewDiagramProps> = ({
             const doc = parser.parseFromString(svgSource, 'image/svg+xml');
             svg = doc.documentElement as unknown as SVGSVGElement;
         } else {
-            // Clone so we don't detach the element from the N-1 tab.
+            // Clone so we don't detach the element from the N-1 tab,
+            // without the N-1 tab's Impacts / Loading decoration.
             svg = svgSource.cloneNode(true) as SVGSVGElement;
+            resetFlowVisuals(svg);
         }
         if (!svg || svg.nodeName !== 'svg') return null;
 

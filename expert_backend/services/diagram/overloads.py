@@ -16,6 +16,8 @@ Three entry points:
     worsened).
   - :func:`get_n_state_loading` — the N-state loading of given elements
     (what a contingency's overloads carried before it).
+  - :func:`get_branch_loading` — every branch's loading at each end, against
+    that end's own limit (the Loading view).
 
 Both use narrow pypowsybl queries (only ``i1``, ``i2``) + numpy
 vectorisation — on the 10 k-branch PyPSA-EUR France grid the overload
@@ -144,6 +146,77 @@ def get_overloaded_lines(
     if with_rho:
         return sanitize_for_json(overloaded), sanitize_for_json(overloaded_rho)
     return sanitize_for_json(overloaded)
+
+
+def side_limits(network: Any) -> dict[str, dict[str, float]]:
+    """``{element_id: {side: permanent_current_limit}}`` — ``side`` is ``ONE``
+    / ``TWO``, or ``""`` when the limits frame does not say."""
+    limits = network.get_operational_limits(attributes=["value"])
+    if len(limits.index) == 0:
+        return {}
+    limits = limits.reset_index()
+    current = limits[(limits["type"] == "CURRENT") & (limits["acceptable_duration"] == -1)]
+    sides = current["side"].astype(str) if "side" in current.columns else [""] * len(current)
+    by_element: dict[str, dict[str, float]] = {}
+    for element_id, side, value in zip(current["element_id"], sides, current["value"]):
+        by_element.setdefault(element_id, {})[side] = float(value)
+    return by_element
+
+
+def _end_loading(current: float, limit: float | None) -> float | None:
+    return round(current / limit * 100.0, 1) if limit else None
+
+
+def get_branch_loading(
+    network: Any, limits: dict[str, dict[str, float]] | None = None,
+) -> dict[str, list[float | None]]:
+    """Loading rate of each end of every line and 2-winding transformer with
+    a permanent current limit, in percent of that end's limit:
+    ``{id: [loading_end1, loading_end2]}``, ``None`` for an end without one.
+
+    Each end's current is read against its own side's limit. A line's ends
+    share a voltage, so a limit given on one side only holds for both; a
+    transformer's do not — RTE grids give most of them a limit on side 2
+    only, and its side-1 current (another voltage) then has no loading. A
+    disconnected branch (NaN currents) reads 0 %. Rounded to 0.1 % to keep
+    the payload light: the whole grid rides in every NAD response for the
+    Loading view, whose colour and label use the larger end.
+
+    ``limits`` is :func:`side_limits` of ``network``, when the caller keeps
+    it: reading them is most of the cost (~0.2 s on a 11 k-branch grid), and
+    they do not change with the variant."""
+    if limits is None:
+        limits = side_limits(network)
+    loading: dict[str, list[float | None]] = {}
+    if not limits:
+        return loading
+    for df, is_line in (
+        (network.get_lines(attributes=["i1", "i2"]), True),
+        (network.get_2_windings_transformers(attributes=["i1", "i2"]), False),
+    ):
+        if len(df.index) == 0:
+            continue
+        i1 = np.abs(np.nan_to_num(df["i1"].values, nan=0.0))
+        i2 = np.abs(np.nan_to_num(df["i2"].values, nan=0.0))
+        for j, element_id in enumerate(df.index.values):
+            sides = limits.get(element_id)
+            if not sides:
+                continue
+            either = sides.get("")
+            lim1 = sides.get("ONE", either)
+            lim2 = sides.get("TWO", either)
+            if is_line:
+                lim1, lim2 = lim1 or lim2, lim2 or lim1
+            ends = [_end_loading(float(i1[j]), lim1), _end_loading(float(i2[j]), lim2)]
+            if ends != [None, None]:
+                loading[element_id] = ends
+    return loading
+
+
+def max_loading(ends: list[float | None] | None) -> float | None:
+    """The larger end of a :func:`get_branch_loading` entry, or ``None``."""
+    known = [v for v in (ends or []) if v is not None]
+    return max(known) if known else None
 
 
 def get_n_state_loading(

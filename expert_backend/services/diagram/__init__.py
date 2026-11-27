@@ -17,7 +17,7 @@ Modules:
   - :mod:`nad_params` — default ``NadParameters`` factory
   - :mod:`nad_render` — ``generate_diagram`` + NaN stripping + root viewBox repair
   - :mod:`sld_render` — SLD SVG + metadata extraction
-  - :mod:`overloads` — per-element current queries + overload filtering
+  - :mod:`overloads` — per-element current queries, overload filtering, loading rates
   - :mod:`flows` — branch and asset flow extractors
   - :mod:`deltas` — terminal-aware delta math (pure)
 """

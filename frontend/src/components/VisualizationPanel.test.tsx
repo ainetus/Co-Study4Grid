@@ -6,7 +6,7 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study. 
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
@@ -234,26 +234,64 @@ describe('VisualizationPanel', () => {
     });
 
     it('shows view mode toggle when diagram is loaded', () => {
-        const nDiagram: DiagramData = {
+        const n1Diagram: DiagramData = {
             svg: '<svg>test</svg>',
             metadata: null,
         };
-        render(<VisualizationPanel {...createDefaultProps({ nDiagram })} />);
+        render(<VisualizationPanel {...createDefaultProps({ activeTab: 'contingency', n1Diagram })} />);
         expect(screen.getByText('Flows')).toBeInTheDocument();
         expect(screen.getByText('Impacts')).toBeInTheDocument();
+    });
+
+    it('keeps the top-right toggles clear of the kV filter strip, folded or open', () => {
+        const n1Diagram: DiagramData = { svg: '<svg>test</svg>', metadata: null };
+        render(<VisualizationPanel {...createDefaultProps({
+            activeTab: 'contingency', n1Diagram, uniqueVoltages: [63, 225, 400], voltageRange: [63, 400],
+        })} />);
+        const toggles = screen.getByTestId('flow-view-toggles-contingency');
+        expect(toggles.style.right).toBe('calc(10px + var(--kv-filter-w, 0px))');
+        const area = (el: HTMLElement): HTMLElement => {
+            let cur: HTMLElement | null = el;
+            while (cur && !cur.style.getPropertyValue('--kv-filter-w')) cur = cur.parentElement;
+            return cur as HTMLElement;
+        };
+        expect(area(toggles).style.getPropertyValue('--kv-filter-w')).toBe('var(--kv-filter-closed-w)');
+        fireEvent.click(screen.getByTitle('Show voltage filter'));
+        expect(area(toggles).style.getPropertyValue('--kv-filter-w')).toBe('var(--kv-filter-open-w)');
+    });
+
+    it('offers no Flows / Impacts on the N tab, the reference state itself', () => {
+        const nDiagram: DiagramData = { svg: '<svg>test</svg>', metadata: null };
+        render(<VisualizationPanel {...createDefaultProps({ nDiagram })} />);
+        expect(screen.getByTestId('flow-metric-toggle-n')).toBeInTheDocument();
+        expect(screen.queryByTestId('view-mode-toggle-n')).toBeNull();
     });
 
     it('calls onViewModeChange when toggle clicked', async () => {
         const user = userEvent.setup();
         const onViewModeChange = vi.fn();
-        const nDiagram: DiagramData = {
+        const n1Diagram: DiagramData = {
             svg: '<svg>test</svg>',
             metadata: null,
         };
-        render(<VisualizationPanel {...createDefaultProps({ nDiagram, onViewModeChange })} />);
+        render(<VisualizationPanel {...createDefaultProps({ activeTab: 'contingency', n1Diagram, onViewModeChange })} />);
 
         await user.click(screen.getByText('Impacts'));
         expect(onViewModeChange).toHaveBeenCalledWith('delta');
+    });
+
+    it('routes the MW / Loading % toggle to the tab', async () => {
+        const user = userEvent.setup();
+        const onFlowMetricChangeForTab = vi.fn();
+        const nDiagram: DiagramData = { svg: '<svg>test</svg>', metadata: null };
+        render(<VisualizationPanel {...createDefaultProps({
+            nDiagram, onFlowMetricChangeForTab, flowMetricForTab: () => 'p',
+        })} />);
+
+        const toggle = screen.getByTestId('flow-metric-toggle-n');
+        expect(within(toggle).getByText('MW')).toHaveAttribute('aria-pressed', 'true');
+        await user.click(within(toggle).getByText('Loading %'));
+        expect(onFlowMetricChangeForTab).toHaveBeenCalledWith('n', 'loading');
     });
 
     // Regression tests for the Tie button location (third
@@ -328,9 +366,10 @@ describe('VisualizationPanel', () => {
 
             const tieButton = mountNode.querySelector('button[title^="Tie"]') as HTMLElement | null;
             const zoomInButton = mountNode.querySelector('button[title="Zoom In"]') as HTMLElement | null;
+            // The N tab's top-right cluster holds the MW / Loading % toggle (no Flows / Impacts there).
             const flowsButton = Array.from(
                 mountNode.querySelectorAll('button')
-            ).find(b => b.textContent === 'Flows') as HTMLElement | undefined;
+            ).find(b => b.textContent === 'MW') as HTMLElement | undefined;
 
             expect(tieButton).not.toBeNull();
             expect(zoomInButton).not.toBeNull();
@@ -434,27 +473,24 @@ describe('VisualizationPanel', () => {
         it('routes the Impacts click through onViewModeChangeForTab with the tab id', async () => {
             const user = userEvent.setup();
             const onViewModeChangeForTab = vi.fn();
-            const nDiagram: DiagramData = { svg: '<svg>n</svg>', metadata: null };
+            const n1Diagram: DiagramData = { svg: '<svg>n1</svg>', metadata: null };
             render(<VisualizationPanel {...createDefaultProps({
-                activeTab: 'n',
-                nDiagram,
+                activeTab: 'contingency',
+                n1Diagram,
                 onViewModeChangeForTab,
                 // When the per-tab getter exists, the overlay reads
                 // from it rather than the global actionViewMode.
                 viewModeForTab: () => 'network' as const,
             })} />);
 
-            // All three tabs render an overlay (n / n-1 / action);
-            // only the active one (n) is actually visible, but all
-            // three buttons are in the DOM.
+            // Only the N-1 tab has a diagram, so its overlay holds the only Impacts button.
             const impactsButtons = screen.getAllByText('Impacts');
-            // Click the first one (the active N tab's overlay).
             await user.click(impactsButtons[0]);
             // The call must include the tab id, proving that the
             // router can dispatch to the right per-window state.
             expect(onViewModeChangeForTab).toHaveBeenCalled();
             const [firstCall] = onViewModeChangeForTab.mock.calls;
-            expect(firstCall[0]).toBe('n');
+            expect(firstCall[0]).toBe('contingency');
             expect(firstCall[1]).toBe('delta');
         });
     });
