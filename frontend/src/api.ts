@@ -7,7 +7,7 @@
 
 import axios from 'axios';
 import { signalStudyLoad } from './utils/studyLoadSignal';
-import type { ConfigRequest, BranchResponse, DiagramData, DiagramPatch, FlowDelta, AssetDelta, AvailableAction, SessionResult, VlInjection, FeederLabel, ContextMapData, ContextMapElement, ContextMapNetwork, ContextMapUnavailable } from './types';
+import type { ConfigRequest, BranchResponse, BranchLoading, DiagramData, DiagramPatch, FlowDelta, AssetDelta, AvailableAction, SessionResult, VlInjection, FeederLabel, ContextMapData, ContextMapElement, ContextMapNetwork, ContextMapUnavailable } from './types';
 
 // Same-origin by default when built with `VITE_API_BASE_URL=''` (the
 // frontend is served by the backend, e.g. on a HuggingFace Docker Space):
@@ -279,15 +279,15 @@ export const api = {
         );
         return response.data;
     },
-    getNSld: async (voltageLevelId: string): Promise<{ svg: string; sld_metadata: string | null; voltage_level_id: string; switch_states?: Record<string, boolean>; injections?: Record<string, VlInjection>; feeder_labels?: Record<string, FeederLabel>; switch_labels?: Record<string, string> }> => {
-        const response = await axios.post<{ svg: string; sld_metadata: string | null; voltage_level_id: string; switch_states?: Record<string, boolean>; injections?: Record<string, VlInjection>; feeder_labels?: Record<string, FeederLabel>; switch_labels?: Record<string, string> }>(
+    getNSld: async (voltageLevelId: string): Promise<{ svg: string; sld_metadata: string | null; voltage_level_id: string; switch_states?: Record<string, boolean>; injections?: Record<string, VlInjection>; feeder_labels?: Record<string, FeederLabel>; switch_labels?: Record<string, string>; branch_loading?: Record<string, BranchLoading>; loading_deltas?: Record<string, FlowDelta> }> => {
+        const response = await axios.post<{ svg: string; sld_metadata: string | null; voltage_level_id: string; switch_states?: Record<string, boolean>; injections?: Record<string, VlInjection>; feeder_labels?: Record<string, FeederLabel>; switch_labels?: Record<string, string>; branch_loading?: Record<string, BranchLoading>; loading_deltas?: Record<string, FlowDelta> }>(
             `${API_BASE_URL}/api/n-sld`,
             { voltage_level_id: voltageLevelId }
         );
         return response.data;
     },
-    getContingencySld: async (disconnectedElements: string[], voltageLevelId: string): Promise<{ svg: string; sld_metadata: string | null; voltage_level_id: string; flow_deltas?: Record<string, FlowDelta>; reactive_flow_deltas?: Record<string, FlowDelta>; asset_deltas?: Record<string, AssetDelta>; switch_states?: Record<string, boolean>; injections?: Record<string, VlInjection>; feeder_labels?: Record<string, FeederLabel>; switch_labels?: Record<string, string> }> => {
-        const response = await axios.post<{ svg: string; sld_metadata: string | null; voltage_level_id: string; flow_deltas?: Record<string, FlowDelta>; reactive_flow_deltas?: Record<string, FlowDelta>; asset_deltas?: Record<string, AssetDelta>; switch_states?: Record<string, boolean>; injections?: Record<string, VlInjection>; feeder_labels?: Record<string, FeederLabel>; switch_labels?: Record<string, string> }>(
+    getContingencySld: async (disconnectedElements: string[], voltageLevelId: string): Promise<{ svg: string; sld_metadata: string | null; voltage_level_id: string; flow_deltas?: Record<string, FlowDelta>; reactive_flow_deltas?: Record<string, FlowDelta>; asset_deltas?: Record<string, AssetDelta>; switch_states?: Record<string, boolean>; injections?: Record<string, VlInjection>; feeder_labels?: Record<string, FeederLabel>; switch_labels?: Record<string, string>; branch_loading?: Record<string, BranchLoading>; loading_deltas?: Record<string, FlowDelta> }> => {
+        const response = await axios.post<{ svg: string; sld_metadata: string | null; voltage_level_id: string; flow_deltas?: Record<string, FlowDelta>; reactive_flow_deltas?: Record<string, FlowDelta>; asset_deltas?: Record<string, AssetDelta>; switch_states?: Record<string, boolean>; injections?: Record<string, VlInjection>; feeder_labels?: Record<string, FeederLabel>; switch_labels?: Record<string, string>; branch_loading?: Record<string, BranchLoading>; loading_deltas?: Record<string, FlowDelta> }>(
             `${API_BASE_URL}/api/contingency-sld`,
             { disconnected_elements: disconnectedElements, voltage_level_id: voltageLevelId }
         );
@@ -315,8 +315,8 @@ export const api = {
         );
         return response.data;
     },
-    getActionVariantSld: async (actionId: string, voltageLevelId: string): Promise<{ svg: string; sld_metadata: string | null; action_id: string; voltage_level_id: string; flow_deltas?: Record<string, FlowDelta>; reactive_flow_deltas?: Record<string, FlowDelta>; asset_deltas?: Record<string, AssetDelta>; changed_switches?: Record<string, { from_open: boolean; to_open: boolean }>; switch_states?: Record<string, boolean>; injections?: Record<string, VlInjection>; feeder_labels?: Record<string, FeederLabel>; switch_labels?: Record<string, string> }> => {
-        const response = await axios.post<{ svg: string; sld_metadata: string | null; action_id: string; voltage_level_id: string; flow_deltas?: Record<string, FlowDelta>; reactive_flow_deltas?: Record<string, FlowDelta>; asset_deltas?: Record<string, AssetDelta>; changed_switches?: Record<string, { from_open: boolean; to_open: boolean }>; switch_states?: Record<string, boolean>; injections?: Record<string, VlInjection>; feeder_labels?: Record<string, FeederLabel>; switch_labels?: Record<string, string> }>(
+    getActionVariantSld: async (actionId: string, voltageLevelId: string): Promise<{ svg: string; sld_metadata: string | null; action_id: string; voltage_level_id: string; flow_deltas?: Record<string, FlowDelta>; reactive_flow_deltas?: Record<string, FlowDelta>; asset_deltas?: Record<string, AssetDelta>; changed_switches?: Record<string, { from_open: boolean; to_open: boolean }>; switch_states?: Record<string, boolean>; injections?: Record<string, VlInjection>; feeder_labels?: Record<string, FeederLabel>; switch_labels?: Record<string, string>; branch_loading?: Record<string, BranchLoading>; loading_deltas?: Record<string, FlowDelta> }> => {
+        const response = await axios.post<{ svg: string; sld_metadata: string | null; action_id: string; voltage_level_id: string; flow_deltas?: Record<string, FlowDelta>; reactive_flow_deltas?: Record<string, FlowDelta>; asset_deltas?: Record<string, AssetDelta>; changed_switches?: Record<string, { from_open: boolean; to_open: boolean }>; switch_states?: Record<string, boolean>; injections?: Record<string, VlInjection>; feeder_labels?: Record<string, FeederLabel>; switch_labels?: Record<string, string>; branch_loading?: Record<string, BranchLoading>; loading_deltas?: Record<string, FlowDelta> }>(
             `${API_BASE_URL}/api/action-variant-sld`,
             { action_id: actionId, voltage_level_id: voltageLevelId }
         );

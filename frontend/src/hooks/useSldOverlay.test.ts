@@ -195,6 +195,37 @@ describe('useSldOverlay', () => {
         expect(result.current.vlOverlay!.sldMetadata).toBe('{"nodes":[]}');
     });
 
+    it('carries the Loading view of each SLD: its branch loading, and its change on N-1 / action', async () => {
+        vi.mocked(api.getNSld).mockResolvedValue({
+            svg: '<svg>N-SLD</svg>', sld_metadata: null, voltage_level_id: 'VL_400',
+            branch_loading: { L1: [40, 41] },
+        });
+        vi.mocked(api.getActionVariantSld).mockResolvedValue({
+            svg: '<svg>ACT-SLD</svg>', sld_metadata: null, action_id: 'act1', voltage_level_id: 'VL_400',
+            branch_loading: { L1: [70, 71] },
+            loading_deltas: { L1: { delta: 30, category: 'positive' } },
+        });
+        const { result } = renderHook(() => useSldOverlay('n'));
+
+        act(() => {
+            result.current.handleVlDoubleClick('act1', 'VL_400');
+        });
+        await vi.waitFor(() => {
+            expect(result.current.vlOverlay!.loading).toBe(false);
+        });
+        expect(result.current.vlOverlay!.branch_loading).toEqual({ L1: [40, 41] });
+        expect(result.current.vlOverlay!.loading_deltas).toBeUndefined();
+
+        act(() => {
+            result.current.handleOverlaySldTabChange('action');
+        });
+        await vi.waitFor(() => {
+            expect(result.current.vlOverlay!.svg).toBe('<svg>ACT-SLD</svg>');
+        });
+        expect(result.current.vlOverlay!.branch_loading).toEqual({ L1: [70, 71] });
+        expect(result.current.vlOverlay!.loading_deltas).toEqual({ L1: { delta: 30, category: 'positive' } });
+    });
+
     it('fetchSldVariant handles error gracefully', async () => {
         vi.mocked(api.getNSld).mockRejectedValue({
             response: { data: { detail: 'Network error' } },

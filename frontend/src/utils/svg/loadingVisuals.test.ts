@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import type { EdgeMeta, MetadataIndex } from '../../types';
 import { applyDeltaVisuals } from './deltaVisuals';
-import { applyLoadingVisuals, loadingClass, LOADING_CLASSES } from './loadingVisuals';
+import { applyLoadingVisuals, formatChange, isPrintedNumber, loadingClass, LOADING_CLASSES, parsePrintedNumber } from './loadingVisuals';
 
 const edge = (id: string): EdgeMeta => ({
     equipmentId: id, svgId: `svg-${id}`, node1: 'n1', node2: 'n2',
@@ -136,5 +136,29 @@ describe('applyLoadingVisuals', () => {
         expect(classesOf(root, 'L1')).toEqual([]);
         expect(labelOf(root, 'L1')).toBe('123');
         expect(labelOf(root, 'L1', 2)).toBe('-121');
+    });
+});
+
+describe('printed numbers', () => {
+    it('reads the values pypowsybl prints, thousands grouped or not', () => {
+        expect(parsePrintedNumber('-1,297')).toBe(-1297);
+        expect(parsePrintedNumber('1 550')).toBe(1550);
+        expect(parsePrintedNumber(' -19 ')).toBe(-19);
+        expect(parsePrintedNumber('12.5')).toBe(12.5);
+        expect(isPrintedNumber('1,550')).toBe(true);
+        expect(isPrintedNumber('-8')).toBe(true);
+        expect(isPrintedNumber('MAGNY1')).toBe(false);
+        expect(isPrintedNumber('73%')).toBe(false);
+    });
+});
+
+describe('formatChange', () => {
+    it('rounds a change, its sign telling up from down; under one unit a decimal, none at all 0', () => {
+        expect(formatChange('%')(12.4)).toBe('+12%');
+        expect(formatChange('%')(-9.6)).toBe('-10%');
+        expect(formatChange('%')(-0.4)).toBe('-0.4%');
+        expect(formatChange('')(0.5)).toBe('+1');
+        expect(formatChange('%')(0.04)).toBe('0%');
+        expect(formatChange('')(0)).toBe('0');
     });
 });

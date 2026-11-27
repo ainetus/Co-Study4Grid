@@ -17,7 +17,7 @@
 
 import type { DiagramData, FlowDelta, FlowMetric, MetadataIndex, ViewMode } from '../../types';
 import { getIdMap } from './idMap';
-import { formatLoading, loadingClass, maxLoading } from './loadingVisuals';
+import { formatChange, formatLoading, loadingClass, maxLoading, parsePrintedNumber } from './loadingVisuals';
 
 export type Point = [number, number];
 
@@ -119,7 +119,7 @@ const pointAlong = (pts: Point[], t: number): Point => {
 const printedValue = (info: Element | undefined): number | null => {
     const t = info?.querySelector('text, foreignObject');
     if (!t) return null;
-    const v = parseFloat(t.getAttribute('data-original-text') ?? t.textContent ?? '');
+    const v = parsePrintedNumber(t.getAttribute('data-original-text') ?? t.textContent ?? '');
     return Number.isFinite(v) ? v : null;
 };
 
@@ -185,9 +185,6 @@ export const readBranchGeometry = (container: HTMLElement, metaIndex: MetadataIn
 };
 
 const formatMw = (v: number | null): string | null => (v === null ? null : `${Math.round(v)}`);
-// A change on the map, rounded, its sign telling up from down (the hover keeps a decimal).
-const formatChange = (unit: string) => (delta: number): string =>
-    `${delta >= 0 ? '+' : '-'}${Math.abs(Math.round(delta))}${unit}`;
 const formatFlowChange = formatChange('');
 const formatLoadingChange = formatChange('%');
 

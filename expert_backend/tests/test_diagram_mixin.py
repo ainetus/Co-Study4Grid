@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -497,3 +498,80 @@ class TestDiagramPayloadsCarryLoading:
         assert payload["branch_loading"] == {"L1": [0.0, 0.0], "L2": [110.0, None]}
         assert payload["loading_deltas"]["L2"] == {"delta": 30.0, "category": "positive"}
         assert network.variant == "WORKING"
+
+
+class TestSldPayloadsCarryLoading:
+    """The SLD follows the Loading view: each SLD carries its state's branch
+    loading — and, on N-1 / action, the change vs N / vs N-1 — for the voltage
+    level's own branches only. Read grid-wide like the NAD's, so a branch's
+    Impacts category is the same on both diagrams."""
+
+    FEEDERS = {
+        "L2": {"name": None, "other_vl": "VL_B", "label": "VL B", "kind": "branch"},
+        "LOAD_1": {"name": None, "other_vl": None, "label": "Load", "kind": "load"},
+    }
+
+    def _mixin(self):
+        mixin, network = TestLoadingAttachment()._mixin()
+        mixin._sld_labels = lambda net, vl, injections: (dict(self.FEEDERS), {})
+        return mixin, network
+
+    @staticmethod
+    @contextmanager
+    def _sld_rendering():
+        with patch("expert_backend.services.diagram_mixin.extract_sld_svg_and_metadata", return_value=("<svg/>", "{}")), \
+             patch("expert_backend.services.diagram_mixin.extract_vl_switch_states", return_value={}), \
+             patch("expert_backend.services.diagram_mixin.extract_vl_injections", return_value={}):
+            yield
+
+    def test_n_sld(self):
+        mixin, network = self._mixin()
+        network.variant = "WORKING"
+        with self._sld_rendering():
+            sld = mixin.get_n_sld("VL_A")
+        assert sld["branch_loading"] == {"L2": [80.0, None]}
+        assert "loading_deltas" not in sld
+        assert network.variant == "WORKING"
+
+    def test_contingency_sld_vs_n(self):
+        mixin, network = self._mixin()
+        network.variant = "WORKING"
+        mixin._normalize_contingency_elements = lambda elements: list(elements)
+        mixin._attach_flow_deltas_vs_base = lambda *a, **kw: None
+        with self._sld_rendering():
+            sld = mixin.get_contingency_sld(["L1"], "VL_A")
+        assert sld["branch_loading"] == {"L2": [110.0, None]}
+        assert sld["loading_deltas"] == {"L2": {"delta": 30.0, "category": "positive"}}
+        assert network.variant == "WORKING"
+
+    def test_action_sld_vs_the_contingency(self):
+        mixin, network = self._mixin()
+        loading = {**TestLoadingAttachment.LOADING, "ACTION": {"L1": [0.0, 0.0], "L2": [90.0, None]}}
+        mixin._get_branch_loading = lambda net: dict(loading[net.variant])
+        mixin._last_disconnected_elements = ["L1"]
+        nm = MagicMock()
+        nm.network = network
+        nm.set_working_variant.side_effect = lambda v: setattr(network, "variant", v)
+        obs = MagicMock()
+        obs._network_manager = nm
+        obs._variant_id = "ACTION"
+        obs._last_info = {}
+        mixin._require_action = lambda action_id: {action_id: {"observation": obs}}
+        mixin._snapshot_contingency_state = lambda elements: ({}, {})
+        mixin._diff_action_switches_vs_contingency = lambda snap, elements: {}
+        with self._sld_rendering(), \
+             patch("expert_backend.services.diagram_mixin.get_network_flows", return_value={}), \
+             patch("expert_backend.services.diagram_mixin.get_asset_flows", return_value={}), \
+             patch("expert_backend.services.diagram_mixin.compute_deltas",
+                   return_value={"flow_deltas": {}, "reactive_flow_deltas": {}}), \
+             patch("expert_backend.services.diagram_mixin.compute_asset_deltas", return_value={}):
+            sld = mixin.get_action_variant_sld("ACT", "VL_A")
+        assert sld["branch_loading"] == {"L2": [90.0, None]}
+        assert sld["loading_deltas"] == {"L2": {"delta": -20.0, "category": "negative"}}
+        assert network.variant == "ACTION"
+
+    def test_a_voltage_level_without_branches_gets_empty_tables(self):
+        sld = {"feeder_labels": {"LOAD_1": {"kind": "load"}},
+               "branch_loading": {"L2": [80.0, None]}, "loading_deltas": {"L2": {"delta": 1.0, "category": "grey"}}}
+        DiagramMixin._keep_sld_branches(sld)
+        assert sld["branch_loading"] == {} and sld["loading_deltas"] == {}

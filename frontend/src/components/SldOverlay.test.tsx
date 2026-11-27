@@ -123,8 +123,63 @@ describe('SldOverlay', () => {
     });
 
     it('shows mode indicator as "Impacts" in delta mode', () => {
-        render(<SldOverlay {...defaultProps} actionViewMode="delta" />);
+        render(<SldOverlay {...defaultProps} vlOverlay={{ ...baseVlOverlay, tab: 'contingency' }} actionViewMode="delta" />);
         expect(screen.getByText('Impacts')).toBeInTheDocument();
+    });
+
+    it('shows "Flows" on the N tab in delta mode — the Impacts compare against N', () => {
+        render(<SldOverlay {...defaultProps} actionViewMode="delta" />);
+        expect(screen.getByTestId('sld-overlay-view-mode')).toHaveTextContent('Flows');
+    });
+
+    describe('Loading % (the diagram toggle)', () => {
+        const loadingOverlay = (): VlOverlay => ({
+            ...baseVlOverlay,
+            tab: 'action' as SldTab,
+            actionId: 'act-1',
+            svg: '<svg xmlns="http://www.w3.org/2000/svg">'
+                + '<g class="sld-extern-cell" id="cell_L1">'
+                + '<g class="sld-feeder-info sld-in sld-active-power" id="L1_P"><text class="sld-label">-19</text></g>'
+                + '<g class="sld-feeder-info sld-out sld-reactive-power" id="L1_Q"><text class="sld-label">3</text></g>'
+                + '</g></svg>',
+            sldMetadata: JSON.stringify({ feederInfos: [
+                { id: 'L1_P', equipmentId: 'L1', side: 'TWO', componentType: 'ARROW_ACTIVE' },
+                { id: 'L1_Q', equipmentId: 'L1', side: 'TWO', componentType: 'ARROW_REACTIVE' },
+            ] }),
+            branch_loading: { L1: [70.2, 81.6] },
+            loading_deltas: { L1: { delta: -9.6, category: 'negative' } },
+            flow_deltas: { L1: { delta: 5.5, category: 'positive', flip_arrow: false } },
+        });
+        const pLabel = (c: HTMLElement) => c.querySelector('#L1_P .sld-label')!;
+
+        it('reads the branch feeders as their loading and says so in the header', () => {
+            const { container } = render(<SldOverlay {...defaultProps} vlOverlay={loadingOverlay()} flowMetric="loading" />);
+            expect(pLabel(container).textContent).toBe('81%');
+            expect(container.querySelector('#L1_Q')!.classList.contains('sld-loading-hidden')).toBe(true);
+            expect(screen.getByTestId('sld-overlay-metric')).toHaveTextContent('Loading %');
+        });
+
+        it('follows the toggles: Impacts, then back to MW', () => {
+            const overlay = loadingOverlay();
+            const { container, rerender } = render(
+                <SldOverlay {...defaultProps} vlOverlay={overlay} flowMetric="loading" actionViewMode="delta" />);
+            expect(pLabel(container).textContent).toBe('-10%');
+            expect(pLabel(container).classList.contains('sld-delta-text-negative')).toBe(true);
+
+            rerender(<SldOverlay {...defaultProps} vlOverlay={overlay} flowMetric="p" actionViewMode="delta" />);
+            expect(pLabel(container).textContent).toBe('Δ +5.5');
+
+            rerender(<SldOverlay {...defaultProps} vlOverlay={overlay} flowMetric="p" actionViewMode="network" />);
+            expect(pLabel(container).textContent).toBe('-19');
+            expect(screen.queryByTestId('sld-overlay-metric')).toBeNull();
+        });
+
+        it('stays in MW when the SLD carries no loading', () => {
+            const { container } = render(
+                <SldOverlay {...defaultProps} vlOverlay={{ ...loadingOverlay(), branch_loading: undefined }} flowMetric="loading" />);
+            expect(pLabel(container).textContent).toBe('-19');
+            expect(screen.queryByTestId('sld-overlay-metric')).toBeNull();
+        });
     });
 
     describe('post-action overload highlight (Bug 2)', () => {
@@ -1072,21 +1127,19 @@ describe('SldOverlay', () => {
             const fs = require('fs');
             // eslint-disable-next-line @typescript-eslint/no-require-imports
             const path = require('path');
+            // The painter lives in `useSldFlowVisuals`: it MUST be a
+            // `useLayoutEffect`. If anyone flips it back to `useEffect`,
+            // the rapid pan re-renders will once again expose the
+            // un-painted Flows state for a single frame between React's
+            // commit and the post-paint effect flush.
             const src = fs.readFileSync(
-                path.resolve(__dirname, 'SldOverlay.tsx'),
+                path.resolve(__dirname, '../hooks/useSldFlowVisuals.ts'),
                 'utf-8',
             ) as string;
-            const sigDeclIdx = src.indexOf('const appliedDeltaSigRef');
-            expect(sigDeclIdx).toBeGreaterThan(-1);
-            // The `useLayoutEffect(...)` invocation MUST sit on the
-            // line immediately after the sig-ref declaration — that's
-            // the delta painter. If anyone flips it back to
-            // `useEffect`, the rapid pan re-renders will once again
-            // expose the un-painted Flows state for a single frame
-            // between React's commit and the post-paint effect flush.
-            const after = src.slice(sigDeclIdx, sigDeclIdx + 400);
-            expect(after).toMatch(/useLayoutEffect\s*\(/);
-            expect(after).not.toMatch(/^\s*useEffect\s*\(/m);
+            expect(src).toMatch(/useLayoutEffect\s*\(\s*\(\)\s*=>/);
+            expect(src).not.toMatch(/\buseEffect\s*\(/);
+            const overlay = fs.readFileSync(path.resolve(__dirname, 'SldOverlay.tsx'), 'utf-8') as string;
+            expect(overlay).toMatch(/useSldFlowVisuals\(/);
         });
     });
 

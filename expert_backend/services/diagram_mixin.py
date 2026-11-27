@@ -574,6 +574,16 @@ class DiagramMixin(_Base):
         switch_labels = switch_names(network, voltage_level_id, display_names) if display_names else {}
         return feeder_labels, switch_labels
 
+    @staticmethod
+    def _keep_sld_branches(result: dict) -> None:
+        """Narrow the Loading view's tables to the voltage level's own branches
+        (its ``feeder_labels`` of kind ``branch``). They are read grid-wide, so
+        the Impacts categories are the NAD's; the SLD needs a handful of rows."""
+        branches = {eid for eid, f in result.get("feeder_labels", {}).items() if f.get("kind") == "branch"}
+        for key in ("branch_loading", "loading_deltas"):
+            if key in result:
+                result[key] = {k: v for k, v in result[key].items() if k in branches}
+
     @with_network_lock
     def get_n_sld(self, voltage_level_id: str) -> dict:
         """Single Line Diagram in the base N state."""
@@ -586,9 +596,10 @@ class DiagramMixin(_Base):
             switch_states = extract_vl_switch_states(n, voltage_level_id)
             injections = extract_vl_injections(n, voltage_level_id)
             feeder_labels, switch_labels = self._sld_labels(n, voltage_level_id, injections)
+            loading = self._safe_branch_loading(n)
         finally:
             n.set_working_variant(original_variant)
-        return {
+        result = {
             "svg": svg,
             "sld_metadata": sld_metadata,
             "voltage_level_id": voltage_level_id,
@@ -597,6 +608,10 @@ class DiagramMixin(_Base):
             "feeder_labels": feeder_labels,
             "switch_labels": switch_labels,
         }
+        if loading is not None:
+            result["branch_loading"] = loading
+            self._keep_sld_branches(result)
+        return result
 
     @with_network_lock
     def get_contingency_sld(self, disconnected_elements, voltage_level_id: str) -> dict:
@@ -622,6 +637,10 @@ class DiagramMixin(_Base):
                 "feeder_labels": feeder_labels,
                 "switch_labels": switch_labels,
             }
+            # Loading first: `_attach_flow_deltas_vs_base` leaves the network
+            # on N if it fails half-way, this one restores it in a finally.
+            self._attach_loading_vs_base(result, n)
+            self._keep_sld_branches(result)
             self._attach_flow_deltas_vs_base(result, n, voltage_level_ids=[voltage_level_id])
             return result
         finally:
@@ -664,6 +683,9 @@ class DiagramMixin(_Base):
             "switch_labels": switch_labels,
         }
         self._attach_convergence_from_obs(result, obs)
+        # Read before the deltas below move the shared Network to the
+        # contingency variant.
+        action_loading = self._safe_branch_loading(network)
 
         # Capture the action-variant switch snapshot NOW — still on the
         # action variant, pypowsybl DataFrames are live views that
@@ -731,6 +753,9 @@ class DiagramMixin(_Base):
             result["flow_deltas"] = {}
             result["reactive_flow_deltas"] = {}
             result["asset_deltas"] = {}
+
+        self._attach_action_loading(result, action_loading)
+        self._keep_sld_branches(result)
 
         # Switch-diff comes AFTER `_snapshot_contingency_state` (which
         # restores the working variant to ACTION). The

@@ -80,6 +80,10 @@ frontend/
     │   │                           # coupling maneuver)
     │   ├── usePanZoom.ts           # ViewBox state, zoom-to-element
     │   ├── useSldOverlay.ts        # Single-Line-Diagram overlay
+    │   ├── useSldFlowVisuals.ts    # The SLD's values in the diagrams' view
+    │   │                           # (MW / Loading % × Flows / Impacts):
+    │   │                           # a self-gated layout effect over
+    │   │                           # utils/svg/sldFlowVisuals
     │   ├── useSldTopologyEdit.ts    # Interactive SLD edit (switches +
     │   │                            # load/gen active power): editMode
     │   │                            # (implicit while open, read-only on
@@ -264,9 +268,11 @@ frontend/
         │   │                          #   of the NAD drawn during 'canvas' pan/zoom
         │   ├── canvasProxyShapes.ts   #   its transforms, geometry, shape styles
         │   ├── canvasProxyText.ts     #   its flow values + VL labels (text runs)
-        │   └── feederLabels.ts        # - SLD feeder relabel + friendly-name↔IIDM-id
-        │                              #   overload bridge (see useSldFeederRelabel +
-        │                              #   docs/features/sld-diagram-feeder-labels.md)
+        │   ├── feederLabels.ts        # - SLD feeder relabel + friendly-name↔IIDM-id
+        │   │                          #   overload bridge (see useSldFeederRelabel +
+        │   │                          #   docs/features/sld-diagram-feeder-labels.md)
+        │   └── sldFlowVisuals.ts      # - the SLD's flow values: MW Impacts, Loading %
+        │                              #   (each branch feeder's end, its change)
         ├── contextMapGeometry.ts      # Context tab geometry: Carte-Front point
         │                              # sizing (pies, arrows), matplotlib arc3
         │                              # arrows, pie slices, highlight box
@@ -737,7 +743,10 @@ CSS px over the diagram — one label mid-branch when zoomed out, one per end
 when zoomed in, coloured branches first, no overlap, outlined in the voltage
 colour — and hovering a branch tells both its ends. `🏷 Values` hides the
 labels. The backend sends `branch_loading` (per end, against each end's own
-limit) and `loading_deltas` with every NAD. Full reference:
+limit) and `loading_deltas` with every NAD. The SLD overlay follows the main
+window's toggles (`useSldFlowVisuals`): in Loading %, each branch feeder reads
+its end's loading (Flows) or the branch's change (Impacts); loads and
+generators keep their MW. Full reference:
 [`docs/features/loading-view-and-flow-labels.md`](../docs/features/loading-view-and-flow-labels.md).
 
 ## Detached tabs

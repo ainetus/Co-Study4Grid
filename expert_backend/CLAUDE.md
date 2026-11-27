@@ -436,6 +436,9 @@ Diagram & topology:
   generator / load / busbar's `label` = its display name), AND a
   `switch_labels` map (`switch_names` — `disjoncteur ATTAQL61MANDA`, read by
   the maneuver list). See `docs/features/sld-diagram-feeder-labels.md`.
+  Each also carries `branch_loading` (and, N-1 / action, `loading_deltas`)
+  for the SLD's Loading % view — read grid-wide like the NAD's, narrowed to
+  the voltage level's branches (`_keep_sld_branches`).
 - `POST /api/sld-topology-preview` — re-renders the VL SLD with the
   user's staged switch overrides applied on a throwaway variant
   (topological-colouring, NO load flow). Response carries
@@ -661,7 +664,9 @@ N / vs N-1, categorised like the flow deltas). Reading the limits costs
 `DiagramMixin._side_limits_for` caches them per network object
 (`_side_limits_cache`, a weak reference + the table; cleared by `reset()`).
 The action patch snapshots the action variant's loading with its flows,
-before the variant switch. See
+before the variant switch. The three SLD endpoints carry the same tables
+for the voltage level's branches (the SLD overlay follows the Loading view).
+See
 [`docs/features/loading-view-and-flow-labels.md`](../docs/features/loading-view-and-flow-labels.md).
 
 ## Adding a new per-study cache
