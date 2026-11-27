@@ -1791,6 +1791,23 @@ class TestEventLoopSafety:
         )
 
 
+class TestConfigLoad:
+    def test_the_context_snapshot_names_with_the_network_service_namer(self, client, mock_services):
+        """One namer per study: the Context tab's capture reads the network
+        service's — the one /api/branches and /api/voltage-levels read next."""
+        mock_ns, mock_rs = mock_services
+        mock_rs._dict_action = {}
+        mock_rs.get_active_model_name.return_value = "expert"
+        mock_rs.get_compute_overflow_graph.return_value = True
+        mock_ns.get_disconnectable_elements.return_value = []
+        mock_ns.get_monitored_elements.return_value = []
+        with patch("expert_backend.main.context_map_service") as context_map:
+            response = client.post("/api/config", json={"network_path": "/n", "action_file_path": "/a"})
+        assert response.status_code == 200
+        context_map.capture.assert_called_once_with(
+            mock_ns.network, None, "/n", vl_names=mock_ns.voltage_level_namer.return_value)
+
+
 class TestStudyMutationBusyGate:
     """The study-mutation gate (D3, 2026-07): config load + the analysis
     pipeline mutate shared singleton state, so at most one runs at a

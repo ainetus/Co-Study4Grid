@@ -221,8 +221,10 @@ def _nuclear(gens: pd.DataFrame) -> pd.DataFrame:
     }, index=units.index.astype(str))
 
 
-def capture_snapshot(network: Any) -> NetworkSnapshot:
-    """Read everything the context map needs off a freshly loaded network."""
+def capture_snapshot(network: Any, vl_names: VoltageLevelNames | None = None) -> NetworkSnapshot:
+    """Read everything the context map needs off a freshly loaded network.
+    ``vl_names``: its voltage-level names when the caller has them already
+    (the network service's), else built here."""
     snap = NetworkSnapshot()
     case_date = getattr(network, "case_date", None)
     snap.case_date = case_date.isoformat() if isinstance(case_date, datetime) else None
@@ -269,7 +271,7 @@ def capture_snapshot(network: Any) -> NetworkSnapshot:
     # nameless bus by the substations it ties (``Piquage EMALES(LES) /
     # RANVILLE 225kV``), a missing or raw OSM line name by its ends
     # (``PONTEAU — REALTOR``).
-    vl_names = VoltageLevelNames(network)
+    vl_names = vl_names or VoltageLevelNames(network)
     snap.names.update(vl_names.as_dict())
     branches_df = snap.branches
     for bid, name, vl1, vl2 in zip(branches_df.index, branches_df["name"],

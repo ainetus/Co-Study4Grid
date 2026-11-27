@@ -10,11 +10,17 @@ the action cards and the manual-action descriptions show instead of raw ids.
 See docs/features/sld-diagram-feeder-labels.md § 4.
 """
 import json
+import math
+import random
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
+from expert_backend.services import equipment_names
 from expert_backend.services.context_map.plants import SCHEMA, _main_plant, load_plant_names
 from expert_backend.services.diagram.sld_render import build_feeder_labels
 from expert_backend.services.equipment_names import (
@@ -497,3 +503,187 @@ class TestVoltageLevelNames:
         assert labels["L_A_TAP"]["other_vl"] == TAP
         # Without the names, a raw far end is no label: the branch's id stays.
         assert build_feeder_labels(net, "VL_A")["L_A_TAP"]["label"] is None
+
+
+# ---------------------------------------------------------------------------
+# The walk from a nameless bus: bounded, skipped on a grid without names
+# ---------------------------------------------------------------------------
+
+def _graph_network(vls: dict[str, str], edges: list[tuple[str, str]]) -> MagicMock:
+    """225 kV voltage levels ``{id: name}`` tied by the lines ``edges``."""
+    net = MagicMock()
+    net.get_voltage_levels.return_value = _df(
+        {vl: {"name": name, "nominal_v": 225.0} for vl, name in vls.items()}, ["name", "nominal_v"])
+    net.get_lines.return_value = _df(
+        {f"L{i}": {"name": "", "voltage_level1_id": a, "voltage_level2_id": b}
+         for i, (a, b) in enumerate(edges)}, LINE_COLS)
+    net.get_2_windings_transformers.return_value = pd.DataFrame(columns=LINE_COLS)
+    return net
+
+
+def _bounded_and_unbounded(net: MagicMock) -> tuple[VoltageLevelNames, VoltageLevelNames]:
+    """The names as built, and as built by a walk that never stops early."""
+    bounded = VoltageLevelNames(net)
+    with patch.object(equipment_names, "_ENOUGH_PLACES", math.inf):
+        unbounded = VoltageLevelNames(net)
+    return bounded, unbounded
+
+
+def _assert_same_names(bounded: VoltageLevelNames, unbounded: VoltageLevelNames) -> int:
+    """Every name the walk feeds is the unbounded walk's — own names,
+    ``seen_from`` any other voltage level, ``_pick`` with any substation left
+    out. Returns how many walks the bound cut short."""
+    assert bounded.as_dict() == unbounded.as_dict()
+    assert bounded._raw_tokens == unbounded._raw_tokens
+    vls = list(unbounded.network_names)
+    cut_short = 0
+    for vl in vls:
+        assert bounded.name(vl) == unbounded.name(vl)
+        assert bounded.is_nameless(vl) == unbounded.is_nameless(vl)
+        assert [bounded.seen_from(vl, o) for o in vls] == [unbounded.seen_from(vl, o) for o in vls]
+        short, full = bounded._places.get(vl, []), unbounded._places.get(vl, [])
+        # Whole hops, nearest first: the bounded places open the full list.
+        assert full[:len(short)] == short
+        cut_short += len(short) < len(full)
+        for exclude in [None, *(name for _, name in full)]:
+            for at_least in (1, 2):
+                assert VoltageLevelNames._pick(short, exclude, at_least) == \
+                    VoltageLevelNames._pick(full, exclude, at_least)
+    return cut_short
+
+
+def _virtual(i: int) -> str:
+    return f"VL_virtual_way_{i}-225"
+
+
+def _raw(vl: str) -> str:
+    return f"{vl[3:]} 225kV"
+
+
+class TestBoundedWalk:
+    """The walk from a nameless bus stops at the hop that finds three real
+    substations — the names are those of a walk that never stops."""
+
+    def test_more_substations_than_named_at_the_nearest_hop(self):
+        tap, behind = _virtual(1), _virtual(2)
+        subs = {f"VL_{c}": f"{n} 225kV" for c, n in
+                zip("ABCDEF", ("ALPHA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT"))}
+        net = _graph_network({**subs, tap: _raw(tap), behind: _raw(behind)}, [
+            (tap, "VL_A"), (tap, "VL_B"), (tap, "VL_C"), (tap, "VL_D"),
+            (tap, behind), (behind, "VL_E"), (behind, "VL_F"),
+        ])
+        bounded, unbounded = _bounded_and_unbounded(net)
+        assert bounded._places[tap] == [(1, "ALPHA"), (1, "BRAVO"), (1, "CHARLIE"), (1, "DELTA")]
+        assert len(unbounded._places[tap]) == 6
+        assert bounded.name(tap) == "Piquage ALPHA / BRAVO / CHARLIE 225kV"
+        # Seen from ALPHA, the fourth nearest takes its place.
+        assert bounded.seen_from(tap, "VL_A") == "Piquage BRAVO / CHARLIE / DELTA 225kV"
+        assert bounded.name(behind) == "Piquage ECHO / FOXTROT 225kV"
+        assert _assert_same_names(bounded, unbounded)
+
+    def test_taps_several_hops_away(self):
+        # X — HOTEL; X — W — KILO; X — Y — Z — GOLF / MIKE; Z — Q — ROMEO.
+        x, w, y, z, q = (_virtual(i) for i in range(1, 6))
+        net = _graph_network({
+            "VL_H": "HOTEL 225kV", "VL_K": "KILO 225kV", "VL_G": "GOLF 225kV",
+            "VL_M": "MIKE 225kV", "VL_R": "ROMEO 225kV", **{vl: _raw(vl) for vl in (x, w, y, z, q)},
+        }, [(x, "VL_H"), (x, w), (w, "VL_K"), (x, y), (y, z), (z, "VL_G"), (z, "VL_M"),
+            (z, q), (q, "VL_R")])
+        bounded, unbounded = _bounded_and_unbounded(net)
+        assert bounded._places[x] == [(1, "HOTEL"), (2, "KILO"), (3, "GOLF"), (3, "MIKE")]
+        assert unbounded._places[x][-1] == (4, "ROMEO")
+        # The nearest, completed with the next nearest; one left out, the
+        # nearest of the others.
+        assert bounded.name(x) == "Piquage HOTEL / KILO 225kV"
+        assert bounded.seen_from(x, "VL_H") == "Piquage KILO 225kV"
+        assert bounded.seen_from(x, "VL_K") == "Piquage HOTEL 225kV"
+        assert bounded._places[q] == [(1, "ROMEO"), (2, "GOLF"), (2, "MIKE")]
+        assert bounded.name(q) == "Piquage ROMEO / GOLF 225kV"
+        assert bounded.seen_from(q, "VL_R") == "Piquage GOLF / MIKE 225kV"
+        assert _assert_same_names(bounded, unbounded)
+
+    def test_a_substation_at_two_voltages_counts_once(self):
+        """Places are substations: ALPHA 225 kV and ALPHA 400 kV are one."""
+        u, v, s = _virtual(1), _virtual(2), _virtual(3)
+        net = _graph_network({
+            "VL_A225": "ALPHA 225kV", "VL_A400": "ALPHA 400kV", "VL_B": "BRAVO 225kV",
+            "VL_C": "CHARLIE 225kV", "VL_D": "DELTA 225kV", **{vl: _raw(vl) for vl in (u, v, s)},
+        }, [(u, "VL_A225"), (u, "VL_A400"), (u, v), (v, "VL_B"), (v, "VL_C"), (v, s), (s, "VL_D")])
+        bounded, unbounded = _bounded_and_unbounded(net)
+        assert bounded._places[u] == [(1, "ALPHA"), (2, "BRAVO"), (2, "CHARLIE")]
+        assert unbounded._places[u][-1] == (3, "DELTA")
+        assert bounded.name(u) == "Piquage ALPHA / BRAVO 225kV"
+        assert bounded.seen_from(u, "VL_A400") == "Piquage BRAVO / CHARLIE 225kV"
+        assert _assert_same_names(bounded, unbounded)
+
+    def test_random_grids(self):
+        """Seeded random grids: few substation names (ties, namesakes at two
+        voltages), virtual buses, substations OSM never named, chains."""
+        rng = random.Random(20261126)
+        cut_short = 0
+        for _ in range(200):
+            vls = {}
+            for i in range(rng.randint(2, 24)):
+                kind = rng.random()
+                if kind < 0.35:
+                    vls[f"VL_{i}"] = f"{rng.choice('ABCDEF')} {rng.choice(('225kV', '400kV'))}"
+                elif kind < 0.85:
+                    vls[_virtual(i)] = _raw(_virtual(i))
+                else:
+                    vls[f"VL_way_{i}-225"] = rng.choice(("", f"way_{i}-225 225kV"))
+            ids = list(vls)
+            edges = [tuple(rng.sample(ids, 2)) for _ in range(rng.randint(1, 2 * len(ids)))]
+            cut_short += _assert_same_names(*_bounded_and_unbounded(_graph_network(vls, edges)))
+        # The bound did cut walks short — the comparison is not vacuous.
+        assert cut_short > 100
+
+    def test_a_grid_without_a_single_name_is_not_walked(self):
+        """An RTE grid names none of its voltage levels: no substation to
+        find, so the branches are not even read; every bus stays nameless
+        and keeps whatever raw name it has."""
+        lone = _virtual(9)
+        net = _graph_network({"VL_0": "", "VL_1": "", "VL_2": "", lone: _raw(lone)},
+                             [("VL_0", "VL_1"), ("VL_1", "VL_2"), ("VL_2", lone)])
+        names = VoltageLevelNames(net)
+        net.get_lines.assert_not_called()
+        net.get_2_windings_transformers.assert_not_called()
+        assert all(names.is_nameless(vl) for vl in ("VL_0", "VL_1", "VL_2", lone))
+        assert names.as_dict() == {lone: _raw(lone)}
+        assert names.name("VL_0") == "VL_0"
+        assert names.seen_from("VL_0", "VL_1") is None
+
+
+class TestNetworkServiceNamer:
+    def test_requests_racing_for_the_names_build_them_once(self):
+        """``/api/branches`` and ``/api/voltage-levels`` arrive together."""
+        service = NetworkService()
+        service.network = _nameless_network()
+        built = []
+
+        def build(network):
+            built.append(network)
+            time.sleep(0.05)  # every request asks meanwhile
+            return VoltageLevelNames(network)
+
+        start = threading.Barrier(4)
+
+        def request(_):
+            start.wait()
+            return service.voltage_level_namer()
+
+        with patch("expert_backend.services.network_service.VoltageLevelNames", side_effect=build), \
+                ThreadPoolExecutor(4) as pool:
+            namers = list(pool.map(request, range(4)))
+        assert len(built) == 1
+        assert all(namer is namers[0] for namer in namers)
+
+    def test_names_built_for_a_replaced_network_are_not_served(self):
+        """A request still building the previous study's names when the next
+        study loads must not leave them to the new network."""
+        service = NetworkService()
+        service.network = _nameless_network()
+        first = service.voltage_level_namer()
+        assert service.voltage_level_namer() is first
+        service.network = _graph_network({"VL_A": "ALPHA 225kV"}, [])
+        assert service.voltage_level_namer() is not first
+        assert service.voltage_level_namer().name("VL_A") == "ALPHA 225kV"
