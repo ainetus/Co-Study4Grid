@@ -79,8 +79,9 @@ export default function FlowViewToggles({ tabId, viewMode, onViewModeChange, met
     impacts?: boolean;
 }) {
     return (
-        <div style={{
-            position: 'absolute', top: '10px', right: '10px', zIndex: 100,
+        <div data-testid={`flow-view-toggles-${tabId}`} style={{
+            // Clear of the kV filter strip (`--kv-filter-w`, unset in a detached window).
+            position: 'absolute', top: '10px', right: 'calc(10px + var(--kv-filter-w, 0px))', zIndex: 100,
             display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px',
         }}>
             <Segmented testId={`flow-metric-toggle-${tabId}`} options={METRICS} value={metric}

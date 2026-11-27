@@ -853,7 +853,12 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
             </div>
 
             {/* Content area */}
-            <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+            {/* `--kv-filter-w`: the kV filter strip on the right edge, which the diagram controls keep clear of. */}
+            <div style={{
+                flex: 1, position: 'relative', overflow: 'hidden',
+                '--kv-filter-w': uniqueVoltages.length < 2 ? '0px'
+                    : voltageFilterExpanded ? 'var(--kv-filter-open-w)' : 'var(--kv-filter-closed-w)',
+            } as React.CSSProperties}>
                 {/* Flow/Impacts, zoom, inspect and tie controls now
                     live INSIDE each tab container (see renderTabOverlay).
                     That way they move with the tab into a detached

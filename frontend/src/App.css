@@ -676,13 +676,21 @@ circle.nad-highlight {
     display: none !important;
 }
 
-/* ===== Voltage Range Slider (vertical, right sidebar) ===== */
+/* ===== Voltage Range Slider (vertical, right sidebar) =====
+   Its width, open and folded, is also the `--kv-filter-w` the diagram
+   panel sets for the controls along the right edge (FlowViewToggles,
+   DiagramLegend), so they stay clear of it. */
+:root {
+    --kv-filter-open-w: 62px;
+    --kv-filter-closed-w: 24px;
+}
+
 .voltage-sidebar {
     position: absolute;
     top: 0;
     right: 0;
     bottom: 0;
-    width: 62px;
+    width: var(--kv-filter-open-w);
     background: var(--color-surface-muted);
     border-left: 1px solid var(--color-border);
     display: flex;
@@ -810,7 +818,7 @@ input[data-testid="sidebar-filter-threshold-input"]::-webkit-outer-spin-button {
     top: 0;
     right: 0;
     bottom: 0;
-    width: 24px;
+    width: var(--kv-filter-closed-w);
     background: var(--color-surface-muted);
     border: none;
     border-left: 1px solid var(--color-border);

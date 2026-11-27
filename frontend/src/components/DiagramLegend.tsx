@@ -32,6 +32,9 @@ interface DiagramLegendProps {
   flowMetric?: FlowMetric;
 }
 
+/** Clear of the kV filter strip on the diagram's right edge (`--kv-filter-w`, unset in a detached window). */
+const clearOfKvFilter = `calc(${space[3]} + var(--kv-filter-w, 0px))`;
+
 interface LegendRow {
   /** Token-resolved color for the swatch. */
   color: string;
@@ -102,7 +105,7 @@ export default function DiagramLegend({ tabId, uniqueVoltages, vlNamesHidden, fl
         aria-expanded={false}
         style={{
           position: 'absolute',
-          right: space[3],
+          right: clearOfKvFilter,
           bottom: space[3],
           zIndex: 25,
           display: 'inline-flex',
@@ -132,7 +135,7 @@ export default function DiagramLegend({ tabId, uniqueVoltages, vlNamesHidden, fl
       aria-label="Diagram legend"
       style={{
         position: 'absolute',
-        right: space[3],
+        right: clearOfKvFilter,
         bottom: space[3],
         zIndex: 25,
         width: '240px',

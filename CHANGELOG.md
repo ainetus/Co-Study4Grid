@@ -50,7 +50,8 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 - The two top-right toggles stack one under the other (MW / Loading %, then
   Flows / Impacts), and the **N tab has no Flows / Impacts**: it is the
   reference the Impacts compare against, so it always shows its absolute
-  state.
+  state. They — and the legend — keep clear of the kV filter strip on the
+  right edge, folded or open (`--kv-filter-w`).
 - **Branch hover**: hovering a branch (within 8 px — no hit test of the
   diagram) shows both ends — voltage level, active power, loading — and its
   Impacts change; parallel circuits drawn over each other are all listed,

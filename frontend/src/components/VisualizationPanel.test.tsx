@@ -243,6 +243,23 @@ describe('VisualizationPanel', () => {
         expect(screen.getByText('Impacts')).toBeInTheDocument();
     });
 
+    it('keeps the top-right toggles clear of the kV filter strip, folded or open', () => {
+        const n1Diagram: DiagramData = { svg: '<svg>test</svg>', metadata: null };
+        render(<VisualizationPanel {...createDefaultProps({
+            activeTab: 'contingency', n1Diagram, uniqueVoltages: [63, 225, 400], voltageRange: [63, 400],
+        })} />);
+        const toggles = screen.getByTestId('flow-view-toggles-contingency');
+        expect(toggles.style.right).toBe('calc(10px + var(--kv-filter-w, 0px))');
+        const area = (el: HTMLElement): HTMLElement => {
+            let cur: HTMLElement | null = el;
+            while (cur && !cur.style.getPropertyValue('--kv-filter-w')) cur = cur.parentElement;
+            return cur as HTMLElement;
+        };
+        expect(area(toggles).style.getPropertyValue('--kv-filter-w')).toBe('var(--kv-filter-closed-w)');
+        fireEvent.click(screen.getByTitle('Show voltage filter'));
+        expect(area(toggles).style.getPropertyValue('--kv-filter-w')).toBe('var(--kv-filter-open-w)');
+    });
+
     it('offers no Flows / Impacts on the N tab, the reference state itself', () => {
         const nDiagram: DiagramData = { svg: '<svg>test</svg>', metadata: null };
         render(<VisualizationPanel {...createDefaultProps({ nDiagram })} />);
