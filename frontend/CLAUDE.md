@@ -165,7 +165,8 @@ frontend/
     │   │                           # are hidden by `data-branch-labels`):
     │   │                           # mid-branch when short on screen, per end
     │   │                           # when long, coloured first (only those in
-    │   │                           # Loading % and in Impacts), no overlap;
+    │   │                           # Loading % and in Impacts), MW in the
+    │   │                           # voltage's colour, no overlap;
     │   │                           # laid out on settle, hidden mid-gesture
     │   │                           # (so the canvas proxy draws no values);
     │   │                           # + the branch hover tooltip (both ends:

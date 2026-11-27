@@ -28,12 +28,13 @@ const geom = (id: string, from: Point, to: Point, over: Partial<BranchGeometry> 
     const at = (t: number): Point => [from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t];
     return {
         id, path: [from, to], mid, anchors: [at(0.2), at(0.8)], arrow: 10, mw: [100, -98],
-        nodes: [`${id}-n1`, `${id}-n2`], ...over,
+        inks: [null, null], nodes: [`${id}-n1`, `${id}-n2`], ...over,
     };
 };
 
 const item = (g: BranchGeometry, over: Partial<LabelItem> = {}): LabelItem => ({
-    geom: g, ends: ['80%', '79%'], mid: '80%', tone: 'loading-warn-3', important: true, weight: 80, ...over,
+    geom: g, ends: ['80%', '79%'], mid: '80%', tone: 'loading-warn-3', important: true, weight: 80,
+    inks: [null, null], midInk: null, ...over,
 });
 
 const identity = { width: 1000, height: 800, project: (p: Point) => p, pxPerUnit: 1, measure: (t: string) => t.length * 7 };
@@ -41,11 +42,11 @@ const identity = { width: 1000, height: 800, project: (p: Point) => p, pxPerUnit
 describe('readBranchGeometry', () => {
     it('reads the branch polyline end 1 → end 2, its middle, its arrows and the MW pypowsybl printed', () => {
         const container = document.createElement('div');
-        // pypowsybl draws each half from its node towards the middle.
+        // pypowsybl draws each half from its node towards the middle, in its voltage's colour.
         container.innerHTML = `<svg>
             <g class="nad-branch-edges"><g id="e1">
-                <polyline class="nad-edge-path" points="0,0 40,0"/>
-                <polyline class="nad-edge-path" points="100,0 60,0"/>
+                <polyline class="nad-vl300to500 nad-edge-path" points="0,0 40,0" style="--nad-vl-color: rgb(211, 47, 47)"/>
+                <polyline class="nad-vl180to300 nad-edge-path" points="100,0 60,0" style="--nad-vl-color: rgb(46, 125, 50)"/>
             </g></g>
             <g class="nad-edge-infos">
                 <g id="e1-i1" transform="translate(20,0) scale(2)"><path/><text data-original-text="412">41%</text></g>
@@ -59,6 +60,8 @@ describe('readBranchGeometry', () => {
         expect(g.arrow).toBe(20);
         // The MW under a view's rewrite (Loading %), as printed.
         expect(g.mw).toEqual([412, -410]);
+        // A transformer's halves: each its own voltage's colour.
+        expect(g.inks).toEqual(['rgb(211, 47, 47)', 'rgb(46, 125, 50)']);
     });
 
     it('keeps an open branch (no flow arrows) with its middle, and skips one not drawn', () => {
@@ -116,6 +119,16 @@ describe('buildLabelItems', () => {
         expect(it).toMatchObject({ ends: ['-120', '118'], mid: '120', tone: 'plain', important: false });
     });
 
+    it("MW: written in each end's voltage colour, the middle in its larger end's", () => {
+        const tr = geom('TR', [0, 0], [100, 0], { mw: [80, -250], inks: ['rgb(211, 47, 47)', 'rgb(46, 125, 50)'] });
+        const [it] = buildLabelItems([tr], {}, 'network', 'p', 0.95);
+        expect(it.inks).toEqual(['rgb(211, 47, 47)', 'rgb(46, 125, 50)']);
+        expect(it.midInk).toBe('rgb(46, 125, 50)');
+        // The other views keep their tone's colours.
+        const [loading] = buildLabelItems([tr], { branch_loading: { TR: [null, 96] } }, 'network', 'loading', 0.95);
+        expect(loading.midInk).toBeNull();
+    });
+
     it('leaves out a branch with nothing to say', () => {
         expect(buildLabelItems([g], { branch_loading: {} }, 'network', 'loading', 0.95)).toEqual([]);
         expect(buildLabelItems([geom('L1', [0, 0], [1, 0], { mw: [null, null] })], {}, 'network', 'p', 0.95)).toEqual([]);
@@ -131,8 +144,9 @@ describe('layoutLabels', () => {
 
     it('a branch long enough gets a label at each end, beside its arrow towards the middle', () => {
         const g = geom('L', [100, 300], [100 + ENDS_MIN_PX + 100, 300]);
-        const placed = layoutLabels([item(g)], identity);
+        const placed = layoutLabels([item(g, { inks: ['rgb(1, 1, 1)', 'rgb(2, 2, 2)'] })], identity);
         expect(placed.map(p => p.text)).toEqual(['80%', '79%']);
+        expect(placed.map(p => p.ink)).toEqual(['rgb(1, 1, 1)', 'rgb(2, 2, 2)']);
         const [a, b] = placed;
         expect(a.x).toBeGreaterThan(g.anchors[0]![0] + g.arrow);
         expect(b.x).toBeLessThan(g.anchors[1]![0] - g.arrow);

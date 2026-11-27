@@ -39,7 +39,9 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
   In Loading %, only the coloured branches are labelled (from 50 %), and in
   Impacts (MW or Loading %) only the significant changes — the grey ones
   would crowd the reading, the hover still tells them; in MW Flows, a branch
-  once long enough on screen. No label overlaps another. Laid out when the view settles (≈ 5–25 ms on the
+  once long enough on screen, its values written in its voltage's colour —
+  the line's own (a transformer's ends each in theirs), read from the
+  diagram. No label overlaps another. Laid out when the view settles (≈ 5–25 ms on the
   RTE grid), hidden during a pan / zoom gesture. Same for MW, Loading % and
   Impacts.
 - **`🏷 Values` toggle** beside `🏷 VL`: off, no value label at all for a

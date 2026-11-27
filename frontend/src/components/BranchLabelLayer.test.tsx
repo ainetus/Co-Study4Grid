@@ -15,7 +15,7 @@ import type { DiagramData, EdgeMeta, FlowMetric, MetadataIndex, NodeMeta, ViewMo
 // (100,100)→(160,100) — one at its middle. The view maps user units 1:1 to px.
 const SVG = `<svg>
     <g class="nad-branch-edges">
-        <g id="e1"><polyline class="nad-edge-path" points="0,300 300,300"/><polyline class="nad-edge-path" points="600,300 300,300"/></g>
+        <g id="e1"><polyline class="nad-vl300to500 nad-edge-path" points="0,300 300,300" style="--nad-vl-color: rgb(211, 47, 47)"/><polyline class="nad-vl300to500 nad-edge-path" points="600,300 300,300" style="--nad-vl-color: rgb(211, 47, 47)"/></g>
         <g id="e2"><polyline class="nad-edge-path" points="100,100 130,100"/><polyline class="nad-edge-path" points="160,100 130,100"/></g>
     </g>
     <g class="nad-edge-infos">
@@ -82,6 +82,8 @@ describe('BranchLabelLayer', () => {
         const layer = within(screen.getByTestId('branch-label-layer'));
         await waitFor(() => expect(layer.getByText('412')).toBeInTheDocument());
         expect(layer.getByText('-410')).toBeInTheDocument();
+        // In the voltage's colour, as the 400 kV line it labels.
+        expect(layer.getByText('412')).toHaveStyle({ fill: 'rgb(211, 47, 47)' });
         // SHORT is too short on screen for a grey (MW) label.
         expect(layer.queryByText('55')).toBeNull();
     });

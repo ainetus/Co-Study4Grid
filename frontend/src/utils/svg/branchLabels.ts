@@ -33,6 +33,8 @@ export interface BranchGeometry {
     arrow: number;
     /** Active power at each end, MW, as pypowsybl prints it. */
     mw: [number | null, number | null];
+    /** The colour pypowsybl draws each half in — its voltage (a transformer's two differ). */
+    inks: [string | null, string | null];
     /** The voltage-level nodes (svg ids) at each end. */
     nodes: [string, string];
 }
@@ -49,6 +51,9 @@ export interface LabelItem {
     important: boolean;
     /** Order among the labels of the same importance. */
     weight: number;
+    /** Text colour at each end and at the middle (MW Flows: the voltage's), null for the tone's own. */
+    inks: [string | null, string | null];
+    midInk: string | null;
 }
 
 export interface PlacedLabel {
@@ -61,6 +66,8 @@ export interface PlacedLabel {
     text: string;
     tone: string;
     important: boolean;
+    /** Text and outline colour, null for the tone's own. */
+    ink: string | null;
 }
 
 export const LABEL_HEIGHT_PX = 16;
@@ -72,6 +79,7 @@ const MAX_LABELS = 1500;
 const LABEL_GAP_PX = 3;
 const CELL_PX = 48;
 
+const VOLTAGE_CLASS_RE = /^nad-vl\d+to\d+$/;
 const TRANSLATE_RE = /translate\(\s*([-0-9.eE+]+)[\s,]+([-0-9.eE+]+)\s*\)/;
 const SCALE_RE = /scale\(\s*([-0-9.eE+]+)/;
 /** pypowsybl's flow arrow: `M-10 10 H10 L0 -10z`. */
@@ -119,6 +127,20 @@ const printedValue = (info: Element | undefined): number | null => {
 export const readBranchGeometry = (container: HTMLElement, metaIndex: MetadataIndex): BranchGeometry[] => {
     const idMap = getIdMap(container);
     const out: BranchGeometry[] = [];
+    // pypowsybl colours each half by its voltage class (`nad-vl300to500`…):
+    // one computed-style read per class, not per branch.
+    const view = container.ownerDocument.defaultView;
+    const inkOfClass = new Map<string, string | null>();
+    const inkOf = (half: Element | undefined): string | null => {
+        const cls = half ? Array.from(half.classList).find(c => VOLTAGE_CLASS_RE.test(c)) : undefined;
+        if (!half || !cls || !view) return null;
+        let ink = inkOfClass.get(cls);
+        if (ink === undefined) {
+            ink = view.getComputedStyle(half).getPropertyValue('--nad-vl-color').trim() || null;
+            inkOfClass.set(cls, ink);
+        }
+        return ink;
+    };
     for (const [id, edge] of metaIndex.edgesByEquipmentId) {
         const g = edge.svgId ? idMap.get(edge.svgId) : undefined;
         if (!g) continue;
@@ -151,6 +173,7 @@ export const readBranchGeometry = (container: HTMLElement, metaIndex: MetadataIn
             anchors: [anchor(info1), anchor(info2)],
             arrow: ARROW_HALF_UNITS * (Number.isFinite(scale) ? scale : 1),
             mw: [printedValue(info1), printedValue(info2)],
+            inks: [inkOf(lines[0]), inkOf(lines[1] ?? lines[0])],
             nodes: [edge.node1, edge.node2],
         });
     }
@@ -165,6 +188,7 @@ const deltaItem = (geom: BranchGeometry, d: FlowDelta, format: (v: number) => st
     return {
         geom, ends: [text, text], mid: text,
         tone: `delta-${d.category}`, important: d.category !== 'grey', weight: Math.abs(d.delta),
+        inks: [null, null], midInk: null,
     };
 };
 
@@ -200,6 +224,7 @@ export const buildLabelItems = (
                 geom,
                 ends: [ends[0] === null ? null : formatLoading(ends[0]), ends[1] === null ? null : formatLoading(ends[1])],
                 mid: formatLoading(max), tone, important: tone !== 'loading-low', weight: max,
+                inks: [null, null], midInk: null,
             });
         } else if (mode === 'delta' && diagram.flow_deltas) {
             const d = diagram.flow_deltas[geom.id];
@@ -208,7 +233,11 @@ export const buildLabelItems = (
             const [m1, m2] = geom.mw;
             if (m1 === null && m2 === null) continue;
             const big = Math.max(Math.abs(m1 ?? 0), Math.abs(m2 ?? 0));
-            items.push({ geom, ends: [formatMw(m1), formatMw(m2)], mid: `${Math.round(big)}`, tone: 'plain', important: false, weight: big });
+            // Written in the voltage's colour, as the line: the middle in its larger end's.
+            items.push({
+                geom, ends: [formatMw(m1), formatMw(m2)], mid: `${Math.round(big)}`, tone: 'plain', important: false, weight: big,
+                inks: geom.inks, midInk: Math.abs(m2 ?? 0) > Math.abs(m1 ?? 0) ? geom.inks[1] : geom.inks[0],
+            });
         }
     }
     return items;
@@ -278,11 +307,11 @@ export const layoutLabels = (items: readonly LabelItem[], opts: LayoutOptions): 
 
     const grid = new CollisionGrid();
     const placed: PlacedLabel[] = [];
-    const label = (item: LabelItem, key: string, centre: Point, text: string): [PlacedLabel, Box] => {
+    const label = (item: LabelItem, key: string, centre: Point, text: string, ink: string | null): [PlacedLabel, Box] => {
         const w = measure(text, item.important) + 8;
         const h = LABEL_HEIGHT_PX;
         return [
-            { key, id: item.geom.id, x: centre[0], y: centre[1], w, text, tone: item.tone, important: item.important },
+            { key, id: item.geom.id, x: centre[0], y: centre[1], w, text, tone: item.tone, important: item.important, ink },
             { x0: centre[0] - w / 2, y0: centre[1] - h / 2, x1: centre[0] + w / 2, y1: centre[1] + h / 2 },
         ];
     };
@@ -306,13 +335,14 @@ export const layoutLabels = (items: readonly LabelItem[], opts: LayoutOptions): 
                 // Beside the arrow, on the branch, towards the middle.
                 const at = project(anchor);
                 const d = Math.hypot(mid[0] - at[0], mid[1] - at[1]) || 1;
-                const [pl] = label(item, '', at, text);
+                const [pl] = label(item, '', at, text, null);
                 const shift = geom.arrow * pxPerUnit + 2 + pl.w / 2;
-                ends.push(label(item, `${geom.id}:${end}`, [at[0] + (mid[0] - at[0]) / d * shift, at[1] + (mid[1] - at[1]) / d * shift], text));
+                const centre: Point = [at[0] + (mid[0] - at[0]) / d * shift, at[1] + (mid[1] - at[1]) / d * shift];
+                ends.push(label(item, `${geom.id}:${end}`, centre, text, item.inks[end]));
             }
             if (tryPlace(ends)) continue;
         }
-        tryPlace([label(item, `${geom.id}:mid`, mid, item.mid)]);
+        tryPlace([label(item, `${geom.id}:mid`, mid, item.mid, item.midInk)]);
     }
     return placed;
 };
