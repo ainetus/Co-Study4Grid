@@ -7,6 +7,22 @@ and the project (informally) follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Study load — the RTE 7000 grid loads in ~11 s again (was ~80 s)
+
+- **Voltage-level names built once, and cheaply**: naming the nameless buses
+  (`VoltageLevelNames`) walked the whole grid from each of the RTE grid's
+  6 835 voltage levels — none has a name of its own — 19 s per build, built
+  three times per load (the Context tab's snapshot in `/api/config`, then
+  `/api/branches` and `/api/voltage-levels` racing for the cache). The walk is
+  now skipped when no voltage level is named and stops at the hop that finds
+  three substations; the namer is built once per network, under a lock, and
+  the snapshot reads the network service's. Every name is unchanged
+  (byte-identical on the PyPSA grids and the RTE grid). RTE study load
+  (`/api/config`, then branches + voltage levels + N diagram): 77–82 s →
+  10–11 s — `/api/config` 27–29 s → 8–10 s, `/api/branches` 50–53 s →
+  0.6–2 s, `/api/voltage-levels` 49–53 s → < 0.1 s.
+- See `docs/features/sld-diagram-feeder-labels.md` § 4.
+
 ### Context tab — the network outline and the consignations (Carte-Front)
 
 - **Consignations on the map**: the extra-high-voltage circuits the situation

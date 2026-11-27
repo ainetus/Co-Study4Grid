@@ -193,8 +193,11 @@ expert_backend/
 │   ├── equipment_names.py         # Network readers applying those rules:
 │   │                              # VoltageLevelNames (nameless buses — PyPSA
 │   │                              # virtual buses — walked to their nearest real
-│   │                              # substations; cached per study by
-│   │                              # network_service.voltage_level_namer),
+│   │                              # substations, the walk stopping at three and
+│   │                              # skipped when no VL is named; built once per
+│   │                              # network, under a lock, by
+│   │                              # network_service.voltage_level_namer — the
+│   │                              # Context tab snapshot reads that one),
 │   │                              # injection_names (→ get_display_names → the
 │   │                              # /api/branches name map), busbar_names,
 │   │                              # switch_names (node-breaker bay walk),
