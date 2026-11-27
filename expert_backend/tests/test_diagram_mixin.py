@@ -460,3 +460,40 @@ class TestSideLimitsCache:
         other = self._network()
         mixin._get_branch_loading(other)
         assert other.get_operational_limits.call_count == 1
+
+
+class TestDiagramPayloadsCarryLoading:
+    """The Loading view's data rides in the N diagram and in the N-1 patch
+    (the frontend's default path), not only through the helpers above."""
+
+    def _mixin(self):
+        mixin, network = TestLoadingAttachment()._mixin()
+        mixin._generate_diagram = lambda net, **kw: {"svg": "<svg/>", "metadata": "{}"}
+        mixin._get_overloaded_lines = lambda *a, **kw: ([], [])
+        mixin._get_lines_we_care_about = lambda: None
+        mixin._get_element_max_currents = lambda net: {}
+        return mixin, network
+
+    def test_n_diagram(self):
+        mixin, network = self._mixin()
+        network.variant = "WORKING"
+        mixin._get_n_variant = lambda: "N"
+        diagram = mixin.get_network_diagram()
+        assert diagram["branch_loading"] == {"L1": [50.0, 49.0], "L2": [80.0, None]}
+        assert network.variant == "WORKING"
+
+    def test_contingency_patch(self):
+        mixin, network = self._mixin()
+        network.variant = "WORKING"
+        mixin._normalize_contingency_elements = lambda elements: list(elements)
+        mixin._lf_status_by_variant = {"N-1": {"converged": True, "lf_status": "CONVERGED"}}
+        mixin._get_network_flows = lambda net: {"p1": {}, "p2": {}, "q1": {}, "q2": {}, "vl1": {}, "vl2": {}}
+        mixin._get_asset_flows = lambda net: {}
+        mixin._compute_deltas = lambda a, b, vls=None: {"flow_deltas": {}, "reactive_flow_deltas": {}}
+        mixin._compute_asset_deltas = lambda a, b: {}
+        mixin._get_n_state_loading = lambda net, names: []
+        mixin._cache_obs_for_variant = lambda *a: None
+        payload = mixin._build_contingency_patch_payload(["L1"])
+        assert payload["branch_loading"] == {"L1": [0.0, 0.0], "L2": [110.0, None]}
+        assert payload["loading_deltas"]["L2"] == {"delta": 30.0, "category": "positive"}
+        assert network.variant == "WORKING"

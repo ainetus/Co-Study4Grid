@@ -7,7 +7,7 @@
 
 import { useEffect, useRef } from 'react';
 import { api } from '../api';
-import { cloneBaseSvg, applyPatchToClone } from '../utils/svgPatch';
+import { cloneBaseSvg, applyPatchToClone, patchDiagramFields } from '../utils/svgPatch';
 import { processSvg } from '../utils/svgUtils';
 import type { DiagramsState } from './useDiagrams';
 import type { ConfirmDialogState } from '../components/modals/ConfirmationDialog';
@@ -158,16 +158,7 @@ export function useContingencyFetch({
               svg: cloned,
               metadata: nDiagram?.metadata ?? null,
               originalViewBox: nDiagram?.originalViewBox ? { ...nDiagram.originalViewBox } : null,
-              lines_overloaded: patch.lines_overloaded,
-              lines_overloaded_rho: patch.lines_overloaded_rho,
-              lines_overloaded_rho_before: patch.lines_overloaded_rho_before,
-              flow_deltas: patch.flow_deltas,
-              reactive_flow_deltas: patch.reactive_flow_deltas,
-              asset_deltas: patch.asset_deltas,
-              branch_loading: patch.branch_loading,
-              loading_deltas: patch.loading_deltas,
-              lf_converged: patch.lf_converged,
-              lf_status: patch.lf_status,
+              ...patchDiagramFields(patch),
             });
             diagrams.lastZoomState.current = { query: '', branch: '' };
             diagrams.setN1Loading(false);

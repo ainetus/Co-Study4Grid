@@ -279,3 +279,38 @@ class TestBuildActionPatchPayloadEarlyReturns:
         assert out["patchable"] is False
         assert out["reason"] == "action-not-in-last-result"
         assert out["action_id"] == "a2"
+
+
+class TestBuildActionPatchPayloadLoading:
+    """A patchable action's payload carries the Loading view's data: the
+    action variant's loading (snapshot taken before the variant switch) and
+    its change vs the contingency."""
+
+    def test_branch_loading_and_its_deltas_vs_the_contingency(self, monkeypatch):
+        import expert_backend.services.diagram.action_patch as ap
+
+        lines = pd.DataFrame({"connected1": [True], "connected2": [True]}, index=["L1"])
+        trafos = pd.DataFrame({"connected1": [], "connected2": []})
+        action_network = MagicMock()
+        action_network.get_lines.return_value = lines
+        action_network.get_2_windings_transformers.return_value = trafos
+        action_network.get_buses.return_value = pd.DataFrame({"voltage_level_id": ["VL1"]}, index=["B1"])
+        obs = MagicMock(_variant_id="ACT", _last_info={})
+        obs._network_manager.network = action_network
+
+        service = MagicMock()
+        service._last_result = {"prioritized_actions": {"A1": {"observation": obs}}}
+        service._last_disconnected_elements = ["X"]
+        service._get_network_flows.return_value = {"p1": {}, "p2": {}, "q1": {}, "q2": {}, "vl1": {}, "vl2": {}}
+        service._get_asset_flows.return_value = {}
+        service._compute_deltas.return_value = {"flow_deltas": {}, "reactive_flow_deltas": {}}
+        service._compute_asset_deltas.return_value = {}
+        service._get_overloaded_lines.return_value = ([], [])
+        # The action variant's loading (snapshot) first, then the contingency's.
+        service._get_branch_loading.side_effect = [{"L1": [80.0, 79.0]}, {"L1": [60.0, 59.0]}]
+        monkeypatch.setattr(ap, "compute_vl_topology_diff", lambda buses, net: {})
+
+        out = build_action_patch_payload(service, "A1")
+        assert out["patchable"] is True
+        assert out["branch_loading"] == {"L1": [80.0, 79.0]}
+        assert out["loading_deltas"] == {"L1": {"delta": 20.0, "category": "positive"}}

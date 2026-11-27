@@ -25,6 +25,25 @@ describe('DiagramLegend', () => {
         expect(screen.getByText('Overloaded line')).toBeInTheDocument();
     });
 
+    it('explains the Loading % scale and names the changes by loading', async () => {
+        const user = userEvent.setup();
+        render(<DiagramLegend tabId="contingency" flowMetric="loading" />);
+        await user.click(screen.getByTestId('diagram-legend-pill-contingency'));
+        expect(screen.getByText('Loading below 50 %')).toBeInTheDocument();
+        expect(screen.getByText('Loading 50 % \u2192 monitoring factor')).toBeInTheDocument();
+        expect(screen.getByText('Loading \u2265 monitoring factor')).toBeInTheDocument();
+        expect(screen.getByText('Loading up after change')).toBeInTheDocument();
+        expect(screen.queryByText('Flow up after change')).toBeNull();
+    });
+
+    it('shows no loading scale in MW', async () => {
+        const user = userEvent.setup();
+        render(<DiagramLegend tabId="contingency" />);
+        await user.click(screen.getByTestId('diagram-legend-pill-contingency'));
+        expect(screen.queryByText('Loading below 50 %')).toBeNull();
+        expect(screen.getByText('Flow up after change')).toBeInTheDocument();
+    });
+
     it('hides the contingency entry on the N tab', async () => {
         const user = userEvent.setup();
         render(<DiagramLegend tabId="n" />);

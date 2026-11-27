@@ -6,7 +6,7 @@
 // This file is part of Co-Study4Grid a Power Grid Study tool Assistant Interface to help solve contigencies for a grid state under study.
 
 import { describe, it, expect } from 'vitest';
-import { cloneBaseSvg, applyPatchToClone } from './svgPatch';
+import { patchDiagramFields, cloneBaseSvg, applyPatchToClone } from './svgPatch';
 import type { DiagramPatch, MetadataIndex, EdgeMeta } from '../types';
 
 //
@@ -95,6 +95,36 @@ describe('cloneBaseSvg', () => {
         expect(clone.querySelector('#nad-ei-LINE_A-1 text')!.textContent).toBe('111');
         expect(clone.querySelector('[data-original-text]')).toBeNull();
         expect(label.textContent).toBe('97%');
+    });
+});
+
+describe('patchDiagramFields', () => {
+    it("carries every data field of the patch onto the patched diagram, the Loading view's included", () => {
+        const patch: DiagramPatch = {
+            patchable: true,
+            lf_converged: true,
+            lf_status: 'CONVERGED',
+            lines_overloaded: ['L1'],
+            lines_overloaded_rho: [1.09],
+            lines_overloaded_rho_before: [0.7],
+            flow_deltas: { L1: { delta: 270, category: 'positive' } },
+            reactive_flow_deltas: {},
+            asset_deltas: {},
+            branch_loading: { L1: [null, 109.1] },
+            loading_deltas: { L1: { delta: 40.2, category: 'positive' } },
+        };
+        expect(patchDiagramFields(patch)).toEqual({
+            lines_overloaded: ['L1'],
+            lines_overloaded_rho: [1.09],
+            lines_overloaded_rho_before: [0.7],
+            flow_deltas: { L1: { delta: 270, category: 'positive' } },
+            reactive_flow_deltas: {},
+            asset_deltas: {},
+            branch_loading: { L1: [null, 109.1] },
+            loading_deltas: { L1: { delta: 40.2, category: 'positive' } },
+            lf_converged: true,
+            lf_status: 'CONVERGED',
+        });
     });
 });
 
